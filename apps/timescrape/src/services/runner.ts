@@ -19,13 +19,19 @@ import { mkdir, open, readdir, rm, stat, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { promisify } from "node:util";
 
-import { SCRAPER_CLONE_DEADLINE_SECONDS, SCRAPER_DEFAULT_OUTPUT_FILE } from "@timetiles/shared";
+import { SCRAPER_CLONE_DEADLINE_SECONDS, SCRAPER_DEFAULT_OUTPUT_FILE, SCRAPER_RUNTIMES } from "@timetiles/shared";
 
 import { getConfig } from "../config.js";
 import { countCsvDataRows } from "../lib/csv.js";
 import { ConcurrencyError, OutputValidationError, RunnerError } from "../lib/errors.js";
 import { logError, logger } from "../lib/logger.js";
-import { buildPodmanArgs, CONTAINER_STOP_GRACE_SECS } from "../security/container-config.js";
+import { isShuttingDown } from "../lib/shutdown.js";
+import {
+  buildPodmanArgs,
+  CONTAINER_STOP_GRACE_SECS,
+  SCRAPER_SANDBOX_NETWORK,
+  scraperImage,
+} from "../security/container-config.js";
 import type { RunRequest, RunResult } from "../types.js";
 import { prepareCode } from "./code-prep.js";
 import { validateOutput } from "./output-validator.js";
@@ -39,6 +45,7 @@ const STOP_CLIENT_TIMEOUT_MS = (CONTAINER_STOP_GRACE_SECS + 5) * 1000;
 const KILL_CLIENT_TIMEOUT_MS = 10_000;
 const RM_CLIENT_TIMEOUT_MS = 15_000;
 const WORK_DIR_CLEANUP_TIMEOUT_MS = 30_000;
+const PS_CLIENT_TIMEOUT_MS = 15_000;
 
 /** Worst case this runner adds to a run's timeout before answering; must fit the shared overhead. */
 export const RUNNER_MAX_OVERHEAD_SECS =
@@ -83,6 +90,45 @@ export const getMetrics = (): RunnerMetrics => {
   };
 };
 
+/** How long a runtime health answer is reused, so probes cannot pile up podman calls. */
+export const RUNTIME_HEALTH_CACHE_MS = 30_000;
+const RUNTIME_CHECK_TIMEOUT_MS = 5000;
+
+export interface RuntimeHealth {
+  ok: boolean;
+  /** Images and networks podman could not confirm, e.g. `image timescrape-node`. */
+  unavailable: string[];
+}
+
+let runtimeHealth: { checkedAt: number; result: Promise<RuntimeHealth> } | undefined;
+
+const probeRuntime = async (): Promise<RuntimeHealth> => {
+  const checks: Array<[kind: "image" | "network", name: string]> = [
+    ...SCRAPER_RUNTIMES.map((runtime): ["image", string] => ["image", scraperImage(runtime)]),
+    ["network", SCRAPER_SANDBOX_NETWORK],
+  ];
+  const answers = await Promise.all(
+    checks.map(async ([kind, name]) => {
+      try {
+        await execFileAsync("podman", [kind, "exists", name], { timeout: RUNTIME_CHECK_TIMEOUT_MS });
+        return null;
+      } catch {
+        return `${kind} ${name}`;
+      }
+    })
+  );
+  const unavailable = answers.filter((answer) => answer !== null);
+  return { ok: unavailable.length === 0, unavailable };
+};
+
+/** Whether podman can start a run at all: every runtime image and the sandbox network exist. */
+export const getRuntimeHealth = (): Promise<RuntimeHealth> => {
+  if (!runtimeHealth || Date.now() - runtimeHealth.checkedAt >= RUNTIME_HEALTH_CACHE_MS) {
+    runtimeHealth = { checkedAt: Date.now(), result: probeRuntime() };
+  }
+  return runtimeHealth.result;
+};
+
 /** How often the run-data sweep runs. */
 const RUN_DATA_SWEEP_INTERVAL_MS = 60 * 60 * 1000; // 1h
 
@@ -113,6 +159,14 @@ export const sweepStaleRunData = async (): Promise<void> => {
     }
   }
 
+  try {
+    await removeOrphanedContainers();
+  } catch (error) {
+    // An orphan may still be writing into its work directory, so leave them all for the next sweep.
+    logError(error, "Failed to remove leftover scraper containers, keeping work directories");
+    return;
+  }
+
   for (const entry of await readdir(runsBase).catch(() => [] as string[])) {
     if (activeRuns.has(entry)) continue;
     const dir = join(runsBase, entry);
@@ -122,6 +176,19 @@ export const sweepStaleRunData = async (): Promise<void> => {
     } catch (error) {
       logError(error, "Failed to sweep scraper work directory", { dir });
     }
+  }
+};
+
+/** Force-remove run containers no active run owns, e.g. those a runner restart left running. */
+const removeOrphanedContainers = async (): Promise<void> => {
+  const { stdout } = await execFileAsync("podman", ["ps", "-a", "--filter", "name=^run-", "--format", "{{.Names}}"], {
+    timeout: PS_CLIENT_TIMEOUT_MS,
+  });
+  const orphans = stdout.split("\n").filter((name) => name.startsWith("run-") && !activeRuns.has(name.slice(4)));
+
+  for (const name of orphans) {
+    await execFileAsync("podman", ["rm", "-f", "-t", "0", name], { timeout: RM_CLIENT_TIMEOUT_MS });
+    logger.info({ container: name }, "Removed leftover scraper container");
   }
 };
 
@@ -239,26 +306,44 @@ const killContainerAndClient = async (runId: string, client: ChildProcess): Prom
 /** How often the output watchdog samples the output directory. */
 const OUTPUT_WATCHDOG_INTERVAL_MS = 2000;
 
-/** Total bytes held by a directory tree, ignoring anything unreadable. */
-const directorySizeBytes = async (dir: string): Promise<number> => {
+/** Size of a file in bytes, or 0 when it vanished or cannot be read. */
+const fileSize = async (path: string): Promise<number> => {
+  try {
+    return (await stat(path)).size;
+  } catch {
+    return 0;
+  }
+};
+
+interface DirectoryUsage {
+  bytes: number;
+  entries: number;
+}
+
+/** Bytes and entries in a directory tree, ignoring anything unreadable; stops counting past `maxEntries`. */
+const measureDirectory = async (
+  dir: string,
+  maxEntries: number,
+  usage: DirectoryUsage = { bytes: 0, entries: 0 }
+): Promise<DirectoryUsage> => {
   const entries = await readdir(dir, { withFileTypes: true }).catch(() => []);
 
-  let total = 0;
   for (const entry of entries) {
+    usage.entries++;
+    if (usage.entries > maxEntries) return usage;
     const full = join(dir, entry.name);
     if (entry.isDirectory()) {
-      total += await directorySizeBytes(full);
+      await measureDirectory(full, maxEntries, usage);
     } else if (entry.isFile()) {
-      total += await stat(full)
-        .then((s) => s.size)
-        .catch(() => 0);
+      const size = await fileSize(full);
+      usage.bytes += size;
     }
   }
-  return total;
+  return usage;
 };
 
 /**
- * Kill a run as soon as its output exceeds the configured size cap.
+ * Kill a run as soon as its output exceeds the configured size or entry cap.
  *
  * SCRAPER_MAX_OUTPUT_SIZE_MB was only ever checked in `collectOutput`, after
  * the container exited — by which point the bytes are already on the runner
@@ -275,18 +360,24 @@ const directorySizeBytes = async (dir: string): Promise<number> => {
 const startOutputWatchdog = (
   runId: string,
   outputDir: string,
-  maxSizeMb: number
-): { stop: () => void; breached: () => boolean } => {
-  const maxBytes = maxSizeMb * 1024 * 1024;
-  let breached = false;
+  limits: { maxSizeMb: number; maxEntries: number }
+): { stop: () => void; breach: () => string | undefined } => {
+  const maxBytes = limits.maxSizeMb * 1024 * 1024;
+  let breach: string | undefined;
   let checking = false;
 
   const check = async (): Promise<void> => {
     try {
-      const bytes = await directorySizeBytes(outputDir);
-      if (bytes <= maxBytes || breached) return;
-      breached = true;
-      logger.warn({ runId, bytes, maxBytes }, "Scraper output exceeded size limit, killing container");
+      const { bytes, entries } = await measureDirectory(outputDir, limits.maxEntries);
+      if (breach) return;
+      if (entries > limits.maxEntries) {
+        breach = `Output held more than ${limits.maxEntries} entries`;
+      } else if (bytes > maxBytes) {
+        breach = `Output exceeded the ${limits.maxSizeMb}MB limit`;
+      } else {
+        return;
+      }
+      logger.warn({ runId, bytes, entries, ...limits }, "Scraper output exceeded its limits, killing container");
       await forceKillContainer(runId);
     } catch (error) {
       logError(error, "Output watchdog check failed", { runId, outputDir });
@@ -298,13 +389,13 @@ const startOutputWatchdog = (
   const timer = setInterval(() => {
     // Skip if a sample is still in flight: a large tree can take longer to walk
     // than the interval, and overlapping walks would pile up.
-    if (checking || breached) return;
+    if (checking || breach) return;
     checking = true;
     void check();
   }, OUTPUT_WATCHDOG_INTERVAL_MS);
   timer.unref();
 
-  return { stop: () => clearInterval(timer), breached: () => breached };
+  return { stop: () => clearInterval(timer), breach: () => breach };
 };
 
 /**
@@ -427,7 +518,7 @@ const collectOutput = async (
     const read = await readAtMost(handle, stats.size);
     if (!read) return failedOutput(exitCode, stderr, "Output file grew while it was being read");
     content = read;
-    await validateOutput(content, maxSizeMb);
+    validateOutput(content);
   } catch (error) {
     if (error instanceof OutputValidationError) return failedOutput(exitCode, stderr, error.message);
     if (error instanceof RunnerError) throw error;
@@ -454,6 +545,18 @@ const collectOutput = async (
   return { output: { rows, bytes: content.length, download_url: downloadUrl }, exitCode, stderr };
 };
 
+/** Create the run's directories and fetch its code; a shutdown meanwhile means the run must not start. */
+const prepareRun = async (request: RunRequest, codeDir: string, outputDir: string): Promise<void> => {
+  await mkdir(codeDir, { recursive: true });
+  await mkdir(outputDir, { recursive: true });
+  await prepareCode(request, codeDir);
+
+  // Shutdown already stopped the containers it knew of; one started now would outlive the runner.
+  if (isShuttingDown()) {
+    throw new RunnerError("Runner is shutting down; the run was not started", "RUNNER_SHUTTING_DOWN", 503);
+  }
+};
+
 export const executeRun = async (request: RunRequest): Promise<RunResult> => {
   const config = getConfig();
 
@@ -477,19 +580,13 @@ export const executeRun = async (request: RunRequest): Promise<RunResult> => {
   const outputDir = join(workDir, "output");
 
   try {
-    await mkdir(codeDir, { recursive: true });
-    await mkdir(outputDir, { recursive: true });
-
-    // Prepare code (clone git repo or write inline code)
-    await prepareCode(request, codeDir);
-
     // One source of truth for the filename: the container is told where to
     // write and `collectOutput` reads the same name back.
     const outputFileName = request.output_file ?? SCRAPER_DEFAULT_OUTPUT_FILE;
 
     const timeoutSecs = request.limits?.timeout_secs ?? config.SCRAPER_DEFAULT_TIMEOUT;
 
-    // Build podman args with full hardening
+    // Built before fetching code so a request with rejected env fails without a clone.
     const podmanArgs = buildPodmanArgs({
       runId,
       runtime: request.runtime,
@@ -501,11 +598,16 @@ export const executeRun = async (request: RunRequest): Promise<RunResult> => {
       limits: { timeoutSecs, memoryMb: request.limits?.memory_mb ?? config.SCRAPER_DEFAULT_MEMORY },
     });
 
+    await prepareRun(request, codeDir, outputDir);
+
     logger.info({ runId, runtime: request.runtime, entrypoint: request.entrypoint }, "Starting scraper container");
 
     // Bound the output write while it happens; the post-run size check in
     // collectOutput cannot, because by then the bytes are already on disk.
-    const watchdog = startOutputWatchdog(runId, outputDir, config.SCRAPER_MAX_OUTPUT_SIZE_MB);
+    const watchdog = startOutputWatchdog(runId, outputDir, {
+      maxSizeMb: config.SCRAPER_MAX_OUTPUT_SIZE_MB,
+      maxEntries: config.SCRAPER_MAX_OUTPUT_ENTRIES,
+    });
     let outcome: ContainerOutcome;
     try {
       outcome = await runPodmanContainer(runId, podmanArgs, timeoutSecs);
@@ -531,9 +633,10 @@ export const executeRun = async (request: RunRequest): Promise<RunResult> => {
     // A watchdog kill is a failed run, full stop. Whatever the scraper managed
     // to write is a truncated fragment of a result it never finished, so it is
     // not offered for download — but the logs are kept so the cause is visible.
-    if (watchdog.breached()) {
+    const breach = watchdog.breach();
+    if (breach) {
       totalFailed++;
-      const reason = `Output exceeded the ${config.SCRAPER_MAX_OUTPUT_SIZE_MB}MB limit; container was killed mid-run`;
+      const reason = `${breach}; container was killed mid-run`;
       logger.info({ runId, status: "failed", durationMs }, "Scraper run killed by output watchdog");
       return {
         status: "failed",

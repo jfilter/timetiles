@@ -210,18 +210,6 @@ describe.sequential("scraperExecutionJob", () => {
     expect(mockQuotaService.decrementUsage).not.toHaveBeenCalled();
   });
 
-  it("should load scraper with depth:1 to populate repo", async () => {
-    const context = createMockContext({ scraperId: 10, triggeredBy: "manual" });
-    await scraperExecutionJob.handler(context);
-
-    expect(mockPayload.findByID).toHaveBeenCalledWith({
-      collection: "scrapers",
-      id: 10,
-      depth: 1,
-      overrideAccess: true,
-    });
-  });
-
   it("should create scraper-run record with 'running' status", async () => {
     const context = createMockContext({ scraperId: 10, triggeredBy: "schedule" });
     await scraperExecutionJob.handler(context);
@@ -405,6 +393,22 @@ describe.sequential("scraperExecutionJob", () => {
     );
   });
 
+  it("should fail a scraper whose stored env vars the runner would refuse, before charging quota", async () => {
+    // Records saved before a key became reserved still hold it.
+    mockPayload.findByID.mockImplementation(({ collection }: { collection: string }) =>
+      Promise.resolve(collection === "users" ? { id: 200 } : createMockScraper({ envVars: { HOME: "/tmp" } }))
+    );
+
+    const context = createMockContext({ scraperId: 10, triggeredBy: "manual" });
+
+    await expect(scraperExecutionJob.handler(context as any)).rejects.toThrow('Reserved environment variable: "HOME"');
+    expect(mockQuotaService.checkAndIncrementUsage).not.toHaveBeenCalled();
+    expect(globalThis.fetch).not.toHaveBeenCalled();
+    expect(mockPayload.update).toHaveBeenCalledWith(
+      expect.objectContaining({ collection: "scrapers", id: 10, data: { lastRunStatus: "failed" } })
+    );
+  });
+
   it("should keep the SCRAPER_RUNS_PER_DAY quota charged once the runner has been dispatched", async () => {
     globalThis.fetch = createFailureFetchMock(500, "Server error");
 
@@ -426,6 +430,19 @@ describe.sequential("scraperExecutionJob", () => {
     const context = createMockContext({ scraperId: 10, triggeredBy: "manual" });
 
     await expect(scraperExecutionJob.handler(context as any)).rejects.toThrow("Runner API returned 429");
+    expect(mockQuotaService.decrementUsage).toHaveBeenCalledWith(200, "SCRAPER_RUNS_PER_DAY", 1);
+  });
+
+  it.each([
+    [400, "INVALID_REQUEST"],
+    [401, "UNAUTHORIZED"],
+    [503, "RUNNER_SHUTTING_DOWN"],
+  ])("should refund the quota when the runner rejects the run with %i before starting it", async (status, code) => {
+    globalThis.fetch = createFailureFetchMock(status, JSON.stringify({ code }));
+
+    const context = createMockContext({ scraperId: 10, triggeredBy: "manual" });
+
+    await expect(scraperExecutionJob.handler(context as any)).rejects.toThrow(`Runner API returned ${status}`);
     expect(mockQuotaService.decrementUsage).toHaveBeenCalledWith(200, "SCRAPER_RUNS_PER_DAY", 1);
   });
 

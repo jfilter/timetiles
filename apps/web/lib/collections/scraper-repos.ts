@@ -8,6 +8,7 @@
  * @category Collections
  * @module
  */
+import { isSafeRelativeEntrypoint } from "@timetiles/shared";
 import { APIError, type CollectionConfig, type PayloadRequest } from "payload";
 
 import { createQuotaClaimLifecycle } from "@/lib/collections/quota-claim";
@@ -15,6 +16,18 @@ import { createLogger } from "@/lib/logger";
 import { hasUrlEmbeddedCredentials, isPrivateUrl } from "@/lib/security/url-validation";
 import { createQuotaService } from "@/lib/services/quota-service";
 import { extractRelationId } from "@/lib/utils/relation-id";
+
+import { canCreateScraperResources } from "./scrapers/access";
+import { isUnchangedRecord } from "./scrapers/validation";
+import {
+  basicMetadataFields,
+  createCommonConfig,
+  createCreatedByField,
+  createOwnershipAccess,
+  createSlugField,
+  isEditorOrAdmin,
+  setCreatedByHook,
+} from "./shared-fields";
 
 const COLLECTION_SLUG = "scraper-repos" as const;
 const logger = createLogger(COLLECTION_SLUG);
@@ -102,16 +115,18 @@ const validateGitBranch = (value: string): string | true => {
   return true;
 };
 
-import { canCreateScraperResources } from "./scrapers/access";
-import {
-  basicMetadataFields,
-  createCommonConfig,
-  createCreatedByField,
-  createOwnershipAccess,
-  createSlugField,
-  isEditorOrAdmin,
-  setCreatedByHook,
-} from "./shared-fields";
+/** Uploaded code must satisfy the runner's file-map rules, or every run of the repo fails with a 400. */
+const validateInlineCode = (value: unknown): string | true => {
+  if (value == null) return true;
+  if (typeof value !== "object" || Array.isArray(value)) return 'Code must be a {"filename": "content"} map';
+  for (const [path, content] of Object.entries(value)) {
+    if (path === "" || !isSafeRelativeEntrypoint(path)) {
+      return `Invalid file path "${path}": use a relative path without ".."`;
+    }
+    if (typeof content !== "string") return `File "${path}" must have text content`;
+  }
+  return true;
+};
 
 const ScraperRepos: CollectionConfig = {
   slug: COLLECTION_SLUG,
@@ -178,6 +193,10 @@ const ScraperRepos: CollectionConfig = {
       admin: {
         description: 'Inline scraper code as {"filename": "content"} map',
         condition: (data) => data?.sourceType === "upload",
+      },
+      validate: (value: unknown, { jsonError, previousValue }: { jsonError?: string; previousValue?: unknown }) => {
+        if (jsonError !== undefined) return "Code must be valid JSON";
+        return isUnchangedRecord(value, previousValue) || validateInlineCode(value);
       },
     },
     // Relationships

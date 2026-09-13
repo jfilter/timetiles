@@ -1,3 +1,4 @@
+import { spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -18,6 +19,7 @@ const mockConfig = vi.hoisted(() => ({
   SCRAPER_DEFAULT_MEMORY: 512,
   SCRAPER_DATA_DIR: "",
   SCRAPER_MAX_OUTPUT_SIZE_MB: 1,
+  SCRAPER_MAX_OUTPUT_ENTRIES: 1000,
   SCRAPER_OUTPUT_TTL_HOURS: 1,
   SCRAPER_MAX_REPO_SIZE_MB: 50,
   SCRAPER_GIT_CLONE_TIMEOUT: 60_000,
@@ -33,8 +35,10 @@ const {
   executeRun,
   getActiveRunCount,
   getMetrics,
+  getRuntimeHealth,
   isRunActive,
   RUNNER_MAX_OVERHEAD_SECS,
+  RUNTIME_HEALTH_CACHE_MS,
   startRunDataSweep,
   sweepStaleRunData,
 } = await import("../src/services/runner.js");
@@ -56,6 +60,7 @@ const runStub = (stub: Record<string, string>, overrides: Partial<RunRequest> = 
   });
 
 const persistedOutput = (runId: string) => join(dataDir, "outputs", runId);
+const podmanCalls = () => readFileSync(join(stateDir, "calls.log"), "utf-8").split("\n");
 
 describe("runner", () => {
   beforeAll(() => {
@@ -77,6 +82,9 @@ describe("runner", () => {
     rmSync(dataDir, { recursive: true, force: true });
     rmSync(stateDir, { recursive: true, force: true });
     delete process.env.STUB_UNKILLABLE;
+    delete process.env.STUB_PS_FAIL;
+    delete process.env.STUB_MISSING;
+    delete process.env.STUB_HANG_CHECKS;
   });
 
   describe("executeRun", () => {
@@ -239,7 +247,7 @@ describe("runner", () => {
 
         expect(result.status).toBe("timeout");
         expect(result.duration_ms).toBeLessThan(10_000);
-        expect(readFileSync(join(stateDir, "calls.log"), "utf-8")).toContain(`stop run-${runId}`);
+        expect(podmanCalls()).toContain(`stop run-${runId}`);
         expect(existsSync(persistedOutput(runId))).toBe(false);
       }
     );
@@ -253,6 +261,45 @@ describe("runner", () => {
       expect(result.duration_ms).toBeLessThan(10_000);
       expect(getActiveRunCount()).toBe(0);
     });
+
+    it("kills a run mid-write once its output exceeds the size cap", { timeout: 20_000 }, async () => {
+      const runId = randomUUID();
+      const result = await runStub(
+        { STUB_OUTPUT_BYTES: String(2 * 1024 * 1024), STUB_SLEEP_MS: "12000" },
+        { run_id: runId }
+      );
+
+      expect(result.status).toBe("failed");
+      expect(result.stderr).toContain("killed mid-run");
+      expect(result.duration_ms).toBeLessThan(12_000);
+      expect(podmanCalls()).toContain(`stop run-${runId}`);
+      expect(existsSync(persistedOutput(runId))).toBe(false);
+    });
+
+    it("kills a run mid-write once its output holds too many entries", { timeout: 20_000 }, async () => {
+      mockConfig.SCRAPER_MAX_OUTPUT_ENTRIES = 5;
+      try {
+        const runId = randomUUID();
+        const result = await runStub({ STUB_OUTPUT_ENTRIES: "20", STUB_SLEEP_MS: "12000" }, { run_id: runId });
+
+        expect(result.status).toBe("failed");
+        expect(result.stderr).toContain("more than 5 entries");
+        expect(result.duration_ms).toBeLessThan(12_000);
+        expect(podmanCalls()).toContain(`stop run-${runId}`);
+      } finally {
+        mockConfig.SCRAPER_MAX_OUTPUT_ENTRIES = 1000;
+      }
+    });
+
+    it.each([["HOME"], ["LD_PRELOAD"], ["SCRAPER_API_KEY"], ["bad-key"]])(
+      "rejects env key %s with 400 before fetching code or starting a container",
+      async (key) => {
+        await expect(runStub({ [key]: "x" })).rejects.toMatchObject({ code: "INVALID_REQUEST", statusCode: 400 });
+        expect(existsSync(join(stateDir, "calls.log")) ? podmanCalls().some((c) => c.startsWith("run ")) : false).toBe(
+          false
+        );
+      }
+    );
   });
 
   describe("sweepStaleRunData", () => {
@@ -284,6 +331,34 @@ describe("runner", () => {
       expect((await active).status).toBe("success");
     });
 
+    it("force-removes leftover run containers before deleting their work directories", async () => {
+      const orphanId = randomUUID();
+      const orphanDir = join(dataDir, "runs", orphanId, "output");
+      mkdirSync(orphanDir, { recursive: true });
+      const orphan = spawn("sleep", ["60"]);
+      writeFileSync(join(stateDir, `run-${orphanId}.pid`), String(orphan.pid));
+      const exited = new Promise((resolve) => orphan.once("exit", resolve));
+
+      await sweepStaleRunData();
+
+      await exited;
+      const calls = podmanCalls();
+      const removed = calls.indexOf(`rm run-${orphanId}`);
+      expect(removed).toBeGreaterThanOrEqual(0);
+      expect(removed).toBeLessThan(calls.indexOf(`unshare ${join(dataDir, "runs", orphanId)}`));
+      expect(existsSync(orphanDir)).toBe(false);
+    });
+
+    it("keeps work directories when leftover containers cannot be listed", async () => {
+      process.env.STUB_PS_FAIL = "1";
+      const leftover = join(dataDir, "runs", randomUUID());
+      mkdirSync(leftover, { recursive: true });
+
+      await sweepStaleRunData();
+
+      expect(existsSync(leftover)).toBe(true);
+    });
+
     it("sweeps once immediately when started", async () => {
       const leftover = join(dataDir, "runs", randomUUID());
       mkdirSync(leftover, { recursive: true });
@@ -306,18 +381,66 @@ describe("runner", () => {
       expect(isRunActive("nonexistent-run-id")).toBe(false);
     });
 
-    it("returns metrics with correct structure", () => {
-      const metrics = getMetrics();
+    it("counts each finished run exactly once in the metrics", async () => {
+      const before = getMetrics();
 
-      expect(metrics).toEqual({
-        active_runs: 0,
-        total_runs: expect.any(Number),
-        total_success: expect.any(Number),
-        total_failed: expect.any(Number),
-        total_timeout: expect.any(Number),
-        uptime_seconds: expect.any(Number),
-        queue_capacity: 2,
+      expect((await runStub({ STUB_OUTPUT: "id\n1\n" })).status).toBe("success");
+      expect((await runStub({ STUB_EXIT: "3" })).status).toBe("failed");
+
+      const after = getMetrics();
+      expect(after.total_runs - before.total_runs).toBe(2);
+      expect(after.total_success - before.total_success).toBe(1);
+      expect(after.total_failed - before.total_failed).toBe(1);
+      expect(after.total_timeout - before.total_timeout).toBe(0);
+      expect(after.total_runs).toBe(after.total_success + after.total_failed + after.total_timeout);
+      expect(after.active_runs).toBe(0);
+    });
+  });
+
+  describe("getRuntimeHealth", () => {
+    // Each test starts past the previous cache window so answers never leak between tests.
+    let clock = Date.UTC(2030, 0, 1);
+    const advancePastCache = () => {
+      clock += RUNTIME_HEALTH_CACHE_MS + 1;
+      vi.setSystemTime(clock);
+    };
+
+    beforeEach(() => {
+      vi.useFakeTimers({ toFake: ["Date"] });
+      advancePastCache();
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it("reports missing images and the missing sandbox network", async () => {
+      process.env.STUB_MISSING = "timescrape-node,scraper-sandbox";
+
+      expect(await getRuntimeHealth()).toEqual({
+        ok: false,
+        unavailable: ["image timescrape-node", "network scraper-sandbox"],
       });
+    });
+
+    it("caches the answer for the cache window", async () => {
+      expect(await getRuntimeHealth()).toEqual({ ok: true, unavailable: [] });
+      process.env.STUB_MISSING = "timescrape-python";
+
+      expect((await getRuntimeHealth()).ok).toBe(true);
+      advancePastCache();
+      expect(await getRuntimeHealth()).toEqual({ ok: false, unavailable: ["image timescrape-python"] });
+    });
+
+    it("treats a hanging podman as unavailable instead of blocking", { timeout: 20_000 }, async () => {
+      process.env.STUB_HANG_CHECKS = "1";
+      const startedAt = performance.now();
+
+      const health = await getRuntimeHealth();
+
+      expect(health.ok).toBe(false);
+      expect(health.unavailable).toHaveLength(3);
+      expect(performance.now() - startedAt).toBeLessThan(10_000);
     });
   });
 });

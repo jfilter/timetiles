@@ -80,3 +80,35 @@ export interface ScraperRunResult {
 
 /** Valid scraper environment variable key: `[A-Za-z_][A-Za-z0-9_]*`. */
 export const ENV_KEY_PATTERN = /^[A-Za-z_]\w*$/;
+
+/** Env keys the container runtime depends on or the runner sets itself. */
+export const SCRAPER_RESERVED_ENV_KEYS = [
+  "PATH",
+  "LD_PRELOAD",
+  "LD_LIBRARY_PATH",
+  "HOME",
+  "USER",
+  "SHELL",
+  "TIMESCRAPE_OUTPUT_DIR",
+  "TIMESCRAPE_OUTPUT_FILE",
+] as const;
+
+/** Env key prefixes reserved for TimeTiles, runner and database configuration. */
+export const SCRAPER_RESERVED_ENV_PREFIXES = [
+  "PAYLOAD_",
+  "DATABASE_",
+  "POSTGRES_",
+  "PGHOST",
+  "PGPORT",
+  "PGUSER",
+  "PGPASSWORD",
+  "PGDATABASE",
+  "SCRAPER_",
+  "NODE_",
+  "SECRET",
+] as const;
+
+/** Whether a scraper may not supply this env key; web and runner both reject it. */
+export const isReservedScraperEnvKey = (key: string): boolean =>
+  (SCRAPER_RESERVED_ENV_KEYS as readonly string[]).includes(key) ||
+  SCRAPER_RESERVED_ENV_PREFIXES.some((prefix) => key.startsWith(prefix));

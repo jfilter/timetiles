@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { buildPodmanArgs, CONTAINER_STOP_GRACE_SECS } from "../src/security/container-config.js";
+import { RunnerError } from "../src/lib/errors.js";
+import {
+  buildPodmanArgs,
+  CONTAINER_RUN_TIMEOUT_GRACE_SECS,
+  CONTAINER_STOP_GRACE_SECS,
+} from "../src/security/container-config.js";
 
 describe("buildPodmanArgs", () => {
   const baseConfig = {
@@ -42,22 +47,19 @@ describe("buildPodmanArgs", () => {
     expect(CONTAINER_STOP_GRACE_SECS).toBeLessThanOrEqual(30);
   });
 
+  it("gives the container its own time limit beyond the runner's deadline", () => {
+    // A container orphaned by a runner restart has no runner deadline left to end it.
+    const args = buildPodmanArgs(baseConfig);
+
+    expect(args).toContain(`--timeout=${300 + CONTAINER_RUN_TIMEOUT_GRACE_SECS}`);
+    expect(CONTAINER_RUN_TIMEOUT_GRACE_SECS).toBeGreaterThan(CONTAINER_STOP_GRACE_SECS + 5);
+  });
+
   it("mounts code as read-only and output as read-write", () => {
     const args = buildPodmanArgs(baseConfig);
 
     expect(args).toContain("-v=/tmp/code:/scraper:ro,Z");
     expect(args).toContain("-v=/tmp/output:/output:rw,Z,U");
-  });
-
-  it("chowns the output mount into the container's uid range", () => {
-    // Without `U` the container runs as a mapped subuid that cannot write to a
-    // directory owned by the runner, and every scraper dies with EACCES on its
-    // output file. Asserted separately from the mount test above because the
-    // failure it guards against is silent at build time and only shows up when
-    // a real container runs.
-    const args = buildPodmanArgs(baseConfig);
-
-    expect(args.find((a) => a.startsWith("-v=/tmp/output:"))).toBe("-v=/tmp/output:/output:rw,Z,U");
   });
 
   it("adds environment variables", () => {
@@ -66,6 +68,16 @@ describe("buildPodmanArgs", () => {
     expect(args).toContain("-e=API_KEY=secret");
     expect(args).toContain("-e=TIMESCRAPE_OUTPUT_DIR=/output");
   });
+
+  it.each([["HOME"], ["PATH"], ["TIMESCRAPE_OUTPUT_FILE"], ["PAYLOAD_SECRET"], ["invalid-key"], ["1LEADING_DIGIT"]])(
+    "rejects env key %s instead of silently dropping it",
+    (key) => {
+      expect(() => buildPodmanArgs({ ...baseConfig, env: { [key]: "x" } })).toThrow(RunnerError);
+      expect(() => buildPodmanArgs({ ...baseConfig, env: { [key]: "x" } })).toThrow(
+        expect.objectContaining({ code: "INVALID_REQUEST", statusCode: 400 })
+      );
+    }
+  );
 
   it("passes the configured output filename to the container", () => {
     // The runner reads back the manifest's `output:` name. Without telling the
@@ -80,19 +92,6 @@ describe("buildPodmanArgs", () => {
     const args = buildPodmanArgs(baseConfig);
 
     expect(args).toContain("-e=TIMESCRAPE_OUTPUT_FILE=data.csv");
-  });
-
-  it("does not let scraper env override the output location", () => {
-    const args = buildPodmanArgs({
-      ...baseConfig,
-      outputFile: "events.csv",
-      env: { TIMESCRAPE_OUTPUT_FILE: "/etc/passwd", TIMESCRAPE_OUTPUT_DIR: "/etc" },
-    });
-
-    expect(args).toContain("-e=TIMESCRAPE_OUTPUT_FILE=events.csv");
-    expect(args).toContain("-e=TIMESCRAPE_OUTPUT_DIR=/output");
-    expect(args).not.toContain("-e=TIMESCRAPE_OUTPUT_FILE=/etc/passwd");
-    expect(args).not.toContain("-e=TIMESCRAPE_OUTPUT_DIR=/etc");
   });
 
   it("uses correct image and command for python", () => {

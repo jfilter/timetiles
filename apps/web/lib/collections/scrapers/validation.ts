@@ -6,26 +6,17 @@
  *
  * @module
  */
-import { ENV_KEY_PATTERN, isSafeRelativeEntrypoint } from "@timetiles/shared";
+import {
+  ENV_KEY_PATTERN,
+  isReservedScraperEnvKey,
+  isSafeRelativeEntrypoint,
+  SCRAPER_RESERVED_ENV_KEYS,
+  SCRAPER_RESERVED_ENV_PREFIXES,
+} from "@timetiles/shared";
 import type { PayloadRequest } from "payload";
 
 import { isPrivileged } from "@/lib/collections/shared-fields";
 import { extractRelationId } from "@/lib/utils/relation-id";
-
-/** Reserved environment variable prefixes that must not be overridden by scrapers. */
-export const RESERVED_ENV_PREFIXES = [
-  "PAYLOAD_",
-  "DATABASE_",
-  "POSTGRES_",
-  "PGHOST",
-  "PGPORT",
-  "PGUSER",
-  "PGPASSWORD",
-  "PGDATABASE",
-  "SCRAPER_",
-  "NODE_",
-  "SECRET",
-];
 
 /** Maximum number of environment variables per scraper. */
 export const MAX_ENV_VARS = 50;
@@ -42,6 +33,17 @@ export const validateEntrypoint = (value: unknown): string | true => {
 };
 
 /**
+ * Whether a flat record equals its stored version, ignoring key order.
+ * Rules tightened after a save apply when the value changes, so unrelated writes to old rows keep working.
+ */
+export const isUnchangedRecord = (value: unknown, previousValue: unknown): boolean => {
+  if (!value || !previousValue || typeof value !== "object" || typeof previousValue !== "object") return false;
+  const current = Object.entries(value);
+  const stored = previousValue as Record<string, unknown>;
+  return current.length === Object.keys(stored).length && current.every(([key, entry]) => stored[key] === entry);
+};
+
+/**
  * Validates environment variables object for safe keys and values.
  */
 export const validateEnvVars = (value: unknown): string | true => {
@@ -54,8 +56,8 @@ export const validateEnvVars = (value: unknown): string | true => {
   for (const [key] of entries) {
     if (!ENV_KEY_PATTERN.test(key))
       return `Invalid environment variable key: "${key}". Keys must match [A-Za-z_][A-Za-z0-9_]*`;
-    if (RESERVED_ENV_PREFIXES.some((prefix) => key.startsWith(prefix))) {
-      return `Reserved environment variable prefix: "${key}". Keys starting with ${RESERVED_ENV_PREFIXES.join(", ")} are not allowed`;
+    if (isReservedScraperEnvKey(key)) {
+      return `Reserved environment variable: "${key}". ${SCRAPER_RESERVED_ENV_KEYS.join(", ")} and keys starting with ${SCRAPER_RESERVED_ENV_PREFIXES.join(", ")} are not allowed`;
     }
   }
   return true;

@@ -15,6 +15,11 @@ export interface ShutdownDeps {
   exit: (code: number) => void;
 }
 
+let shuttingDown = false;
+
+/** True once a shutdown signal arrived; no run may start a container after that. */
+export const isShuttingDown = (): boolean => shuttingDown;
+
 /**
  * Build a signal handler that stops in-flight containers before exiting.
  *
@@ -23,10 +28,11 @@ export interface ShutdownDeps {
  * so waiting for the close first would leave every container running.
  */
 export const createShutdownHandler = (deps: ShutdownDeps): ((signal: NodeJS.Signals) => Promise<void>) => {
-  let shuttingDown = false;
+  let handled = false;
 
   return async (signal) => {
-    if (shuttingDown) return;
+    if (handled) return;
+    handled = true;
     shuttingDown = true;
 
     const runIds = deps.getActiveRunIds();

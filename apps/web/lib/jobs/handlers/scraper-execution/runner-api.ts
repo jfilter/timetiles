@@ -42,8 +42,8 @@ export class RunnerNotStartedError extends Error {
   override readonly name = "RunnerNotStartedError";
 }
 
-/** Runner answers that reject a request before any work: capacity full or run id already active. */
-const NOT_STARTED_STATUSES = new Set([409, 429]);
+/** Runner answers given before any container starts: invalid request, auth, run id active, capacity full, shutdown. */
+const NOT_STARTED_STATUSES = new Set([400, 401, 409, 429, 503]);
 
 /** Connection errors that prove the request never reached the runner. */
 const UNREACHABLE_CODES = new Set(["ECONNREFUSED", "ENOTFOUND", "EAI_AGAIN"]);

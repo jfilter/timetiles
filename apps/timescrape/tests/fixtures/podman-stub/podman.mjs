@@ -4,7 +4,7 @@
  * appended to `$STUB_STATE_DIR/calls.log`.
  */
 import { execFileSync } from "node:child_process";
-import { appendFileSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { appendFileSync, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 const [command, ...args] = process.argv.slice(2);
@@ -35,6 +35,7 @@ const runContainer = () => {
   if (env.STUB_STDERR) process.stderr.write(env.STUB_STDERR);
   if (env.STUB_OUTPUT !== undefined) writeFileSync(outputFile, env.STUB_OUTPUT);
   if (env.STUB_OUTPUT_BYTES) writeFileSync(outputFile, Buffer.alloc(Number(env.STUB_OUTPUT_BYTES), "a"));
+  for (let i = 0; i < Number(env.STUB_OUTPUT_ENTRIES ?? 0); i++) writeFileSync(join(outputDir, `entry-${i}`), "");
   if (env.STUB_SYMLINK) symlinkSync(env.STUB_SYMLINK, outputFile);
   if (env.STUB_FIFO) execFileSync("mkfifo", [outputFile]);
 
@@ -51,6 +52,29 @@ const killContainer = () => {
   }
 };
 
+const isAlive = (pid) => {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+const listContainers = () => {
+  if (process.env.STUB_PS_FAIL) process.exit(125);
+  for (const file of readdirSync(stateDir).filter((name) => name.endsWith(".pid"))) {
+    if (isAlive(Number(readFileSync(join(stateDir, file), "utf-8")))) process.stdout.write(`${file.slice(0, -4)}\n`);
+  }
+};
+
+// `image exists <name>` / `network exists <name>`: missing names come from STUB_MISSING.
+const exists = () => {
+  if (process.env.STUB_HANG_CHECKS) return setTimeout(() => {}, 60_000);
+  const missing = (process.env.STUB_MISSING ?? "").split(",");
+  process.exit(missing.includes(containerName) ? 1 : 0);
+};
+
 switch (command) {
   case "run":
     runContainer();
@@ -59,6 +83,13 @@ switch (command) {
   case "kill":
   case "rm":
     killContainer();
+    break;
+  case "ps":
+    listContainers();
+    break;
+  case "image":
+  case "network":
+    exists();
     break;
   case "unshare":
     rmSync(args.at(-1), { recursive: true, force: true });

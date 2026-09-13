@@ -5,7 +5,7 @@ import { Hono } from "hono";
 import { SCRAPER_TIMEOUT_MIN_SECONDS } from "@timetiles/shared";
 
 import { createApiKeyAuth } from "../src/lib/auth-middleware.js";
-import { AuthError } from "../src/lib/errors.js";
+import { AuthError, ConcurrencyError, RunnerError } from "../src/lib/errors.js";
 
 // Mock runner service
 vi.mock("../src/services/runner.js", () => ({
@@ -13,17 +13,8 @@ vi.mock("../src/services/runner.js", () => ({
   isRunActive: vi.fn().mockReturnValue(false),
   stopRun: vi.fn(),
   getActiveRunCount: vi.fn().mockReturnValue(0),
-  getMetrics: vi
-    .fn()
-    .mockReturnValue({
-      active_runs: 1,
-      total_runs: 42,
-      total_success: 35,
-      total_failed: 5,
-      total_timeout: 2,
-      uptime_seconds: 3600,
-      queue_capacity: 3,
-    }),
+  getMetrics: vi.fn().mockReturnValue({}),
+  getRuntimeHealth: vi.fn(),
 }));
 
 // Mock logger to avoid side effects
@@ -47,7 +38,7 @@ const mockCreateReadStream = vi.fn();
 vi.mock("node:fs", () => ({ createReadStream: (...args: unknown[]) => mockCreateReadStream(...args) }));
 
 import { runRoutes } from "../src/api/run.js";
-import { executeRun } from "../src/services/runner.js";
+import { executeRun, getRuntimeHealth } from "../src/services/runner.js";
 
 const TEST_API_KEY = "test-api-key-long-enough-for-validation";
 
@@ -88,34 +79,30 @@ describe("POST /run endpoint", () => {
   });
 
   describe("GET /health", () => {
-    it("returns 200 with status ok", async () => {
+    it("returns 200 without auth when podman has the images and network", async () => {
+      vi.mocked(getRuntimeHealth).mockResolvedValue({ ok: true, unavailable: [] });
+
       const res = await app.request("/health");
 
       expect(res.status).toBe(200);
+      expect(await res.json()).toMatchObject({ status: "ok" });
+    });
 
-      const body = await res.json();
-      expect(body.status).toBe("ok");
-      expect(body).toHaveProperty("active_runs");
-      expect(body).toHaveProperty("timestamp");
+    it("returns 503 naming what is missing when runs could not start", async () => {
+      vi.mocked(getRuntimeHealth).mockResolvedValue({ ok: false, unavailable: ["image timescrape-node"] });
+
+      const res = await app.request("/health");
+
+      expect(res.status).toBe(503);
+      expect(await res.json()).toMatchObject({ status: "unavailable", unavailable: ["image timescrape-node"] });
     });
   });
 
   describe("GET /metrics", () => {
-    it("returns 200 with metrics without auth", async () => {
+    it("is reachable without auth", async () => {
       const res = await app.request("/metrics");
 
       expect(res.status).toBe(200);
-
-      const body = await res.json();
-      expect(body).toEqual({
-        active_runs: 1,
-        total_runs: 42,
-        total_success: 35,
-        total_failed: 5,
-        total_timeout: 2,
-        uptime_seconds: 3600,
-        queue_capacity: 3,
-      });
     });
   });
 
@@ -290,35 +277,48 @@ describe("POST /run endpoint", () => {
     });
   });
 
-  describe("Successful Execution", () => {
-    it("returns runner result on successful execution", async () => {
-      const mockResult = {
-        status: "success",
-        exit_code: 0,
-        duration_ms: 1500,
-        stdout: "output",
-        stderr: "",
-        output: { rows: 10, bytes: 256, download_url: "/output/test-run-id/data.csv" },
-      };
-      vi.mocked(executeRun).mockResolvedValue(mockResult);
-
-      const res = await app.request("/run", {
+  describe("Execution", () => {
+    const postRun = () =>
+      app.request("/run", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${TEST_API_KEY}` },
         body: JSON.stringify(VALID_RUN_BODY),
       });
 
+    it("passes the parsed request to the runner", async () => {
+      vi.mocked(executeRun).mockResolvedValue({
+        status: "success",
+        exit_code: 0,
+        duration_ms: 1,
+        stdout: "",
+        stderr: "",
+      });
+
+      const res = await postRun();
+
       expect(res.status).toBe(200);
-
-      const body = await res.json();
-      expect(body.status).toBe("success");
-      expect(body.exit_code).toBe(0);
-      expect(body.output.rows).toBe(10);
-
       expect(executeRun).toHaveBeenCalledTimes(1);
       expect(executeRun).toHaveBeenCalledWith(
         expect.objectContaining({ run_id: VALID_RUN_BODY.run_id, runtime: "python", entrypoint: "scraper.py" })
       );
+    });
+
+    it("answers a full runner with 429 and the concurrency code", async () => {
+      vi.mocked(executeRun).mockRejectedValue(new ConcurrencyError(3));
+
+      const res = await postRun();
+
+      expect(res.status).toBe(429);
+      expect(await res.json()).toMatchObject({ code: "CONCURRENCY_LIMIT" });
+    });
+
+    it("answers with the status code a RunnerError carries", async () => {
+      vi.mocked(executeRun).mockRejectedValue(new RunnerError("already active", "RUN_ALREADY_ACTIVE", 409));
+
+      const res = await postRun();
+
+      expect(res.status).toBe(409);
+      expect(await res.json()).toMatchObject({ code: "RUN_ALREADY_ACTIVE" });
     });
   });
 

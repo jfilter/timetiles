@@ -1,17 +1,15 @@
 import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { createServer } from "node:http";
+import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { simpleGit } from "simple-git";
-
 import { RunnerError } from "../src/lib/errors.js";
 import type { RunRequest } from "../src/types.js";
 
-// Mock simple-git and logger to avoid side effects
-vi.mock("simple-git", () => ({ simpleGit: vi.fn() }));
-
+// Clones run real git against loopback servers, which the SSRF guard would refuse.
 vi.mock("../src/lib/ssrf-guard.js", () => ({ assertGitTargetIsPublic: vi.fn().mockResolvedValue(undefined) }));
 
 vi.mock("../src/lib/logger.js", () => ({ logger: { info: vi.fn(), error: vi.fn() } }));
@@ -43,26 +41,39 @@ describe("prepareCode", () => {
   });
 
   describe("cloneRepo", () => {
-    it("refuses HTTP redirects so the SSRF guard cannot be bypassed", async () => {
-      // assertGitTargetIsPublic validates the URL in THIS process, then git
-      // re-resolves it. With git's default followRedirects=initial, a public
-      // URL can 302 to an internal host the guard never inspected — verified
-      // against the real git binary. Disabling redirects is what closes that.
-      const clone = vi.fn().mockResolvedValue(undefined);
-      const raw = vi.fn().mockResolvedValue("size-pack: 100\n");
-      vi.mocked(simpleGit).mockReturnValue({ clone, cwd: vi.fn(() => ({ raw })) } as never);
+    const listen = async (handler: Parameters<typeof createServer>[0]) => {
+      const server = createServer(handler);
+      await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+      return { server, url: `http://127.0.0.1:${(server.address() as AddressInfo).port}` };
+    };
 
-      const { prepareCode } = await import("../src/services/code-prep.js");
+    it("refuses an HTTP redirect so git never reaches a host the SSRF guard did not inspect", async () => {
+      let internalHits = 0;
+      let publicHits = 0;
+      const internal = await listen((_req, res) => {
+        internalHits++;
+        res.writeHead(404).end();
+      });
+      const redirecting = await listen((req, res) => {
+        publicHits++;
+        res.writeHead(302, { Location: `${internal.url}${req.url}` }).end();
+      });
 
-      await prepareCode(
-        { run_id: "test-7", runtime: "python", entrypoint: "main.py", code_url: "https://example.com/repo.git" },
-        codeDir
-      );
+      try {
+        const { prepareCode } = await import("../src/services/code-prep.js");
+        await expect(
+          prepareCode(
+            { run_id: "redirect", runtime: "python", entrypoint: "main.py", code_url: `${redirecting.url}/r.git` },
+            codeDir
+          )
+        ).rejects.toMatchObject({ code: "GIT_CLONE_FAILED" });
 
-      expect(simpleGit).toHaveBeenCalledWith(
-        expect.objectContaining({ config: expect.arrayContaining(["http.followRedirects=false"]) })
-      );
-      expect(clone).toHaveBeenCalledWith("https://example.com/repo.git", codeDir, ["--depth", "1", "--single-branch"]);
+        expect(publicHits).toBeGreaterThan(0);
+        expect(internalHits).toBe(0);
+      } finally {
+        redirecting.server.close();
+        internal.server.close();
+      }
     });
   });
 
@@ -127,6 +138,19 @@ describe("prepareCode", () => {
 
       await expect(prepareCode(request, codeDir)).rejects.toThrow(RunnerError);
       await expect(prepareCode(request, codeDir)).rejects.toThrow("Invalid filename");
+    });
+
+    it("rejects a file tree the filesystem cannot hold as a bad request", async () => {
+      const { prepareCode } = await import("../src/services/code-prep.js");
+
+      const request: RunRequest = {
+        run_id: "test-8",
+        runtime: "python",
+        entrypoint: "scraper.py",
+        code: { lib: "a file", "lib/helper.py": "under a file" },
+      };
+
+      await expect(prepareCode(request, codeDir)).rejects.toMatchObject({ code: "INVALID_REQUEST", statusCode: 400 });
     });
 
     it("handles multiple files", async () => {

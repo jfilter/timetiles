@@ -22,6 +22,38 @@ const validateGitUrl = (value: unknown): string | true => {
   return gitUrlField.validate(value, { data: { sourceType: "git" } });
 };
 
+const codeField = ScraperRepos.fields.find((field) => "name" in field && field.name === "code") as
+  | { validate?: (value: unknown, options: { data: Record<string, unknown> }) => string | true }
+  | undefined;
+
+const validateCode = (value: unknown): string | true => {
+  if (!codeField?.validate) {
+    throw new Error("code field validation is not configured");
+  }
+
+  return codeField.validate(value, { data: { sourceType: "upload" } });
+};
+
+describe("ScraperRepos code validation", () => {
+  it.each([[null], [undefined], [{ "scraper.py": "print(1)", "lib/util.py": "", "scrapers.yml": "scrapers: []" }]])(
+    "accepts %j",
+    (value) => {
+      expect(validateCode(value)).toBe(true);
+    }
+  );
+
+  it.each([
+    ["an array", ["scraper.py"]],
+    ["a string", '{"scraper.py": "x"}'],
+    ["a non-string file body", { "scraper.py": { nested: true } }],
+    ["a traversing path", { "../scraper.py": "x" }],
+    ["an absolute path", { "/etc/passwd": "x" }],
+    ["an empty path", { "": "x" }],
+  ])("rejects %s", (_label, value) => {
+    expect(validateCode(value)).toEqual(expect.any(String));
+  });
+});
+
 describe("ScraperRepos gitUrl validation", () => {
   it("rejects embedded credentials", () => {
     expect(validateGitUrl("https://token@github.com/example/repo.git")).toBe(

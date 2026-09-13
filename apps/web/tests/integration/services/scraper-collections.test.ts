@@ -516,6 +516,135 @@ describe.sequential("Scraper Collections Access Control", () => {
     ).rejects.toThrow();
   });
 
+  it("should reject envVars the runner reserves for the container", async () => {
+    await enableScrapers();
+
+    const repo = await payload.create({
+      collection: "scraper-repos",
+      data: { name: "Home Repo", sourceType: "upload", code: { "scraper.py": "pass" }, createdBy: trustedUser.id },
+      overrideAccess: true,
+    });
+
+    await expect(
+      payload.create({
+        collection: "scrapers",
+        data: {
+          name: "Home Env Scraper",
+          slug: "home-env",
+          repo: repo.id,
+          runtime: "python",
+          entrypoint: "scraper.py",
+          envVars: { HOME: "/tmp" },
+        },
+        overrideAccess: true,
+      })
+    ).rejects.toMatchObject({
+      data: { errors: [expect.objectContaining({ path: "envVars", message: expect.stringContaining('"HOME"') })] },
+    });
+  });
+
+  it.each([
+    ["a path escaping the code directory", { "../scraper.py": "pass" }],
+    ["a non-string file body", { "scraper.py": 42 }],
+    ["an array instead of a file map", ["scraper.py"]],
+  ])("should reject uploaded code with %s", async (_label, code) => {
+    await enableScrapers();
+
+    await expect(
+      payload.create({
+        collection: "scraper-repos",
+        data: { name: "Bad Code Repo", sourceType: "upload", code, createdBy: trustedUser.id },
+        overrideAccess: true,
+      })
+    ).rejects.toMatchObject({ data: { errors: [expect.objectContaining({ path: "code" })] } });
+  });
+
+  it("keeps status writes working for a scraper whose stored env vars became reserved", async () => {
+    await enableScrapers();
+
+    const repo = await payload.create({
+      collection: "scraper-repos",
+      data: {
+        name: "Legacy Env Repo",
+        sourceType: "upload",
+        code: { "scraper.py": "pass" },
+        createdBy: trustedUser.id,
+      },
+      overrideAccess: true,
+    });
+    const scraper = await payload.create({
+      collection: "scrapers",
+      data: { name: "Legacy Env", slug: "legacy-env", repo: repo.id, runtime: "python", entrypoint: "scraper.py" },
+      overrideAccess: true,
+    });
+    // Simulates a row saved before HOME was reserved; validation would refuse it today.
+    await payload.db.drizzle.execute(
+      sql`UPDATE payload.scrapers SET env_vars = '{"HOME": "/tmp"}'::jsonb WHERE id = ${scraper.id}`
+    );
+
+    const updated = await payload.update({
+      collection: "scrapers",
+      id: scraper.id,
+      data: { lastRunStatus: "failed" },
+      overrideAccess: true,
+    });
+
+    expect(updated.lastRunStatus).toBe("failed");
+    expect(updated.envVars).toEqual({ HOME: "/tmp" });
+  });
+
+  it("still rejects a reserved env key written onto an existing scraper", async () => {
+    await enableScrapers();
+
+    const repo = await payload.create({
+      collection: "scraper-repos",
+      data: { name: "Edit Env Repo", sourceType: "upload", code: { "scraper.py": "pass" }, createdBy: trustedUser.id },
+      overrideAccess: true,
+    });
+    const scraper = await payload.create({
+      collection: "scrapers",
+      data: { name: "Edit Env", slug: "edit-env", repo: repo.id, runtime: "python", entrypoint: "scraper.py" },
+      overrideAccess: true,
+    });
+
+    await expect(
+      payload.update({
+        collection: "scrapers",
+        id: scraper.id,
+        data: { envVars: { HOME: "/tmp" } },
+        overrideAccess: true,
+      })
+    ).rejects.toMatchObject({ data: { errors: [expect.objectContaining({ path: "envVars" })] } });
+  });
+
+  it("keeps sync status writes working for a repo whose stored code became invalid", async () => {
+    await enableScrapers();
+
+    const repo = await payload.create({
+      collection: "scraper-repos",
+      data: {
+        name: "Legacy Code Repo",
+        sourceType: "upload",
+        code: { "scraper.py": "pass" },
+        createdBy: trustedUser.id,
+      },
+      overrideAccess: true,
+    });
+    // Simulates a row saved before uploaded code was validated.
+    await payload.db.drizzle.execute(
+      sql`UPDATE payload.scraper_repos SET code = '{"../scraper.py": "pass"}'::jsonb WHERE id = ${repo.id}`
+    );
+
+    const updated = await payload.update({
+      collection: "scraper-repos",
+      id: repo.id,
+      data: { lastSyncStatus: "failed", lastSyncError: "boom" },
+      overrideAccess: true,
+    });
+
+    expect(updated.lastSyncStatus).toBe("failed");
+  });
+
   it("should reject envVars with invalid key names", async () => {
     await enableScrapers();
 

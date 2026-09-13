@@ -114,7 +114,13 @@ const writeInlineCode = async (code: Record<string, string>, codeDir: string): P
     }
 
     const filePath = join(codeDir, filename);
-    await mkdir(dirname(filePath), { recursive: true });
-    await writeFile(filePath, content, "utf-8");
+    try {
+      await mkdir(dirname(filePath), { recursive: true });
+      await writeFile(filePath, content, "utf-8");
+    } catch (error) {
+      // Colliding paths such as `lib` and `lib/x.py` are a malformed file map, not a runner fault.
+      const reason = (error as NodeJS.ErrnoException).code ?? String(error);
+      throw new RunnerError(`Cannot write inline file ${filename}: ${reason}`, "INVALID_REQUEST", 400);
+    }
   }
 };

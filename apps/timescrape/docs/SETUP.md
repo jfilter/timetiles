@@ -157,7 +157,8 @@ Verify the service is running:
 curl http://localhost:4000/health
 ```
 
-You should receive a JSON response with `"status": "ok"`.
+You should receive a JSON response with `"status": "ok"`. HTTP 503 with `"status": "unavailable"` lists the
+runtime images or the `scraper-sandbox` network Podman is missing.
 
 ## 6. Connect to TimeTiles
 

@@ -29,7 +29,14 @@ import { z } from "zod";
 import { getConfig } from "../config.js";
 import { RunnerError } from "../lib/errors.js";
 import { logError } from "../lib/logger.js";
-import { executeRun, getActiveRunCount, getMetrics, isRunActive, stopRun } from "../services/runner.js";
+import {
+  executeRun,
+  getActiveRunCount,
+  getMetrics,
+  getRuntimeHealth,
+  isRunActive,
+  stopRun,
+} from "../services/runner.js";
 
 const runRequestSchema = z.object({
   run_id: z.uuid(),
@@ -151,8 +158,13 @@ runRoutes.delete("/output/:runId", async (c) => {
   return c.json({ status: "deleted" });
 });
 
-runRoutes.get("/health", (c) => {
-  return c.json({ status: "ok", active_runs: getActiveRunCount(), timestamp: new Date().toISOString() });
+runRoutes.get("/health", async (c) => {
+  const runtime = await getRuntimeHealth();
+  const details = { active_runs: getActiveRunCount(), timestamp: new Date().toISOString() };
+  if (!runtime.ok) {
+    return c.json({ status: "unavailable", unavailable: runtime.unavailable, ...details }, 503);
+  }
+  return c.json({ status: "ok", ...details });
 });
 
 runRoutes.get("/metrics", (c) => {

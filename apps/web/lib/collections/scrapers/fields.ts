@@ -20,7 +20,7 @@ import { createReviewCheckFields } from "@/lib/collections/shared-fields";
 import { computeWebhookUrl, readWebhookTokenPlaintext } from "@/lib/services/webhook-registry";
 import type { Scraper } from "@/payload-types";
 
-import { validateEntrypoint, validateEnvVars } from "./validation";
+import { isUnchangedRecord, validateEntrypoint, validateEnvVars } from "./validation";
 
 export const scraperFields: Field[] = [
   { name: "name", type: "text", required: true, maxLength: 255 },
@@ -107,7 +107,8 @@ export const scraperFields: Field[] = [
     name: "envVars",
     type: "json",
     defaultValue: {},
-    validate: validateEnvVars,
+    validate: (value: unknown, { previousValue }: { previousValue?: unknown }) =>
+      isUnchangedRecord(value, previousValue) || validateEnvVars(value),
     access: { read: ({ req: { user } }) => user?.role === "admin" },
     admin: { description: "Environment variables passed to the scraper" },
   },

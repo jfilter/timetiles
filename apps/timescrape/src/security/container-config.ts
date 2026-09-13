@@ -8,7 +8,10 @@
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 
-import { ENV_KEY_PATTERN, SCRAPER_DEFAULT_OUTPUT_FILE } from "@timetiles/shared";
+import type { ScraperRuntime } from "@timetiles/shared";
+import { ENV_KEY_PATTERN, isReservedScraperEnvKey, SCRAPER_DEFAULT_OUTPUT_FILE } from "@timetiles/shared";
+
+import { RunnerError } from "../lib/errors.js";
 
 const SECCOMP_PROFILE_PATH = resolve(import.meta.dirname, "seccomp-profile.json");
 
@@ -48,6 +51,13 @@ export const assertSecurityAssets = (): void => {
  */
 export const CONTAINER_STOP_GRACE_SECS = 10;
 
+/** Added to the run timeout for podman's own `--timeout`, which ends containers a restarted runner orphaned. */
+export const CONTAINER_RUN_TIMEOUT_GRACE_SECS = 60;
+
+export const SCRAPER_SANDBOX_NETWORK = "scraper-sandbox";
+
+export const scraperImage = (runtime: ScraperRuntime): string => `timescrape-${runtime}`;
+
 export interface ContainerLimits {
   timeoutSecs: number;
   memoryMb: number;
@@ -57,7 +67,7 @@ export interface ContainerLimits {
 
 export interface ContainerConfig {
   runId: string;
-  runtime: string;
+  runtime: ScraperRuntime;
   entrypoint: string;
   codeDir: string;
   outputDir: string;
@@ -80,6 +90,7 @@ export const buildPodmanArgs = (config: ContainerConfig): string[] => {
     `--cpus=${limits.cpus ?? 1}`,
     `--pids-limit=${limits.pidsLimit ?? 256}`,
     `--stop-timeout=${CONTAINER_STOP_GRACE_SECS}`,
+    `--timeout=${limits.timeoutSecs + CONTAINER_RUN_TIMEOUT_GRACE_SECS}`,
 
     // Filesystem isolation
     "--read-only",
@@ -116,26 +127,16 @@ export const buildPodmanArgs = (config: ContainerConfig): string[] => {
     "--userns=auto",
 
     // Network isolation
-    "--network=scraper-sandbox",
+    `--network=${SCRAPER_SANDBOX_NETWORK}`,
     "--dns=1.1.1.1",
     "--dns=1.0.0.1",
   ];
 
-  // Environment variables — validate key names and skip reserved keys
-  const RESERVED_ENV_KEYS = new Set([
-    "PATH",
-    "LD_PRELOAD",
-    "LD_LIBRARY_PATH",
-    "HOME",
-    "USER",
-    "SHELL",
-    "TIMESCRAPE_OUTPUT_DIR",
-    "TIMESCRAPE_OUTPUT_FILE",
-  ]);
-
+  // The web app enforces the same rules at save time, so a rejected key is a malformed request.
   for (const [key, value] of Object.entries(env)) {
-    if (!ENV_KEY_PATTERN.test(key)) continue; // skip invalid keys
-    if (RESERVED_ENV_KEYS.has(key)) continue; // skip reserved keys
+    if (!ENV_KEY_PATTERN.test(key) || isReservedScraperEnvKey(key)) {
+      throw new RunnerError(`Environment variable ${key} is invalid or reserved`, "INVALID_REQUEST", 400);
+    }
     args.push(`-e=${key}=${value}`);
   }
 
@@ -147,8 +148,7 @@ export const buildPodmanArgs = (config: ContainerConfig): string[] => {
   args.push(`-e=TIMESCRAPE_OUTPUT_FILE=${outputFile ?? SCRAPER_DEFAULT_OUTPUT_FILE}`);
 
   // Image and command
-  const image = `timescrape-${runtime}`;
-  args.push(image);
+  args.push(scraperImage(runtime));
 
   // Entrypoint command based on runtime
   if (runtime === "python") {

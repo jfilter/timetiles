@@ -20,14 +20,7 @@ import { OutputValidationError } from "../lib/errors.js";
  * A file that has content but whose FIRST line is blank is still malformed:
  * there is data with no header to name its columns, which no consumer can use.
  */
-// eslint-disable-next-line @typescript-eslint/require-await -- async by contract: part of the awaited validation pipeline and covered by promise-based tests
-export const validateOutput = async (content: Buffer, maxSizeMb: number): Promise<void> => {
-  const sizeMb = content.length / (1024 * 1024);
-
-  if (sizeMb > maxSizeMb) {
-    throw new OutputValidationError(`Output size (${sizeMb.toFixed(1)}MB) exceeds limit (${maxSizeMb}MB)`);
-  }
-
+export const validateOutput = (content: Buffer): void => {
   if (content.length === 0) {
     return; // legitimately empty scrape
   }

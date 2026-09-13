@@ -10,6 +10,7 @@
  */
 import { v4 as uuidv4 } from "uuid";
 
+import { validateEnvVars } from "@/lib/collections/scrapers/validation";
 import { createLogger, logError } from "@/lib/logger";
 import { asSystem } from "@/lib/services/system-payload";
 import { extractRelationId } from "@/lib/utils/relation-id";
@@ -153,6 +154,10 @@ export const scraperExecutionJob = {
         log.info({ jobId, scraperId }, "Scraper execution skipped - scraper disabled");
         throw new Error("Scraper is disabled");
       }
+
+      // Records saved before a key became reserved still hold it, and the runner refuses them.
+      const envVarsCheck = validateEnvVars(scraper.envVars);
+      if (envVarsCheck !== true) throw new Error(envVarsCheck);
 
       // Quota check: daily scraper runs
       repoOwnerId = extractRelationId(repo.createdBy);
