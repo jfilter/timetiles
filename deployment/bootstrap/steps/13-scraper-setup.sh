@@ -206,9 +206,9 @@ pull_base_images() {
     if podman_as "$user" 900 pull "$python_image" 2>/dev/null; then
         podman_as "$user" 60 tag "$python_image" timescrape-python
         print_success "Pulled timescrape-python from registry"
-    elif [[ -f "$src_dir/apps/timescrape/images/python/Dockerfile" ]]; then
+    elif [[ -f "$src_dir/apps/timescrape/images/python/Dockerfile" && -d "$src_dir/packages/python" ]]; then
         print_info "Registry pull failed, building timescrape-python locally..."
-        podman_as "$user" 1800 build -t timescrape-python "$src_dir/apps/timescrape/images/python/"
+        build_base_image "$user" python "$src_dir"
         print_success "Built timescrape-python locally"
     else
         die "Cannot pull or build timescrape-python image"
@@ -217,13 +217,24 @@ pull_base_images() {
     if podman_as "$user" 900 pull "$node_image" 2>/dev/null; then
         podman_as "$user" 60 tag "$node_image" timescrape-node
         print_success "Pulled timescrape-node from registry"
-    elif [[ -f "$src_dir/apps/timescrape/images/node/Dockerfile" ]]; then
+    elif [[ -f "$src_dir/apps/timescrape/images/node/Dockerfile" && -d "$src_dir/packages/scraper" ]]; then
         print_info "Registry pull failed, building timescrape-node locally..."
-        podman_as "$user" 1800 build -t timescrape-node "$src_dir/apps/timescrape/images/node/"
+        build_base_image "$user" node "$src_dir"
         print_success "Built timescrape-node locally"
     else
         die "Cannot pull or build timescrape-node image"
     fi
+}
+
+# Build a scraper base image from the repo root, which carries the SDK sources.
+build_base_image() {
+    local user="$1"
+    local runtime="$2"
+    local src_dir="$3"
+    local image_dir="$src_dir/apps/timescrape/images/$runtime"
+
+    podman_as "$user" 1800 build -t "timescrape-$runtime" -f "$image_dir/Dockerfile" \
+        --ignorefile "$image_dir/Dockerfile.dockerignore" "$src_dir"
 }
 
 # Subnet for the sandbox network.

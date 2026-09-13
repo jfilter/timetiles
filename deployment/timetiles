@@ -1581,8 +1581,10 @@ EOF
             # too — see bootstrap/steps/13-scraper-setup.sh:156 and :167.
             if podman_as_deploy_user 900 pull "$python_image" 2>/dev/null; then
                 podman_as_deploy_user 60 tag "$python_image" timescrape-python
-            elif [[ -f "$SCRIPT_DIR/../apps/timescrape/images/python/Dockerfile" ]]; then
-                podman_as_deploy_user 1800 build -t timescrape-python "$SCRIPT_DIR/../apps/timescrape/images/python/"
+            elif [[ -f "$src_root/apps/timescrape/images/python/Dockerfile" && -d "$src_root/packages/python" ]]; then
+                podman_as_deploy_user 1800 build -t timescrape-python \
+                    -f "$src_root/apps/timescrape/images/python/Dockerfile" \
+                    --ignorefile "$src_root/apps/timescrape/images/python/Dockerfile.dockerignore" "$src_root"
             else
                 echo -e "${RED}Cannot pull or build timescrape-python image${NC}"
                 exit 1
@@ -1590,8 +1592,10 @@ EOF
 
             if podman_as_deploy_user 900 pull "$node_image" 2>/dev/null; then
                 podman_as_deploy_user 60 tag "$node_image" timescrape-node
-            elif [[ -f "$SCRIPT_DIR/../apps/timescrape/images/node/Dockerfile" ]]; then
-                podman_as_deploy_user 1800 build -t timescrape-node "$SCRIPT_DIR/../apps/timescrape/images/node/"
+            elif [[ -f "$src_root/apps/timescrape/images/node/Dockerfile" && -d "$src_root/packages/scraper" ]]; then
+                podman_as_deploy_user 1800 build -t timescrape-node \
+                    -f "$src_root/apps/timescrape/images/node/Dockerfile" \
+                    --ignorefile "$src_root/apps/timescrape/images/node/Dockerfile.dockerignore" "$src_root"
             else
                 echo -e "${RED}Cannot pull or build timescrape-node image${NC}"
                 exit 1

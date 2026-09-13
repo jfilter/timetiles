@@ -1,0 +1,6 @@
+# Context is the repository root; send only the Python scraper SDK.
+*
+!packages/python/pyproject.toml
+!packages/python/README.md
+!packages/python/src
+**/__pycache__

@@ -1,0 +1,8 @@
+# Context is the repository root; send only what building the Node scraper SDK needs.
+*
+!packages/scraper/package.json
+!packages/scraper/README.md
+!packages/scraper/tsconfig.json
+!packages/scraper/tsup.config.ts
+!packages/scraper/src
+!packages/typescript-config/base.json

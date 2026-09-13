@@ -202,8 +202,8 @@ timescrape-dev:
 # Build scraper base container images (requires Podman)
 timescrape-images:
 	@echo "🐳 Building scraper base images..."
-	podman build -t timescrape-python apps/timescrape/images/python/
-	podman build -t timescrape-node apps/timescrape/images/node/
+	podman build -t timescrape-python -f apps/timescrape/images/python/Dockerfile --ignorefile apps/timescrape/images/python/Dockerfile.dockerignore .
+	podman build -t timescrape-node -f apps/timescrape/images/node/Dockerfile --ignorefile apps/timescrape/images/node/Dockerfile.dockerignore .
 	@echo "✅ Base images built: timescrape-python, timescrape-node"
 
 # Run scraper tests

@@ -64,7 +64,6 @@ jobs:
     with:
       image-name: ghcr.io/${{ github.repository }}-scraper-python
       dockerfile: apps/timescrape/images/python/Dockerfile
-      context: apps/timescrape/images/python
       scope: scraper-python
       timeout-minutes: 15
       ref: ${{ github.event.inputs.tag }}
@@ -75,7 +74,6 @@ jobs:
     with:
       image-name: ghcr.io/${{ github.repository }}-scraper-node
       dockerfile: apps/timescrape/images/node/Dockerfile
-      context: apps/timescrape/images/node
       scope: scraper-node
       timeout-minutes: 15
       ref: ${{ github.event.inputs.tag }}
