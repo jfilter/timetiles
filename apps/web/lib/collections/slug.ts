@@ -108,7 +108,7 @@ const generateRandomSuffix = (): string => {
 export const createSlugHook =
   <T extends keyof Config["collections"]>(collection: T, options?: { sourceField?: string }) =>
   async ({
-    value,
+    value: suppliedValue,
     data,
     req,
     operation,
@@ -120,6 +120,8 @@ export const createSlugHook =
     operation?: string;
     originalDoc?: Record<string, unknown>;
   }) => {
+    // Supplied slugs are normalized too: they end up in URLs and style selectors.
+    const value = suppliedValue ? generateSlug(suppliedValue) : suppliedValue;
     const sourceValue = getSourceValue(data, options?.sourceField);
 
     // Generate new slug from source value
