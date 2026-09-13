@@ -14,6 +14,7 @@ import { z } from "zod";
 
 import { apiRoute, AppError } from "@/lib/api";
 import { logError, logger } from "@/lib/logger";
+import { maskEmail } from "@/lib/security/masking";
 import { safeFetch } from "@/lib/security/safe-fetch";
 
 interface Settings {
@@ -56,7 +57,7 @@ export const POST = apiRoute({
         body: JSON.stringify(body),
       });
     } catch (err) {
-      logError(err, `Failed to reach newsletter service for email: ${email}`);
+      logError(err, "Failed to reach newsletter service", { email: maskEmail(email) });
       throw new AppError(500, "Failed to subscribe. Please try again later.", "NEWSLETTER_SERVICE_ERROR");
     }
 
@@ -71,7 +72,7 @@ export const POST = apiRoute({
     if (!serviceResponse.ok) {
       // Handle duplicate email (already subscribed) — only 409 Conflict is unambiguous
       if (serviceResponse.status === 409) {
-        logger.info({ email }, "Email already subscribed");
+        logger.info({ email: maskEmail(email) }, "Email already subscribed");
         return {
           message:
             responseData.message ??
@@ -79,11 +80,11 @@ export const POST = apiRoute({
         };
       }
 
-      logError(
-        new Error(`Newsletter service error: ${serviceResponse.status}`),
-        `Failed to subscribe email: ${email}`,
-        { status: serviceResponse.status, response: responseData }
-      );
+      // The service's response body is not logged: subscriber APIs echo the address back.
+      logError(new Error(`Newsletter service error: ${serviceResponse.status}`), "Failed to subscribe email", {
+        email: maskEmail(email),
+        status: serviceResponse.status,
+      });
       throw new AppError(
         500,
         responseData.error ?? "Failed to subscribe. Please try again later.",
@@ -91,7 +92,7 @@ export const POST = apiRoute({
       );
     }
 
-    logger.info({ email }, "Successfully subscribed email");
+    logger.info({ email: maskEmail(email) }, "Successfully subscribed email");
 
     return {
       message: responseData.message ?? "Successfully subscribed! Please check your email to confirm your subscription.",

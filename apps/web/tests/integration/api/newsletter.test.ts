@@ -9,7 +9,9 @@
  */
 import { NextRequest } from "next/server";
 import type { Payload } from "payload";
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+
+import { logger } from "@/lib/logger";
 
 import { POST } from "../../../app/api/newsletter/subscribe/route";
 import { resetRateLimitService } from "../../../lib/services/rate-limit-service";
@@ -50,6 +52,11 @@ describe.sequential("/api/newsletter/subscribe", () => {
         res.writeHead(200, { "Content-Type": "application/json" });
         res.end(JSON.stringify({ message: "Successfully subscribed!" }));
       });
+    });
+
+    mockServer.route("/subscribe-fail", (_req, res) => {
+      res.writeHead(500, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "Upstream failure" }));
     });
 
     mockServerUrl = await mockServer.start();
@@ -170,5 +177,44 @@ describe.sequential("/api/newsletter/subscribe", () => {
     // Verify only first request made it to external service
     expect(requestsReceived).toHaveLength(1);
     expect(requestsReceived[0]?.email).toBe("ratelimit1@example.com");
+  });
+
+  it("does not write raw email addresses to the logs", async () => {
+    const info = vi.spyOn(logger, "info");
+    const error = vi.spyOn(logger, "error");
+    const subscribe = (email: string, ip: string) =>
+      POST(
+        new NextRequest("http://localhost:3000/api/newsletter/subscribe", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "x-forwarded-for": ip },
+          body: JSON.stringify({ email }),
+        }),
+        {} as any
+      );
+
+    try {
+      // eslint-disable-next-line sonarjs/no-hardcoded-ip -- Test IP address
+      expect((await subscribe("logged-success@example.com", "192.168.1.201")).status).toBe(200);
+
+      await payload.updateGlobal({
+        slug: "settings",
+        data: { newsletter: { serviceUrl: `${mockServerUrl}/subscribe-fail` } },
+      });
+      // eslint-disable-next-line sonarjs/no-hardcoded-ip -- Test IP address
+      expect((await subscribe("logged-failure@example.com", "192.168.1.202")).status).toBe(500);
+
+      const logged = JSON.stringify([...info.mock.calls, ...error.mock.calls]);
+      expect(info).toHaveBeenCalled();
+      expect(error).toHaveBeenCalled();
+      expect(logged).not.toContain("logged-success@example.com");
+      expect(logged).not.toContain("logged-failure@example.com");
+    } finally {
+      info.mockRestore();
+      error.mockRestore();
+      await payload.updateGlobal({
+        slug: "settings",
+        data: { newsletter: { serviceUrl: `${mockServerUrl}/subscribe`, authHeader: "Bearer test-token-12345" } },
+      });
+    }
   });
 });
