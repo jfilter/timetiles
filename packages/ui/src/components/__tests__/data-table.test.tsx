@@ -12,6 +12,7 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
+import { UIProvider } from "../../provider";
 import { type ColumnDef, DataTable } from "../data-table";
 
 interface TestItem {
@@ -483,22 +484,29 @@ describe("DataTable - pagination", () => {
 });
 
 describe("DataTable - localization and accessibility", () => {
-  const labels = {
-    previous: "Zurück",
-    next: "Weiter",
-    pageOf: (page: number, total: number) => `Seite ${page} von ${total}`,
-    noResults: "Keine Ergebnisse.",
-  };
-
-  it("renders pagination and empty state with the provided labels", () => {
-    const { unmount } = render(<DataTable columns={testColumns} data={manyItems} pageSize={5} labels={labels} />);
+  it("renders pagination and empty state with labels from UIProvider", () => {
+    const labels = {
+      previous: "Zurück",
+      next: "Weiter",
+      pageOf: (page: number, total: number) => `Seite ${page} von ${total}`,
+      noResults: "Keine Ergebnisse.",
+    };
+    const { unmount } = render(
+      <UIProvider labels={labels}>
+        <DataTable columns={testColumns} data={manyItems} pageSize={5} />
+      </UIProvider>
+    );
 
     expect(screen.getByText("Seite 1 von 3")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /zurück/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /weiter/i })).toBeInTheDocument();
     unmount();
 
-    render(<DataTable columns={testColumns} data={[]} labels={labels} />);
+    render(
+      <UIProvider labels={labels}>
+        <DataTable columns={testColumns} data={[]} />
+      </UIProvider>
+    );
     expect(screen.getByText("Keine Ergebnisse.")).toBeInTheDocument();
   });
 

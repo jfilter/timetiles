@@ -15,6 +15,7 @@ import { Menu, X } from "lucide-react";
 import * as React from "react";
 
 import { cn } from "../lib/utils";
+import { useUILabels } from "../provider";
 
 /**
  * Root component for mobile navigation drawer.
@@ -31,21 +32,24 @@ const MobileNavDrawerTrigger = ({
   children,
   ref,
   ...props
-}: React.ComponentProps<typeof DialogPrimitive.Trigger>) => (
-  <DialogPrimitive.Trigger
-    ref={ref}
-    className={cn(
-      "hover:bg-primary/10 dark:hover:bg-foreground/10 rounded-sm p-2 transition-colors md:hidden",
-      "text-primary dark:text-foreground",
-      "focus:ring-primary/50 focus:ring-2 focus:ring-offset-2 focus:outline-none",
-      className
-    )}
-    aria-label="Open navigation menu"
-    {...props}
-  >
-    {children ?? <Menu className="h-5 w-5" />}
-  </DialogPrimitive.Trigger>
-);
+}: React.ComponentProps<typeof DialogPrimitive.Trigger>) => {
+  const labels = useUILabels();
+  return (
+    <DialogPrimitive.Trigger
+      ref={ref}
+      className={cn(
+        "hover:bg-primary/10 dark:hover:bg-foreground/10 rounded-sm p-2 transition-colors md:hidden",
+        "text-primary dark:text-foreground",
+        "focus:ring-primary/50 focus:ring-2 focus:ring-offset-2 focus:outline-none",
+        className
+      )}
+      aria-label={labels.openNavigation}
+      {...props}
+    >
+      {children ?? <Menu className="h-5 w-5" />}
+    </DialogPrimitive.Trigger>
+  );
+};
 MobileNavDrawerTrigger.displayName = "MobileNavDrawerTrigger";
 
 /**
@@ -66,15 +70,6 @@ const MobileNavDrawerOverlay = ({ className, ref, ...props }: React.ComponentPro
 );
 MobileNavDrawerOverlay.displayName = "MobileNavDrawerOverlay";
 
-interface MobileNavDrawerContentProps extends React.ComponentProps<typeof DialogPrimitive.Content> {
-  /** Dialog title announced to assistive technology. */
-  title?: string;
-  /** Screen-reader description of the drawer. */
-  description?: string;
-  /** Accessible name of the close button. */
-  closeLabel?: string;
-}
-
 /**
  * Content container for the mobile navigation drawer.
  * Slides in from the right with atlas index styling.
@@ -83,51 +78,51 @@ const MobileNavDrawerContent = ({
   className,
   children,
   ref,
-  title = "Navigation",
-  description = "Site navigation menu",
-  closeLabel = "Close navigation menu",
   ...props
-}: MobileNavDrawerContentProps) => (
-  <DialogPrimitive.Portal>
-    <MobileNavDrawerOverlay />
-    <DialogPrimitive.Content
-      ref={ref}
-      className={cn(
-        "fixed inset-y-0 right-0 z-50 w-72 md:hidden",
-        "bg-card dark:bg-background",
-        "border-primary/20 dark:border-primary/40 border-l",
-        "shadow-2xl",
-        "data-[state=open]:animate-in data-[state=closed]:animate-out",
-        "data-[state=open]:slide-in-from-right data-[state=closed]:slide-out-to-right",
-        "duration-300 ease-out",
-        "flex flex-col",
-        className
-      )}
-      {...props}
-    >
-      {/* Header with close button */}
-      <div className="border-primary/20 dark:border-primary/40 flex items-center justify-between border-b px-6 py-4">
-        <DialogPrimitive.Title className="text-foreground dark:text-foreground font-serif text-lg font-semibold">
-          {title}
-        </DialogPrimitive.Title>
-        <DialogPrimitive.Description className="sr-only">{description}</DialogPrimitive.Description>
-        <DialogPrimitive.Close
-          className={cn(
-            "hover:bg-primary/10 dark:hover:bg-foreground/10 rounded-sm p-2 transition-colors",
-            "text-primary dark:text-foreground",
-            "focus:ring-primary/50 focus:ring-2 focus:ring-offset-2 focus:outline-none"
-          )}
-          aria-label={closeLabel}
-        >
-          <X className="h-5 w-5" />
-        </DialogPrimitive.Close>
-      </div>
+}: React.ComponentProps<typeof DialogPrimitive.Content>) => {
+  const labels = useUILabels();
+  return (
+    <DialogPrimitive.Portal>
+      <MobileNavDrawerOverlay />
+      <DialogPrimitive.Content
+        ref={ref}
+        className={cn(
+          "fixed inset-y-0 right-0 z-50 w-72 md:hidden",
+          "bg-card dark:bg-background",
+          "border-primary/20 dark:border-primary/40 border-l",
+          "shadow-2xl",
+          "data-[state=open]:animate-in data-[state=closed]:animate-out",
+          "data-[state=open]:slide-in-from-right data-[state=closed]:slide-out-to-right",
+          "duration-300 ease-out",
+          "flex flex-col",
+          className
+        )}
+        {...props}
+      >
+        {/* Header with close button */}
+        <div className="border-primary/20 dark:border-primary/40 flex items-center justify-between border-b px-6 py-4">
+          <DialogPrimitive.Title className="text-foreground dark:text-foreground font-serif text-lg font-semibold">
+            {labels.navigation}
+          </DialogPrimitive.Title>
+          <DialogPrimitive.Description className="sr-only">{labels.navigationDescription}</DialogPrimitive.Description>
+          <DialogPrimitive.Close
+            className={cn(
+              "hover:bg-primary/10 dark:hover:bg-foreground/10 rounded-sm p-2 transition-colors",
+              "text-primary dark:text-foreground",
+              "focus:ring-primary/50 focus:ring-2 focus:ring-offset-2 focus:outline-none"
+            )}
+            aria-label={labels.closeNavigation}
+          >
+            <X className="h-5 w-5" />
+          </DialogPrimitive.Close>
+        </div>
 
-      {/* Navigation items container */}
-      <nav className="flex-1 overflow-y-auto py-2">{children}</nav>
-    </DialogPrimitive.Content>
-  </DialogPrimitive.Portal>
-);
+        {/* Navigation items container */}
+        <nav className="flex-1 overflow-y-auto py-2">{children}</nav>
+      </DialogPrimitive.Content>
+    </DialogPrimitive.Portal>
+  );
+};
 MobileNavDrawerContent.displayName = "MobileNavDrawerContent";
 
 interface MobileNavDrawerItemProps extends React.ComponentProps<"a"> {

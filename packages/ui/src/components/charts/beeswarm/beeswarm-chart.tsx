@@ -70,7 +70,7 @@ export const BeeswarmChart = ({
   isUpdating = false,
   isError = false,
   onRetry,
-  emptyMessage = "No data available",
+  emptyMessage,
   updatingLabel,
   maxClusterCount = 1,
   layout = "merged",

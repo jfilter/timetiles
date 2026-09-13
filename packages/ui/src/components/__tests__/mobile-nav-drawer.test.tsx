@@ -9,24 +9,35 @@ import "@testing-library/jest-dom/vitest";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
+import { UIProvider } from "../../provider";
 import { MobileNavDrawer, MobileNavDrawerContent, MobileNavDrawerTrigger } from "../mobile-nav-drawer";
 
+const labels = {
+  openNavigation: "Menü öffnen",
+  navigation: "Menü",
+  navigationDescription: "Seitennavigation",
+  closeNavigation: "Menü schließen",
+};
+
 describe("MobileNavDrawer", () => {
-  it("uses the provided title, description and close label", () => {
+  it("takes trigger, title, description and close texts from UIProvider", () => {
     render(
-      <MobileNavDrawer open>
-        <MobileNavDrawerTrigger aria-label="Menü öffnen" />
-        <MobileNavDrawerContent title="Menü" description="Seitennavigation" closeLabel="Menü schließen">
-          <a href="/">Start</a>
-        </MobileNavDrawerContent>
-      </MobileNavDrawer>
+      <UIProvider labels={labels}>
+        <MobileNavDrawer open>
+          <MobileNavDrawerTrigger />
+          <MobileNavDrawerContent>
+            <a href="/">Start</a>
+          </MobileNavDrawerContent>
+        </MobileNavDrawer>
+      </UIProvider>
     );
 
     expect(screen.getByRole("dialog", { name: "Menü" })).toHaveAccessibleDescription("Seitennavigation");
     expect(screen.getByRole("button", { name: "Menü schließen" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Menü öffnen", hidden: true })).toBeInTheDocument();
   });
 
-  it("falls back to English texts", () => {
+  it("falls back to English texts without a provider", () => {
     render(
       <MobileNavDrawer open>
         <MobileNavDrawerContent>

@@ -1,9 +1,9 @@
 /**
  * Configuration provider for the UI library.
  *
- * Allows consuming applications to plug in their own theme resolver
- * and newsletter submission handler without coupling the UI package
- * to specific frameworks like next-themes.
+ * Allows consuming applications to plug in their own theme resolver,
+ * newsletter submission handler and translated UI texts without coupling
+ * the UI package to specific frameworks like next-themes or next-intl.
  *
  * @module
  * @category Provider
@@ -21,6 +21,65 @@ interface MapColors {
   mapStroke: string;
 }
 
+/** Built-in texts of the UI components; apps pass translations once through UIProvider. */
+interface UILabels {
+  previous: string;
+  next: string;
+  pageOf: (page: number, total: number) => string;
+  noResults: string;
+  openNavigation: string;
+  navigation: string;
+  navigationDescription: string;
+  closeNavigation: string;
+  loading: string;
+  tryAgain: string;
+  confirm: string;
+  cancel: string;
+  updating: string;
+  events: string;
+  total: string;
+  subscribing: string;
+  subscribed: string;
+  emptyTitle: string;
+  emptySubtitle: string;
+  noMatchTitle: string;
+  noMatchSubtitle: string;
+  errorTitle: string;
+  errorSubtitle: string;
+  chartNoDataSubtitle: string;
+  chartNoMatchTitle: string;
+  chartErrorTitle: string;
+}
+
+const DEFAULT_UI_LABELS: UILabels = {
+  previous: "Previous",
+  next: "Next",
+  pageOf: (page, total) => `Page ${page} of ${total}`,
+  noResults: "No results.",
+  openNavigation: "Open navigation menu",
+  navigation: "Navigation",
+  navigationDescription: "Site navigation menu",
+  closeNavigation: "Close navigation menu",
+  loading: "Loading...",
+  tryAgain: "Try again",
+  confirm: "Confirm",
+  cancel: "Cancel",
+  updating: "Updating",
+  events: "Events",
+  total: "Total",
+  subscribing: "Subscribing...",
+  subscribed: "Subscribed",
+  emptyTitle: "No data yet",
+  emptySubtitle: "There's nothing to show",
+  noMatchTitle: "No matching results",
+  noMatchSubtitle: "Try adjusting your filters",
+  errorTitle: "Something went wrong",
+  errorSubtitle: "There was a problem loading this content",
+  chartNoDataSubtitle: "Import events to see visualizations",
+  chartNoMatchTitle: "No matching events",
+  chartErrorTitle: "Unable to load chart",
+};
+
 interface UIConfig {
   /** Returns the current theme name ("light" | "dark"). Defaults to "light" when omitted. */
   resolveTheme?: () => string;
@@ -32,6 +91,8 @@ interface UIConfig {
   darkChartTheme?: ChartTheme;
   /** Override map point/cluster visualization colors. */
   mapColors?: MapColors;
+  /** Translated built-in texts; missing entries fall back to English. */
+  labels?: Partial<UILabels>;
 }
 
 const UIContext = createContext<UIConfig>({});
@@ -42,4 +103,7 @@ const UIProvider = ({ children, ...config }: UIConfig & { children: ReactNode })
 
 const useUIConfig = () => useContext(UIContext);
 
-export { type UIConfig, UIProvider, useUIConfig };
+/** Built-in texts with the provider's translations applied over the English defaults. */
+const useUILabels = (): UILabels => ({ ...DEFAULT_UI_LABELS, ...useContext(UIContext).labels });
+
+export { type UIConfig, type UILabels, UIProvider, useUIConfig, useUILabels };

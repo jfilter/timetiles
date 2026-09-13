@@ -11,6 +11,7 @@
 
 import { cn } from "@timetiles/ui/lib/utils";
 
+import { useUILabels } from "../provider";
 import { Button } from "./button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "./dialog";
 
@@ -30,35 +31,38 @@ const ConfirmDialog = ({
   onOpenChange,
   title,
   description,
-  confirmLabel = "Confirm",
-  cancelLabel = "Cancel",
+  confirmLabel,
+  cancelLabel,
   variant = "default",
   onConfirm,
-}: Readonly<ConfirmDialogProps>) => (
-  <Dialog open={open} onOpenChange={onOpenChange}>
-    <DialogContent showCloseButton={false}>
-      <DialogHeader>
-        <DialogTitle>{title}</DialogTitle>
-        <DialogDescription>{description}</DialogDescription>
-      </DialogHeader>
-      <DialogFooter>
-        <Button variant="outline" onClick={() => onOpenChange(false)}>
-          {cancelLabel}
-        </Button>
-        <Button
-          variant={variant === "destructive" ? "destructive" : "default"}
-          className={cn(variant === "destructive" && "bg-destructive hover:bg-destructive/90")}
-          onClick={() => {
-            onConfirm();
-            onOpenChange(false);
-          }}
-        >
-          {confirmLabel}
-        </Button>
-      </DialogFooter>
-    </DialogContent>
-  </Dialog>
-);
+}: Readonly<ConfirmDialogProps>) => {
+  const labels = useUILabels();
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent showCloseButton={false}>
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+          <DialogDescription>{description}</DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            {cancelLabel ?? labels.cancel}
+          </Button>
+          <Button
+            variant={variant === "destructive" ? "destructive" : "default"}
+            className={cn(variant === "destructive" && "bg-destructive hover:bg-destructive/90")}
+            onClick={() => {
+              onConfirm();
+              onOpenChange(false);
+            }}
+          >
+            {confirmLabel ?? labels.confirm}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
 
 export { ConfirmDialog };
 export type { ConfirmDialogProps };

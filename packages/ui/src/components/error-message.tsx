@@ -7,9 +7,12 @@
  * @module
  * @category Components
  */
+"use client";
+
 import { AlertCircle } from "lucide-react";
 
 import { cn } from "../lib/utils";
+import { useUILabels } from "../provider";
 
 export interface ErrorMessageProps {
   /** The error message to display */
@@ -18,8 +21,6 @@ export interface ErrorMessageProps {
   variant?: "inline" | "box";
   /** Optional retry callback */
   onRetry?: () => void;
-  /** Label of the retry button */
-  retryLabel?: string;
   /** Additional CSS classes */
   className?: string;
 }
@@ -33,13 +34,8 @@ export interface ErrorMessageProps {
  * <ErrorMessage variant="box" message="Something went wrong" onRetry={refetch} />
  * ```
  */
-export const ErrorMessage = ({
-  message,
-  variant = "inline",
-  onRetry,
-  retryLabel = "Try again",
-  className,
-}: ErrorMessageProps) => {
+export const ErrorMessage = ({ message, variant = "inline", onRetry, className }: ErrorMessageProps) => {
+  const labels = useUILabels();
   if (variant === "box") {
     return (
       <div className={cn("bg-destructive/10 text-destructive rounded-md p-4", className)} role="alert">
@@ -53,7 +49,7 @@ export const ErrorMessage = ({
                 onClick={onRetry}
                 className="text-destructive hover:text-destructive/80 mt-2 text-sm font-medium underline"
               >
-                {retryLabel}
+                {labels.tryAgain}
               </button>
             )}
           </div>

@@ -7,9 +7,12 @@
  * @module
  * @category Components
  */
+"use client";
+
 import { Loader2 } from "lucide-react";
 
 import { cn } from "../lib/utils";
+import { useUILabels } from "../provider";
 
 export interface LoadingStateProps {
   /** Display variant */
@@ -20,8 +23,6 @@ export interface LoadingStateProps {
   height?: number | string;
   /** Additional CSS classes */
   className?: string;
-  /** Accessible name of the skeleton placeholder */
-  label?: string;
 }
 
 /**
@@ -35,13 +36,8 @@ export interface LoadingStateProps {
  * <LoadingState variant="skeleton" height={200} />
  * ```
  */
-export const LoadingState = ({
-  variant = "spinner",
-  message,
-  height,
-  className,
-  label = "Loading",
-}: LoadingStateProps) => {
+export const LoadingState = ({ variant = "spinner", message, height, className }: LoadingStateProps) => {
+  const labels = useUILabels();
   const containerStyle = (() => {
     if (height == null) return undefined;
     const containerHeight = typeof height === "number" ? `${height}px` : height;
@@ -67,7 +63,7 @@ export const LoadingState = ({
   if (variant === "text") {
     return (
       <div className={cn("flex items-center justify-center", className)} style={containerStyle}>
-        <span className="text-muted-foreground text-sm">{message ?? "Loading..."}</span>
+        <span className="text-muted-foreground text-sm">{message ?? labels.loading}</span>
       </div>
     );
   }
@@ -77,9 +73,9 @@ export const LoadingState = ({
       <output
         className={cn("bg-muted block animate-pulse rounded", className)}
         style={containerStyle ?? { height: "200px" }}
-        aria-label={label}
+        aria-label={labels.loading}
       >
-        <span className="sr-only">{label}</span>
+        <span className="sr-only">{labels.loading}</span>
       </output>
     );
   }

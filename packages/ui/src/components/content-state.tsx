@@ -13,6 +13,7 @@ import { AlertTriangle, Filter, Inbox } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { cn } from "../lib/utils";
+import { useUILabels } from "../provider";
 
 export interface ContentStateProps {
   /** Type of content state to display */
@@ -32,12 +33,6 @@ export interface ContentStateProps {
   /** Additional CSS classes */
   className?: string;
 }
-
-const defaults: Record<ContentStateProps["variant"], { title: string; subtitle: string }> = {
-  empty: { title: "No data yet", subtitle: "There's nothing to show" },
-  "no-match": { title: "No matching results", subtitle: "Try adjusting your filters" },
-  error: { title: "Something went wrong", subtitle: "There was a problem loading this content" },
-};
 
 const defaultIcons: Record<ContentStateProps["variant"], ReactNode> = {
   empty: <Inbox className="h-12 w-12" />,
@@ -61,17 +56,22 @@ export const ContentState = ({
   title,
   subtitle,
   onRetry,
-  retryLabel = "Try again",
+  retryLabel,
   height,
   className,
 }: ContentStateProps) => {
+  const labels = useUILabels();
   const containerStyle = (() => {
     if (height == null) return undefined;
     const containerHeight = typeof height === "number" ? `${height}px` : height;
     return { height: containerHeight };
   })();
 
-  const variantDefaults = defaults[variant];
+  const variantDefaults = {
+    empty: { title: labels.emptyTitle, subtitle: labels.emptySubtitle },
+    "no-match": { title: labels.noMatchTitle, subtitle: labels.noMatchSubtitle },
+    error: { title: labels.errorTitle, subtitle: labels.errorSubtitle },
+  }[variant];
   const renderedIcon = icon ?? defaultIcons[variant];
 
   return (
@@ -87,7 +87,7 @@ export const ContentState = ({
           onClick={onRetry}
           className="bg-primary text-primary-foreground hover:bg-primary/90 mt-2 rounded-sm px-4 py-1.5 text-xs font-medium transition-colors"
         >
-          {retryLabel}
+          {retryLabel ?? labels.tryAgain}
         </button>
       )}
     </div>

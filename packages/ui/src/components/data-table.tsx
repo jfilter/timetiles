@@ -23,23 +23,9 @@ import { cn } from "@timetiles/ui/lib/utils";
 import { ArrowDownIcon, ArrowUpDownIcon, ArrowUpIcon, ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 import { Fragment, type KeyboardEvent, type MouseEvent, type ReactNode, useCallback, useState } from "react";
 
+import { useUILabels } from "../provider";
 import { Button } from "./button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./table";
-
-/** Visible table texts; English defaults keep the component locale-agnostic. */
-interface DataTableLabels {
-  readonly previous: string;
-  readonly next: string;
-  readonly pageOf: (page: number, total: number) => string;
-  readonly noResults: string;
-}
-
-const DEFAULT_LABELS: DataTableLabels = {
-  previous: "Previous",
-  next: "Next",
-  pageOf: (page, total) => `Page ${page} of ${total}`,
-  noResults: "No results.",
-};
 
 const ARIA_SORT = { asc: "ascending", desc: "descending" } as const;
 
@@ -58,8 +44,6 @@ interface DataTableProps<TData, TValue> {
   readonly renderExpandedRow?: (row: TData) => ReactNode;
   /** Custom row ID extractor for stable expand state. Defaults to row index. */
   readonly getRowId?: (row: TData) => string;
-  /** Translated pagination and empty-state texts. */
-  readonly labels?: DataTableLabels;
 }
 
 /**
@@ -140,8 +124,8 @@ const DataTable = <TData, TValue>({
   className,
   renderExpandedRow,
   getRowId: getRowIdProp,
-  labels = DEFAULT_LABELS,
 }: DataTableProps<TData, TValue>) => {
+  const labels = useUILabels();
   const [sorting, setSorting] = useState<SortingState>([]);
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
 
@@ -280,5 +264,5 @@ const DataTable = <TData, TValue>({
 };
 
 export { DataTable };
-export type { DataTableLabels, DataTableProps };
+export type { DataTableProps };
 export { type ColumnDef } from "@tanstack/react-table";

@@ -9,6 +9,7 @@
  */
 "use client";
 
+import { useUILabels } from "../../provider";
 import { ContentState, type ContentStateProps } from "../content-state";
 
 export interface ChartEmptyStateProps {
@@ -27,12 +28,6 @@ export interface ChartEmptyStateProps {
   /** Override the retry button label (localize from the app side) */
   retryLabel?: string;
 }
-
-const chartMessages: Record<ChartEmptyStateProps["variant"], { title: string; subtitle: string }> = {
-  "no-data": { title: "No data yet", subtitle: "Import events to see visualizations" },
-  "no-match": { title: "No matching events", subtitle: "Try adjusting your filters" },
-  error: { title: "Unable to load chart", subtitle: "Something went wrong" },
-};
 
 /**
  * Custom SVG icon for empty chart state - dashed bar chart outline
@@ -84,6 +79,13 @@ export const ChartEmptyState = ({
   onRetry,
   retryLabel,
 }: ChartEmptyStateProps) => {
+  const labels = useUILabels();
+  const chartMessages = {
+    "no-data": { title: labels.emptyTitle, subtitle: labels.chartNoDataSubtitle },
+    "no-match": { title: labels.chartNoMatchTitle, subtitle: labels.noMatchSubtitle },
+    error: { title: labels.chartErrorTitle, subtitle: labels.errorTitle },
+  };
+
   return (
     <ContentState
       variant={variantMap[variant]}

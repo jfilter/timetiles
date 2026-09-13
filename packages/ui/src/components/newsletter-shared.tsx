@@ -7,10 +7,13 @@
  * @module
  * @category Components
  */
+"use client";
+
 import * as React from "react";
 
 import type { NewsletterStatus } from "../hooks/use-newsletter-subscription";
 import { cn } from "../lib/utils";
+import { useUILabels } from "../provider";
 import type { NewsletterButtonLabels } from "./newsletter-types";
 
 /** Map pin SVG for success state */
@@ -74,13 +77,14 @@ export const NewsletterButtonContent = ({
 }: {
   status: NewsletterStatus;
   buttonText: string;
-  /** Labels for loading/success states. Defaults provided for backward compat. */
+  /** Labels for loading/success states; falls back to the UIProvider labels. */
   labels?: NewsletterButtonLabels;
   /** Show a checkmark icon next to submitted label (used by CTA variant) */
   showCheckIcon?: boolean;
 }) => {
-  const submittingLabel = labels?.submitting ?? "Subscribing...";
-  const submittedLabel = labels?.submitted ?? "Subscribed";
+  const defaults = useUILabels();
+  const submittingLabel = labels?.submitting ?? defaults.subscribing;
+  const submittedLabel = labels?.submitted ?? defaults.subscribed;
 
   if (status === "loading") return <>{submittingLabel}</>;
   if (status === "success") {

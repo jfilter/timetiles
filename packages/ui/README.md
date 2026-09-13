@@ -25,6 +25,16 @@ export default function App() {
 }
 ```
 
+## Translations
+
+Built-in texts such as pagination, the mobile navigation drawer, empty and error states, and confirm dialogs default to English. Pass translations once through `UIProvider`; missing entries keep their English default, and explicit component props still take precedence:
+
+```tsx
+<UIProvider labels={{ previous: "Zurück", next: "Weiter", pageOf: (page, total) => `Seite ${page} von ${total}` }}>
+  {children}
+</UIProvider>
+```
+
 ## Customization
 
 See [THEMING.md](docs/THEMING.md) for the full theming and customization guide.

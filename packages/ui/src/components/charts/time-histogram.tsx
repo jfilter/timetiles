@@ -14,6 +14,7 @@ import type { EChartsOption } from "echarts";
 
 import { defaultDarkTheme, defaultLightTheme } from "../../lib/chart-themes";
 import { escapeHtml } from "../../lib/escape-html";
+import { useUILabels } from "../../provider";
 import { BaseChart } from "./base-chart";
 import { ChartEmptyState } from "./chart-empty-state";
 import type { ChartTheme, EChartsEventParams } from "./types";
@@ -279,9 +280,9 @@ const getTooltipConfig = (
   _darkMode: boolean,
   bucketSeconds: number | null | undefined,
   isStacked: boolean,
-  locale?: string,
-  eventsLabel = "Events",
-  totalLabel = "Total"
+  locale: string | undefined,
+  eventsLabel: string,
+  totalLabel: string
 ): NonNullable<EChartsOption["tooltip"]> => ({
   trigger: "axis" as const,
   backgroundColor: chartTheme.tooltipBackground,
@@ -410,8 +411,8 @@ const buildHistogramChartOption = ({
   dataZoomStart: number | undefined;
   dataZoomEnd: number | undefined;
   locale: string | undefined;
-  eventsLabel: string | undefined;
-  totalLabel: string | undefined;
+  eventsLabel: string;
+  totalLabel: string;
 }): EChartsOption => {
   const axisConfig = getAxisConfig(effectiveTheme);
   const hasGroupedLegend = Boolean(groupedData && groupedData.length > 1);
@@ -490,7 +491,7 @@ export const TimeHistogram = ({
   className,
   isInitialLoad = false,
   isUpdating = false,
-  emptyMessage = "No data available",
+  emptyMessage,
   emptySuggestion,
   errorMessage,
   errorSuggestion,
@@ -507,6 +508,7 @@ export const TimeHistogram = ({
   totalLabel,
   updatingLabel,
 }: TimeHistogramProps) => {
+  const labels = useUILabels();
   const { effectiveTheme, isDark } = resolveHistogramTheme(theme);
   const chartOption = buildHistogramChartOption({
     data,
@@ -518,8 +520,8 @@ export const TimeHistogram = ({
     dataZoomStart,
     dataZoomEnd,
     locale,
-    eventsLabel,
-    totalLabel,
+    eventsLabel: eventsLabel ?? labels.events,
+    totalLabel: totalLabel ?? labels.total,
   });
 
   const handleChartClick = (params: EChartsEventParams) => {
