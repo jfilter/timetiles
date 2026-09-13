@@ -90,6 +90,8 @@ export default defineConfig({
           setupFiles: ["tests/setup/unit/global-setup.ts"],
           testTimeout: 10000,
         },
+        // Server pages import @payload-config; the alias lets vi.mock replace it.
+        resolve: { alias: { "@payload-config": path.resolve(__dirname, "payload.config.ts") } },
       },
       {
         extends: "./vitest.config.base.ts",

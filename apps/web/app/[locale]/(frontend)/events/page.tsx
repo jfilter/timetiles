@@ -13,6 +13,7 @@ import { getPayload } from "payload";
 
 import { Link } from "@/i18n/navigation";
 import { formatDateShort } from "@/lib/utils/date";
+import { extractEventFields, planRolesToFieldPathMappings } from "@/lib/utils/event-detail";
 
 export const revalidate = 120;
 
@@ -46,11 +47,11 @@ export default async function EventsListPage() {
       ) : (
         <div className="grid gap-4">
           {events.map((event) => {
-            const eventData = event.transformedData as Record<string, unknown>;
-            const title =
-              (typeof eventData.title === "string" && eventData.title) ||
-              (typeof eventData.name === "string" && eventData.name) ||
-              `Event ${event.id}`;
+            const { title } = extractEventFields(
+              event.transformedData,
+              planRolesToFieldPathMappings(event.dataset),
+              event.id
+            );
             const dataset = typeof event.dataset === "object" ? event.dataset : null;
 
             return (
