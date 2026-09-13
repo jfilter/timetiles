@@ -17,6 +17,7 @@
  */
 
 import dns from "node:dns";
+import { isIP } from "node:net";
 
 import { isPrivateIP } from "@timetiles/shared";
 
@@ -46,6 +47,13 @@ export const assertGitTargetIsPublic = async (gitUrl: string): Promise<void> => 
 
   const hostname = parsed.hostname;
 
+  // URL keeps IPv6 literals bracketed, which DNS answers with ENOTFOUND; classify literals directly.
+  const literal = hostname.replace(/^\[(.*)\]$/, "$1");
+  if (isIP(literal) !== 0) {
+    assertAddressIsPublic(hostname, literal);
+    return;
+  }
+
   let resolved: Array<{ address: string; family: number }>;
   try {
     resolved = await dns.promises.lookup(hostname, { all: true, verbatim: true });
@@ -55,12 +63,16 @@ export const assertGitTargetIsPublic = async (gitUrl: string): Promise<void> => 
   }
 
   for (const entry of resolved) {
-    if (isPrivateIP(entry.address)) {
-      throw new RunnerError(
-        `Refusing to clone: host "${hostname}" resolves to private address ${entry.address}`,
-        "SSRF_BLOCKED",
-        400
-      );
-    }
+    assertAddressIsPublic(hostname, entry.address);
+  }
+};
+
+const assertAddressIsPublic = (hostname: string, address: string): void => {
+  if (isPrivateIP(address)) {
+    throw new RunnerError(
+      `Refusing to clone: host "${hostname}" resolves to private address ${address}`,
+      "SSRF_BLOCKED",
+      400
+    );
   }
 };
