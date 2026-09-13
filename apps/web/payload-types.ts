@@ -591,18 +591,6 @@ export interface Dataset {
      */
     externalIdPath?: string | null;
     /**
-     * Deprecated: kept for backward compatibility with existing data
-     */
-    computedIdFields?:
-      | {
-          /**
-           * Path to field to include in hash
-           */
-          fieldPath: string;
-          id?: string | null;
-        }[]
-      | null;
-    /**
      * Fields to exclude from the content hash (e.g., volatile timestamps)
      */
     excludeFields?:
@@ -4191,12 +4179,6 @@ export interface DatasetsSelect<T extends boolean = true> {
     | {
         type?: T;
         externalIdPath?: T;
-        computedIdFields?:
-          | T
-          | {
-              fieldPath?: T;
-              id?: T;
-            };
         excludeFields?:
           | T
           | {

@@ -74,6 +74,7 @@ import * as migration_20260813_180000_pg_functions_skip_trashed_events from './2
 import * as migration_20260813_181000_drop_duplicate_dataset_name_index from './20260813_181000_drop_duplicate_dataset_name_index';
 import * as migration_20260813_200000_pg_functions_literal_key_first from './20260813_200000_pg_functions_literal_key_first';
 import * as migration_20260909_093926 from './20260909_093926';
+import * as migration_20260913_153257 from './20260913_153257';
 
 export const migrations = [
   {
@@ -454,6 +455,11 @@ export const migrations = [
   {
     up: migration_20260909_093926.up,
     down: migration_20260909_093926.down,
-    name: '20260909_093926'
+    name: '20260909_093926',
+  },
+  {
+    up: migration_20260913_153257.up,
+    down: migration_20260913_153257.down,
+    name: '20260913_153257'
   },
 ];

@@ -150,22 +150,6 @@ const Datasets: CollectionConfig = {
           },
         },
         {
-          name: "computedIdFields",
-          type: "array",
-          fields: [
-            {
-              name: "fieldPath",
-              type: "text",
-              required: true,
-              admin: { description: "Path to field to include in hash" },
-            },
-          ],
-          admin: {
-            condition: () => false,
-            description: "Deprecated: kept for backward compatibility with existing data",
-          },
-        },
-        {
           name: "excludeFields",
           type: "array",
           fields: [
