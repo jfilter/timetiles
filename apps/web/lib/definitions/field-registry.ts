@@ -130,10 +130,7 @@ type EventFieldDefinition = (typeof EVENT_FIELD_DEFINITIONS)[number];
 type PathFieldDefinition = Extract<EventFieldDefinition, { pathName: string }>;
 
 /**
- * Flat field mappings using `*Path` naming.
- *
- * Equivalent to the old hand-written `FieldMappings` and `DataPackageFieldMappings`
- * interfaces — now derived from the single registry.
+ * Flat field mappings using `*Path` naming, derived from the registry above.
  *
  * `coordinateFormat` is not a path but a sibling of `coordinatePath`: it records
  * the axis order of a single combined-coordinate column. It is added by
