@@ -8,12 +8,13 @@
  * @module
  * @category Scripts
  */
-import { execFileSync, execSync } from "node:child_process";
+import { execSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 
 // eslint-disable-next-line boundaries/dependencies -- dev-only script sharing the root tooling's diagnostic parser; no runtime coupling
 import { parseTscOutput } from "../../../scripts/shared/typecheck-utils";
+import { runPnpmSync } from "./run-pnpm";
 
 interface LintMessage {
   ruleId: string | null;
@@ -143,8 +144,7 @@ const runLintCheck = (): CheckResults["lint"] => {
 
   try {
     // Use the shared root invocation so SonarJS can resolve pnpm catalogs.
-    execFileSync(
-      "pnpm",
+    runPnpmSync(
       [
         "-w",
         "lint:eslint",
