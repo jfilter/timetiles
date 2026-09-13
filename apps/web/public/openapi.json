@@ -125,8 +125,8 @@
                 "properties": { "datasets": { "type": "integer" }, "catalogs": { "type": "integer" } },
                 "required": ["datasets", "catalogs"]
               },
-              "topDatasets": { "type": "array", "items": { "nullable": true } },
-              "topCatalogs": { "type": "array", "items": { "nullable": true } }
+              "topDatasets": { "type": "array", "items": { "$ref": "#/components/schemas/AggregationItem" } },
+              "topCatalogs": { "type": "array", "items": { "$ref": "#/components/schemas/AggregationItem" } }
             },
             "required": [
               "total",
@@ -223,13 +223,12 @@
           {
             "schema": {
               "type": "object",
-              "nullable": true,
               "additionalProperties": {
                 "type": "array",
                 "items": { "type": "string", "maxLength": 500 },
                 "maxItems": 100
               },
-              "default": {}
+              "maxProperties": 20
             },
             "required": false,
             "name": "ff",
@@ -238,7 +237,6 @@
           {
             "schema": {
               "type": "object",
-              "nullable": true,
               "additionalProperties": {
                 "type": "object",
                 "properties": {
@@ -246,7 +244,7 @@
                   "max": { "type": "number", "nullable": true }
                 }
               },
-              "default": {}
+              "maxProperties": 20
             },
             "required": false,
             "name": "rf",
@@ -325,13 +323,12 @@
           {
             "schema": {
               "type": "object",
-              "nullable": true,
               "additionalProperties": {
                 "type": "array",
                 "items": { "type": "string", "maxLength": 500 },
                 "maxItems": 100
               },
-              "default": {}
+              "maxProperties": 20
             },
             "required": false,
             "name": "ff",
@@ -340,7 +337,6 @@
           {
             "schema": {
               "type": "object",
-              "nullable": true,
               "additionalProperties": {
                 "type": "object",
                 "properties": {
@@ -348,7 +344,7 @@
                   "max": { "type": "number", "nullable": true }
                 }
               },
-              "default": {}
+              "maxProperties": 20
             },
             "required": false,
             "name": "rf",
@@ -415,13 +411,12 @@
           {
             "schema": {
               "type": "object",
-              "nullable": true,
               "additionalProperties": {
                 "type": "array",
                 "items": { "type": "string", "maxLength": 500 },
                 "maxItems": 100
               },
-              "default": {}
+              "maxProperties": 20
             },
             "required": false,
             "name": "ff",
@@ -430,7 +425,6 @@
           {
             "schema": {
               "type": "object",
-              "nullable": true,
               "additionalProperties": {
                 "type": "object",
                 "properties": {
@@ -438,7 +432,7 @@
                   "max": { "type": "number", "nullable": true }
                 }
               },
-              "default": {}
+              "maxProperties": 20
             },
             "required": false,
             "name": "rf",
@@ -517,13 +511,12 @@
           {
             "schema": {
               "type": "object",
-              "nullable": true,
               "additionalProperties": {
                 "type": "array",
                 "items": { "type": "string", "maxLength": 500 },
                 "maxItems": 100
               },
-              "default": {}
+              "maxProperties": 20
             },
             "required": false,
             "name": "ff",
@@ -532,7 +525,6 @@
           {
             "schema": {
               "type": "object",
-              "nullable": true,
               "additionalProperties": {
                 "type": "object",
                 "properties": {
@@ -540,7 +532,7 @@
                   "max": { "type": "number", "nullable": true }
                 }
               },
-              "default": {}
+              "maxProperties": 20
             },
             "required": false,
             "name": "rf",
@@ -644,13 +636,12 @@
           {
             "schema": {
               "type": "object",
-              "nullable": true,
               "additionalProperties": {
                 "type": "array",
                 "items": { "type": "string", "maxLength": 500 },
                 "maxItems": 100
               },
-              "default": {}
+              "maxProperties": 20
             },
             "required": false,
             "name": "ff",
@@ -659,7 +650,6 @@
           {
             "schema": {
               "type": "object",
-              "nullable": true,
               "additionalProperties": {
                 "type": "object",
                 "properties": {
@@ -667,7 +657,7 @@
                   "max": { "type": "number", "nullable": true }
                 }
               },
-              "default": {}
+              "maxProperties": 20
             },
             "required": false,
             "name": "rf",

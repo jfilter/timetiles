@@ -256,11 +256,11 @@ components:
             topDatasets:
               type: array
               items:
-                nullable: true
+                $ref: "#/components/schemas/AggregationItem"
             topCatalogs:
               type: array
               items:
-                nullable: true
+                $ref: "#/components/schemas/AggregationItem"
           required:
             - total
             - dateRange
@@ -423,21 +423,19 @@ paths:
           in: query
         - schema:
             type: object
-            nullable: true
-            additionalProperties:
+            additionalProperties: &a3
               type: array
               items:
                 type: string
                 maxLength: 500
               maxItems: 100
-            default: {}
+            maxProperties: 20
           required: false
           name: ff
           in: query
         - schema:
             type: object
-            nullable: true
-            additionalProperties:
+            additionalProperties: &a4
               type: object
               properties:
                 min:
@@ -446,7 +444,7 @@ paths:
                 max:
                   type: number
                   nullable: true
-            default: {}
+            maxProperties: 20
           required: false
           name: rf
           in: query
@@ -556,30 +554,15 @@ paths:
           in: query
         - schema:
             type: object
-            nullable: true
-            additionalProperties:
-              type: array
-              items:
-                type: string
-                maxLength: 500
-              maxItems: 100
-            default: {}
+            additionalProperties: *a3
+            maxProperties: 20
           required: false
           name: ff
           in: query
         - schema:
             type: object
-            nullable: true
-            additionalProperties:
-              type: object
-              properties:
-                min:
-                  type: number
-                  nullable: true
-                max:
-                  type: number
-                  nullable: true
-            default: {}
+            additionalProperties: *a4
+            maxProperties: 20
           required: false
           name: rf
           in: query
@@ -674,30 +657,15 @@ paths:
           in: query
         - schema:
             type: object
-            nullable: true
-            additionalProperties:
-              type: array
-              items:
-                type: string
-                maxLength: 500
-              maxItems: 100
-            default: {}
+            additionalProperties: *a3
+            maxProperties: 20
           required: false
           name: ff
           in: query
         - schema:
             type: object
-            nullable: true
-            additionalProperties:
-              type: object
-              properties:
-                min:
-                  type: number
-                  nullable: true
-                max:
-                  type: number
-                  nullable: true
-            default: {}
+            additionalProperties: *a4
+            maxProperties: 20
           required: false
           name: rf
           in: query
@@ -808,30 +776,15 @@ paths:
           in: query
         - schema:
             type: object
-            nullable: true
-            additionalProperties:
-              type: array
-              items:
-                type: string
-                maxLength: 500
-              maxItems: 100
-            default: {}
+            additionalProperties: *a3
+            maxProperties: 20
           required: false
           name: ff
           in: query
         - schema:
             type: object
-            nullable: true
-            additionalProperties:
-              type: object
-              properties:
-                min:
-                  type: number
-                  nullable: true
-                max:
-                  type: number
-                  nullable: true
-            default: {}
+            additionalProperties: *a4
+            maxProperties: 20
           required: false
           name: rf
           in: query
@@ -980,30 +933,15 @@ paths:
           in: query
         - schema:
             type: object
-            nullable: true
-            additionalProperties:
-              type: array
-              items:
-                type: string
-                maxLength: 500
-              maxItems: 100
-            default: {}
+            additionalProperties: *a3
+            maxProperties: 20
           required: false
           name: ff
           in: query
         - schema:
             type: object
-            nullable: true
-            additionalProperties:
-              type: object
-              properties:
-                min:
-                  type: number
-                  nullable: true
-                max:
-                  type: number
-                  nullable: true
-            default: {}
+            additionalProperties: *a4
+            maxProperties: 20
           required: false
           name: rf
           in: query
