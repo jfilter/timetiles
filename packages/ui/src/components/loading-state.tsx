@@ -20,6 +20,8 @@ export interface LoadingStateProps {
   height?: number | string;
   /** Additional CSS classes */
   className?: string;
+  /** Accessible name of the skeleton placeholder */
+  label?: string;
 }
 
 /**
@@ -33,7 +35,13 @@ export interface LoadingStateProps {
  * <LoadingState variant="skeleton" height={200} />
  * ```
  */
-export const LoadingState = ({ variant = "spinner", message, height, className }: LoadingStateProps) => {
+export const LoadingState = ({
+  variant = "spinner",
+  message,
+  height,
+  className,
+  label = "Loading",
+}: LoadingStateProps) => {
   const containerStyle = (() => {
     if (height == null) return undefined;
     const containerHeight = typeof height === "number" ? `${height}px` : height;
@@ -69,9 +77,9 @@ export const LoadingState = ({ variant = "spinner", message, height, className }
       <output
         className={cn("bg-muted block animate-pulse rounded", className)}
         style={containerStyle ?? { height: "200px" }}
-        aria-label="Loading"
+        aria-label={label}
       >
-        <span className="sr-only">Loading...</span>
+        <span className="sr-only">{label}</span>
       </output>
     );
   }

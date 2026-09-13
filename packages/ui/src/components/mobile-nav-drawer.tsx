@@ -66,6 +66,15 @@ const MobileNavDrawerOverlay = ({ className, ref, ...props }: React.ComponentPro
 );
 MobileNavDrawerOverlay.displayName = "MobileNavDrawerOverlay";
 
+interface MobileNavDrawerContentProps extends React.ComponentProps<typeof DialogPrimitive.Content> {
+  /** Dialog title announced to assistive technology. */
+  title?: string;
+  /** Screen-reader description of the drawer. */
+  description?: string;
+  /** Accessible name of the close button. */
+  closeLabel?: string;
+}
+
 /**
  * Content container for the mobile navigation drawer.
  * Slides in from the right with atlas index styling.
@@ -74,8 +83,11 @@ const MobileNavDrawerContent = ({
   className,
   children,
   ref,
+  title = "Navigation",
+  description = "Site navigation menu",
+  closeLabel = "Close navigation menu",
   ...props
-}: React.ComponentProps<typeof DialogPrimitive.Content>) => (
+}: MobileNavDrawerContentProps) => (
   <DialogPrimitive.Portal>
     <MobileNavDrawerOverlay />
     <DialogPrimitive.Content
@@ -96,16 +108,16 @@ const MobileNavDrawerContent = ({
       {/* Header with close button */}
       <div className="border-primary/20 dark:border-primary/40 flex items-center justify-between border-b px-6 py-4">
         <DialogPrimitive.Title className="text-foreground dark:text-foreground font-serif text-lg font-semibold">
-          Navigation
+          {title}
         </DialogPrimitive.Title>
-        <DialogPrimitive.Description className="sr-only">Site navigation menu</DialogPrimitive.Description>
+        <DialogPrimitive.Description className="sr-only">{description}</DialogPrimitive.Description>
         <DialogPrimitive.Close
           className={cn(
             "hover:bg-primary/10 dark:hover:bg-foreground/10 rounded-sm p-2 transition-colors",
             "text-primary dark:text-foreground",
             "focus:ring-primary/50 focus:ring-2 focus:ring-offset-2 focus:outline-none"
           )}
-          aria-label="Close navigation menu"
+          aria-label={closeLabel}
         >
           <X className="h-5 w-5" />
         </DialogPrimitive.Close>
