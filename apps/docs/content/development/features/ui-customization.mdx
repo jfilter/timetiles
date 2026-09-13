@@ -30,7 +30,7 @@ TimeTiles implements a six-layer UI customization system documented in ADR 0035.
 | `packages/ui/src/themes/cartographic.css` | Cartographic theme (default) — all tokens                          |
 | `packages/ui/src/themes/modern.css`       | Modern theme — scoped to `.theme-modern`                           |
 | `packages/ui/src/styles/globals.css`      | Tailwind setup, imports theme, `@theme inline` bridge              |
-| `packages/ui/src/provider.tsx`            | UIProvider — chart themes, map colors, newsletter                  |
+| `packages/ui/src/provider.tsx`            | UIProvider — chart themes, map colors, newsletter, UI texts        |
 | `lib/hooks/use-theme-preset.ts`           | Runtime theme switching via CSS class                              |
 | `lib/constants/theme-presets.ts`          | Shared preset definitions, chart/map colors, initialization script |
 | `app/_components/theme-preset-picker.tsx` | Palette icon UI for theme switching                                |
@@ -280,6 +280,7 @@ The `UIProvider` component (`packages/ui/src/provider.tsx`) configures runtime b
 - **Chart themes** — ECharts color configuration for light and dark modes
 - **Map colors** — MapLibre point, cluster gradient, and stroke colors
 - **Newsletter handler** — custom submission callback
+- **Labels** — translated built-in texts (pagination, navigation drawer, loading, empty and error states, confirm dialogs); missing entries fall back to English
 
 ```tsx
 <UIProvider
@@ -288,10 +289,13 @@ The `UIProvider` component (`packages/ui/src/provider.tsx`) configures runtime b
   darkChartTheme={darkChartTheme}
   mapColors={mapColors}
   onNewsletterSubmit={handleNewsletter}
+  labels={labels}
 >
   {children}
 </UIProvider>
 ```
+
+TimeTiles builds `labels` from its next-intl messages in `apps/web/components/use-translated-ui-labels.ts`, so components from `@timetiles/ui` render in the active locale without passing texts at each call site.
 
 ### How Site Branding Overrides Work
 

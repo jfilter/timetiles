@@ -9,10 +9,13 @@ import "@testing-library/jest-dom/vitest";
 
 import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { UIProvider } from "@timetiles/ui/provider";
 import { NextIntlClientProvider } from "next-intl";
+import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { AdaptiveHeader } from "@/app/_components/adaptive-header";
+import { useTranslatedUILabels } from "@/components/use-translated-ui-labels";
 import type { MainMenu } from "@/payload-types";
 
 import de from "../../../messages/de.json";
@@ -22,7 +25,7 @@ vi.mock("@timetiles/assets/logos/latest/dark/transparent/wordmark_horizontal.svg
 vi.mock("@timetiles/assets/logos/latest/light/transparent/wordmark_horizontal.svg", () => ({ default: "light.svg" }));
 vi.mock("next/image", () => ({ default: ({ alt }: { alt: string }) => <span>{alt}</span> }));
 vi.mock("@/i18n/navigation", () => ({
-  Link: ({ href, children }: { href: string; children: React.ReactNode }) => <a href={href}>{children}</a>,
+  Link: ({ href, children }: { href: string; children: ReactNode }) => <a href={href}>{children}</a>,
   usePathname: () => "/",
 }));
 vi.mock("@/lib/context/site-context", () => ({ useSite: () => ({ isDefaultSite: true }) }));
@@ -38,6 +41,10 @@ vi.mock("@/app/_components/theme-toggle", () => ({ ThemeToggle: () => null }));
 
 const mainMenu = { id: 1, navItems: [{ id: "1", label: "Explore", url: "/explore" }] } as MainMenu;
 
+const TranslatedUI = ({ children }: { children: ReactNode }) => (
+  <UIProvider labels={useTranslatedUILabels()}>{children}</UIProvider>
+);
+
 afterEach(cleanup);
 
 describe.each([
@@ -48,7 +55,9 @@ describe.each([
     const user = userEvent.setup();
     render(
       <NextIntlClientProvider locale={locale} messages={messages}>
-        <AdaptiveHeader mainMenu={mainMenu} />
+        <TranslatedUI>
+          <AdaptiveHeader mainMenu={mainMenu} />
+        </TranslatedUI>
       </NextIntlClientProvider>
     );
 

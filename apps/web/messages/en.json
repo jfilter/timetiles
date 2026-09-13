@@ -52,7 +52,17 @@
     "navigation": "Navigation",
     "navigationDescription": "Site navigation menu",
     "openNavigation": "Open navigation menu",
-    "closeNavigation": "Close navigation menu"
+    "closeNavigation": "Close navigation menu",
+    "confirm": "Confirm",
+    "total": "Total",
+    "emptyTitle": "No data yet",
+    "emptySubtitle": "There is nothing to show",
+    "noMatchTitle": "No matching results",
+    "noMatchSubtitle": "Try adjusting your filters",
+    "errorSubtitle": "There was a problem loading this content",
+    "chartNoDataSubtitle": "Import events to see visualizations",
+    "chartNoMatchTitle": "No matching events",
+    "chartErrorTitle": "Unable to load chart"
   },
   "Auth": {
     "welcomeBack": "Welcome back",

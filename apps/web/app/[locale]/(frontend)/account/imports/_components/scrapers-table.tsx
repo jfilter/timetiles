@@ -13,6 +13,7 @@ import {
   Button,
   type ColumnDef,
   ContentState,
+  DataTable,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -30,7 +31,6 @@ import {
   getScraperStatusVariant,
   type ScraperRow,
 } from "@/app/[locale]/(frontend)/account/_components/scraper-view-model";
-import { LocalizedDataTable } from "@/components/ui/localized-data-table";
 import { StatusBadge } from "@/components/ui/status-badge";
 import {
   useDeleteScraperRepoMutation,
@@ -187,7 +187,7 @@ export const ScrapersTable = ({ initialRepos, initialScrapers }: ScrapersTablePr
             message={`${repo.name}: ${repo.lastSyncError?.trim() ? repo.lastSyncError : t("statusFailed")}`}
           />
         ))}
-      <LocalizedDataTable
+      <DataTable
         columns={columns}
         data={rows}
         isLoading={false}

@@ -52,7 +52,17 @@
     "navigation": "Navigation",
     "navigationDescription": "Navigationsmenü der Website",
     "openNavigation": "Navigationsmenü öffnen",
-    "closeNavigation": "Navigationsmenü schließen"
+    "closeNavigation": "Navigationsmenü schließen",
+    "confirm": "Bestätigen",
+    "total": "Gesamt",
+    "emptyTitle": "Noch keine Daten",
+    "emptySubtitle": "Hier gibt es noch nichts anzuzeigen",
+    "noMatchTitle": "Keine passenden Ergebnisse",
+    "noMatchSubtitle": "Versuche, deine Filter anzupassen",
+    "errorSubtitle": "Beim Laden ist ein Problem aufgetreten",
+    "chartNoDataSubtitle": "Importiere Ereignisse, um Visualisierungen zu sehen",
+    "chartNoMatchTitle": "Keine passenden Ereignisse",
+    "chartErrorTitle": "Diagramm konnte nicht geladen werden"
   },
   "Auth": {
     "welcomeBack": "Willkommen zurück",

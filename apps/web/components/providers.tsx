@@ -31,12 +31,14 @@ const ReactQueryDevtools = dynamic(
 );
 
 import { ThemeProvider } from "./theme-provider";
+import { useTranslatedUILabels } from "./use-translated-ui-labels";
 
-/** Bridges next-themes and theme presets into the UI library's provider. */
+/** Bridges next-themes, theme presets and translations into the UI library's provider. */
 const UIBridge = ({ children }: Readonly<{ children: ReactNode }>) => {
   const { resolvedTheme } = useTheme();
   const { preset } = useThemePreset();
   const presetConfig = PRESET_THEMES[preset];
+  const labels = useTranslatedUILabels();
 
   return (
     <UIProvider
@@ -45,6 +47,7 @@ const UIBridge = ({ children }: Readonly<{ children: ReactNode }>) => {
       lightChartTheme={presetConfig?.light}
       darkChartTheme={presetConfig?.dark}
       mapColors={presetConfig?.map}
+      labels={labels}
     >
       {children}
     </UIProvider>
