@@ -17,17 +17,12 @@ import { useEffect, useRef, useState } from "react";
 import { BREAKPOINT_MD } from "@/lib/constants/breakpoints";
 import { useMediaQuery } from "@/lib/hooks/use-media-query";
 import { useUIStore } from "@/lib/store";
+import { formatDateRangeLabel } from "@/lib/utils/date";
 import type { SimpleBounds } from "@/lib/utils/event-params";
 
 import { ChartSection } from "./chart-section";
 import { EventsListPaginated } from "./events-list-paginated";
-import {
-  buildEventsDescription,
-  formatDateRange,
-  getDatasetName,
-  getFilterLabels,
-  type TranslateFn,
-} from "./explorer-helpers";
+import { buildEventsDescription, getDatasetName, getFilterLabels, type TranslateFn } from "./explorer-helpers";
 import type { ExplorerChromeElements } from "./explorer-shell";
 import { ExplorerShell } from "./explorer-shell";
 import { MapPanel } from "./map-panel";
@@ -110,7 +105,7 @@ const ListExplorerContent = ({ chrome, initialViewState }: ListExplorerContentPr
   // Helper functions for filter labels using shared helpers
   const getDatasetNames = (): string[] =>
     filters.datasets.map((id) => getDatasetName(datasets, id, t("unknownDataset")));
-  const dateRangeLabel = formatDateRange(filters.startDate, filters.endDate, locale);
+  const dateRangeLabel = formatDateRangeLabel(filters.startDate, filters.endDate, locale);
   const filterLabels = getFilterLabels(filters, catalogs, datasets, t("unknownDataset"), locale);
 
   if (isDesktop === false) {

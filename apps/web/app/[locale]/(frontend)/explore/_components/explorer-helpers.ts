@@ -39,9 +39,6 @@ export const getDatasetName = (datasets: DataSourceDataset[], datasetId: string,
   return dataset?.name ?? fallback;
 };
 
-/** Format date range for display -- delegates to shared utility */
-export const formatDateRange = formatDateRangeLabel;
-
 /** Get human-readable filter labels */
 export const getFilterLabels = (
   filters: FilterState,
@@ -51,7 +48,7 @@ export const getFilterLabels = (
   locale?: string
 ): FilterLabels => ({
   datasets: filters.datasets.map((id) => ({ id, name: getDatasetName(datasets, id, unknownDatasetLabel) })),
-  dateRange: formatDateRange(filters.startDate, filters.endDate, locale),
+  dateRange: formatDateRangeLabel(filters.startDate, filters.endDate, locale),
   fieldFilters: filters.fieldFilters && Object.keys(filters.fieldFilters).length > 0 ? filters.fieldFilters : undefined,
 });
 
