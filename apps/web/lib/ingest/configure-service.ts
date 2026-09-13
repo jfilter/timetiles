@@ -217,6 +217,7 @@ export const processDataset = async (
         catalog: catalogId,
         language: "eng",
         isPublic: true, // Default to public for wizard imports
+        _status: "published",
         interpretationPlan,
         idStrategy,
         geoFieldDetection,
@@ -529,7 +530,7 @@ export const getOrCreateCatalog = async (
 
   const newCatalog = await payload.create({
     collection: "catalogs",
-    data: { name: newCatalogName, isPublic: true },
+    data: { name: newCatalogName, isPublic: true, _status: "published" },
     req,
   });
 

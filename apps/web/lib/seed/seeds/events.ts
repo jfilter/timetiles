@@ -126,6 +126,7 @@ const generateEventsForDataset = (
       locationName,
       eventTimestamp: eventTimestamp,
       validationStatus: "valid" as const,
+      _status: "published" as const,
       coordinateSource: needsLocation
         ? {
             type: "source-data" as const,
