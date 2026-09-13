@@ -1,43 +1,14 @@
 /**
  * Geospatial utilities module.
  *
- * Comprehensive geospatial utilities for working with coordinates, distances,
- * bounds, and spatial data validation. Used across import services, API routes,
- * and testing infrastructure.
+ * Barrel for the geospatial helpers shared by the explorer and API routes.
+ * Parsing, validation, formatting and detection patterns are imported from
+ * their own files by the consumers that need them.
  *
  * @module
  * @category Geospatial
  */
 
-// Types
-export type { Coordinates, CoordinateSample, CoordinateStats, MapBounds } from "./types";
-export { EARTH_RADIUS_KM } from "./types";
-
-// Validation
-export { areValidCoordinates, isValidCoordinate } from "./validation";
-
-// Distance calculations
-export { calculateCentroid, calculateDistance, findMaxDistance } from "./distance";
-
-// Bounds utilities
-export { createBoundingBox, isValidBounds, isWithinBounds, parseBounds } from "./bounds";
-
-// Coordinate parsing — sub-format parsers and detection helpers are
-// imported directly from ./parsing and ./detection by consumers that
-// need them (tests, schema-detection). They are not re-exported here.
-
-// Formatting
-export { formatCenterCoordinates, formatCoordinate, formatEventCount, getCenterFromBounds } from "./formatting";
-
-// Patterns for coordinate detection
-export {
-  ADDRESS_PATTERNS,
-  COMBINED_COORDINATE_PATTERNS,
-  COORDINATE_BOUNDS,
-  LATITUDE_PATTERNS,
-  LONGITUDE_PATTERNS,
-} from "./patterns";
-
-// H3 helpers
 export type { H3ClusterFilter } from "./h3";
 export { parseH3ClusterFilter } from "./h3";
+export type { MapBounds } from "./types";

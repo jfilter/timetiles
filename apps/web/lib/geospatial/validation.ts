@@ -8,8 +8,6 @@
  * @category Geospatial
  */
 
-import type { Coordinates } from "./types";
-
 /**
  * Check if coordinates are valid (includes NaN and (0,0) checks).
  *
@@ -32,17 +30,4 @@ export const isValidCoordinate = (lat: number | null, lon: number | null): boole
   // Coordinates within ~1km of (0,0) are almost certainly data errors, not real locations.
   const nearNullIsland = Math.abs(lat) < 0.01 && Math.abs(lon) < 0.01;
   return !(lat < -90 || lat > 90 || lon < -180 || lon > 180 || nearNullIsland);
-};
-
-/**
- * Check if a coordinate object has valid latitude and longitude.
- *
- * Delegates to {@link isValidCoordinate} for consistent validation
- * including range checks, NaN rejection, and (0,0) filtering.
- *
- * @param coords - Coordinate object with latitude and longitude
- * @returns True if coordinates are valid
- */
-export const areValidCoordinates = (coords: Coordinates): boolean => {
-  return isValidCoordinate(coords.latitude, coords.longitude);
 };
