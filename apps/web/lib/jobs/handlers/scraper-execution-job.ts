@@ -18,7 +18,7 @@ import type { Scraper, ScraperRepo } from "@/payload-types";
 import type { JobHandlerContext } from "../utils/job-context";
 import { handleRunFailure, handleRunSuccess } from "./scraper-execution/auto-import";
 import type { RunnerResponse, ScraperExecutionJobInput } from "./scraper-execution/runner-api";
-import { buildRunnerRequest, callRunner } from "./scraper-execution/runner-api";
+import { buildRunnerRequest, callRunner, RunnerNotStartedError } from "./scraper-execution/runner-api";
 
 const log = createLogger("scraper-execution-job");
 type ScraperWithRepo = Omit<Scraper, "repo"> & { repo: ScraperRepo };
@@ -133,6 +133,7 @@ export const scraperExecutionJob = {
     let scraper: ScraperWithRepo | undefined;
     let repoOwnerId: number | undefined | null;
     let quotaClaimed = false;
+    let dispatched = false;
 
     try {
       // Feature flag check
@@ -172,9 +173,9 @@ export const scraperExecutionJob = {
 
       log.info({ scraperId, runId: run.id, runUuid, runtime: scraper.runtime }, "Calling runner API");
 
-      // Once the runner is dispatched, the resource is consumed regardless of outcome —
-      // a stuck run is still a run. Drop the claim so the catch block won't refund it.
-      quotaClaimed = false;
+      // A dispatched run consumes the quota whatever its outcome — a stuck run is still
+      // a run — unless the runner provably never started it.
+      dispatched = true;
       const result = await callRunner(request);
       const { ingestFileId, autoImportError } = await handleRunSuccess(context, scraper, repo, run.id, result);
 
@@ -193,7 +194,7 @@ export const scraperExecutionJob = {
       }
 
       // Rollback quota on failure (best-effort)
-      if (quotaClaimed && repoOwnerId) {
+      if (quotaClaimed && repoOwnerId && (!dispatched || error instanceof RunnerNotStartedError)) {
         try {
           const { createQuotaService } = await import("@/lib/services/quota-service");
           const quotaService = createQuotaService(payload);

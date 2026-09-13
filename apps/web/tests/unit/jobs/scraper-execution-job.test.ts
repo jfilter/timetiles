@@ -419,6 +419,34 @@ describe.sequential("scraperExecutionJob", () => {
     expect(mockQuotaService.decrementUsage).not.toHaveBeenCalled();
   });
 
+  it("should refund the quota when the runner refuses the run for lack of capacity", async () => {
+    globalThis.fetch = createFailureFetchMock(429, '{"code":"CONCURRENCY_LIMIT"}');
+
+    const context = createMockContext({ scraperId: 10, triggeredBy: "manual" });
+
+    await expect(scraperExecutionJob.handler(context as any)).rejects.toThrow("Runner API returned 429");
+    expect(mockQuotaService.decrementUsage).toHaveBeenCalledWith(200, "SCRAPER_RUNS_PER_DAY", 1);
+  });
+
+  it("should refund the quota when the runner cannot be reached", async () => {
+    const refused = Object.assign(new Error("connect ECONNREFUSED 127.0.0.1:4000"), { code: "ECONNREFUSED" });
+    globalThis.fetch = vi.fn().mockRejectedValue(new TypeError("fetch failed", { cause: refused }));
+
+    const context = createMockContext({ scraperId: 10, triggeredBy: "manual" });
+
+    await expect(scraperExecutionJob.handler(context as any)).rejects.toThrow("Runner API unreachable");
+    expect(mockQuotaService.decrementUsage).toHaveBeenCalledWith(200, "SCRAPER_RUNS_PER_DAY", 1);
+  });
+
+  it("should keep the quota charged when the runner request times out", async () => {
+    globalThis.fetch = vi.fn().mockRejectedValue(new DOMException("The operation timed out.", "TimeoutError"));
+
+    const context = createMockContext({ scraperId: 10, triggeredBy: "manual" });
+
+    await expect(scraperExecutionJob.handler(context as any)).rejects.toThrow("timed out");
+    expect(mockQuotaService.decrementUsage).not.toHaveBeenCalled();
+  });
+
   describe("auto-import", () => {
     const csvData = "id,title\n1,Évent 1";
 

@@ -36,6 +36,22 @@ export type RunnerRequest = ScraperRunRequest & {
 
 export type RunnerResponse = ScraperRunResult;
 
+/** The runner never started the run: it refused the request or could not be reached. */
+export class RunnerNotStartedError extends Error {
+  override readonly name = "RunnerNotStartedError";
+}
+
+/** Runner answers that reject a request before any work: capacity full or run id already active. */
+const NOT_STARTED_STATUSES = new Set([409, 429]);
+
+/** Connection errors that prove the request never reached the runner. */
+const UNREACHABLE_CODES = new Set(["ECONNREFUSED", "ENOTFOUND", "EAI_AGAIN"]);
+
+const isUnreachable = (error: unknown): boolean => {
+  const cause = error instanceof Error ? (error.cause as { code?: unknown } | undefined) : undefined;
+  return typeof cause?.code === "string" && UNREACHABLE_CODES.has(cause.code);
+};
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -94,16 +110,24 @@ export const callRunner = async (request: RunnerRequest): Promise<RunnerResponse
   }
 
   const timeoutMs = ((request.limits?.timeout_secs ?? SCRAPER_TIMEOUT_DEFAULT_SECONDS) + 60) * 1000;
-  const response = await fetch(url, {
-    method: "POST",
-    headers,
-    body: JSON.stringify(request),
-    signal: AbortSignal.timeout(timeoutMs),
-  });
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(request),
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+  } catch (error) {
+    if (isUnreachable(error))
+      throw new RunnerNotStartedError(`Runner API unreachable: ${String(error)}`, { cause: error });
+    throw error;
+  }
 
   if (!response.ok) {
     const body = await response.text().catch(() => "");
-    throw new Error(`Runner API returned ${response.status}: ${body}`);
+    const message = `Runner API returned ${response.status}: ${body}`;
+    throw NOT_STARTED_STATUSES.has(response.status) ? new RunnerNotStartedError(message) : new Error(message);
   }
 
   // Coerce the numeric fields before they reach the scraper-runs number columns.
