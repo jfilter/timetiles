@@ -23,7 +23,6 @@ All use semantic tokens for full theme compatibility:
 - ✅ **Hero** - Landing page heroes with semantic backgrounds (`bg-background`)
 - ✅ **Features** - Feature grids with semantic accent colors (`text-primary`, `text-secondary`, `text-accent`)
 - ✅ **DetailsGrid** - Editorial detail cards with semantic surfaces and accent markers
-- ✅ **CallToAction** - CTA sections with semantic variants (`bg-background`, `bg-card`, `bg-primary`)
 - ✅ **Footer** - Page footers using semantic tokens (`border-border`, `text-muted-foreground`)
 
 ### Cartographic Header Components

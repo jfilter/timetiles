@@ -432,7 +432,6 @@ These components use semantic design tokens and work with any theme:
 - **Header** -- `bg-card`, `bg-background`, `border-primary`
 - **Footer** -- `text-foreground`, `text-primary`, `border-border`
 - **Features** -- `text-accent`, `border-accent`, `bg-card`
-- **CallToAction** -- `bg-primary`, `bg-card`, `text-foreground`
 - **Newsletter** -- `bg-primary`, `text-accent`, `border-border`
 
 ### Data Visualization Components

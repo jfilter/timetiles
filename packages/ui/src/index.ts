@@ -17,14 +17,10 @@ export {
   CardDescription,
   CardFooter,
   CardHeader,
-  CardLabel,
-  CardSpec,
-  CardSpecItem,
   CardTitle,
   CardToolbar,
   CardToolbarSpacer,
   cardVariants,
-  CardVersion,
 } from "./components/card";
 export { Checkbox } from "./components/checkbox";
 export { Collapsible, CollapsibleContent, CollapsibleTrigger } from "./components/collapsible";
@@ -64,8 +60,6 @@ export {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "./components/dropdown-menu";
-export type { EmptyStateProps } from "./components/empty-state";
-export { EmptyState } from "./components/empty-state";
 export type { ErrorMessageProps } from "./components/error-message";
 export { ErrorMessage } from "./components/error-message";
 export {
@@ -82,11 +76,9 @@ export {
 export {
   Footer,
   FooterBottom,
-  FooterBottomContent,
   FooterBrand,
   FooterColumn,
   FooterContent,
-  FooterCopyright,
   FooterLink,
   FooterLinks,
   FooterLogo,
@@ -106,7 +98,6 @@ export { LoadingState } from "./components/loading-state";
 export {
   MobileNavDrawer,
   MobileNavDrawerContent,
-  MobileNavDrawerItem,
   MobileNavDrawerLink,
   MobileNavDrawerOverlay,
   MobileNavDrawerTrigger,
@@ -125,13 +116,6 @@ export { Tabs, TabsContent, TabsList, TabsTrigger } from "./components/tabs";
 export { useConfirmDialog } from "./hooks/use-confirm-dialog";
 
 // Page blocks - generic CMS components
-export {
-  CallToAction,
-  CallToActionActions,
-  CallToActionDescription,
-  CallToActionFootnote,
-  CallToActionHeadline,
-} from "./components/call-to-action";
 export { DetailsGrid, DetailsIcon, DetailsItem, DetailsLabel, DetailsValue } from "./components/details-grid";
 export type { NewsletterCTAProps } from "./components/newsletter-cta";
 export { NewsletterCTA, newsletterCtaVariants } from "./components/newsletter-cta";

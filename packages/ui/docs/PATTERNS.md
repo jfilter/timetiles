@@ -232,34 +232,35 @@ Used for 404, 500, network errors.
 #### No Data Yet (First Use)
 
 ```tsx
-<EmptyState
+<ContentState
+  variant="empty"
   icon={<FileIcon />}
   title="No datasets yet"
-  description="Import your first dataset to visualize events on a map."
-  action={<Button>Import Dataset</Button>}
+  subtitle="Import your first dataset to visualize events on a map."
 />
+<Button>Import Dataset</Button>
 ```
 
 #### No Results (Filtered)
 
 ```tsx
-<EmptyState
+<ContentState
+  variant="no-match"
   icon={<FilterIcon />}
   title="No events match your filters"
-  description="Try adjusting your date range or location filters."
-  action={<Button variant="outline">Clear Filters</Button>}
+  subtitle="Try adjusting your date range or location filters."
 />
+<Button variant="outline">Clear Filters</Button>
 ```
 
 #### Error State (Failed to Load)
 
 ```tsx
-<EmptyState
-  icon={<AlertTriangleIcon />}
+<ContentState
   variant="error"
   title="Failed to load datasets"
-  description="Network error occurred. Check your connection and try again."
-  action={<Button>Retry</Button>}
+  subtitle="Network error occurred. Check your connection and try again."
+  onRetry={refetch}
 />
 ```
 
@@ -269,7 +270,7 @@ Used for 404, 500, network errors.
 
 1. **Icon** - Visual representation (not decorative)
 2. **Title** - Clear statement of what's empty
-3. **Description** - Why it's empty + what to do
+3. **Subtitle** - Why it's empty + what to do
 4. **Action** - Button to resolve (when applicable)
 
 ## Confirmation Patterns
@@ -433,17 +434,15 @@ return <DashboardContent />;
 ### Permission Error
 
 ```tsx
-<EmptyState
+<ContentState
+  variant="error"
   icon={<LockIcon />}
-  variant="warning"
   title="Access restricted"
-  description="You don't have permission to view this dataset. Contact the owner to request access."
-  action={
-    <Button variant="outline" onClick={goBack}>
-      Go Back
-    </Button>
-  }
+  subtitle="You don't have permission to view this dataset. Contact the owner to request access."
 />
+<Button variant="outline" onClick={goBack}>
+  Go Back
+</Button>
 ```
 
 ## Pagination Patterns

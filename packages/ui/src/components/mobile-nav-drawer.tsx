@@ -125,40 +125,6 @@ const MobileNavDrawerContent = ({
 };
 MobileNavDrawerContent.displayName = "MobileNavDrawerContent";
 
-interface MobileNavDrawerItemProps extends React.ComponentProps<"a"> {
-  /** Whether this item represents the current page */
-  active?: boolean;
-  /** Component to use for rendering the link (e.g., Next.js Link) */
-  asChild?: boolean;
-}
-
-/**
- * Navigation item within the mobile drawer.
- * Styled with serif typography and terracotta active indicator.
- */
-const MobileNavDrawerItem = ({ className, active, children, ref, ...props }: MobileNavDrawerItemProps) => (
-  <DialogPrimitive.Close asChild>
-    <a
-      ref={ref}
-      className={cn(
-        "block px-6 py-4 transition-colors",
-        "font-serif text-lg",
-        "text-foreground dark:text-foreground",
-        "border-primary/10 dark:border-primary/20 border-b",
-        "hover:bg-primary/5 dark:hover:bg-foreground/5",
-        "focus:ring-primary/50 focus:ring-2 focus:outline-none focus:ring-inset",
-        active && ["border-l-secondary border-l-[3px]", "bg-primary/5 dark:bg-foreground/5", "pl-[calc(1.5rem-3px)]"],
-        className
-      )}
-      aria-current={active ? "page" : undefined}
-      {...props}
-    >
-      {children}
-    </a>
-  </DialogPrimitive.Close>
-);
-MobileNavDrawerItem.displayName = "MobileNavDrawerItem";
-
 /**
  * Link component for use within the mobile navigation drawer.
  * Wraps children with DialogPrimitive.Close for auto-close behavior.
@@ -191,11 +157,4 @@ const MobileNavDrawerLink = ({
 );
 MobileNavDrawerLink.displayName = "MobileNavDrawerLink";
 
-export {
-  MobileNavDrawer,
-  MobileNavDrawerContent,
-  MobileNavDrawerItem,
-  MobileNavDrawerLink,
-  MobileNavDrawerOverlay,
-  MobileNavDrawerTrigger,
-};
+export { MobileNavDrawer, MobileNavDrawerContent, MobileNavDrawerLink, MobileNavDrawerOverlay, MobileNavDrawerTrigger };

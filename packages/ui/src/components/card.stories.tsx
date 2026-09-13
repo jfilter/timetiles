@@ -4,18 +4,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 
 import { Button } from "./button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardLabel,
-  CardSpec,
-  CardSpecItem,
-  CardTitle,
-  CardVersion,
-} from "./card";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "./card";
 
 const meta: Meta<typeof Card> = {
   title: "Components/Card",
@@ -68,18 +57,11 @@ export const Showcase: Story = {
   render: () => (
     <Card variant="showcase" className="w-[380px]">
       <CardHeader>
-        <CardVersion>v2.0</CardVersion>
         <CardTitle>Showcase Card</CardTitle>
-        <CardDescription>With version badge and spec grid.</CardDescription>
+        <CardDescription>Accent border for featured content.</CardDescription>
       </CardHeader>
       <CardContent>
-        <CardLabel>Specifications</CardLabel>
-        <CardSpec>
-          <CardSpecItem label="Format">CSV</CardSpecItem>
-          <CardSpecItem label="Events">1,247</CardSpecItem>
-          <CardSpecItem label="Coverage">Berlin</CardSpecItem>
-          <CardSpecItem label="Updated">Daily</CardSpecItem>
-        </CardSpec>
+        <p className="text-muted-foreground text-sm">1,247 events from a daily CSV feed covering Berlin.</p>
       </CardContent>
     </Card>
   ),

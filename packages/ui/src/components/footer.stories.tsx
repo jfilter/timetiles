@@ -8,11 +8,9 @@ import type { ComponentProps } from "react";
 import {
   Footer,
   FooterBottom,
-  FooterBottomContent,
   FooterBrand,
   FooterColumn,
   FooterContent,
-  FooterCopyright,
   FooterCredits,
   FooterLink,
   FooterLinks,
@@ -104,12 +102,7 @@ const renderFooter = (args: ComponentProps<typeof Footer>, columns: 2 | 3 = 3) =
     </FooterContent>
 
     <FooterBottom>
-      <FooterBottomContent>
-        <FooterCopyright>
-          © 2026 TimeTiles contributors. Built for civic archives, researchers, and local newsrooms.
-        </FooterCopyright>
-        <FooterCredits>Made in Berlin with Payload, PostGIS, and a very opinionated map aesthetic.</FooterCredits>
-      </FooterBottomContent>
+      <FooterCredits>Made in Berlin with Payload, PostGIS, and a very opinionated map aesthetic.</FooterCredits>
     </FooterBottom>
   </Footer>
 );

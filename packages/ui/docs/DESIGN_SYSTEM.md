@@ -518,7 +518,6 @@ packages/ui/src/
 │   ├── hero.tsx        # Generic hero component
 │   ├── features.tsx    # Generic features component
 │   ├── details-grid.tsx # Generic details grid component
-│   ├── call-to-action.tsx # Generic call-to-action component
 │   └── footer.tsx      # Generic footer component
 ├── styles/
 │   └── globals.css     # Design tokens, base styles
@@ -537,8 +536,6 @@ packages/ui/src/
 ```tsx
 import {
   Button,
-  CallToAction,
-  CallToActionHeadline,
   DetailsGrid,
   DetailsItem,
   DetailsLabel,
@@ -582,10 +579,7 @@ export default function LandingPage() {
         </DetailsItem>
       </DetailsGrid>
 
-      <CallToAction variant="centered">
-        <CallToActionHeadline>Ready to explore?</CallToActionHeadline>
-        <Button size="lg">Get Started</Button>
-      </CallToAction>
+      <Button size="lg">Get Started</Button>
 
       <Footer />
     </div>
@@ -700,7 +694,6 @@ These components are **specifically designed for cartographic-themed landing pag
 - **Hero** - Uses cartographic grid backgrounds, parchment/cream colors
 - **Features** - Uses cartographic accent colors (blue, terracotta, forest)
 - **DetailsGrid** - Uses editorial cards, accent markers, and cartographic motion cues
-- **CallToAction** - Uses cartographic parchment, navy, and cream colors
 - **Footer** - Uses cartographic navy borders and parchment backgrounds
 
 **Why intentionally cartographic?** These components form the visual identity of a cartographic-themed landing page. They're meant to be used together as a cohesive design system for geographic/mapping applications. If you need generic landing page components, consider creating theme-agnostic variants or using these as inspiration.
@@ -730,7 +723,6 @@ All components use **semantic design tokens** and are fully themable. They work 
 - ✅ **Hero** - Landing page heroes with semantic backgrounds (`bg-background`)
 - ✅ **Features** - Feature grids with semantic accent colors (`text-primary`, `text-secondary`, `text-accent`)
 - ✅ **DetailsGrid** - Editorial detail cards using `bg-card`, `text-foreground`, and `text-accent`
-- ✅ **CallToAction** - CTA sections with semantic variants (`bg-background`, `bg-card`, `bg-primary`)
 - ✅ **Footer** - Page footers using semantic tokens (`border-border`, `text-muted-foreground`)
 
 **Data Visualization** (semantic tokens):

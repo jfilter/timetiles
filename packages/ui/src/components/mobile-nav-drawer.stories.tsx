@@ -8,7 +8,6 @@ import type { ReactNode } from "react";
 import {
   MobileNavDrawer,
   MobileNavDrawerContent,
-  MobileNavDrawerItem,
   MobileNavDrawerLink,
   MobileNavDrawerTrigger,
 } from "./mobile-nav-drawer";
@@ -63,9 +62,9 @@ export const Default: Story = {
         <MobileNavDrawerTrigger className="md:!inline-flex" />
         <MobileNavDrawerContent className="md:!flex">
           {drawerItems.map((item) => (
-            <MobileNavDrawerItem key={item.href} href={item.href} active={item.active}>
-              {item.label}
-            </MobileNavDrawerItem>
+            <MobileNavDrawerLink key={item.href} active={item.active}>
+              <a href={item.href}>{item.label}</a>
+            </MobileNavDrawerLink>
           ))}
           <div className="border-primary/20 my-2 border-t" />
           <div className="px-6 py-4">
@@ -111,9 +110,9 @@ export const TriggerOnly: Story = {
         <MobileNavDrawerTrigger className="md:!inline-flex" />
         <MobileNavDrawerContent className="md:!flex">
           {drawerItems.map((item) => (
-            <MobileNavDrawerItem key={item.href} href={item.href} active={item.active}>
-              {item.label}
-            </MobileNavDrawerItem>
+            <MobileNavDrawerLink key={item.href} active={item.active}>
+              <a href={item.href}>{item.label}</a>
+            </MobileNavDrawerLink>
           ))}
         </MobileNavDrawerContent>
       </MobileNavDrawer>

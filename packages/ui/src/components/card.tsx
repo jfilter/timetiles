@@ -92,84 +92,14 @@ const CardFooter = ({ className, ref, ...props }: React.ComponentProps<"div">) =
 );
 CardFooter.displayName = "CardFooter";
 
-/**
- * CardVersion - Small version/tag label for cards
- *
- * Usage: <CardVersion>Version 1</CardVersion>
- */
-const CardVersion = ({ className, ref, ...props }: React.ComponentProps<"div">) => (
-  <div
-    ref={ref}
-    className={cn("text-ring dark:text-ring mb-2 font-mono text-xs font-bold tracking-wide uppercase", className)}
-    {...props}
-  />
-);
-CardVersion.displayName = "CardVersion";
-
-/**
- * CardLabel - Small muted label for sections within cards
- *
- * Usage: <CardLabel>Light Background</CardLabel>
- */
-const CardLabel = ({ className, ref, ...props }: React.ComponentProps<"div">) => (
-  <div
-    ref={ref}
-    className={cn("text-muted-foreground mb-2 text-xs font-semibold tracking-wide uppercase opacity-60", className)}
-    {...props}
-  />
-);
-CardLabel.displayName = "CardLabel";
-
-/**
- * CardSpec - Grid of specification items (2-column layout)
- *
- * Usage:
- * <CardSpec>
- *   <CardSpecItem label="Dimensions">420×120px</CardSpecItem>
- *   <CardSpecItem label="Format">Landscape</CardSpecItem>
- * </CardSpec>
- */
-const CardSpec = ({ className, ref, ...props }: React.ComponentProps<"div">) => (
-  <div ref={ref} className={cn("mt-4 grid grid-cols-2 gap-3", className)} {...props} />
-);
-CardSpec.displayName = "CardSpec";
-
-/**
- * CardSpecItem - Individual specification item with label and value
- *
- * Usage: <CardSpecItem label="Dimensions">420×120px</CardSpecItem>
- */
-interface CardSpecItemProps extends React.ComponentProps<"div"> {
-  label: string;
-}
-
-const CardSpecItem = ({ className, label, children, ref, ...props }: CardSpecItemProps) => (
-  <div
-    ref={ref}
-    className={cn(
-      "from-background to-card dark:from-muted dark:to-muted/50 border-ring dark:border-primary rounded-sm border-l-2 bg-gradient-to-br p-3",
-      className
-    )}
-    {...props}
-  >
-    <div className="text-foreground mb-1 text-[0.625rem] font-bold tracking-wider uppercase opacity-70">{label}</div>
-    <div className="text-muted-foreground text-sm">{children}</div>
-  </div>
-);
-CardSpecItem.displayName = "CardSpecItem";
-
 export {
   Card,
   CardContent,
   CardDescription,
   CardFooter,
   CardHeader,
-  CardLabel,
-  CardSpec,
-  CardSpecItem,
   CardTitle,
   CardToolbar,
   CardToolbarSpacer,
   cardVariants,
-  CardVersion,
 };

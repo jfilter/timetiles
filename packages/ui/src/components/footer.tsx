@@ -191,24 +191,6 @@ const FooterBottom = ({ className, children, ref, ...props }: React.ComponentPro
 );
 FooterBottom.displayName = "FooterBottom";
 
-const FooterBottomContent = ({ className, children, ref, ...props }: React.ComponentProps<"div">) => (
-  <div ref={ref} className={cn("flex flex-col items-center justify-between gap-6 md:flex-row", className)} {...props}>
-    {children}
-  </div>
-);
-FooterBottomContent.displayName = "FooterBottomContent";
-
-const FooterCopyright = ({ className, children, ref, ...props }: React.ComponentProps<"p">) => (
-  <p
-    ref={ref}
-    className={cn("text-foreground/50 dark:text-foreground/50 text-sm", "font-mono tracking-wide", className)}
-    {...props}
-  >
-    {children}
-  </p>
-);
-FooterCopyright.displayName = "FooterCopyright";
-
 const FooterCredits = ({ className, children, ref, ...props }: React.ComponentProps<"p">) => (
   <p
     ref={ref}
@@ -223,12 +205,10 @@ FooterCredits.displayName = "FooterCredits";
 export {
   Footer,
   FooterBottom,
-  FooterBottomContent,
   FooterBrand,
   FooterColumn,
   FooterContent,
   footerContentVariants,
-  FooterCopyright,
   FooterCredits,
   FooterLink,
   FooterLinks,
