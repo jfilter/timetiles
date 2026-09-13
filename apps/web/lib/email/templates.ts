@@ -139,9 +139,6 @@ export const buildAccountExistsEmailHtml = (
     ${emailButton(resetUrl, t("resetPasswordBtn"))}
     <p><strong>${t("accountExistsIfNot")}</strong></p>
     <p>${t("accountExistsIgnore")}</p>
-    <p style="margin-top: 30px; color: #666; font-size: 12px;">
-      ${t("footer")}
-    </p>
   `,
     t,
     branding?.logoUrl

@@ -171,5 +171,23 @@ describe.sequential("email helpers", () => {
       expect(accountExistsHtml).toContain("https://app.example.com/reset");
       expect(accountExistsHtml).toContain("Atlas");
     });
+
+    it("renders the shared footer exactly once in every template", async () => {
+      const templates = await import("@/lib/email/templates");
+      const branding = { siteName: "Atlas", logoUrl: null };
+      const footer = "This is an automated message from Atlas";
+
+      const rendered = [
+        templates.buildAccountVerificationEmailHtml("https://app.example.com/v", "Ada", "en", branding),
+        templates.buildResetPasswordEmailHtml("https://app.example.com/r", "Ada", "en", branding),
+        templates.buildOldEmailNotificationHtml("Ada", "en", branding),
+        templates.buildVerificationEmailHtml("https://app.example.com/v", "Ada", "en", branding),
+        templates.buildAccountExistsEmailHtml("https://app.example.com/r", "en", branding),
+      ];
+
+      for (const html of rendered) {
+        expect(html.split(footer)).toHaveLength(2);
+      }
+    });
   });
 });
