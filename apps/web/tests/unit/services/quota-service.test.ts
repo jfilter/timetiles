@@ -7,6 +7,7 @@
  * @module
  * @category Tests
  */
+import { PgDialect } from "@payloadcms/db-postgres/drizzle/pg-core";
 import type { Payload } from "payload";
 import { describe, expect, it, vi } from "vitest";
 
@@ -16,6 +17,11 @@ import { QuotaService } from "@/lib/services/quota-service";
 vi.mock("@/lib/logger", () => ({
   createLogger: () => ({ debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() }),
 }));
+
+const dialect = new PgDialect();
+
+/** Render the SQL fragment passed to a mocked Drizzle call as `{ sql, params }`. */
+const renderSql = (fragment: unknown) => dialect.sqlToQuery(fragment as Parameters<PgDialect["sqlToQuery"]>[0]);
 
 /** Create a chainable mock for Drizzle's .update().set().where() pattern */
 const createDrizzleChainMock = (shouldReject = false, error?: Error) => {
@@ -231,15 +237,23 @@ describe("QuotaService", () => {
   });
 
   describe("incrementUsage", () => {
-    it("should succeed and call drizzle update chain", async () => {
+    it("atomically increments only the target column for the user", async () => {
       const { payload, updateMock, setMock, whereMock } = createMockPayload();
       const service = new QuotaService(payload);
 
-      await service.incrementUsage(42, "TOTAL_EVENTS", 1);
+      await service.incrementUsage(42, "TOTAL_EVENTS", 3);
 
-      expect(updateMock).toHaveBeenCalled();
-      expect(setMock).toHaveBeenCalled();
-      expect(whereMock).toHaveBeenCalled();
+      expect(updateMock).toHaveBeenCalledTimes(1);
+      const setClauses = setMock.mock.calls[0]![0] as Record<string, unknown>;
+      expect(Object.keys(setClauses)).toEqual(["totalEventsCreated", "updatedAt"]);
+      expect(renderSql(setClauses.totalEventsCreated)).toMatchObject({
+        sql: 'COALESCE("payload"."user_usage"."total_events_created", 0) + $1',
+        params: [3],
+      });
+      expect(renderSql(whereMock.mock.calls[0]![0])).toMatchObject({
+        sql: '"payload"."user_usage"."user_id" = $1',
+        params: [42],
+      });
     });
 
     it("should re-throw when drizzle update fails", async () => {
@@ -260,28 +274,54 @@ describe("QuotaService", () => {
       await expect(service.incrementUsage(42, "TOTAL_EVENTS", 1)).rejects.toThrow("Insert failed");
     });
 
-    it("should handle daily usage types", async () => {
+    it("resets every daily counter and increments only the target for daily usage types", async () => {
       const { payload, updateMock, setMock, whereMock } = createMockPayload();
       const service = new QuotaService(payload);
 
-      await service.incrementUsage(42, "FILE_UPLOADS_PER_DAY", 1);
+      await service.incrementUsage(42, "FILE_UPLOADS_PER_DAY", 2);
 
-      expect(updateMock).toHaveBeenCalled();
-      expect(setMock).toHaveBeenCalled();
-      expect(whereMock).toHaveBeenCalled();
+      expect(updateMock).toHaveBeenCalledTimes(1);
+      const setClauses = setMock.mock.calls[0]![0] as Record<string, unknown>;
+      expect(Object.keys(setClauses)).toHaveLength(6);
+      expect(Object.keys(setClauses)).toEqual(
+        expect.arrayContaining([
+          "fileUploadsToday",
+          "ingestJobsToday",
+          "lastResetDate",
+          "scraperRunsToday",
+          "updatedAt",
+          "urlFetchesToday",
+        ])
+      );
+      expect(renderSql(setClauses.fileUploadsToday).params).toEqual([2]);
+      expect(renderSql(setClauses.urlFetchesToday).params).toEqual([0]);
+      expect(renderSql(setClauses.ingestJobsToday).params).toEqual([0]);
+      expect(renderSql(setClauses.scraperRunsToday).params).toEqual([0]);
+      expect(renderSql(whereMock.mock.calls[0]![0])).toMatchObject({
+        sql: '"payload"."user_usage"."user_id" = $1',
+        params: [42],
+      });
     });
   });
 
   describe("decrementUsage", () => {
-    it("should succeed and call drizzle update chain", async () => {
+    it("atomically decrements the target column without going below zero", async () => {
       const { payload, updateMock, setMock, whereMock } = createMockPayload();
       const service = new QuotaService(payload);
 
-      await service.decrementUsage(42, "TOTAL_EVENTS", 1);
+      await service.decrementUsage(42, "TOTAL_EVENTS", 2);
 
-      expect(updateMock).toHaveBeenCalled();
-      expect(setMock).toHaveBeenCalled();
-      expect(whereMock).toHaveBeenCalled();
+      expect(updateMock).toHaveBeenCalledTimes(1);
+      const setClauses = setMock.mock.calls[0]![0] as Record<string, unknown>;
+      expect(Object.keys(setClauses)).toEqual(["totalEventsCreated", "updatedAt"]);
+      expect(renderSql(setClauses.totalEventsCreated)).toMatchObject({
+        sql: 'GREATEST(0, COALESCE("payload"."user_usage"."total_events_created", 0) - $1)',
+        params: [2],
+      });
+      expect(renderSql(whereMock.mock.calls[0]![0])).toMatchObject({
+        sql: '"payload"."user_usage"."user_id" = $1',
+        params: [42],
+      });
     });
 
     it("should re-throw when drizzle update fails", async () => {
