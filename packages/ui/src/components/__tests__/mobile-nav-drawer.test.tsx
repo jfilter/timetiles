@@ -26,7 +26,7 @@ describe("MobileNavDrawer", () => {
         <MobileNavDrawer open>
           <MobileNavDrawerTrigger />
           <MobileNavDrawerContent>
-            <a href="/">Start</a>
+            <p>Start</p>
           </MobileNavDrawerContent>
         </MobileNavDrawer>
       </UIProvider>
@@ -41,7 +41,7 @@ describe("MobileNavDrawer", () => {
     render(
       <MobileNavDrawer open>
         <MobileNavDrawerContent>
-          <a href="/">Home</a>
+          <p>Home</p>
         </MobileNavDrawerContent>
       </MobileNavDrawer>
     );
