@@ -125,3 +125,5 @@ Makefile
 *.backup
 archive
 .claude
+# Local git worktrees
+.worktrees

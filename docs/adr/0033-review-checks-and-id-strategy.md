@@ -76,7 +76,7 @@ Add 8 NEEDS_REVIEW checks that pause the import pipeline for human review:
 
 ### Neutral
 
-- The `computedIdFields` field on datasets is kept for backward compatibility but hidden in the UI. Content-hash strategy hashes all fields by default (with optional `excludeFields`).
+- Datasets no longer store a `computedIdFields` list. Content-hash strategy hashes all fields by default (with optional `excludeFields`).
 
 ## Related
 

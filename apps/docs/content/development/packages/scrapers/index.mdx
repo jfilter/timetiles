@@ -288,13 +288,13 @@ print(f"Wrote {output.row_count} rows")
 
 **API:**
 
-| Method                                | Description                                                          |
-| ------------------------------------- | -------------------------------------------------------------------- |
-| `output.write_row(row: dict)`         | Append one row. Headers are auto-detected from the first row's keys. |
-| `output.write_rows(rows: list[dict])` | Append multiple rows.                                                |
-| `output.save(filename=None)`          | Write all rows to CSV. Optional `filename` overrides the default.    |
-| `output.row_count`                    | Number of rows written so far.                                       |
-| `output.to_csv_string()`              | Return rows as a CSV string (for debugging).                         |
+| Method                                | Description                                                                   |
+| ------------------------------------- | ----------------------------------------------------------------------------- |
+| `output.write_row(row: dict)`         | Append one row. Headers are the union of all rows' keys, in first-seen order. |
+| `output.write_rows(rows: list[dict])` | Append multiple rows.                                                         |
+| `output.save(filename=None)`          | Write all rows to CSV. Optional `filename` overrides the default.             |
+| `output.row_count`                    | Number of rows written so far.                                                |
+| `output.to_csv_string()`              | Return rows as a CSV string (for debugging).                                  |
 
 **Pre-installed Python libraries:**
 
@@ -318,13 +318,13 @@ console.log(`Wrote ${output.rowCount} rows`);
 
 **API:**
 
-| Method                   | Description                                                          |
-| ------------------------ | -------------------------------------------------------------------- |
-| `output.writeRow(row)`   | Append one row. Headers are auto-detected from the first row's keys. |
-| `output.writeRows(rows)` | Append multiple rows.                                                |
-| `output.save(filename?)` | Write all rows to CSV. Optional `filename` overrides the default.    |
-| `output.rowCount`        | Number of rows written so far.                                       |
-| `output.toCsvString()`   | Return rows as a CSV string (for debugging).                         |
+| Method                   | Description                                                                   |
+| ------------------------ | ----------------------------------------------------------------------------- |
+| `output.writeRow(row)`   | Append one row. Headers are the union of all rows' keys, in first-seen order. |
+| `output.writeRows(rows)` | Append multiple rows.                                                         |
+| `output.save(filename?)` | Write all rows to CSV. Optional `filename` overrides the default.             |
+| `output.rowCount`        | Number of rows written so far.                                                |
+| `output.toCsvString()`   | Return rows as a CSV string (for debugging).                                  |
 
 **Pre-installed Node.js libraries:**
 

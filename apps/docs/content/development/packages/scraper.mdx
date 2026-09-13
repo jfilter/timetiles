@@ -57,13 +57,13 @@ writer.save("events.csv");
 
 ### `output` (singleton)
 
-| Method / Property        | Description                                                 |
-| ------------------------ | ----------------------------------------------------------- |
-| `output.writeRow(row)`   | Append a row. Headers are auto-detected from the first row. |
-| `output.writeRows(rows)` | Append multiple rows at once.                               |
-| `output.save(filename?)` | Write CSV to disk. Default filename: `data.csv`.            |
-| `output.rowCount`        | Number of rows written so far.                              |
-| `output.toCsvString()`   | Return CSV content as a string (useful for debugging).      |
+| Method / Property        | Description                                                                 |
+| ------------------------ | --------------------------------------------------------------------------- |
+| `output.writeRow(row)`   | Append a row. Headers are the union of all rows' keys, in first-seen order. |
+| `output.writeRows(rows)` | Append multiple rows at once.                                               |
+| `output.save(filename?)` | Write CSV to disk. Default filename: `data.csv`.                            |
+| `output.rowCount`        | Number of rows written so far.                                              |
+| `output.toCsvString()`   | Return CSV content as a string (useful for debugging).                      |
 
 ### `OutputWriter<T>` (class)
 

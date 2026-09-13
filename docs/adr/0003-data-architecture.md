@@ -193,16 +193,15 @@ Reference: `lib/collections/dataset-schemas.ts`, `lib/collections/datasets.ts` (
 
 ### Event Identity and Deduplication
 
-Each event has a `uniqueId` field (required, unique, indexed) with the format `datasetId:strategy:value`. The strategy for generating this ID is configured per dataset.
+Each event has a `uniqueId` field (required, unique, indexed) with the format `datasetId:prefix:value`, where the prefix is `ext`, `hash` or `auto`. The strategy for generating this ID is configured per dataset.
 
 #### ID Strategies
 
-| Strategy | `idStrategy.type` | How `uniqueId` is computed                                          |
-| -------- | ----------------- | ------------------------------------------------------------------- |
-| External | `external`        | Uses a field from the source data (configured via `externalIdPath`) |
-| Computed | `computed`        | SHA256 hash of selected fields (configured via `computedIdFields`)  |
-| Auto     | `auto`            | Auto-detects duplicates by hashing all content fields               |
-| Hybrid   | `hybrid`          | Tries external ID first, falls back to computed hash                |
+| Strategy      | `idStrategy.type` | How `uniqueId` is computed                                          |
+| ------------- | ----------------- | ------------------------------------------------------------------- |
+| External      | `external`        | Uses a field from the source data (configured via `externalIdPath`) |
+| Content hash  | `content-hash`    | Hash of all content fields, minus the optional `excludeFields`      |
+| Auto-generate | `auto-generate`   | Random ID, so no duplicate detection                                |
 
 #### Duplicate Handling Strategies
 
@@ -212,7 +211,6 @@ When a duplicate is found (matching `uniqueId` or `contentHash`), the dataset's 
 | -------- | ------------------- | ------------------------------------------------- |
 | Skip     | `skip`              | Ignore the duplicate row, keep the existing event |
 | Update   | `update`            | Overwrite the existing event with new data        |
-| Version  | `version`           | Create a new version of the existing event        |
 
 #### Supporting Fields on Events
 

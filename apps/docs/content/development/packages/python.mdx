@@ -34,13 +34,13 @@ print(f"Wrote {output.row_count} events")
 
 ### `output` (singleton)
 
-| Method / Property            | Description                                                               |
-| ---------------------------- | ------------------------------------------------------------------------- |
-| `output.write_row(row)`      | Append a dict as a CSV row. Headers are auto-detected from the first row. |
-| `output.write_rows(rows)`    | Append multiple rows at once.                                             |
-| `output.save(filename=None)` | Write CSV to disk. Default filename: `data.csv`.                          |
-| `output.row_count`           | Number of rows written so far.                                            |
-| `output.to_csv_string()`     | Return CSV content as a string (useful for debugging).                    |
+| Method / Property            | Description                                                                               |
+| ---------------------------- | ----------------------------------------------------------------------------------------- |
+| `output.write_row(row)`      | Append a dict as a CSV row. Headers are the union of all rows' keys, in first-seen order. |
+| `output.write_rows(rows)`    | Append multiple rows at once.                                                             |
+| `output.save(filename=None)` | Write CSV to disk. Default filename: `data.csv`.                                          |
+| `output.row_count`           | Number of rows written so far.                                                            |
+| `output.to_csv_string()`     | Return CSV content as a string (useful for debugging).                                    |
 
 ### `OutputWriter` (class)
 
