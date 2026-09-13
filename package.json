@@ -9,7 +9,7 @@
     "dev": "turbo run dev",
     "lint": "turbo run lint",
     "lint:eslint": "eslint --flag v10_config_lookup_from_file",
-    "lint:devops": "actionlint -shellcheck= && find . -name 'Dockerfile*' -type f | grep -v node_modules | grep -v .worktrees | grep -v .claude | xargs hadolint && find . \\( -name 'Makefile' -o -name '*.mk' \\) -type f | grep -v node_modules | grep -v .worktrees | grep -v .claude | xargs checkmake --config=.checkmake && find . -name '*.sh' -type f | grep -v node_modules | grep -v .worktrees | grep -v .claude | xargs shellcheck --exclude=SC1091,SC2016",
+    "lint:devops": "actionlint -shellcheck= && find . -name 'Dockerfile*' ! -name '*.dockerignore' -type f | grep -v node_modules | grep -v .worktrees | grep -v .claude | xargs hadolint && find . \\( -name 'Makefile' -o -name '*.mk' \\) -type f | grep -v node_modules | grep -v .worktrees | grep -v .claude | xargs checkmake --config=.checkmake && find . -name '*.sh' -type f | grep -v node_modules | grep -v .worktrees | grep -v .claude | xargs shellcheck --exclude=SC1091,SC2016",
     "test": "turbo run test",
     "test:coverage": "turbo run test:coverage",
     "test:coverage:merge": "tsx scripts/merge-coverage.ts",
