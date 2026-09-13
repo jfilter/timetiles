@@ -7,6 +7,7 @@
  * @module
  */
 
+import { SCRAPER_RUNNER_OVERHEAD_SECONDS } from "@timetiles/shared";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { resetEnv } from "@/lib/config/env";
@@ -436,6 +437,16 @@ describe.sequential("scraperExecutionJob", () => {
 
     await expect(scraperExecutionJob.handler(context as any)).rejects.toThrow("Runner API unreachable");
     expect(mockQuotaService.decrementUsage).toHaveBeenCalledWith(200, "SCRAPER_RUNS_PER_DAY", 1);
+  });
+
+  it("should wait for the runner's worst-case overhead on top of the run timeout", async () => {
+    const timeoutSpy = vi.spyOn(AbortSignal, "timeout");
+
+    const context = createMockContext({ scraperId: 10, triggeredBy: "manual" });
+    await scraperExecutionJob.handler(context);
+
+    expect(timeoutSpy).toHaveBeenCalledWith((300 + SCRAPER_RUNNER_OVERHEAD_SECONDS) * 1000);
+    timeoutSpy.mockRestore();
   });
 
   it("should keep the quota charged when the runner request times out", async () => {

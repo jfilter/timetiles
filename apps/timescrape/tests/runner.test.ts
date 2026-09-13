@@ -5,6 +5,8 @@ import { join, resolve } from "node:path";
 
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { SCRAPER_RUNNER_OVERHEAD_SECONDS } from "@timetiles/shared";
+
 import { ConcurrencyError } from "../src/lib/errors.js";
 import type { RunRequest } from "../src/types.js";
 
@@ -27,8 +29,15 @@ vi.mock("../src/lib/logger.js", () => ({
   logError: vi.fn(),
 }));
 
-const { executeRun, getActiveRunCount, getMetrics, isRunActive, startRunDataSweep, sweepStaleRunData } =
-  await import("../src/services/runner.js");
+const {
+  executeRun,
+  getActiveRunCount,
+  getMetrics,
+  isRunActive,
+  RUNNER_MAX_OVERHEAD_SECS,
+  startRunDataSweep,
+  sweepStaleRunData,
+} = await import("../src/services/runner.js");
 
 const STUB_DIR = resolve(import.meta.dirname, "fixtures/podman-stub");
 const originalPath = process.env.PATH;
@@ -282,6 +291,12 @@ describe("runner", () => {
       startRunDataSweep();
 
       await vi.waitFor(() => expect(existsSync(leftover)).toBe(false));
+    });
+  });
+
+  describe("response budget", () => {
+    it("answers within the overhead callers add to the run timeout", () => {
+      expect(RUNNER_MAX_OVERHEAD_SECS).toBeLessThanOrEqual(SCRAPER_RUNNER_OVERHEAD_SECONDS);
     });
   });
 

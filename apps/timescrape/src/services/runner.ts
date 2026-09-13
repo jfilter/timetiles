@@ -19,7 +19,7 @@ import { mkdir, open, readdir, rm, stat, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { promisify } from "node:util";
 
-import { SCRAPER_DEFAULT_OUTPUT_FILE } from "@timetiles/shared";
+import { SCRAPER_CLONE_DEADLINE_SECONDS, SCRAPER_DEFAULT_OUTPUT_FILE } from "@timetiles/shared";
 
 import { getConfig } from "../config.js";
 import { countCsvDataRows } from "../lib/csv.js";
@@ -31,6 +31,24 @@ import { prepareCode } from "./code-prep.js";
 import { validateOutput } from "./output-validator.js";
 
 const execFileAsync = promisify(execFile);
+
+/** Headroom on top of the run timeout for podman to create and start the container. */
+const CONTAINER_START_GRACE_MS = 5000;
+/** Client timeouts of the kill escalation; `stop` must outlast podman's own grace period. */
+const STOP_CLIENT_TIMEOUT_MS = (CONTAINER_STOP_GRACE_SECS + 5) * 1000;
+const KILL_CLIENT_TIMEOUT_MS = 10_000;
+const RM_CLIENT_TIMEOUT_MS = 15_000;
+const WORK_DIR_CLEANUP_TIMEOUT_MS = 30_000;
+
+/** Worst case this runner adds to a run's timeout before answering; must fit the shared overhead. */
+export const RUNNER_MAX_OVERHEAD_SECS =
+  SCRAPER_CLONE_DEADLINE_SECONDS +
+  (CONTAINER_START_GRACE_MS +
+    STOP_CLIENT_TIMEOUT_MS +
+    KILL_CLIENT_TIMEOUT_MS +
+    RM_CLIENT_TIMEOUT_MS +
+    WORK_DIR_CLEANUP_TIMEOUT_MS) /
+    1000;
 
 /** In-memory set of active run IDs. Resets on process restart. */
 const activeRuns = new Set<string>();
@@ -147,7 +165,7 @@ const forceKillContainer = async (runId: string): Promise<void> => {
 
   try {
     await execFileAsync("podman", ["stop", "-t", String(CONTAINER_STOP_GRACE_SECS), name], {
-      timeout: (CONTAINER_STOP_GRACE_SECS + 5) * 1000,
+      timeout: STOP_CLIENT_TIMEOUT_MS,
     });
     return;
   } catch (error) {
@@ -155,20 +173,17 @@ const forceKillContainer = async (runId: string): Promise<void> => {
   }
 
   try {
-    await execFileAsync("podman", ["kill", "-s", "KILL", name], { timeout: 10_000 });
+    await execFileAsync("podman", ["kill", "-s", "KILL", name], { timeout: KILL_CLIENT_TIMEOUT_MS });
   } catch (error) {
     logger.info({ runId, error: String(error) }, "podman kill failed, attempting force-remove");
   }
 
   try {
-    await execFileAsync("podman", ["rm", "-f", "-t", "0", name], { timeout: 15_000 });
+    await execFileAsync("podman", ["rm", "-f", "-t", "0", name], { timeout: RM_CLIENT_TIMEOUT_MS });
   } catch {
     // Already removed by `--rm`, or never created. Nothing left to do.
   }
 };
-
-/** Headroom on top of the run timeout for podman to create and start the container. */
-const CONTAINER_START_GRACE_MS = 5000;
 
 type ContainerOutcome = { stdout: string; stderr: string; exitCode: number; timedOut: boolean };
 
@@ -306,7 +321,7 @@ const startOutputWatchdog = (
  */
 const removeContainerWrittenDir = async (dir: string): Promise<void> => {
   try {
-    await execFileAsync("podman", ["unshare", "rm", "-rf", dir], { timeout: 30_000 });
+    await execFileAsync("podman", ["unshare", "rm", "-rf", dir], { timeout: WORK_DIR_CLEANUP_TIMEOUT_MS });
   } catch (error) {
     // A run that failed before starting a container leaves the tree owned by
     // the runner, where a plain remove is both sufficient and cheaper than

@@ -37,6 +37,16 @@ export const SCRAPER_MEMORY_DEFAULT_MB = 512;
  */
 export const SCRAPER_MAX_REPO_SIZE_MB = 50;
 
+/** Total time the runner allows for fetching a git-sourced scraper, in seconds. */
+export const SCRAPER_CLONE_DEADLINE_SECONDS = 120;
+
+/**
+ * Upper bound on what a runner adds to a run's timeout before it answers POST /run:
+ * clone deadline, container start grace, kill escalation and cleanup, plus slack for
+ * DNS and transfer. A caller waiting on the response must allow timeout_secs plus this.
+ */
+export const SCRAPER_RUNNER_OVERHEAD_SECONDS = 240;
+
 /** Output filename used when a scraper does not configure one. */
 export const SCRAPER_DEFAULT_OUTPUT_FILE = "data.csv";
 

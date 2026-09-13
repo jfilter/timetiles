@@ -9,7 +9,7 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 
-import { isSafeRelativeEntrypoint } from "@timetiles/shared";
+import { isSafeRelativeEntrypoint, SCRAPER_CLONE_DEADLINE_SECONDS } from "@timetiles/shared";
 import { simpleGit } from "simple-git";
 
 import { getConfig } from "../config.js";
@@ -52,9 +52,12 @@ const cloneRepo = async (codeUrl: string, codeDir: string): Promise<void> => {
   // network. Refusing redirects outright closes the gap: git aborts instead of
   // silently re-targeting. Legitimate hosts (GitHub, GitLab, Codeberg) serve
   // clone traffic directly, so nothing normal depends on following one.
+  // The block timeout only catches silence; the deadline bounds a server that trickles progress forever.
+  const deadline = AbortSignal.timeout(SCRAPER_CLONE_DEADLINE_SECONDS * 1000);
   const git = simpleGit({
     timeout: { block: config.SCRAPER_GIT_CLONE_TIMEOUT },
     config: ["http.followRedirects=false"],
+    abort: deadline,
   });
 
   logger.info({ url, branch: branch ?? "default" }, "Cloning repository");
@@ -86,6 +89,13 @@ const cloneRepo = async (codeUrl: string, codeDir: string): Promise<void> => {
     }
   } catch (error) {
     if (error instanceof RunnerError) throw error;
+    if (deadline.aborted) {
+      throw new RunnerError(
+        `Repository clone exceeded the ${SCRAPER_CLONE_DEADLINE_SECONDS}s deadline`,
+        "GIT_CLONE_FAILED",
+        500
+      );
+    }
     throw new RunnerError(
       `Failed to clone repository: ${error instanceof Error ? error.message : String(error)}`,
       "GIT_CLONE_FAILED",

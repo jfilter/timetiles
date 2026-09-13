@@ -12,6 +12,7 @@ import {
   SCRAPER_DEFAULT_OUTPUT_FILE,
   SCRAPER_MEMORY_DEFAULT_MB,
   SCRAPER_RUN_STATUSES,
+  SCRAPER_RUNNER_OVERHEAD_SECONDS,
   SCRAPER_TIMEOUT_DEFAULT_SECONDS,
 } from "@timetiles/shared";
 
@@ -109,7 +110,9 @@ export const callRunner = async (request: RunnerRequest): Promise<RunnerResponse
     headers["Authorization"] = `Bearer ${apiKey}`;
   }
 
-  const timeoutMs = ((request.limits?.timeout_secs ?? SCRAPER_TIMEOUT_DEFAULT_SECONDS) + 60) * 1000;
+  // The runner answers only after clone, run, kill escalation and cleanup; abort no earlier.
+  const timeoutMs =
+    ((request.limits?.timeout_secs ?? SCRAPER_TIMEOUT_DEFAULT_SECONDS) + SCRAPER_RUNNER_OVERHEAD_SECONDS) * 1000;
   let response: Response;
   try {
     response = await fetch(url, {
