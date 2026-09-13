@@ -1,212 +1,127 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { randomUUID } from "node:crypto";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, utimesSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
+
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ConcurrencyError } from "../src/lib/errors.js";
 import type { RunRequest } from "../src/types.js";
 
-// Mock logger to avoid side effects
-vi.mock("../src/lib/logger.js", () => ({ logger: { info: vi.fn(), error: vi.fn() }, logError: vi.fn() }));
-
-// Mock config
-const mockConfig = {
+// The runner drives the real filesystem and a real child process: `podman` on
+// PATH is tests/fixtures/podman-stub, which plays the container.
+const mockConfig = vi.hoisted(() => ({
   SCRAPER_MAX_CONCURRENT: 2,
   SCRAPER_DEFAULT_TIMEOUT: 300,
   SCRAPER_DEFAULT_MEMORY: 512,
-  SCRAPER_DATA_DIR: "/tmp/timescrape-test",
-  SCRAPER_MAX_OUTPUT_SIZE_MB: 100,
-};
-
-vi.mock("../src/config.js", () => ({ getConfig: vi.fn(() => mockConfig), loadConfig: vi.fn(() => mockConfig) }));
-
-// Mock child_process.execFile
-const mockExecFile = vi.fn();
-vi.mock("node:child_process", () => ({ execFile: mockExecFile }));
-
-// Mock fs/promises
-const mockMkdir = vi.fn().mockResolvedValue(undefined);
-const mockRm = vi.fn().mockResolvedValue(undefined);
-const mockReadFile = vi.fn();
-const mockStat = vi.fn();
-const mockCopyFile = vi.fn().mockResolvedValue(undefined);
-const mockReaddir = vi.fn().mockResolvedValue([]);
-vi.mock("node:fs/promises", () => ({
-  mkdir: (...args: unknown[]) => mockMkdir(...args),
-  rm: (...args: unknown[]) => mockRm(...args),
-  readFile: (...args: unknown[]) => mockReadFile(...args),
-  readdir: (...args: unknown[]) => mockReaddir(...args),
-  stat: (...args: unknown[]) => mockStat(...args),
-  copyFile: (...args: unknown[]) => mockCopyFile(...args),
+  SCRAPER_DATA_DIR: "",
+  SCRAPER_MAX_OUTPUT_SIZE_MB: 1,
+  SCRAPER_OUTPUT_TTL_HOURS: 1,
+  SCRAPER_MAX_REPO_SIZE_MB: 50,
+  SCRAPER_GIT_CLONE_TIMEOUT: 60_000,
 }));
 
-// Mock code-prep
-vi.mock("../src/services/code-prep.js", () => ({ prepareCode: vi.fn().mockResolvedValue(undefined) }));
-
-// Mock output-validator
-vi.mock("../src/services/output-validator.js", () => ({ validateOutput: vi.fn().mockResolvedValue(undefined) }));
-
-// Mock container-config
-vi.mock("../src/security/container-config.js", () => ({
-  buildPodmanArgs: vi.fn().mockReturnValue(["run", "--rm", "timescrape-python", "python", "/scraper/scraper.py"]),
+vi.mock("../src/config.js", () => ({ getConfig: () => mockConfig, loadConfig: () => mockConfig }));
+vi.mock("../src/lib/logger.js", () => ({
+  logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+  logError: vi.fn(),
 }));
 
-const BASE_REQUEST: RunRequest = {
-  run_id: "550e8400-e29b-41d4-a716-446655440000",
-  runtime: "python",
-  entrypoint: "scraper.py",
-  code: { "scraper.py": "print('hello')" },
-};
+const { executeRun, getActiveRunCount, getMetrics, isRunActive, sweepStaleOutputs } =
+  await import("../src/services/runner.js");
+
+const STUB_DIR = resolve(import.meta.dirname, "fixtures/podman-stub");
+const originalPath = process.env.PATH;
+
+let dataDir: string;
+let stateDir: string;
+
+const runStub = (stub: Record<string, string>, overrides: Partial<RunRequest> = {}) =>
+  executeRun({
+    run_id: randomUUID(),
+    runtime: "python",
+    entrypoint: "scraper.py",
+    code: { "scraper.py": "print('hello')" },
+    env: stub,
+    ...overrides,
+  });
+
+const persistedOutput = (runId: string) => join(dataDir, "outputs", runId);
 
 describe("runner", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
+  beforeAll(() => {
+    process.env.PATH = `${STUB_DIR}:${originalPath}`;
+  });
 
-    // Re-apply default mock implementations after clear
-    mockMkdir.mockResolvedValue(undefined);
-    mockRm.mockResolvedValue(undefined);
-    mockCopyFile.mockResolvedValue(undefined);
+  afterAll(() => {
+    process.env.PATH = originalPath;
+  });
+
+  beforeEach(() => {
+    dataDir = mkdtempSync(join(tmpdir(), "timescrape-runner-"));
+    stateDir = mkdtempSync(join(tmpdir(), "timescrape-stub-"));
+    mockConfig.SCRAPER_DATA_DIR = dataDir;
+    process.env.STUB_STATE_DIR = stateDir;
+  });
+
+  afterEach(() => {
+    rmSync(dataDir, { recursive: true, force: true });
+    rmSync(stateDir, { recursive: true, force: true });
+    delete process.env.STUB_UNKILLABLE;
   });
 
   describe("executeRun", () => {
     it("rejects with ConcurrencyError when max concurrent runs reached", async () => {
-      // Set max concurrent to 0 so any run exceeds the limit
       mockConfig.SCRAPER_MAX_CONCURRENT = 0;
-
-      const { executeRun } = await import("../src/services/runner.js");
-
-      await expect(executeRun(BASE_REQUEST)).rejects.toThrow(ConcurrencyError);
-      await expect(executeRun(BASE_REQUEST)).rejects.toThrow("Max concurrent runs (0) reached");
-
-      // Restore
-      mockConfig.SCRAPER_MAX_CONCURRENT = 2;
+      try {
+        await expect(runStub({})).rejects.toThrow(ConcurrencyError);
+      } finally {
+        mockConfig.SCRAPER_MAX_CONCURRENT = 2;
+      }
     });
 
-    it("returns success with output when execution succeeds", async () => {
-      // execFile mock: successful podman run
-      mockExecFile.mockImplementation(
-        (
-          _cmd: string,
-          _args: string[],
-          _opts: Record<string, unknown>,
-          cb: (err: null, result: { stdout: string; stderr: string }) => void
-        ) => {
-          cb(null, { stdout: "scraper output", stderr: "" });
-        }
-      );
+    it("returns success with persisted output and removes the work directory", async () => {
+      const csv = "id,title\n1,Event A\n2,Event B\n";
+      const runId = randomUUID();
 
-      // Output file exists with valid CSV content
-      const csvContent = Buffer.from("id,title\n1,Event A\n2,Event B\n");
-      mockStat.mockResolvedValue({ size: csvContent.length });
-      mockReadFile.mockResolvedValue(csvContent);
-
-      const { executeRun } = await import("../src/services/runner.js");
-
-      const result = await executeRun({ ...BASE_REQUEST, run_id: "550e8400-e29b-41d4-a716-446655440001" });
+      const result = await runStub({ STUB_OUTPUT: csv, STUB_STDOUT: "scraper output" }, { run_id: runId });
 
       expect(result.status).toBe("success");
       expect(result.exit_code).toBe(0);
-      expect(result.output).toBeDefined();
-      expect(result.output!.rows).toBe(2);
-      expect(result.output!.bytes).toBe(csvContent.length);
-      expect(result.output!.download_url).toBe("/output/550e8400-e29b-41d4-a716-446655440001/data.csv");
+      expect(result.stdout).toBe("scraper output");
+      expect(result.output).toEqual({ rows: 2, bytes: csv.length, download_url: `/output/${runId}/data.csv` });
+      expect(readFileSync(join(persistedOutput(runId), "data.csv"), "utf-8")).toBe(csv);
+      expect(existsSync(join(dataDir, "runs", runId))).toBe(false);
     });
 
     it("counts CSV records, not lines, when a field spans multiple lines", async () => {
-      mockExecFile.mockImplementation(
-        (
-          _cmd: string,
-          _args: string[],
-          _opts: Record<string, unknown>,
-          cb: (err: null, result: { stdout: string; stderr: string }) => void
-        ) => {
-          cb(null, { stdout: "", stderr: "" });
-        }
-      );
-
-      // Two data rows, one of which carries a quoted three-line description.
-      const csvContent = Buffer.from('id,description\n1,"line one\nline two\nline three"\n2,plain\n');
-      mockStat.mockResolvedValue({ size: csvContent.length });
-      mockReadFile.mockResolvedValue(csvContent);
-
-      const { executeRun } = await import("../src/services/runner.js");
-      const result = await executeRun({ ...BASE_REQUEST, run_id: "550e8400-e29b-41d4-a716-446655440010" });
+      const result = await runStub({ STUB_OUTPUT: 'id,description\n1,"line one\nline two\nline three"\n2,plain\n' });
 
       expect(result.status).toBe("success");
       expect(result.output!.rows).toBe(2);
     });
 
-    it("treats a zero-row output as a successful run of zero rows", async () => {
-      // Finding nothing is a valid scrape. It used to surface as HTTP 422.
-      mockExecFile.mockImplementation(
-        (
-          _cmd: string,
-          _args: string[],
-          _opts: Record<string, unknown>,
-          cb: (err: null, result: { stdout: string; stderr: string }) => void
-        ) => {
-          cb(null, { stdout: "no entries today", stderr: "" });
-        }
-      );
-
-      const csvContent = Buffer.from("");
-      mockStat.mockResolvedValue({ size: 0 });
-      mockReadFile.mockResolvedValue(csvContent);
-
-      const { executeRun } = await import("../src/services/runner.js");
-      const result = await executeRun({ ...BASE_REQUEST, run_id: "550e8400-e29b-41d4-a716-446655440011" });
+    it("treats a zero-byte output as a successful run of zero rows", async () => {
+      const result = await runStub({ STUB_OUTPUT: "", STUB_STDOUT: "no entries today" });
 
       expect(result.status).toBe("success");
-      expect(result.exit_code).toBe(0);
       expect(result.output!.rows).toBe(0);
       expect(result.stdout).toContain("no entries today");
     });
 
     it("treats a header-only output as a successful run of zero rows", async () => {
-      mockExecFile.mockImplementation(
-        (
-          _cmd: string,
-          _args: string[],
-          _opts: Record<string, unknown>,
-          cb: (err: null, result: { stdout: string; stderr: string }) => void
-        ) => {
-          cb(null, { stdout: "", stderr: "" });
-        }
-      );
-
-      const csvContent = Buffer.from("id,title\n");
-      mockStat.mockResolvedValue({ size: csvContent.length });
-      mockReadFile.mockResolvedValue(csvContent);
-
-      const { executeRun } = await import("../src/services/runner.js");
-      const result = await executeRun({ ...BASE_REQUEST, run_id: "550e8400-e29b-41d4-a716-446655440012" });
+      const result = await runStub({ STUB_OUTPUT: "id,title\n" });
 
       expect(result.status).toBe("success");
       expect(result.output!.rows).toBe(0);
     });
 
     it("records unusable output as a failed run that keeps the scraper logs", async () => {
-      // Invalid output is a fact about the run, not a malformed request: it
-      // must not become an HTTP error that discards stdout/stderr.
-      mockExecFile.mockImplementation(
-        (
-          _cmd: string,
-          _args: string[],
-          _opts: Record<string, unknown>,
-          cb: (err: null, result: { stdout: string; stderr: string }) => void
-        ) => {
-          cb(null, { stdout: "scraped 400 pages", stderr: "warning: selector missed" });
-        }
-      );
-
-      // Data with no header row — real output, unusable shape.
-      const csvContent = Buffer.from("\n1,A\n2,B\n");
-      mockStat.mockResolvedValue({ size: csvContent.length });
-      mockReadFile.mockResolvedValue(csvContent);
-
-      const { validateOutput } = await import("../src/services/output-validator.js");
-      const { OutputValidationError } = await import("../src/lib/errors.js");
-      vi.mocked(validateOutput).mockRejectedValueOnce(new OutputValidationError("Output file has no header row"));
-
-      const { executeRun } = await import("../src/services/runner.js");
-      const result = await executeRun({ ...BASE_REQUEST, run_id: "550e8400-e29b-41d4-a716-446655440013" });
+      const result = await runStub({
+        STUB_OUTPUT: "\n1,A\n2,B\n",
+        STUB_STDOUT: "scraped 400 pages",
+        STUB_STDERR: "warning: selector missed",
+      });
 
       expect(result.status).toBe("failed");
       expect(result.exit_code).toBe(1);
@@ -217,45 +132,20 @@ describe("runner", () => {
     });
 
     it("records oversized output as a failed run that keeps the scraper logs", async () => {
-      mockExecFile.mockImplementation(
-        (
-          _cmd: string,
-          _args: string[],
-          _opts: Record<string, unknown>,
-          cb: (err: null, result: { stdout: string; stderr: string }) => void
-        ) => {
-          cb(null, { stdout: "wrote everything", stderr: "" });
-        }
+      const runId = randomUUID();
+      const result = await runStub(
+        { STUB_OUTPUT_BYTES: String(2 * 1024 * 1024), STUB_STDOUT: "wrote everything" },
+        { run_id: runId }
       );
-
-      mockStat.mockResolvedValue({ size: 200 * 1024 * 1024 }); // 200MB, limit is 100MB
-
-      const { executeRun } = await import("../src/services/runner.js");
-      const result = await executeRun({ ...BASE_REQUEST, run_id: "550e8400-e29b-41d4-a716-446655440014" });
 
       expect(result.status).toBe("failed");
       expect(result.stdout).toContain("wrote everything");
       expect(result.stderr).toContain("exceeds limit");
+      expect(existsSync(persistedOutput(runId))).toBe(false);
     });
 
     it("fails a run whose scraper exited 0 without writing an output file", async () => {
-      // The other side of the split: a MISSING file means the scraper never
-      // produced a result, whatever its exit code claimed.
-      mockExecFile.mockImplementation(
-        (
-          _cmd: string,
-          _args: string[],
-          _opts: Record<string, unknown>,
-          cb: (err: null, result: { stdout: string; stderr: string }) => void
-        ) => {
-          cb(null, { stdout: "done", stderr: "" });
-        }
-      );
-
-      mockStat.mockRejectedValue(new Error("ENOENT"));
-
-      const { executeRun } = await import("../src/services/runner.js");
-      const result = await executeRun({ ...BASE_REQUEST, run_id: "550e8400-e29b-41d4-a716-446655440015" });
+      const result = await runStub({ STUB_STDOUT: "done" });
 
       expect(result.status).toBe("failed");
       expect(result.exit_code).toBe(1);
@@ -263,123 +153,87 @@ describe("runner", () => {
       expect(result.stdout).toContain("done");
     });
 
-    it("returns timeout status when podman is killed", async () => {
-      // execFile mock: process killed (timeout)
-      mockExecFile.mockImplementation(
-        (
-          _cmd: string,
-          _args: string[],
-          _opts: Record<string, unknown>,
-          cb: (err: Error & { killed: boolean }) => void
-        ) => {
-          const error = new Error("Process killed") as Error & { killed: boolean };
-          error.killed = true;
-          cb(error);
-        }
-      );
+    it("keeps a failing exit code and cleans up the work directory", async () => {
+      const runId = randomUUID();
+      const result = await runStub({ STUB_EXIT: "3", STUB_STDERR: "container error" }, { run_id: runId });
 
-      const { executeRun } = await import("../src/services/runner.js");
+      expect(result.status).toBe("failed");
+      expect(result.exit_code).toBe(3);
+      expect(result.stderr).toContain("container error");
+      expect(existsSync(join(dataDir, "runs", runId))).toBe(false);
+    });
 
-      const result = await executeRun({ ...BASE_REQUEST, run_id: "550e8400-e29b-41d4-a716-446655440002" });
+    it("refuses an output symlink to a host file instead of persisting its content", async () => {
+      const secretFile = join(stateDir, "env.production");
+      writeFileSync(secretFile, "id,secret\n1,hunter2\n");
+      const runId = randomUUID();
+
+      const result = await runStub({ STUB_SYMLINK: secretFile }, { run_id: runId });
+
+      expect(result.status).toBe("failed");
+      expect(result.output).toBeUndefined();
+      expect(result.stderr).toContain("not a readable regular file");
+      expect(JSON.stringify(result)).not.toContain("hunter2");
+      expect(existsSync(persistedOutput(runId))).toBe(false);
+    });
+
+    it("refuses an output symlink to an endless device without reading it", async () => {
+      const result = await runStub({ STUB_SYMLINK: "/dev/zero" });
+
+      expect(result.status).toBe("failed");
+      expect(result.stderr).toContain("not a readable regular file");
+    });
+
+    it("refuses a FIFO as output instead of blocking on it", { timeout: 10_000 }, async () => {
+      const result = await runStub({ STUB_FIFO: "1" });
+
+      expect(result.status).toBe("failed");
+      expect(result.stderr).toContain("not a regular file");
+    });
+
+    it("returns timeout status when the run exceeds its limit", { timeout: 20_000 }, async () => {
+      const result = await runStub({ STUB_SLEEP_MS: "15000" }, { limits: { timeout_secs: 1 } });
 
       expect(result.status).toBe("timeout");
       expect(result.exit_code).toBe(-1);
       expect(result.stderr).toContain("exceeded timeout");
     });
-
-    it("cleans up work directory even on error", async () => {
-      // execFile mock: throw a non-timeout error
-      mockExecFile.mockImplementation(
-        (
-          _cmd: string,
-          _args: string[],
-          _opts: Record<string, unknown>,
-          cb: (err: Error & { killed: boolean; stdout: string; stderr: string; code: number }) => void
-        ) => {
-          const error = new Error("Podman crashed") as Error & {
-            killed: boolean;
-            stdout: string;
-            stderr: string;
-            code: number;
-          };
-          error.killed = false;
-          error.stdout = "";
-          error.stderr = "container error";
-          error.code = 1;
-          cb(error);
-        }
-      );
-
-      // No output file produced
-      mockStat.mockRejectedValue(new Error("ENOENT"));
-
-      const { executeRun } = await import("../src/services/runner.js");
-
-      const result = await executeRun({ ...BASE_REQUEST, run_id: "550e8400-e29b-41d4-a716-446655440003" });
-
-      // The run itself returns "failed" (non-zero exit)
-      expect(result.status).toBe("failed");
-
-      // Verify cleanup was called with the work directory
-      expect(mockRm).toHaveBeenCalledWith(expect.stringContaining("550e8400-e29b-41d4-a716-446655440003"), {
-        recursive: true,
-        force: true,
-      });
-    });
   });
 
   describe("sweepStaleOutputs", () => {
     it("removes output directories older than the configured TTL", async () => {
-      Object.assign(mockConfig, { SCRAPER_OUTPUT_TTL_HOURS: 1 });
-      const hourMs = 60 * 60 * 1000;
-      mockReaddir.mockResolvedValue(["stale-run", "fresh-run"]);
-      mockStat.mockImplementation(async (dir: string) => ({
-        mtimeMs: dir.endsWith("stale-run") ? Date.now() - 2 * hourMs : Date.now(),
-      }));
+      const stale = join(dataDir, "outputs", "stale-run");
+      const fresh = join(dataDir, "outputs", "fresh-run");
+      mkdirSync(stale, { recursive: true });
+      mkdirSync(fresh, { recursive: true });
+      const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000);
+      utimesSync(stale, twoHoursAgo, twoHoursAgo);
 
-      const { sweepStaleOutputs } = await import("../src/services/runner.js");
       await sweepStaleOutputs();
 
-      expect(mockRm).toHaveBeenCalledTimes(1);
-      expect(mockRm).toHaveBeenCalledWith(expect.stringMatching(/outputs\/stale-run$/), {
-        recursive: true,
-        force: true,
-      });
+      expect(existsSync(stale)).toBe(false);
+      expect(existsSync(fresh)).toBe(true);
     });
   });
 
-  describe("getActiveRunCount", () => {
-    it("returns 0 initially", async () => {
-      const { getActiveRunCount } = await import("../src/services/runner.js");
-
+  describe("run bookkeeping", () => {
+    it("reports no active runs when idle", () => {
       expect(getActiveRunCount()).toBe(0);
-    });
-  });
-
-  describe("isRunActive", () => {
-    it("returns false for unknown runId", async () => {
-      const { isRunActive } = await import("../src/services/runner.js");
-
       expect(isRunActive("nonexistent-run-id")).toBe(false);
     });
-  });
 
-  describe("getMetrics", () => {
-    it("returns metrics with correct structure", async () => {
-      const { getMetrics } = await import("../src/services/runner.js");
-
+    it("returns metrics with correct structure", () => {
       const metrics = getMetrics();
 
-      expect(metrics).toHaveProperty("active_runs");
-      expect(metrics).toHaveProperty("total_runs");
-      expect(metrics).toHaveProperty("total_success");
-      expect(metrics).toHaveProperty("total_failed");
-      expect(metrics).toHaveProperty("total_timeout");
-      expect(metrics).toHaveProperty("uptime_seconds");
-      expect(metrics).toHaveProperty("queue_capacity");
-      expect(typeof metrics.active_runs).toBe("number");
-      expect(typeof metrics.uptime_seconds).toBe("number");
-      expect(metrics.queue_capacity).toBe(2); // from mockConfig
+      expect(metrics).toEqual({
+        active_runs: 0,
+        total_runs: expect.any(Number),
+        total_success: expect.any(Number),
+        total_failed: expect.any(Number),
+        total_timeout: expect.any(Number),
+        uptime_seconds: expect.any(Number),
+        queue_capacity: 2,
+      });
     });
   });
 });

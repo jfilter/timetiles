@@ -12,7 +12,9 @@
  */
 
 import { execFile } from "node:child_process";
-import { copyFile, mkdir, readdir, readFile, rm, stat } from "node:fs/promises";
+import { constants } from "node:fs";
+import type { FileHandle } from "node:fs/promises";
+import { mkdir, open, readdir, rm, stat, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { promisify } from "node:util";
 
@@ -264,7 +266,7 @@ const startOutputWatchdog = (
  * subuids, which is what makes the tree removable again without root.
  *
  * Only this directory needs it. Persistent outputs are written by the runner
- * itself via copyFile, so they stay owned by the runner and remove normally.
+ * itself via writeFile, so they stay owned by the runner and remove normally.
  */
 const removeContainerWrittenDir = async (dir: string): Promise<void> => {
   try {
@@ -296,6 +298,38 @@ const failedOutput = (exitCode: number, stderr: string, reason: string): Collect
   stderr: `${stderr}\n[runner] ${reason}`,
 });
 
+/** Read the whole file, or null when it holds more than `limit` bytes. */
+const readAtMost = async (handle: FileHandle, limit: number): Promise<Buffer | null> => {
+  const buffer = Buffer.alloc(limit + 1);
+  let total = 0;
+  let bytesRead = -1;
+  while (bytesRead !== 0 && total <= limit) {
+    ({ bytesRead } = await handle.read(buffer, total, buffer.length - total, null));
+    total += bytesRead;
+  }
+  return total > limit ? null : buffer.subarray(0, total);
+};
+
+/**
+ * Open the output without trusting the scraper's filesystem entries.
+ *
+ * The runner runs as a host user, so following a planted symlink would read
+ * host files (secrets, /dev/zero) into the run output. O_NOFOLLOW refuses the
+ * link, O_NONBLOCK stops a FIFO from blocking the open, and every later check
+ * and read uses this one handle.
+ */
+type OpenedOutput = { handle: FileHandle } | { missing: true } | { unreadable: string };
+
+const openOutputFile = async (outputFile: string): Promise<OpenedOutput> => {
+  try {
+    return { handle: await open(outputFile, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK) };
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code;
+    if (code === "ENOENT") return { missing: true };
+    return { unreadable: `Output file is not a readable regular file (${code ?? String(error)})` };
+  }
+};
+
 const collectOutput = async (
   outputDir: string,
   outputFileName: string,
@@ -316,31 +350,39 @@ const collectOutput = async (
   //                                if it also exited 0 it lied about its work.
   //   - file present, 0 records -> SUCCESS with rows: 0. Finding nothing is a
   //                                valid scrape (an empty listing page today).
-  //   - file present, oversize
-  //     or headerless           -> failure. Real output, unusable shape.
+  //   - file present, oversize,
+  //     headerless or not a
+  //     regular file            -> failure. Real output, unusable shape.
   // Every failure branch keeps stdout/stderr so the cause stays visible.
-  let stats: Awaited<ReturnType<typeof stat>>;
-  try {
-    stats = await stat(outputFile);
-  } catch {
+  const opened = await openOutputFile(outputFile);
+  if ("missing" in opened) {
     return exitCode === 0
       ? failedOutput(exitCode, stderr, `No output file produced at ${outputFileName}`)
       : { output: undefined, exitCode, stderr };
   }
-
-  const sizeMb = stats.size / (1024 * 1024);
-  if (sizeMb > maxSizeMb) {
-    return failedOutput(exitCode, stderr, `Output size (${sizeMb.toFixed(1)}MB) exceeds limit (${maxSizeMb}MB)`);
-  }
+  if ("unreadable" in opened) return failedOutput(exitCode, stderr, opened.unreadable);
+  const { handle } = opened;
 
   let content: Buffer;
   try {
-    content = await readFile(outputFile);
+    const stats = await handle.stat();
+    if (!stats.isFile()) return failedOutput(exitCode, stderr, "Output file is not a regular file");
+
+    const sizeMb = stats.size / (1024 * 1024);
+    if (sizeMb > maxSizeMb) {
+      return failedOutput(exitCode, stderr, `Output size (${sizeMb.toFixed(1)}MB) exceeds limit (${maxSizeMb}MB)`);
+    }
+
+    const read = await readAtMost(handle, stats.size);
+    if (!read) return failedOutput(exitCode, stderr, "Output file grew while it was being read");
+    content = read;
     await validateOutput(content, maxSizeMb);
   } catch (error) {
     if (error instanceof OutputValidationError) return failedOutput(exitCode, stderr, error.message);
     if (error instanceof RunnerError) throw error;
     return failedOutput(exitCode, stderr, `Could not read output file: ${String(error)}`);
+  } finally {
+    await handle.close();
   }
 
   // Count parsed CSV records, not raw lines: a quoted field may contain line
@@ -348,17 +390,17 @@ const collectOutput = async (
   const rows = countCsvDataRows(content.toString("utf-8"));
 
   try {
-    // Copy output file to persistent location for download
+    // Persist the bytes already read, never the path, which the scraper controls.
     const config = getConfig();
     const persistentDir = join(config.SCRAPER_DATA_DIR, "outputs", runId);
     await mkdir(persistentDir, { recursive: true });
-    await copyFile(outputFile, join(persistentDir, outputFileName));
+    await writeFile(join(persistentDir, outputFileName), content);
   } catch (error) {
     return failedOutput(exitCode, stderr, `Could not persist output file: ${String(error)}`);
   }
 
   const downloadUrl = `/output/${runId}/${outputFileName}`;
-  return { output: { rows, bytes: stats.size, download_url: downloadUrl }, exitCode, stderr };
+  return { output: { rows, bytes: content.length, download_url: downloadUrl }, exitCode, stderr };
 };
 
 export const executeRun = async (request: RunRequest): Promise<RunResult> => {
