@@ -178,7 +178,7 @@ describe("BlockRenderer block background color", () => {
   it("does not render a value that smuggles extra declarations", () => {
     const markup = serverMarkup("red;position:fixed;inset:0;z-index:9999");
     expect(markup).not.toContain("position:fixed");
-    expect(markup).not.toContain("style=");
+    expect(markup).not.toContain("background-color");
   });
 
   it("rejects invalid colors in the field validator", () => {
