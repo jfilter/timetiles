@@ -27,10 +27,11 @@ const SECURITY_HEADERS = [
 // resource CSP (script/style/connect-src) is intentionally left to the
 // deployment proxy so it can be tuned to the configured map tile/style hosts.
 //
-// Embed routes are EXCLUDED here: they must be frameable from any origin, and
-// the middleware's headers.delete() cannot remove a header this static layer
-// adds after middleware runs. The middleware sets frame-ancestors * for /embed
-// and X-Frame-Options DENY + frame-ancestors 'self' for everything else.
+// Embed routes are EXCLUDED here: they must be frameable from any origin. Next
+// applies these headers before the proxy runs; the proxy's headers.set() then
+// overrides a value, but its headers.delete() cannot remove a header added here.
+// The proxy sets frame-ancestors * for /embed and X-Frame-Options DENY +
+// frame-ancestors 'self' for everything else.
 const FRAME_HEADERS = [
   { key: "X-Frame-Options", value: "SAMEORIGIN" },
   { key: "Content-Security-Policy", value: "frame-ancestors 'self'" },

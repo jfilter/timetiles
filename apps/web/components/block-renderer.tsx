@@ -3,7 +3,8 @@
  * Block Renderer Component
  *
  * Renders Payload CMS page blocks as React UI components.
- * Supports various block types: Hero, Features, Stats, ContactMethods, RichText, CTA.
+ * Supports Hero, Features, Stats, DetailsGrid, Timeline, Testimonials, RichText,
+ * CTA, NewsletterForm and NewsletterCTA blocks.
  * This is similar to Wagtail's StreamField rendering.
  *
  * @module
@@ -70,9 +71,8 @@ import { IconMapper } from "./icon-mapper";
 import { RichText } from "./layout/rich-text";
 
 const renderHero = (block: HeroBlock) => {
-  // Both CMS options must reach the Hero unchanged. Collapsing "gradient" onto
-  // "grid" made the select a no-op — the two options rendered identically.
-  const heroBackground = block.background ?? "grid";
+  // Unset falls back to the field's defaultValue in lib/blocks/hero.ts.
+  const heroBackground = block.background ?? "gradient";
   return (
     <Hero background={heroBackground}>
       <HeroHeadline>{block.title}</HeroHeadline>

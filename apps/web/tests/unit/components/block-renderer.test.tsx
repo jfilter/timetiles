@@ -28,6 +28,7 @@ import { describe, expect, it } from "vitest";
 
 import { BlockRenderer } from "@/components/block-renderer";
 import { blockStyleFields } from "@/lib/blocks/block-style-fields";
+import { getPayloadBlocks } from "@/lib/blocks/registry";
 import type { Block } from "@/lib/types/cms-blocks";
 
 import en from "../../../messages/en.json";
@@ -60,6 +61,13 @@ const backgroundColorValidate = () => {
   if (!field || !("validate" in field) || typeof field.validate !== "function") throw new Error("validate missing");
   const validate = field.validate as (value: string) => true | string;
   return (value: string) => validate(value);
+};
+
+/** The hero block's `background` select default from the registered block config. */
+const heroBackgroundDefault = (): unknown => {
+  const hero = getPayloadBlocks().find((block) => block.slug === "hero");
+  const field = hero?.fields.find((candidate) => "name" in candidate && candidate.name === "background");
+  return field && "defaultValue" in field ? field.defaultValue : undefined;
 };
 
 const heroBlock = (overrides: Partial<Block> = {}): Block =>
@@ -143,9 +151,14 @@ describe("BlockRenderer hero background", () => {
     expect(gradientClass).toContain("bg-gradient-to-b");
   });
 
-  it("defaults to the grid background when unset", () => {
-    const { container } = renderWithProviders(<BlockRenderer blocks={[heroBlock()]} />);
-    expect(container.querySelector("section")?.className).toContain("bg-background");
+  it("renders the field's default background when unset", () => {
+    expect(heroBackgroundDefault()).toBe("gradient");
+
+    const unset = renderWithProviders(<BlockRenderer blocks={[heroBlock()]} />);
+    const explicit = renderWithProviders(<BlockRenderer blocks={[heroBlock({ background: "gradient" })]} />);
+    expect(unset.container.querySelector("section")?.className).toBe(
+      explicit.container.querySelector("section")?.className
+    );
   });
 });
 
