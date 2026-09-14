@@ -13,7 +13,8 @@ RUN --mount=type=bind,source=packages/python,target=/tmp/timetiles-sdk,rw \
  && useradd -m -u 1000 -s /bin/false scraper \
  && mkdir -p /scraper /output && chown scraper:scraper /output
 
-USER scraper
+# uid of the scraper account created above
+USER 1000
 WORKDIR /scraper
 
-HEALTHCHECK --interval=60s --timeout=5s --retries=1 CMD python -c "print('ok')" || exit 1
+HEALTHCHECK --interval=60s --timeout=5s --retries=1 CMD ["python", "-c", "print('ok')"]

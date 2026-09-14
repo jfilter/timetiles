@@ -52,10 +52,11 @@ RUN mkdir -p /scraper /output && chown scraper:scraper /output
 # first. NODE_PATH stays for CJS `require()` of the pre-installed helpers.
 RUN ln -s /usr/local/lib/node_modules /node_modules
 
-USER scraper
+# uid of the scraper account renamed from node above
+USER 1000
 WORKDIR /scraper
 
 # Allow importing global modules
 ENV NODE_PATH=/usr/local/lib/node_modules
 
-HEALTHCHECK --interval=60s --timeout=5s --retries=1 CMD node -e "console.log('ok')" || exit 1
+HEALTHCHECK --interval=60s --timeout=5s --retries=1 CMD ["node", "-e", "console.log('ok')"]

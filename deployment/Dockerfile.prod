@@ -33,7 +33,6 @@ COPY --from=deps /app/ .
 
 # Build arguments for Payload CMS
 ARG DATABASE_URL
-ARG PAYLOAD_SECRET
 ARG NEXT_PUBLIC_PAYLOAD_URL
 # DEFAULT_LOCALE is inlined into both bundles at build time (next.config env
 # passthrough) — it CANNOT be changed at container runtime.
@@ -44,7 +43,6 @@ ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 # Use dummy values for build if not provided (Payload needs them for schema generation)
 ENV DATABASE_URL=${DATABASE_URL:-postgresql://user:pass@postgres:5432/db}
-ENV PAYLOAD_SECRET=${PAYLOAD_SECRET:-dummy_secret_for_build_only}
 ENV NEXT_PUBLIC_PAYLOAD_URL=${NEXT_PUBLIC_PAYLOAD_URL:-http://localhost:3000}
 ENV DEFAULT_LOCALE=${DEFAULT_LOCALE:-en}
 # Raise the V8 heap, as the CI workflows already do for their builds
@@ -66,7 +64,9 @@ RUN pnpm exec turbo run build --filter=web^...
 WORKDIR /app/apps/web
 # Use experimental build mode to avoid DB connection during build
 # This compiles the code without static generation
-RUN pnpm exec payload generate:importmap && pnpm exec next build --experimental-build-mode compile
+# Payload needs a secret to compile; set per command so no layer or image config keeps it.
+RUN export PAYLOAD_SECRET=dummy_secret_for_build_only \
+ && pnpm exec payload generate:importmap && pnpm exec next build --experimental-build-mode compile
 
 # Remove dev dependencies (eslint, vitest, storybook, etc.) to reduce image size
 # and eliminate dev-only CVEs like handlebars. CI=true suppresses pnpm's
@@ -108,14 +108,16 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-USER nextjs
+# uid of the nextjs account created above
+USER 1001
 
 EXPOSE 3000
 
 # 127.0.0.1 not localhost: BusyBox wget in alpine resolves localhost to ::1
 # and does not fall back to the AAAA-less IPv4 address.
+# Docker counts every non-zero exit as a failed probe, so wget's own codes need no mapping.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://127.0.0.1:3000/api/health || exit 1
+  CMD ["wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:3000/api/health"]
 
 # Start Next.js (non-standalone mode)
 WORKDIR /app/apps/web
