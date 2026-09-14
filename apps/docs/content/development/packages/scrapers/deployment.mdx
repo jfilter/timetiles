@@ -74,7 +74,7 @@ podman images | grep timescrape
 
 ### 3. Create the Sandbox Network
 
-Scraper containers run on a network that reaches the public internet but not your internal services. That takes two steps: a normal NAT network, plus firewall rules that fence its subnet off from every private destination.
+Scraper containers run on a network that reaches the public internet but not your internal services. That takes two parts: a normal NAT network, plus a firewall fence on the user that runs Podman.
 
 ```bash
 podman network create --subnet 10.89.200.0/24 scraper-sandbox
@@ -82,28 +82,42 @@ podman network create --subnet 10.89.200.0/24 scraper-sandbox
 
 Do **not** use `podman network create --internal` here. `--internal` removes the external gateway altogether, so containers on the network can reach nothing at all and every scraper fails — it is isolation in the wrong direction.
 
-Containment comes from the firewall instead. Deny rules must precede the allow, because ufw takes the first matching route rule:
+Containment comes from the firewall, and it has to match the user, not the subnet. Rootless Podman keeps its bridge inside a private network namespace; container traffic reaches the host as ordinary `slirp4netns` sockets owned by the user running Podman. It passes the host's `OUTPUT` chain and never `FORWARD`, so `ufw route` rules on `10.89.200.0/24` match nothing.
 
-```bash
-for net in 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16 169.254.0.0/16 127.0.0.0/8; do
-  ufw route deny from 10.89.200.0/24 to "$net"
-done
-ufw route allow from 10.89.200.0/24
+Add the fence to `/etc/ufw/before.rules`, directly below `# End required lines`. There ufw loads it at boot, and it sits ahead of ufw's loopback accept — which matters, because traffic to the host's own addresses leaves through `lo`. Replace `1001` with `id -u` of the Podman user:
+
+```text
+-A ufw-before-output -m owner --uid-owner 1001 -m conntrack --ctstate NEW ! -d 127.0.0.0/8 -m addrtype --dst-type LOCAL -j REJECT
+-A ufw-before-output -m owner --uid-owner 1001 -m conntrack --ctstate NEW -d 10.0.0.0/8 -j REJECT
+-A ufw-before-output -m owner --uid-owner 1001 -m conntrack --ctstate NEW -d 172.16.0.0/12 -j REJECT
+-A ufw-before-output -m owner --uid-owner 1001 -m conntrack --ctstate NEW -d 192.168.0.0/16 -j REJECT
+-A ufw-before-output -m owner --uid-owner 1001 -m conntrack --ctstate NEW -d 169.254.0.0/16 -j REJECT
+-A ufw-before-output -m owner --uid-owner 1001 -m conntrack --ctstate NEW -d 100.64.0.0/10 -j REJECT
 ```
 
-The host itself needs no rule here: traffic from a container to the host is filtered by ufw's incoming policy, not by these route rules.
+and the IPv6 counterparts to `/etc/ufw/before6.rules`, below the same line:
 
-Verify both halves of the property — one must succeed, the other must fail:
+```text
+-A ufw6-before-output -m owner --uid-owner 1001 -m conntrack --ctstate NEW ! -d ::1/128 -m addrtype --dst-type LOCAL -j REJECT
+-A ufw6-before-output -m owner --uid-owner 1001 -m conntrack --ctstate NEW -d fc00::/7 -j REJECT
+-A ufw6-before-output -m owner --uid-owner 1001 -m conntrack --ctstate NEW -d fe80::/10 -j REJECT
+```
+
+Then run `ufw reload`. The bootstrap script's scraper step writes exactly these rules. `ufw --force reset` removes them again, so re-run that step after resetting the firewall.
+
+The fence covers every process of that user, not only containers. Loopback stays open (the local DNS stub, health checks against `localhost`), and replies on connections the host accepted are untouched, so the runner still answers the web app. Anything else the user connects to on a private address is refused — including an offsite backup repository, if you point one at a private host.
+
+Verify both halves. Pick a private address that answers when you connect from the server itself; an address that does not exist fails either way and proves nothing:
 
 ```bash
 podman run --rm --network scraper-sandbox timescrape-python \
   python -c "import socket; socket.create_connection(('1.1.1.1', 443), timeout=10)"   # succeeds
 
 podman run --rm --network scraper-sandbox timescrape-python \
-  python -c "import socket; socket.create_connection(('169.254.169.254', 80), timeout=5)"  # must fail
+  python -c "import socket; socket.create_connection(('192.0.2.10', 5432), timeout=5)"  # must fail; use your private host
 ```
 
-If the second command succeeds, the egress rules are not in effect and a scraper can reach your database, your web app, and your cloud provider's metadata service.
+If the second command succeeds, the fence is not in effect and a scraper can reach your database, your other hosts, and your cloud provider's metadata service.
 
 ### 4. Configure Environment
 

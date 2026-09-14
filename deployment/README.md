@@ -161,7 +161,7 @@ During bootstrap, pass `--scraper` or set `SKIP_SCRAPER=false` in your bootstrap
 
 1. Installs Podman (rootless)
 2. Builds base images (`timescrape-python`, `timescrape-node`)
-3. Creates the `scraper-sandbox` network (no internet access for containers)
+3. Creates the `scraper-sandbox` network and fences the Podman user off from private addresses (public internet only)
 4. Installs the runner as a systemd service
 5. Generates and configures `SCRAPER_API_KEY`
 

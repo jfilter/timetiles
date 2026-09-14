@@ -237,36 +237,30 @@ build_base_image() {
         --ignorefile "$image_dir/Dockerfile.dockerignore" "$src_dir"
 }
 
-# Subnet for the sandbox network.
-#
-# Pinned rather than left to podman's allocator because the egress rules below
-# have to name it. Inside podman's own default pool (10.89.0.0/16), so it does
-# not collide with anything the host's LAN is likely to use.
+# Pinned so firewall rules and diagnostics can name it; inside podman's own
+# default pool (10.89.0.0/16).
 SCRAPER_SANDBOX_SUBNET="10.89.200.0/24"
 
-# Destinations a scraper must never reach, whatever else it may reach.
-#
-# The scraper's own subnet is not listed: traffic inside it is bridged, not
-# routed, so these FORWARD rules never see it.
+# Private destinations the app user may not open connections to. Loopback stays
+# open; the host's other own addresses are fenced by address type.
 SCRAPER_BLOCKED_DESTINATIONS=(
     "10.0.0.0/8"      # RFC1918 class A — other hosts on the operator's network
-    "172.16.0.0/12"   # RFC1918 class B — includes docker's default pool
+    "172.16.0.0/12"   # RFC1918 class B — docker's pools and the compose subnet
     "192.168.0.0/16"  # RFC1918 class C
     "169.254.0.0/16"  # link-local, incl. the cloud metadata service
-    "127.0.0.0/8"     # loopback
+    "100.64.0.0/10"   # carrier-grade NAT, incl. Tailscale
+)
+SCRAPER_BLOCKED_DESTINATIONS_V6=(
+    "fc00::/7"        # unique local
+    "fe80::/10"       # link-local
 )
 
-# Create the sandbox network: reachable internet, unreachable neighbours.
-#
-# NOT `--internal`, despite what this used to do. podman's `--internal` removes
-# the external gateway entirely, so a container on the network can reach
-# nothing at all — the scraper feature cannot scrape. ADR 0015 asks for the
-# other shape: "internet access but cannot reach internal services". That is a
-# normal NAT network plus egress filtering, which is what this builds.
-#
-# Containment therefore lives in the firewall, not in the network driver. The
-# host itself is covered separately: container-to-host traffic lands in INPUT,
-# where step 03's `default deny incoming` already governs it.
+# Delimit the rules this step owns inside ufw's before.rules and before6.rules.
+SCRAPER_EGRESS_BEGIN="# BEGIN timetiles scraper egress"
+SCRAPER_EGRESS_END="# END timetiles scraper egress"
+
+# Create the sandbox network: reachable internet, unreachable neighbours. Not
+# --internal, which removes the gateway and leaves scrapers no internet at all.
 create_sandbox_network() {
     local user="$1"
 
@@ -280,18 +274,15 @@ create_sandbox_network() {
         print_success "Created Podman network: scraper-sandbox ($SCRAPER_SANDBOX_SUBNET)"
     fi
 
-    apply_sandbox_egress_rules
+    apply_sandbox_egress_rules "$user"
 }
 
-# Fence the sandbox subnet off from every private destination.
-#
-# Applied on every run, not only when the network is created: a host whose
-# network already exists from an earlier bootstrap still needs the rules, and
-# ufw deduplicates identical rules itself.
-#
-# Order matters — ufw evaluates route rules top-down and takes the first match,
-# so every deny has to be inserted before the catch-all allow.
+# Rootless containers reach the host as slirp4netns sockets owned by the app
+# user, crossing OUTPUT and never FORWARD, so the fence matches that uid.
 apply_sandbox_egress_rules() {
+    local user="$1"
+    local uid destination
+
     if ! command -v ufw &>/dev/null; then
         print_warning "ufw not installed — scraper egress is UNFILTERED"
         print_warning "  A scraper can reach every host the server can reach"
@@ -300,16 +291,57 @@ apply_sandbox_egress_rules() {
 
     print_step "Restricting scraper egress to public destinations..."
 
-    local destination
+    uid="$(id -u "$user")"
+
+    # NEW only, so the runner still answers connections the host accepted. The
+    # LOCAL rule catches the host's own addresses, which leave through lo.
+    local match="-A ufw-before-output -m owner --uid-owner $uid -m conntrack --ctstate NEW"
+    local rules="$match ! -d 127.0.0.0/8 -m addrtype --dst-type LOCAL -j REJECT"
     for destination in "${SCRAPER_BLOCKED_DESTINATIONS[@]}"; do
-        ufw route deny from "$SCRAPER_SANDBOX_SUBNET" to "$destination" >/dev/null \
-            || die "Failed to add egress deny rule for $destination"
+        rules+=$'\n'"$match -d $destination -j REJECT"
     done
+    write_ufw_block /etc/ufw/before.rules "$rules"
 
-    ufw route allow from "$SCRAPER_SANDBOX_SUBNET" >/dev/null \
-        || die "Failed to add the scraper egress allow rule"
+    local match6="-A ufw6-before-output -m owner --uid-owner $uid -m conntrack --ctstate NEW"
+    local rules6="$match6 ! -d ::1/128 -m addrtype --dst-type LOCAL -j REJECT"
+    for destination in "${SCRAPER_BLOCKED_DESTINATIONS_V6[@]}"; do
+        rules6+=$'\n'"$match6 -d $destination -j REJECT"
+    done
+    write_ufw_block /etc/ufw/before6.rules "$rules6"
 
-    print_success "Scraper egress restricted (public internet only)"
+    # Route rules on the sandbox subnet never match rootless traffic; remove any
+    # that exist. ufw reports a missing rule and still exits 0.
+    for destination in "${SCRAPER_BLOCKED_DESTINATIONS[@]}" "127.0.0.0/8"; do
+        ufw route delete deny from "$SCRAPER_SANDBOX_SUBNET" to "$destination" >/dev/null
+    done
+    ufw route delete allow from "$SCRAPER_SANDBOX_SUBNET" >/dev/null
+
+    # ufw loads before.rules at boot; while inactive, reload is a no-op.
+    ufw reload >/dev/null || die "ufw rejected the scraper egress rules"
+
+    print_success "Scraper egress restricted (public destinations only)"
+}
+
+# Usage: write_ufw_block <rules-file> <rules>
+# Replaces this step's block, placed right after ufw's required chain lines.
+write_ufw_block() {
+    local file="$1"
+    local rules="$2"
+    local tmp
+
+    grep -qx '# End required lines' "$file" || die "No '# End required lines' anchor in $file"
+
+    tmp="$(mktemp)"
+    RULES="$rules" BEGIN_MARK="$SCRAPER_EGRESS_BEGIN" END_MARK="$SCRAPER_EGRESS_END" awk '
+        $0 == ENVIRON["BEGIN_MARK"] { skip = 1; next }
+        $0 == ENVIRON["END_MARK"] { skip = 0; next }
+        skip { next }
+        { print }
+        $0 == "# End required lines" { print ENVIRON["BEGIN_MARK"]; print ENVIRON["RULES"]; print ENVIRON["END_MARK"] }
+    ' "$file" > "$tmp"
+    # Rewrite in place so the file keeps ufw's owner and 640 mode.
+    cat "$tmp" > "$file"
+    rm -f "$tmp"
 }
 
 # Port the runner's HTTP API listens on. Matches SCRAPER_RUNNER_URL below and

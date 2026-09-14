@@ -11,7 +11,9 @@
 
 setup() {
     load '../helpers/podman.bash'
+    load '../helpers/docker.bash'
     init_podman
+    init_docker
 }
 
 # =============================================================================
@@ -154,17 +156,28 @@ SCRAPER
     [[ "$output" == *"reachable"* ]]
 }
 
+# The compose postgres is a real private neighbour: routed from the host, not
+# the host. An address that does not exist would fail with or without the fence.
 @test "a scraper cannot reach private networks" {
     skip_if_no_podman
     skip_if_no_scraper_deployment
     require_scraper_image timescrape-python
+    skip_if_services_not_running
 
-    # The cloud metadata service stands in for every internal destination: it is
-    # the one address that exists on every cloud host, answers instantly when
-    # reachable, and hands out credentials when it does. If the egress rules are
-    # missing this connects, so a pass here is meaningful rather than incidental.
+    local project postgres_ip
+    project="$(sed -n 's/^COMPOSE_PROJECT_NAME=//p' "$DEPLOY_DIR/.env.production" 2>/dev/null | tail -1)"
+    postgres_ip="$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' \
+        "${project:-timetiles}-postgres")"
+    [ -n "$postgres_ip" ]
+
+    # Control: the listener answers on that address, so a refusal below is the fence.
+    run docker exec "${project:-timetiles}-worker-ingest" node -e \
+        "require('net').connect(5432, '$postgres_ip').on('connect', () => { console.log('open'); process.exit(0); }).on('error', () => process.exit(1))"
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"open"* ]]
+
     run podman_bounded run --rm --network scraper-sandbox timescrape-python \
-        python -c "import socket; socket.create_connection(('169.254.169.254', 80), timeout=5); print('LEAKED')"
+        python -c "import socket; socket.create_connection(('$postgres_ip', 5432), timeout=5); print('LEAKED')"
     [ "$status" -ne 0 ]
     [[ "$output" != *"LEAKED"* ]]
 }
