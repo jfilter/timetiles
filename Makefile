@@ -1,7 +1,7 @@
 # TimeTiles Development & Testing Commands
 # This Makefile provides commands for LOCAL DEVELOPMENT AND TESTING ONLY (not production)
 
-.PHONY: all selftest setup-mac status up down logs db-reset wait-db db-shell db-query db-logs db-reset-tests clean setup seed demo-data setup-site demo-berlin init ensure-infra jobs dev storybook check-cva timescrape-dev timescrape-images timescrape-test kill-dev fresh reset build lint typecheck format test test-ai test-e2e test-e2e-debug test-deploy-unit test-deploy-integration test-deploy-ci test-deploy test-coverage coverage coverage-check migrate migrate-create check check-ai check-theme images worktree worktree-rm worktree-ls worktree-setup help
+.PHONY: all selftest setup-mac status up down logs db-reset wait-db db-shell db-query db-logs db-reset-tests clean setup seed demo-data setup-site demo-berlin init ensure-infra jobs dev storybook check-cva timescrape-dev timescrape-images timescrape-test kill-dev fresh reset build lint typecheck format test test-ai test-e2e test-e2e-debug test-deploy-unit test-deploy-integration test-deploy-ci test-deploy test-deploy-egress test-coverage coverage coverage-check migrate migrate-create check check-ai check-theme images worktree worktree-rm worktree-ls worktree-setup help
 
 # Load PG_MODE / PG_LOCAL_PORT from .env (defaults: docker, 5433)
 -include .env
@@ -440,6 +440,10 @@ test-deploy-ci:
 test-deploy:
 	@cd deployment/tests && ./run-vm.sh
 
+## Prove the scraper sandbox egress fence in a small Lima VM
+test-deploy-egress:
+	@cd deployment/tests && ./run-egress-vm.sh
+
 # Run database migrations (web-specific, bypasses turbo)
 migrate:
 	@echo "🔄 Running database migrations..."
@@ -603,7 +607,8 @@ help:
 		'  test-deploy-unit        - Run unit tests (fast, no Docker)' \
 		'  test-deploy-integration - Run integration tests (requires Docker)' \
 		'  test-deploy-ci          - Run all tests for CI (no VM)' \
-		'  test-deploy             - Run all tests in a Lima VM' '' \
+		'  test-deploy             - Run all tests in a Lima VM' \
+		'  test-deploy-egress      - Prove scraper egress fence in a small Lima VM' '' \
 		'🌱 Database:' \
 		'  seed          - Seed database with sample data' \
 		'                  Usage: make seed ARGS='"'"'development users'"'"'' \
