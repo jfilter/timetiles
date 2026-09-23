@@ -66,6 +66,7 @@ Common UI patterns and workflows for TimeTiles. Patterns are higher-level than c
 - Show progress (step 2 of 4)
 - Allow going back to previous steps
 - Validate each step before proceeding
+- Never auto-advance when a step's requirements are met: each step has an inline Continue button, disabled until they are. The one exception is the auth step, which a signed-in user skips on entry
 - Save progress automatically (don't lose work)
 - Show summary in final step
 
