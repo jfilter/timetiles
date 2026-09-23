@@ -117,6 +117,12 @@ pnpm --filter web tsx scripts/manage-packages.ts list
 pnpm --filter web tsx scripts/manage-packages.ts activate my-dataset
 ```
 
+### Automatic activation on startup
+
+`config/data-packages.activations.yml` lists, per `DEPLOYMENT_ENVIRONMENT` (`production`, `staging`, `preview`, `development`), the packages to activate, with parameters where a manifest needs them. With `RUN_AUTO_ACTIVATIONS=true`, the app activates them when Payload starts, as the system user; packages that are already active are skipped. Set it on one container only — the production compose file sets it for `web`. The outcome is logged once per start under `data-packages-auto-activate`.
+
+To check the result, read that log line or the catalogs. `GET /api/data-packages` reports `activated: false` for every package to anonymous callers, since activation status is only looked up for signed-in users.
+
 ## Adding a New Package
 
 1. Create a YAML file in `apps/web/config/data-packages/`
