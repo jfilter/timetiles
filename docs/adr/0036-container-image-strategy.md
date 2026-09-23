@@ -4,6 +4,12 @@
 
 Accepted
 
+### Implementation correction (2026-09-23)
+
+The trigger, tagging and pipeline details below do not match the workflows. `.github/workflows/release-images.yml` runs on `v*` tag pushes, on a nightly schedule (03:00 UTC) and on manual `workflow_dispatch`; nothing builds images on a push to `main`. `.github/workflows/merge-manifest.yml` applies `edge` only to scheduled runs and to dispatches without a tag input, so `edge` is the nightly build of `main`. Release images are tagged `1.2.0` and `1.2`, without the `v` prefix, and `latest` moves only for releases without a prerelease identifier.
+
+The workflow also builds five images, not two: main, all-in-one, `-timescrape`, `-scraper-python` and `-scraper-node`, each on native amd64 and arm64 runners (`build-image.yml`). Before any manifest is published, `test-deployment` runs the bats suite in `deployment/tests` against the amd64 main image. After publication, `smoke-test` checks `/api/health` of the main and all-in-one images and the timescrape health endpoint, and verifies the arm64 manifests. The distribution decision below is unchanged.
+
 ## Context
 
 ADR 0006 established the deployment architecture: a multi-stage Dockerfile that users build locally on the target server. This works but creates friction. Building the Next.js application requires substantial memory (2+ GB) and time (several minutes), Node.js tooling must be available on the host, and build failures on low-resource VPS instances are a recurring support issue. Users who just want to run TimeTiles should not need a build toolchain.
