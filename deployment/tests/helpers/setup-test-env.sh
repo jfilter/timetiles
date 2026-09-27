@@ -143,14 +143,16 @@ if [[ ! -f "$SSL_DIR/fullchain.pem" ]]; then
     echo "SSL certificate generated"
 fi
 
-# Ensure uploads directory exists with correct ownership for bind mount
-# Container's nextjs user is uid 1001; on GHA runner is also uid 1001
+# Bind mounts the containers write to must belong to their nextjs uid (1001),
+# as bootstrap step 07 does; Docker creates missing ones as root.
 source "$ENV_FILE"
-UPLOAD_HOST_DIR="${UPLOAD_HOST_DIR:-$DEPLOY_DIR/uploads}"
-mkdir -p "$UPLOAD_HOST_DIR"
-if [[ "$(stat -c %u "$UPLOAD_HOST_DIR" 2>/dev/null || stat -f %u "$UPLOAD_HOST_DIR")" != "1001" ]]; then
-    sudo chown 1001:1001 "$UPLOAD_HOST_DIR" 2>/dev/null || echo "Warning: Could not set ownership on $UPLOAD_HOST_DIR"
-fi
+for dir in "${UPLOAD_HOST_DIR:-$DEPLOY_DIR/uploads}" "${LOG_HOST_DIR:-$DEPLOY_DIR/logs}" "${EXPORT_HOST_DIR:-$DEPLOY_DIR/exports}"; do
+    [[ "$dir" != /* ]] && dir="$DEPLOY_DIR/${dir#./}"
+    mkdir -p "$dir"
+    if [[ "$(stat -c %u "$dir" 2>/dev/null || stat -f %u "$dir")" != "1001" ]]; then
+        sudo chown 1001:1001 "$dir" 2>/dev/null || echo "Warning: Could not set ownership on $dir"
+    fi
+done
 
 # Remove bootstrap's SSL override (it mounts conflicting nginx config)
 rm -f "$DEPLOY_DIR/docker-compose.ssl-override.yml"
