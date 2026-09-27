@@ -645,7 +645,9 @@ start_runner() {
     # code.
     systemd-tmpfiles --create /etc/tmpfiles.d/timetiles-scraper.conf || true
 
-    systemctl start timescrape-runner.service || true
+    # restart, not start: on a rerun the unit is already active, and start would
+    # leave it running with the unit file this step just replaced.
+    systemctl restart timescrape-runner.service || true
 
     # Give it a moment to start
     sleep 3
