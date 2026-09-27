@@ -292,6 +292,11 @@ export const metadataField: Field = {
 };
 
 // Collection configuration helpers
+
+/** Version caps for machine-written collections; each save of a job or re-imported event adds one. */
+export const EVENT_VERSIONS_PER_DOC = 10;
+export const INGEST_JOB_VERSIONS_PER_DOC = 5;
+
 export interface CommonCollectionOptions {
   versions?: boolean;
   drafts?: boolean;

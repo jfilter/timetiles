@@ -28,6 +28,7 @@ import {
   createCommonConfig,
   createOwnershipAccess,
   createPublicReadAccess,
+  EVENT_VERSIONS_PER_DOC,
   isEditorOrAdmin,
   isPrivileged,
   withPublishedStatus,
@@ -35,7 +36,8 @@ import {
 
 const Events: CollectionConfig = {
   slug: "events",
-  ...createCommonConfig(),
+  // Every re-import saves a version; uncapped, the history outgrows the events table.
+  ...createCommonConfig({ maxPerDoc: EVENT_VERSIONS_PER_DOC }),
   admin: {
     useAsTitle: "id",
     defaultColumns: ["dataset", "eventTimestamp", "createdAt", "validationStatus", "geocodingStatus"],

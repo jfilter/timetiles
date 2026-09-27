@@ -21,14 +21,14 @@
  */
 import type { CollectionConfig } from "payload";
 
-import { createCommonConfig } from "../shared-fields";
+import { createCommonConfig, INGEST_JOB_VERSIONS_PER_DOC } from "../shared-fields";
 import { ingestJobsAccess } from "./access-control";
 import { ingestJobFields } from "./fields";
 import { afterChangeHooks, beforeChangeHooks, ingestJobAfterDeleteHook } from "./hooks";
 
 const IngestJobs: CollectionConfig = {
   slug: "ingest-jobs",
-  ...createCommonConfig({ drafts: false, versions: true }),
+  ...createCommonConfig({ drafts: false, versions: true, maxPerDoc: INGEST_JOB_VERSIONS_PER_DOC }),
   admin: {
     useAsTitle: "id",
     defaultColumns: ["dataset", "stage", "progress", "createdAt"],
