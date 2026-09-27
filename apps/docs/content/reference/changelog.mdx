@@ -8,6 +8,54 @@ See the [release process](/development/contributing/release-process) for how new
 
 Changes landed on `main` since the last tagged release.
 
+## [0.1.0-alpha.10] - 2026-09-28
+
+A large hardening release covering deployment, background jobs, ingest, the URL cache and access control. Production compose now runs one worker per job queue, and only the web container runs migrations. Imports into the same dataset now run one at a time. **Upgrade note:** the postgres cluster now lives in the `postgres_data` volume (kartoza `DATADIR`). On installs created before this release, the database sits in the container's writable layer, and `timetiles up`/`down`/`restart`/`update` refuse to run. Take a backup first, then follow "Database Outside the Volume" in `deployment/README.md`.
+
+### Added
+
+- `timetiles create-admin <email>` creates the first admin on a fresh install. It takes the password from the environment, skips email verification, and refuses to change an existing account. Bootstrap now prints next steps that point to it
+- New deployment settings: `INGEST_FILE_RETENTION_HOURS` / `INGEST_FILE_ORPHAN_GRACE_HOURS` (import working-file cleanup), `TRUSTED_PROXY_CIDRS` (client IP for rate limiting behind a proxy), `DOCKER_NETWORK_SUBNET` (pinned bridge subnet that the scraper-runner firewall rule relies on) and `EXPORT_HOST_DIR` (shared data-export directory)
+- Scrapers: owner-scoped repository sync status, with sync errors shown in the UI
+- Development: `make setup-mac` provisions a macOS machine (including the h3 extension), and `PG_LOCAL_PORT` sets the local PostgreSQL port
+
+### Changed
+
+- Database: the postgres data directory is now `/var/lib/postgresql/data` inside the `postgres_data` volume. Lifecycle commands guard against installs whose database is outside the volume, and `TIMETILES_DISCARD_CONTAINER_DB=1` overrides the guard
+- Version history is capped at 10 versions per event and 5 per ingest job. Media no longer keeps drafts or versions
+- Imports: imports into one dataset are serialized with a Postgres advisory-lock lease, while different datasets still import in parallel. A failed update-strategy import rolls back fully, including sheet imports
+- Deployment: `worker-general`, `worker-ingest` and `worker-maintenance` each consume their own queue, and exactly one of them handles schedules. The workers wait for web to finish migrating. The all-in-one image now runs background jobs and logs nginx to stdout. Updates pull deployment files from the pinned release tag
+- The map uses maplibre-gl v6 with its worker served from the app, so the CSP no longer allows blob workers
+- Ingest-created catalogs, datasets and events are published on creation. Draft catalogs, datasets, events, footers and menus are hidden from public and non-owner reads
+- Generated slugs transliterate umlauts and accents, and stored slugs no longer change on save. Feature flags apply as soon as settings are saved
+- Accessibility and i18n: map control popovers are keyboard accessible, closed filter surfaces leave the tab order, result changes and form errors are announced, the date slider moves by whole days, and dates, chart labels and remaining UI strings follow the app locale (EN/DE)
+
+### Removed
+
+- The `HOST_PORT` and `CONTAINER_PORT` deployment variables. The app port is fixed at 3000, and changing `CONTAINER_PORT` used to deadlock the stack
+- The placeholder `EMAIL_SMTP_HOST` in the env template. Leave it unset to run without outgoing mail
+- npm from the production runtime image, and ineffective schedule-retry and job-timeout settings
+
+### Security
+
+- Access control: closed IDOR holes, XSS sinks, fail-open query and H3 filters, and a catalog-delete grant leak. Clients can no longer write credential, derived-access, pipeline, scraper run-state or scheduler fields. Native job controls and user creation are restricted to admins, and ingest-job updates to editors and admins
+- Auth: password policy enforced and sessions revoked on reset, credentials revoked on deactivation, cancel-deletion attempts rate-limited, and rate-limit keys namespaced with the client IP taken only from trusted proxies
+- SSRF and redirects: closed the IPv4-mapped IPv6 bypass and redirect targets that smuggle a host past the prefix check. Bracketed IPv6 clone hosts are classified correctly
+- Data leaks: user data is escaped in emails, 5xx responses and export emails no longer expose internal errors, logs no longer contain URLs, OAuth, cache or provider details, or subscriber emails, and persisted cache keys hash their source URLs. Exports no longer strand personal data, and account deletion serializes with export publication
+- CSV downloads are formula-escaped at the download boundary, including handling for delimiters, BOM, `sep=` and SYLK. Stored ingest data is left unchanged
+- Scraper sandbox: runner containers are bounded, rootless Podman egress is fenced by the app user's uid, the seccomp profile ships, and run output is read without following symlinks
+
+### Fixed
+
+- Deployment and backup: four containers no longer migrate one database at once, and quoting `/etc/timetiles.env` protects passwords with spaces or backticks. A failed runner is detected and kept on a bad update, and a failed offsite backup alerts. `restore latest` picks the newest snapshots and swaps uploads in atomically. Also fixed: a certbot anonymous-volume leak, and nginx static asset locations that dropped security headers
+- Ingest and schema: source encoding is detected and phantom blank rows are dropped. EU decimals, timed dates and multiline CSV headers parse correctly. Excel previews match imported column names. Pagination limits and OAuth, token and custom-header auth configs are validated. Cron and DST schedule edge cases (nonexistent midnight, leap days, empty timezones) are handled. Retries and manual triggers are queued in the claim transaction. Stale mappings are cleared, and data-package activation parameters are validated
+- Jobs and cleanup: stuck-ingest wedging, quota rollback and an audit transaction leak are fixed. Partial cleanup failures (exports, previews, ingest files, audit IPs, schema maintenance) are retried. Processing and restarted jobs are kept out of cleanup. A scraper run that never started refunds its quota
+- Scrapers: run timeouts use kill escalation and keep partial logs. Leftover work directories are swept. Deleting a scraper while a run is active is refused, and a duplicate active run id returns 409. Schedules stop after deactivation, and cron syntax is validated before saving
+- URL cache: honors Vary, quoted and mixed-case cache-control, zero TTL and mandatory revalidation. Partial responses are kept out of the cache, the persisted index is validated, and cleanup runs in the ingest worker
+- Geocoding: provider calls abort on timeout, backoff and throttles are respected, disabled fallback and provider groups are honored in batches, Photon gateway failures are retried, and the kill switch no longer fails open when settings cannot be read
+- Explore, charts and events: histogram buckets cover ranges beyond 68 years, and a UTC session allows pre-1900 timestamps. Trashed events are hidden from SQL read paths and counts. Invalid numeric ranges in shared URLs are rejected. Event titles render through the dataset field mapping. Dark-mode chart theme and map label halo are fixed
+- Accounts: account deletion scheduling, cancellation and execution are serialized, all due accounts are processed, and verification and reset state is isolated per token
+
 ## [0.1.0-alpha.9] - 2026-06-30
 
 A large stabilization release. Five multi-agent bug sweeps across correctness, security, privacy, internationalization, and ingest/scraper robustness, plus ICU pluralization and localization of the remaining hardcoded copy. Closes the interpretation follow-ups from alpha.7 and hardens the production image build.
