@@ -8,6 +8,14 @@ See the [release process](/development/contributing/release-process) for how new
 
 Changes landed on `main` since the last tagged release.
 
+## [0.1.0-alpha.11] - 2026-09-28
+
+Republishes alpha.10: its image release stopped at the deployment test, so no alpha.10 images were published. The upgrade note from alpha.10 applies.
+
+### Fixed
+
+- Release pipeline: the deployment test environment gives the log and export bind mounts to the container user, as bootstrap does, so the containers no longer crash-loop on unwritable log files
+
 ## [0.1.0-alpha.10] - 2026-09-28
 
 A large hardening release covering deployment, background jobs, ingest, the URL cache and access control. Production compose now runs one worker per job queue, and only the web container runs migrations. Imports into the same dataset now run one at a time. **Upgrade note:** the postgres cluster now lives in the `postgres_data` volume (kartoza `DATADIR`). On installs created before this release, the database sits in the container's writable layer, and `timetiles up`/`down`/`restart`/`update` refuse to run. Take a backup first, then follow "Database Outside the Volume" in `deployment/README.md`.
