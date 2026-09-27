@@ -264,6 +264,10 @@ main() {
     # Collect configuration (prompts if needed)
     collect_configuration || die "Configuration failed"
 
+    # Steps run commands as the app user via sudo; an inherited cwd that user
+    # cannot enter makes podman abort.
+    cd /
+
     # Run steps
     if [[ -n "$SINGLE_STEP" ]]; then
         run_single_step "$SINGLE_STEP"
