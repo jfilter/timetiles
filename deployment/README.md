@@ -125,6 +125,20 @@ The kartoza/postgis image requires TCP connections:
 pg_isready -h localhost -U timetiles_user -d timetiles
 ```
 
+### Database Outside the Volume
+
+Installations created before `DATADIR` was set in `docker-compose.prod.yml` keep the
+database in the postgres container's writable layer. `up`, `down`, `restart` and
+`update` refuse to run there, because recreating the container deletes the database.
+Take a backup, or confirm the data is disposable, then reset:
+
+```bash
+TIMETILES_DISCARD_CONTAINER_DB=1 timetiles down
+docker volume rm timetiles_postgres_data
+timetiles up
+timetiles create-admin
+```
+
 ### SSL Certificate Issues
 
 Self-signed certificates are generated automatically as fallback. For Let's Encrypt:

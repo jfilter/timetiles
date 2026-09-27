@@ -74,6 +74,8 @@ setup_restart_commands() {
     cat > "$TEST_TEMP_DIR/bin/docker" << 'EOF'
 #!/bin/bash
 [[ "$1" == "info" ]] && exit 0
+# The database-in-volume guard finds no existing postgres container.
+[[ " $* " == *" ps -aq "* ]] && exit 0
 printf '%s\n' "$*" >> "$TEST_TEMP_DIR/docker-calls"
 if [[ "$*" == *" up -d"* ]]; then
     exit "${RECONCILE_STATUS:-0}"

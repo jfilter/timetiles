@@ -24,6 +24,8 @@ services:
       # Kartoza image variables (for ARM64 compatibility)
       POSTGRES_DBNAME: ${DB_NAME:-timetiles}
       POSTGRES_PASS: ${DB_PASSWORD}
+      # Kartoza defaults to /var/lib/postgresql/17/main, outside the postgres_data mount
+      DATADIR: /var/lib/postgresql/data
       # Kartoza networking - restrict to Docker bridge subnet
       ALLOW_IP_RANGE: "172.16.0.0/12"
       # Disable kartoza's SSL (nginx handles SSL termination)

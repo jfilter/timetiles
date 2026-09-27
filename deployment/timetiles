@@ -212,6 +212,21 @@ deploy_files_ref() {
     fi
 }
 
+# Older installs keep the cluster in the postgres container layer (kartoza's default
+# DATADIR); recreating or removing that container deletes the database.
+check_db_in_volume() {
+    [[ "${TIMETILES_DISCARD_CONTAINER_DB:-}" == "1" ]] && return 0
+    local id env
+    id=$($DC_CMD ps -aq postgres 2>/dev/null) || return 0
+    [[ -z "$id" ]] && return 0
+    env=$(docker inspect -f '{{range .Config.Env}}{{println .}}{{end}}' "$id")
+    if ! grep -qE '^(DATADIR|PGDATA)=/var/lib/postgresql/data$' <<< "$env"; then
+        echo -e "${RED}The database lives in the postgres container, not in the postgres_data volume.${NC}"
+        echo -e "${RED}This command would delete it. See 'Database Outside the Volume' in deployment/README.md.${NC}"
+        exit 1
+    fi
+}
+
 check_env() {
     if [ ! -f "$ENV_FILE" ]; then
         echo -e "${RED}Error: $ENV_FILE not found!${NC}"
@@ -524,6 +539,7 @@ case "$1" in
 
     up)
         check_env
+        check_db_in_volume
         load_env_vars UPLOAD_HOST_DIR DB_USER
         # Resolve relative path against deployment dir (cwd is $SCRIPT_DIR/..)
         if [[ -n "${UPLOAD_HOST_DIR:-}" && "${UPLOAD_HOST_DIR:0:1}" != "/" ]]; then
@@ -584,6 +600,7 @@ case "$1" in
         
     down)
         check_env
+        check_db_in_volume
         echo -e "${YELLOW}Stopping services...${NC}"
         $DC_CMD down --remove-orphans
         echo -e "${GREEN}Services stopped!${NC}"
@@ -591,6 +608,7 @@ case "$1" in
         
     restart)
         check_env
+        check_db_in_volume
         echo -e "${YELLOW}Restarting services...${NC}"
         # `docker compose restart` bounces the EXISTING containers and never
         # re-reads --env-file, so a value written to .env.production after the
@@ -1538,6 +1556,7 @@ EOF
         
     update)
         check_env
+        check_db_in_volume
         echo -e "${YELLOW}Updating TimeTiles...${NC}"
 
         # Self-update: pull latest CLI script from GitHub (unless --no-self-update)
