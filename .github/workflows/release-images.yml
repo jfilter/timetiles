@@ -338,8 +338,20 @@ jobs:
             -e SCRAPER_API_KEY="${SCRAPER_KEY}" \
             "${IMAGE}-timescrape:${VERSION}"
 
-          echo "==> Checking scraper health..."
-          bash .github/scripts/wait-for-health.sh http://localhost:4000/health scraper-test 15 2
+          # The image only ships the runner the host extracts; without the host's
+          # podman /health must answer 503 and name the missing runtime.
+          echo "==> Checking scraper health reports the missing runtime..."
+          for attempt in {1..15}; do
+            CODE=$(curl -s -o /tmp/scraper-health.json -w '%{http_code}' --max-time 5 http://localhost:4000/health || true)
+            [[ "$CODE" != "000" ]] && break
+            sleep 2
+          done
+          cat /tmp/scraper-health.json; echo
+          if [[ "$CODE" != "503" ]] || ! grep -q '"network ' /tmp/scraper-health.json; then
+            echo "FAILED - expected 503 naming the sandbox network, got $CODE"
+            docker logs scraper-test
+            exit 1
+          fi
           docker stop scraper-test && docker rm scraper-test
 
       - name: Smoke test allinone image
