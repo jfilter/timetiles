@@ -21,6 +21,7 @@ import type {
 import {
   assertNoBulkErrors,
   isDenormSyncWrite,
+  readLiveRowChange,
   safeFetchRecord,
   stripClientDenormFields,
   withDenormSync,
@@ -560,15 +561,11 @@ const syncDatasetChildAccessFields = async (
  * Updates the denormalized `datasetIsPublic` and `catalogOwnerId` fields used
  * by events and dataset schemas for access control.
  */
-export const syncIsPublicToEvents: CollectionAfterChangeHook<Dataset> = async ({
-  doc,
-  previousDoc,
-  operation,
-  req,
-}) => {
+export const syncIsPublicToEvents: CollectionAfterChangeHook<Dataset> = async ({ doc, operation, req }) => {
   if (operation !== "update") return doc;
 
-  const syncState = getDatasetAccessSyncState(doc, previousDoc);
+  const live = await readLiveRowChange(req, "datasets", doc.id);
+  const syncState = getDatasetAccessSyncState(live.after, live.before);
 
   if (
     !syncState.didDatasetVisibilityChange &&
@@ -579,7 +576,7 @@ export const syncIsPublicToEvents: CollectionAfterChangeHook<Dataset> = async ({
   }
 
   if (syncState.didDatasetVisibilityChange) {
-    await auditDatasetVisibilityChange(req, doc, previousDoc);
+    await auditDatasetVisibilityChange(req, live.after, live.before);
   }
 
   const accessFields = { datasetIsPublic: syncState.combinedIsPublic, catalogOwnerId: syncState.nextCatalogOwnerId };

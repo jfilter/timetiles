@@ -7,7 +7,7 @@
  * @module
  * @category Collections
  */
-import { APIError, type Payload, type PayloadRequest } from "payload";
+import { APIError, type CollectionBeforeChangeHook, type Payload, type PayloadRequest } from "payload";
 
 import { isPrivileged } from "@/lib/collections/shared-fields";
 import { extractRelationId } from "@/lib/utils/relation-id";
@@ -189,4 +189,45 @@ export const stripClientDenormFields = <T extends Record<string, unknown>>(
     delete cleaned[key];
   }
   return cleaned;
+};
+
+type LiveRowCollection = "catalogs" | "datasets";
+const liveRowKey = (collection: LiveRowCollection, id: number | string) => `liveRowBeforeUpdate:${collection}:${id}`;
+
+/** The main row — what access rules read. A draft save writes only a version, never this row. */
+const readLiveRow = async <TSlug extends LiveRowCollection>(
+  req: PayloadRequest,
+  collection: TSlug,
+  id: number | string
+): Promise<CollectionDoc<TSlug>> => {
+  const row = await req.payload.db.findOne<CollectionDoc<TSlug>>({ collection, where: { id: { equals: id } }, req });
+  if (!row) throw new Error(`${collection} ${id} has no live row`);
+  return row;
+};
+
+/** beforeChange hook: snapshot the live row so afterChange can tell what the update really changed. */
+export const captureLiveRowBeforeUpdate =
+  (collection: LiveRowCollection): CollectionBeforeChangeHook =>
+  async ({ data, operation, originalDoc, req }) => {
+    if (operation === "update" && originalDoc?.id != null) {
+      const context = req.context;
+      context[liveRowKey(collection, originalDoc.id)] = await readLiveRow(req, collection, originalDoc.id);
+    }
+    return data;
+  };
+
+/**
+ * The live row before and after an update. `previousDoc`/`doc` can be draft
+ * versions, so cascades of access fields must compare these instead.
+ */
+export const readLiveRowChange = async <TSlug extends LiveRowCollection>(
+  req: PayloadRequest,
+  collection: TSlug,
+  id: number
+): Promise<{ before: CollectionDoc<TSlug>; after: CollectionDoc<TSlug> }> => {
+  const key = liveRowKey(collection, id);
+  const before = req.context[key] as CollectionDoc<TSlug> | undefined;
+  if (!before) throw new Error(`${collection} ${id} was updated without a live-row snapshot`);
+  delete req.context[key];
+  return { before, after: await readLiveRow(req, collection, id) };
 };

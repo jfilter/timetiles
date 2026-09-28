@@ -29,7 +29,7 @@ import { readConfigSnapshot } from "@/lib/jobs/utils/resource-loading";
 import { logger } from "@/lib/logger";
 import { NumericIdParamSchema } from "@/lib/schemas/common";
 import { extractRelationId } from "@/lib/utils/relation-id";
-import type { IngestJob } from "@/payload-types";
+import type { IngestJob, User } from "@/payload-types";
 
 const bodySchema = z
   .object({
@@ -188,7 +188,8 @@ export const patchPlanFromBody = (
 const applyFieldMappingOverrides = async (
   payload: Parameters<Parameters<typeof apiRoute>[0]["handler"]>[0]["payload"],
   ingestJob: IngestJob,
-  body: ApproveBody
+  body: ApproveBody,
+  user: User
 ): Promise<boolean> => {
   if (!hasOverridePicks(body)) return false;
 
@@ -205,10 +206,13 @@ const applyFieldMappingOverrides = async (
   // Patch the AUTHORED dataset plan so resume re-derives the resolved orders.
   const datasetPlan = patchPlanFromBody(readInterpretationPlan(dataset), body, resolvedRoles);
   if (datasetPlan) {
+    // A job can target a dataset in someone else's public catalog; its plan is still theirs.
     await payload.update({
       collection: COLLECTION_NAMES.DATASETS,
       id: datasetId,
       data: { interpretationPlan: datasetPlan as unknown as Record<string, unknown> },
+      user,
+      overrideAccess: false,
     });
   }
 
@@ -270,7 +274,7 @@ export const POST = apiRoute({
     }
 
     // If user provided field mapping overrides (column picker), set them on the dataset
-    const hasOverrides = await applyFieldMappingOverrides(payload, ingestJob, body);
+    const hasOverrides = await applyFieldMappingOverrides(payload, ingestJob, body, user);
 
     // Approve by setting schemaValidation.approved = true
     // The afterChange hook handles: skip flags, workflow queueing, or marking completed

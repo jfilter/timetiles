@@ -14,6 +14,7 @@
  */
 import type { CollectionConfig } from "payload";
 
+import { captureLiveRowBeforeUpdate } from "./catalog-ownership";
 import { create, deleteAccess, read, readVersions, update } from "./datasets/access";
 import {
   handleDatasetUniqueConstraintError,
@@ -48,6 +49,7 @@ const Datasets: CollectionConfig = {
       validateMappingOverrideTransforms,
       validateDatasetNameUniqueness,
       validatePublicCatalogDataset,
+      captureLiveRowBeforeUpdate("datasets"),
     ],
     afterChange: [syncIsPublicToEvents],
     // Translates the DB-level unique violation (from the catalog+name index)

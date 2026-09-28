@@ -17,11 +17,17 @@ import type {
 } from "payload";
 import { killTransaction } from "payload";
 
-import { assertNoBulkErrors, withDenormSync } from "@/lib/collections/catalog-ownership";
+import {
+  assertNoBulkErrors,
+  captureLiveRowBeforeUpdate,
+  readLiveRowChange,
+  withDenormSync,
+} from "@/lib/collections/catalog-ownership";
 import { createQuotaClaimLifecycle } from "@/lib/collections/quota-claim";
 import { AUDIT_ACTIONS, auditLog } from "@/lib/services/audit-log-service";
 import { createQuotaService } from "@/lib/services/quota-service";
 import { extractRelationId } from "@/lib/utils/relation-id";
+import type { Catalog } from "@/payload-types";
 
 import { setCreatedByHook } from "../shared-fields";
 
@@ -43,20 +49,17 @@ const catalogQuota = createQuotaClaimLifecycle({
 });
 
 /** Detect what changed between previous and new catalog doc */
-const detectCatalogChanges = (
-  previousDoc: Record<string, unknown> | undefined,
-  doc: Record<string, unknown>
-): CatalogChanges => {
+const detectCatalogChanges = (previousDoc: Catalog, doc: Catalog): CatalogChanges => {
   // Normalize to null: a cleared owner must CASCADE as null, not vanish as undefined.
-  const prevCreatedBy = extractRelationId<unknown>(previousDoc?.createdBy) ?? null;
-  const newCreatedBy = extractRelationId<unknown>(doc.createdBy) ?? null;
-  const prevIsPublic = (previousDoc?.isPublic as boolean) ?? false;
-  const newIsPublic = (doc.isPublic as boolean) ?? false;
+  const prevCreatedBy = extractRelationId<number>(previousDoc.createdBy) ?? null;
+  const newCreatedBy = extractRelationId<number>(doc.createdBy) ?? null;
+  const prevIsPublic = previousDoc.isPublic ?? false;
+  const newIsPublic = doc.isPublic ?? false;
 
   return {
     createdByChanged: prevCreatedBy !== newCreatedBy,
     isPublicChanged: prevIsPublic !== newIsPublic,
-    newCreatedBy: newCreatedBy as number | null,
+    newCreatedBy,
     newIsPublic,
   };
 };
@@ -175,10 +178,11 @@ export const catalogBeforeChangeHooks: CollectionBeforeChangeHook[] = [
 
     return data;
   },
+  captureLiveRowBeforeUpdate("catalogs"),
 ];
 
 export const catalogAfterChangeHooks: CollectionAfterChangeHook[] = [
-  async ({ doc, previousDoc, operation, req }) => {
+  async ({ doc, operation, req }) => {
     if (operation === "create") {
       catalogQuota.clear(req);
       return doc;
@@ -187,11 +191,12 @@ export const catalogAfterChangeHooks: CollectionAfterChangeHook[] = [
     // Sync catalog changes to datasets and events (for access control)
     if (operation !== "update") return doc;
 
-    const changes = detectCatalogChanges(previousDoc, doc);
+    const live = await readLiveRowChange(req, "catalogs", doc.id);
+    const changes = detectCatalogChanges(live.before, live.after);
     if (!changes.createdByChanged && !changes.isPublicChanged) return doc;
 
     // Audit visibility and ownership changes in the same transaction
-    const ownerId = extractRelationId<number>(doc.createdBy);
+    const ownerId = changes.newCreatedBy;
     if (ownerId) {
       const owner = await req.payload.findByID({
         collection: "users",
@@ -222,7 +227,7 @@ export const catalogAfterChangeHooks: CollectionAfterChangeHook[] = [
       }
 
       if (owner && changes.createdByChanged) {
-        const prevOwnerId = extractRelationId<number>(previousDoc?.createdBy);
+        const prevOwnerId = extractRelationId<number>(live.before.createdBy);
         await auditLog(
           req.payload,
           {

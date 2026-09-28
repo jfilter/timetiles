@@ -14,7 +14,7 @@
  */
 import { z } from "zod";
 
-import { apiRoute, NotFoundError, requirePrivileged, ValidationError } from "@/lib/api";
+import { apiRoute, requirePrivileged, safeFindByID, ValidationError } from "@/lib/api";
 import { SchemaInferenceService } from "@/lib/ingest/schema-inference";
 import { logger } from "@/lib/logger";
 import { SchemaInferenceBodySchema } from "@/lib/schemas/schema-inference";
@@ -36,16 +36,7 @@ export const POST = apiRoute({
     requirePrivileged(user);
 
     // Verify dataset exists and user has access
-    const dataset = await payload
-      .findByID({ collection: "datasets", id: datasetId, overrideAccess: false, user })
-      .catch((error) => {
-        logger.warn({ error }, "Failed to find dataset");
-        return null;
-      });
-
-    if (!dataset) {
-      throw new NotFoundError("Dataset not found");
-    }
+    await safeFindByID(payload, { collection: "datasets", id: datasetId, user });
 
     const options = body;
 

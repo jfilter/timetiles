@@ -9,7 +9,7 @@
  */
 import { NextRequest } from "next/server";
 import type { Payload } from "payload";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { GET } from "../../../app/api/legal-notices/route";
 
@@ -89,5 +89,18 @@ describe.sequential("/api/legal-notices", () => {
     const response = await GET(request, {} as any);
 
     expect(response.headers.get("Cache-Control")).toBe("public, s-maxage=300, stale-while-revalidate=600");
+  });
+
+  it("should fail instead of reporting unconfigured notices when settings cannot be read", async () => {
+    const findGlobal = vi.spyOn(payload, "findGlobal").mockRejectedValueOnce(new Error("connection terminated"));
+    try {
+      const request = new NextRequest("http://localhost:3000/api/legal-notices");
+      const response = await GET(request, {} as any);
+
+      expect(response.status).toBe(500);
+      expect(response.headers.get("Cache-Control")).toBeNull();
+    } finally {
+      findGlobal.mockRestore();
+    }
   });
 });

@@ -15,28 +15,28 @@ vi.mock("@/lib/services/audit-log-service", () => ({
 
 vi.mock("@/lib/utils/relation-id", () => ({ extractRelationId: vi.fn(() => null) }));
 
+import { captureLiveRowBeforeUpdate } from "@/lib/collections/catalog-ownership";
 import { syncIsPublicToEvents } from "@/lib/collections/datasets/hooks";
 
-const createMockContext = (
+// The hook compares the live rows before and after the write, not previousDoc/doc.
+const createMockContext = async (
   doc: { id: number; isPublic?: boolean; catalogIsPublic?: boolean | null; catalogCreatorId?: number | null },
   previousDoc: { isPublic?: boolean; catalogIsPublic?: boolean | null; catalogCreatorId?: number | null },
   operation: string = "update"
 ) => {
   const mockUpdate = vi.fn().mockResolvedValue({ docs: [] });
-  return {
-    doc,
-    previousDoc,
-    operation,
-    req: { payload: { update: mockUpdate, findByID: vi.fn() } } as any,
-    collection: {} as any,
-    context: {} as any,
-    mockUpdate,
-  };
+  const findOne = vi.fn().mockResolvedValue({ id: doc.id, ...previousDoc });
+  const req = { context: {}, payload: { update: mockUpdate, findByID: vi.fn(), db: { findOne } } } as any;
+  if (operation === "update") {
+    await captureLiveRowBeforeUpdate("datasets")({ data: {}, operation, originalDoc: { id: doc.id }, req } as any);
+  }
+  findOne.mockResolvedValue(doc);
+  return { doc, previousDoc, operation, req, collection: {} as any, context: {} as any, mockUpdate };
 };
 
 describe("syncIsPublicToEvents", () => {
   it("should skip if operation is not update", async () => {
-    const ctx = createMockContext(
+    const ctx = await createMockContext(
       { id: 1, isPublic: true, catalogIsPublic: true, catalogCreatorId: 1 },
       { isPublic: false, catalogIsPublic: true, catalogCreatorId: 1 },
       "create"
@@ -46,7 +46,7 @@ describe("syncIsPublicToEvents", () => {
   });
 
   it("should skip if access-control fields did not change", async () => {
-    const ctx = createMockContext(
+    const ctx = await createMockContext(
       { id: 1, isPublic: true, catalogIsPublic: true, catalogCreatorId: 1 },
       { isPublic: true, catalogIsPublic: true, catalogCreatorId: 1 }
     );
@@ -55,7 +55,7 @@ describe("syncIsPublicToEvents", () => {
   });
 
   it("should sync true when both dataset and catalog are public", async () => {
-    const ctx = createMockContext(
+    const ctx = await createMockContext(
       { id: 1, isPublic: true, catalogIsPublic: true, catalogCreatorId: 2 },
       { isPublic: false, catalogIsPublic: true, catalogCreatorId: 2 }
     );
@@ -69,7 +69,7 @@ describe("syncIsPublicToEvents", () => {
   });
 
   it("should sync false when dataset is public but catalog is private", async () => {
-    const ctx = createMockContext(
+    const ctx = await createMockContext(
       { id: 1, isPublic: true, catalogIsPublic: false, catalogCreatorId: 2 },
       { isPublic: false, catalogIsPublic: false, catalogCreatorId: 2 }
     );
@@ -80,7 +80,7 @@ describe("syncIsPublicToEvents", () => {
   });
 
   it("should sync false when dataset is private regardless of catalog", async () => {
-    const ctx = createMockContext(
+    const ctx = await createMockContext(
       { id: 1, isPublic: false, catalogIsPublic: true, catalogCreatorId: 2 },
       { isPublic: true, catalogIsPublic: true, catalogCreatorId: 2 }
     );
@@ -91,7 +91,7 @@ describe("syncIsPublicToEvents", () => {
   });
 
   it("should treat null catalogIsPublic as false", async () => {
-    const ctx = createMockContext(
+    const ctx = await createMockContext(
       { id: 1, isPublic: true, catalogIsPublic: null, catalogCreatorId: 2 },
       { isPublic: false, catalogIsPublic: null, catalogCreatorId: 2 }
     );
@@ -102,7 +102,7 @@ describe("syncIsPublicToEvents", () => {
   });
 
   it("should resync when catalog visibility changes without an isPublic change", async () => {
-    const ctx = createMockContext(
+    const ctx = await createMockContext(
       { id: 1, isPublic: true, catalogIsPublic: false, catalogCreatorId: 2 },
       { isPublic: true, catalogIsPublic: true, catalogCreatorId: 2 }
     );
@@ -113,7 +113,7 @@ describe("syncIsPublicToEvents", () => {
   });
 
   it("should resync catalog ownership when the dataset moves catalogs", async () => {
-    const ctx = createMockContext(
+    const ctx = await createMockContext(
       { id: 1, isPublic: true, catalogIsPublic: true, catalogCreatorId: 9 },
       { isPublic: true, catalogIsPublic: true, catalogCreatorId: 3 }
     );

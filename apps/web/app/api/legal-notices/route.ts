@@ -11,45 +11,30 @@ import { type Locale, SUPPORTED_LOCALES } from "@/i18n/config";
 import { apiRoute } from "@/lib/api";
 import { cacheHeaders } from "@/lib/api/cache-headers";
 import type { LegalNotices } from "@/lib/hooks/use-legal-notices";
-import { logError } from "@/lib/logger";
-
-const EMPTY_NOTICES: LegalNotices = {
-  termsUrl: null,
-  privacyUrl: null,
-  registrationDisclaimer: null,
-  contactEmail: null,
-};
 
 export const GET = apiRoute({
   auth: "none",
   handler: async ({ payload, req }) => {
-    try {
-      const url = new URL(req.url);
-      const rawLocale = url.searchParams.get("locale") ?? "en";
-      const locale: Locale = (SUPPORTED_LOCALES as readonly string[]).includes(rawLocale)
-        ? (rawLocale as Locale)
-        : "en";
+    const url = new URL(req.url);
+    const rawLocale = url.searchParams.get("locale") ?? "en";
+    const locale: Locale = (SUPPORTED_LOCALES as readonly string[]).includes(rawLocale) ? (rawLocale as Locale) : "en";
 
-      const [settings, branding] = await Promise.all([
-        payload.findGlobal({ slug: "settings", locale }),
-        payload.findGlobal({ slug: "branding", locale }),
-      ]);
-      const legal = settings.legal;
+    const [settings, branding] = await Promise.all([
+      payload.findGlobal({ slug: "settings", locale }),
+      payload.findGlobal({ slug: "branding", locale }),
+    ]);
+    const legal = settings.legal;
 
-      const notices: LegalNotices = {
-        termsUrl: legal?.termsUrl ?? null,
-        privacyUrl: legal?.privacyUrl ?? null,
-        registrationDisclaimer: legal?.registrationDisclaimer ?? null,
-        contactEmail: branding.contactEmail ?? null,
-      };
+    const notices: LegalNotices = {
+      termsUrl: legal?.termsUrl ?? null,
+      privacyUrl: legal?.privacyUrl ?? null,
+      registrationDisclaimer: legal?.registrationDisclaimer ?? null,
+      contactEmail: branding.contactEmail ?? null,
+    };
 
-      return new Response(JSON.stringify(notices), {
-        status: 200,
-        headers: { "Content-Type": "application/json", ...cacheHeaders("medium") },
-      });
-    } catch (error) {
-      logError(error, "Failed to fetch legal notices");
-      return { ...EMPTY_NOTICES };
-    }
+    return new Response(JSON.stringify(notices), {
+      status: 200,
+      headers: { "Content-Type": "application/json", ...cacheHeaders("medium") },
+    });
   },
 });

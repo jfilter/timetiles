@@ -65,4 +65,22 @@ describe.sequential("POST /api/v1/datasets/[id]/schema/infer", () => {
     expect(mocks.mockFindByID).not.toHaveBeenCalled();
     expect(mocks.mockInferSchemaFromEvents).not.toHaveBeenCalled();
   });
+
+  it("returns 404 when the dataset does not exist or is not readable", async () => {
+    mocks.mockFindByID.mockResolvedValueOnce(null);
+
+    const response = await POST(createRequest({ id: 1, role: "editor" }), createContext("1"));
+
+    expect(response.status).toBe(404);
+    expect(mocks.mockInferSchemaFromEvents).not.toHaveBeenCalled();
+  });
+
+  it("returns 500 rather than 404 when the dataset lookup fails", async () => {
+    mocks.mockFindByID.mockRejectedValueOnce(new Error("connection terminated"));
+
+    const response = await POST(createRequest({ id: 1, role: "editor" }), createContext("1"));
+
+    expect(response.status).toBe(500);
+    expect(mocks.mockInferSchemaFromEvents).not.toHaveBeenCalled();
+  });
 });
