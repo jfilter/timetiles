@@ -18,75 +18,64 @@ import { createLogger, logError } from "../lib/logger.js";
 
 const logger = createLogger("payload-validation");
 
-const validateFile = (committedFile: string, backupFile: string, label: string): boolean => {
-  if (!fs.existsSync(backupFile)) return false;
-  const original = fs.readFileSync(backupFile, "utf8");
-  const generated = fs.readFileSync(committedFile, "utf8");
-  if (original !== generated) {
-    logger.error(`${label} are out of sync with collection definitions`);
-    const origLines = original.split("\n");
-    const genLines = generated.split("\n");
-    logger.error(`Line count: committed=${origLines.length}, generated=${genLines.length}`);
-    for (let i = 0; i < Math.min(origLines.length, genLines.length); i++) {
-      if (origLines[i] !== genLines[i]) {
-        logger.error(`First diff at line ${i + 1}:`);
-        logger.error(`  committed: ${origLines[i]?.substring(0, 120)}`);
-        logger.error(`  generated: ${genLines[i]?.substring(0, 120)}`);
-        break;
-      }
-    }
-    return true;
-  }
-  return false;
+const GENERATED_FILES = [
+  { file: "./payload-types.ts", label: "Types" },
+  { file: "./payload-generated-schema.ts", label: "Database schema" },
+];
+
+const reportFirstDiff = (committed: string, generated: string) => {
+  const committedLines = committed.split("\n");
+  const generatedLines = generated.split("\n");
+  logger.error(`Line count: committed=${committedLines.length}, generated=${generatedLines.length}`);
+  const line = committedLines.findIndex((text, i) => text !== generatedLines[i]);
+  if (line === -1) return;
+  logger.error(`First diff at line ${line + 1}:`);
+  logger.error(`  committed: ${committedLines[line]?.substring(0, 120)}`);
+  logger.error(`  generated: ${generatedLines[line]?.substring(0, 120)}`);
 };
 
-const validateTypes = () => {
-  logger.info("🔍 Validating Payload generated files are in sync...");
-
-  const typesFile = "./payload-types.ts";
-  const typesBackupFile = "./payload-types.backup.ts";
-  const schemaFile = "./payload-generated-schema.ts";
-  const schemaBackupFile = "./payload-generated-schema.backup.ts";
-
+/**
+ * Regenerate the files, name the ones that differ from their committed content, and put
+ * the committed content back either way, so validating never rewrites the working tree.
+ */
+export const findOutOfSyncFiles = (generate: () => void, files = GENERATED_FILES): string[] => {
+  const committed = files.map(({ file }) => (fs.existsSync(file) ? fs.readFileSync(file, "utf8") : undefined));
   try {
-    // Backup current files
-    if (fs.existsSync(typesFile)) fs.copyFileSync(typesFile, typesBackupFile);
-    if (fs.existsSync(schemaFile)) fs.copyFileSync(schemaFile, schemaBackupFile);
+    generate();
+    return files
+      .filter(({ file, label }, i) => {
+        const generated = fs.readFileSync(file, "utf8");
+        const before = committed[i];
+        if (before === generated) return false;
+        logger.error(`${label} are out of sync with collection definitions`);
+        if (before === undefined) logger.error(`${file} is not committed`);
+        else reportFirstDiff(before, generated);
+        return true;
+      })
+      .map(({ file }) => file);
+  } finally {
+    files.forEach(({ file }, i) => {
+      const content = committed[i];
+      if (content === undefined) fs.rmSync(file, { force: true });
+      else fs.writeFileSync(file, content);
+    });
+  }
+};
 
-    // Generate fresh files
-    execFileSync(localBin("tsx"), ["scripts/generate-payload.ts"], { stdio: "pipe" });
-
-    // Compare files with backups
-    const typesChanged = validateFile(typesFile, typesBackupFile, "Types");
-    const schemaChanged = validateFile(schemaFile, schemaBackupFile, "Database schema");
-
-    if (typesChanged || schemaChanged) {
+if (import.meta.url === `file://${process.argv[1]}`) {
+  logger.info("🔍 Validating Payload generated files are in sync...");
+  try {
+    const outOfSync = findOutOfSyncFiles(() =>
+      execFileSync(localBin("tsx"), ["scripts/generate-payload.ts"], { stdio: "pipe" })
+    );
+    if (outOfSync.length > 0) {
       logger.error("❌ Generated files are out of sync!");
       logger.error('Run "pnpm payload:generate" to update files.');
       process.exit(1);
     }
-
     logger.info("✅ Generated files are in sync!");
-
-    // Cleanup
-    if (fs.existsSync(typesBackupFile)) fs.unlinkSync(typesBackupFile);
-    if (fs.existsSync(schemaBackupFile)) fs.unlinkSync(schemaBackupFile);
   } catch (error) {
     logError(error, "Validation failed");
-    logger.info("❌ Validation failed");
-
-    // Restore backups
-    if (fs.existsSync(typesBackupFile)) {
-      fs.copyFileSync(typesBackupFile, typesFile);
-      fs.unlinkSync(typesBackupFile);
-    }
-    if (fs.existsSync(schemaBackupFile)) {
-      fs.copyFileSync(schemaBackupFile, schemaFile);
-      fs.unlinkSync(schemaBackupFile);
-    }
-
     process.exit(1);
   }
-};
-
-validateTypes();
+}
