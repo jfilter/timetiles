@@ -460,23 +460,14 @@ export class FileSystemCacheStorage implements CacheStorage {
     return this.indexWriteChain;
   }
 
-  destroy(): void {
+  async destroy(): Promise<void> {
     if (this.cleanupInterval) {
       clearInterval(this.cleanupInterval);
       this.cleanupInterval = null;
     }
-
-    // Schedule cleanup operations (async operations not allowed in destroy)
     if (this.initPromise) {
-      void this.initPromise
-        // oxlint-disable-next-line promise/prefer-await-to-then -- Cannot use async/await in synchronous destroy method
-        .then(() => {
-          return this.saveIndex();
-        })
-        // oxlint-disable-next-line promise/prefer-await-to-then -- Cannot use async/await in synchronous destroy method
-        .catch(() => {
-          // Ignore errors on shutdown
-        });
+      await this.initPromise;
+      await this.saveIndex();
     }
   }
 }

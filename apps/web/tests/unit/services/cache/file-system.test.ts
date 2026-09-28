@@ -37,21 +37,11 @@ describe.sequential("FileSystemCacheStorage", () => {
   });
 
   afterEach(async () => {
-    // Clear the interval first (destroy fires a floating saveIndex we don't need)
     if (storage) {
-      storage.destroy();
+      await storage.destroy();
     }
 
-    // Small delay to let any floating destroy() promises settle before
-    // we remove the directory, avoiding ENOENT races in CI.
-    await new Promise((resolve) => setTimeout(resolve, 10));
-
-    // Remove temp directory
-    try {
-      await fs.rm(tempDir, { recursive: true, force: true });
-    } catch {
-      // Ignore errors
-    }
+    await fs.rm(tempDir, { recursive: true, force: true });
   });
 
   describe("basic operations", () => {
@@ -65,12 +55,17 @@ describe.sequential("FileSystemCacheStorage", () => {
     });
 
     it("allows revalidation reads of expired entries without exempting them from cleanup", async () => {
-      await storage.set("expired", "validator source", { ttl: 0.01 });
-      await new Promise((resolve) => setTimeout(resolve, 20));
+      vi.useFakeTimers({ toFake: ["Date"] });
+      try {
+        await storage.set("expired", "validator source", { ttl: 0.01 });
+        vi.setSystemTime(Date.now() + 10);
 
-      expect((await storage.get("expired", { allowExpired: true }))?.value).toBe("validator source");
-      expect(await storage.cleanup()).toBe(1);
-      expect(await storage.get("expired", { allowExpired: true })).toBeNull();
+        expect((await storage.get("expired", { allowExpired: true }))?.value).toBe("validator source");
+        expect(await storage.cleanup()).toBe(1);
+        expect(await storage.get("expired", { allowExpired: true })).toBeNull();
+      } finally {
+        vi.useRealTimers();
+      }
     });
 
     it("isolates listing and clearing between cache namespaces", async () => {
@@ -269,7 +264,7 @@ describe.sequential("FileSystemCacheStorage", () => {
       const entry = await newStorage.get(key);
       expect(entry?.value).toEqual(value);
 
-      newStorage.destroy();
+      await newStorage.destroy();
     });
 
     it("persists every setMany entry to the index file", async () => {
@@ -290,7 +285,7 @@ describe.sequential("FileSystemCacheStorage", () => {
         expect(entry?.value).toBe(value);
       }
 
-      newStorage.destroy();
+      await newStorage.destroy();
     });
 
     it("should handle cache directory creation", async () => {
@@ -303,7 +298,7 @@ describe.sequential("FileSystemCacheStorage", () => {
       const stats = await fs.stat(nestedDir);
       expect(stats.isDirectory()).toBe(true);
 
-      tempStorage.destroy();
+      await tempStorage.destroy();
     });
   });
 
@@ -457,7 +452,7 @@ describe.sequential("FileSystemCacheStorage", () => {
       const fileSize = (await fs.stat(cacheFile)).size;
       expect(fileSize).toBeLessThan(body.length * 2);
 
-      binaryStorage.destroy();
+      await binaryStorage.destroy();
     });
 
     it("should not rewrite the payload file on a cache hit", async () => {
@@ -638,7 +633,7 @@ describe.sequential("FileSystemCacheStorage", () => {
       expect(stats.hits).toBe(1);
       expect(stats.misses).toBe(2);
 
-      statsStorage.destroy();
+      await statsStorage.destroy();
     });
 
     it("tracks exact file bytes across UTF-8 writes, replacements, and deletion", async () => {

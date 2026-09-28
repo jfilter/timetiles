@@ -121,7 +121,7 @@ export interface CacheStorage {
   /**
    * Destroy the storage (cleanup resources)
    */
-  destroy?(): void;
+  destroy?(): Promise<void>;
 }
 
 /**
