@@ -19,7 +19,12 @@ import { requireRelationId } from "@/lib/utils/relation-id";
 import { _events_v, events as eventsTable } from "@/payload-generated-schema";
 import type { IngestFile, IngestJob, User } from "@/payload-types";
 
-import { getDuplicateSummary, getNewEventCountForQuota, getUniqueRowsForQuota } from "../../utils/resource-loading";
+import {
+  getDuplicateSummary,
+  getNewEventCountForQuota,
+  getUniqueRowsForQuota,
+  readDuplicateStrategy,
+} from "../../utils/resource-loading";
 import { EventSnapshotStore } from "./event-snapshots";
 
 /** Maximum number of individual errors stored on an import job. */
@@ -113,8 +118,9 @@ export const markJobCompleted = async (
   // re-imports inflate usage without bound.
   const newEventsCreated = Math.max(0, totalEventsWritten - eventsUpdated);
 
+  // Under "update", external duplicates are written in place, not skipped.
   const { internalCount, externalCount } = getDuplicateSummary(currentJob);
-  const duplicatesSkipped = internalCount + externalCount;
+  const duplicatesSkipped = internalCount + (readDuplicateStrategy(currentJob) === "update" ? 0 : externalCount);
 
   // Store results and mark job as COMPLETED
   await payload.update({

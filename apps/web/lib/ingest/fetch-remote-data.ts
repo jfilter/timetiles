@@ -8,9 +8,8 @@
  * @module
  * @category Import
  */
-import Papa from "papaparse";
-
 import { decodeBufferToUtf8 } from "@/lib/ingest/file-encoding";
+import { parseCsvText } from "@/lib/ingest/file-readers";
 import { buildAuthHeaders } from "@/lib/ingest/url-fetch/auth";
 import { calculateDataHash, fetchWithRetry } from "@/lib/ingest/url-fetch/fetch-utils";
 import {
@@ -419,18 +418,16 @@ export const fetchRemoteData = async (options: FetchRemoteDataOptions): Promise<
   // already strip before CSV conversion — this handles raw CSV responses).
   let finalData = converted.finalData;
   if (!wasConverted && options.excludeFields?.length && finalExtension === ".csv") {
-    const parsed = Papa.parse<Record<string, unknown>>(decodeBufferToUtf8(finalData), {
-      header: true,
-      skipEmptyLines: true,
-    });
-    const strippedRows = stripFields(parsed.data, options.excludeFields);
+    const rows: Record<string, unknown>[] = [];
+    parseCsvText(decodeBufferToUtf8(finalData), (row) => rows.push(row));
+    const strippedRows = stripFields(rows, options.excludeFields);
     // No formula-escaping: this is canonical ingest data the pipeline re-parses
     // into events, so an apostrophe would corrupt real values. Direct CSV
     // uploads are already stored verbatim; escaping only this converted subset
     // was both inconsistent and lossy. Formula-injection escaping (CWE-1236)
     // belongs at the user-facing export boundary — see lib/utils/csv-escape.ts.
     //
-    // unparseRowsToCsv (not bare Papa.unparse) because header-mode parsing omits
+    // unparseRowsToCsv (not bare Papa.unparse) because parsed records omit
     // trailing keys on short rows: a ragged CSV whose first data row is short
     // would otherwise derive the header from that row and drop every later
     // column for the entire file.

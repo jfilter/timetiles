@@ -59,6 +59,18 @@ describe("dataset detection parse-files", () => {
     ]);
   });
 
+  it.each([
+    { content: "﻿\n\nname,date\nExample,2024-01-01\n", headers: ["name", "date"] },
+    { content: "   \nname,date\nExample,2024-01-01\n", headers: ["name", "date"] },
+    { content: "name,name,date\nA,B,2024-01-01\n", headers: ["name", "name_1", "date"] },
+  ])("should report the header the import reads for $content", async ({ content, headers }) => {
+    const filePath = path.join(tempDir, "import-header.csv");
+    fs.writeFileSync(filePath, content, "utf-8");
+    expect(await processCSVFile(filePath)).toEqual([
+      { name: "CSV Data", index: 0, rowCount: 1, columnCount: headers.length, headers },
+    ]);
+  });
+
   it.each(["", "\n\n", "   \n"])("should reject an empty CSV %j", async (content) => {
     const filePath = path.join(tempDir, "empty.csv");
     fs.writeFileSync(filePath, content, "utf-8");

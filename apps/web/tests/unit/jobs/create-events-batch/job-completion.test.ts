@@ -78,4 +78,29 @@ describe("markJobCompleted quota reconciliation", () => {
       false
     );
   });
+
+  it.each([
+    ["skip", 3],
+    ["update", 1],
+  ])("records only the rows the %s strategy skipped as duplicatesSkipped", async (strategy, expected) => {
+    mocks.checkAndIncrementUsage.mockResolvedValue(true);
+    mockPayload.findByID.mockImplementation(({ collection }: { collection: string }) =>
+      Promise.resolve(
+        collection === "ingest-jobs"
+          ? {
+              id: "import-123",
+              configSnapshot: { idStrategy: { duplicateStrategy: strategy } },
+              duplicates: { summary: { internalDuplicates: 1, externalDuplicates: 2 } },
+              errors: [],
+            }
+          : null
+      )
+    );
+
+    await markJobCompleted(mockPayload, "import-123", 0, strategy === "update" ? 2 : 0);
+
+    expect(mockPayload.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: { results: expect.objectContaining({ duplicatesSkipped: expected }) } })
+    );
+  });
 });

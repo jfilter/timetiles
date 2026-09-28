@@ -24,6 +24,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vites
 
 import { getAppConfig, resetAppConfig } from "@/lib/config/app-config";
 import { fetchRemoteData } from "@/lib/ingest/fetch-remote-data";
+import { parseCsvText } from "@/lib/ingest/file-readers";
 import { fetchPaginated } from "@/lib/ingest/url-fetch/paginated-fetch";
 import { resetUrlFetchCache } from "@/lib/services/cache/url-fetch-cache";
 import { TestServer } from "@/tests/setup/integration/http-server";
@@ -367,6 +368,23 @@ describe.sequential("JSON fetch integration", () => {
     expect(csv).toContain("Berlin");
     expect(csv).not.toContain("secret");
     expect(csv).not.toContain("classified");
+  });
+
+  it.each([
+    ["a blank line", "\nname,name,secret\nA,B,x\n"],
+    ["two whitespace-only lines", "  \n \nname,name,secret\nA,B,x\n"],
+  ])("strips excluded fields without losing columns after %s before the header", async (_label, body) => {
+    server.respond("/api/leading.csv", { body, headers: { "Content-Type": "text/csv" } });
+
+    const result = await fetchRemoteData({
+      sourceUrl: server.getUrl("/api/leading.csv"),
+      maxRetries: 0,
+      excludeFields: ["secret"],
+    });
+
+    const imported: Record<string, unknown>[] = [];
+    parseCsvText(result.data.toString(), (record) => imported.push(record));
+    expect(imported).toEqual([{ name: "A", name_1: "B" }]);
   });
 
   // -------------------------------------------------------------------------

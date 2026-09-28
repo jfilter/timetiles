@@ -86,11 +86,13 @@ describe.sequential("Excel reader parity", () => {
 
     const imported = await readImported(filePath);
     const [previewSheet] = await parseExcelPreview(filePath);
+    const [detectedSheet] = await processExcelFile(filePath);
 
     expect(imported).toHaveLength(1);
     expect(Object.values(imported[0] ?? {})).toEqual(["First", "Second", "Third"]);
     expect(previewSheet?.headers).toEqual(Object.keys(imported[0] ?? {}));
     expect(previewSheet?.sampleData).toEqual(imported);
+    expect(detectedSheet?.headers).toEqual(Object.keys(imported[0] ?? {}));
   });
 
   it("preview, detection and import agree on the row count", async () => {

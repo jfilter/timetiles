@@ -1,15 +1,20 @@
 /**
  * Provides utility functions for reading data from files in batches.
  *
- * This module provides streaming batch iteration (`streamBatchesFromFile`). For CSV files, streaming uses
- * Papa.parse's step-based parser with pause/resume backpressure, keeping memory at
- * one batch buffer (~3MB for 1000 rows). For Excel/ODS files, the selected sheet is
- * converted to a CSV sidecar on first access, then streamed identically.
+ * This module provides streaming batch iteration (`streamBatchesFromFile`). For CSV files, streaming
+ * pauses the file stream while a full batch waits for the consumer, keeping memory at one batch
+ * plus one read chunk. For Excel/ODS files, the selected sheet is converted to a CSV sidecar on
+ * first access, then streamed identically.
+ *
+ * Every reader of an ingest CSV — import stages, row counts, dataset detection, the wizard
+ * preview — turns parsed lines into records through `createCsvRecordBuilder`, so they all agree
+ * on the header row, header names and row sequence.
  *
  * @module
  */
 import { randomUUID } from "node:crypto";
 import fs from "node:fs";
+import type { Readable } from "node:stream";
 
 import Papa from "papaparse";
 
@@ -40,6 +45,99 @@ const DELIMITED_TEXT_EXTENSIONS = new Set(["csv", "txt"]);
 
 const isDelimitedTextExtension = (ext: string | undefined): boolean =>
   ext !== undefined && DELIMITED_TEXT_EXTENSIONS.has(ext);
+
+/** Whether the file is read with the CSV reader rather than as a spreadsheet. */
+export const isDelimitedTextFile = (filePath: string): boolean => isDelimitedTextExtension(getFileExtension(filePath));
+
+/**
+ * Papa runs without header mode: its header handling misreads the first line after a
+ * resume as a header and skips duplicate renaming when blank lines precede the header.
+ */
+const CSV_PARSE_OPTIONS = { header: false, skipEmptyLines: true } as const;
+
+/** Rename repeated header names to `name_1`, `name_2`, … without colliding with existing names. */
+const dedupeHeaders = (names: string[]): string[] => {
+  const used = new Set(names);
+  const seen = new Map<string, number>();
+  return names.map((name) => {
+    const count = seen.get(name) ?? 0;
+    seen.set(name, count + 1);
+    if (count === 0) return name;
+    let suffix = count;
+    let candidate = `${name}_${suffix}`;
+    while (used.has(candidate)) {
+      suffix++;
+      candidate = `${name}_${suffix}`;
+    }
+    used.add(candidate);
+    return candidate;
+  });
+};
+
+export interface CsvRecordBuilder {
+  /** Header names, or null while no non-blank line has been seen. */
+  fields: string[] | null;
+  /** The record for one parsed line, or null for the header line and the blank lines before it. */
+  toRecord: (cells: string[]) => Record<string, unknown> | null;
+}
+
+/**
+ * Turn parsed CSV lines into records: the first line with a non-blank cell is the header,
+ * values are trimmed, and cells beyond the header are collected under `__parsed_extra`.
+ */
+export const createCsvRecordBuilder = (): CsvRecordBuilder => {
+  const builder: CsvRecordBuilder = {
+    fields: null,
+    toRecord: (cells) => {
+      const fields = builder.fields;
+      if (fields === null) {
+        const names = cells.map((cell) => cell.trim());
+        if (names.some((name) => name !== "")) builder.fields = dedupeHeaders(names);
+        return null;
+      }
+      const record: Record<string, unknown> = {};
+      const extra: string[] = [];
+      cells.forEach((cell, index) => {
+        const field = fields[index];
+        if (field === undefined) extra.push(cell.trim());
+        else record[field] = cell.trim();
+      });
+      if (extra.length > 0) record.__parsed_extra = extra;
+      return record;
+    },
+  };
+  return builder;
+};
+
+/** Parse CSV text into records with the import's semantics; returns the header names. */
+export const parseCsvText = (content: string, onRecord: (record: Record<string, unknown>) => void): string[] => {
+  const builder = createCsvRecordBuilder();
+  Papa.parse<string[]>(content, {
+    ...CSV_PARSE_OPTIONS,
+    step: ({ data }) => {
+      const record = builder.toRecord(data);
+      if (record) onRecord(record);
+    },
+  });
+  return builder.fields ?? [];
+};
+
+/** Stream CSV lines from a text stream into a record builder. */
+const parseCsvStream = (
+  stream: Readable,
+  builder: CsvRecordBuilder,
+  handlers: { onRecord: (record: Record<string, unknown>) => void; onComplete: () => void; onError: (e: Error) => void }
+): void => {
+  Papa.parse<string[]>(stream, {
+    ...CSV_PARSE_OPTIONS,
+    step: ({ data }) => {
+      const record = builder.toRecord(data);
+      if (record) handlers.onRecord(record);
+    },
+    complete: handlers.onComplete,
+    error: handlers.onError,
+  });
+};
 
 /**
  * Async generator that yields batches of rows from a file using streaming.
@@ -105,131 +203,69 @@ export const cleanupSidecarFiles = (filePath: string, sheetIndex = 0): void => {
 };
 
 /**
- * Stream batches from a CSV file using Papa.parse step callback with backpressure.
+ * Stream batches from a CSV file.
  *
- * Uses a promise-based channel pattern:
- * 1. Papa.parse step callback pushes rows into a buffer and pauses when batch is full
- * 2. The generator awaits a "batch ready" promise
- * 3. When buffer fills, the promise resolves, generator yields the batch, then signals "drained"
- * 4. The step callback resumes on "drained" signal
+ * Backpressure pauses the file stream, never Papa's parser: once a batch is full the stream
+ * stops emitting, Papa finishes the chunk already in hand, and the generator yields exact
+ * `batchSize` slices until the buffer runs low and reading resumes.
  *
  * @yields {Record<string, unknown>[]} A batch of parsed rows.
  */
 async function* streamBatchesFromCSV(csvPath: string, batchSize: number): AsyncGenerator<Record<string, unknown>[]> {
-  let batch: Record<string, unknown>[] = [];
-  let batchResolve: ((value: Record<string, unknown>[] | null) => void) | null = null;
-  let drainResolve: (() => void) | null = null;
-  let parseError: Error | null = null;
-
-  const batchReady = (): Promise<Record<string, unknown>[] | null> =>
-    new Promise((resolve) => {
-      batchResolve = resolve;
-    });
-
-  const waitForDrain = (): Promise<void> =>
-    new Promise((resolve) => {
-      drainResolve = resolve;
-    });
-
-  const signalDrain = (): void => {
-    if (drainResolve) {
-      const resolve = drainResolve;
-      drainResolve = null;
-      resolve();
-    }
+  const stream = createDecodedTextStream(csvPath);
+  const state: { rows: Record<string, unknown>[]; finished: boolean; failure: Error | null } = {
+    rows: [],
+    finished: false,
+    failure: null,
+  };
+  let wake: (() => void) | null = null;
+  const notify = (): void => {
+    const resolve = wake;
+    wake = null;
+    resolve?.();
   };
 
-  const signalBatch = (rows: Record<string, unknown>[] | null): void => {
-    if (batchResolve) {
-      const resolve = batchResolve;
-      batchResolve = null;
-      resolve(rows);
-    }
-  };
-
-  const fileStream = createDecodedTextStream(csvPath);
-
-  // Start parsing in the background
-  const parsePromise = new Promise<void>((resolve, reject) => {
-    Papa.parse(fileStream, {
-      header: true,
-      skipEmptyLines: true,
-      transformHeader: (header: string) => header.trim(),
-      transform: (value: string) => value.trim(),
-      step: (result: Papa.ParseStepResult<Record<string, unknown>>, parser: Papa.Parser) => {
-        batch.push(result.data);
-
-        if (batch.length >= batchSize) {
-          parser.pause();
-          const fullBatch = batch;
-          batch = [];
-          signalBatch(fullBatch);
-
-          // Wait for consumer to drain before resuming (step is synchronous — must fire async)
-          void (async () => {
-            await waitForDrain();
-            parser.resume();
-          })();
-        }
-      },
-      complete: () => {
-        // Flush remaining rows
-        if (batch.length > 0) {
-          const remaining = batch;
-          batch = [];
-          signalBatch(remaining);
-
-          // After consumer drains the final batch, signal end
-          void (async () => {
-            await waitForDrain();
-            signalBatch(null);
-          })();
-        } else {
-          signalBatch(null); // Signal end
-        }
-        resolve();
-      },
-      error: (error: Error) => {
-        parseError = error;
-        signalBatch(null);
-        reject(error);
-      },
-    });
+  parseCsvStream(stream, createCsvRecordBuilder(), {
+    onRecord: (record) => {
+      state.rows.push(record);
+      if (state.rows.length >= batchSize) {
+        stream.pause();
+        notify();
+      }
+    },
+    onComplete: () => {
+      state.finished = true;
+      notify();
+    },
+    onError: (error) => {
+      state.failure = error;
+      notify();
+    },
   });
 
-  // Consume batches as they become available
   try {
     while (true) {
-      const result = await batchReady();
-
-      if (parseError !== null) {
-        throw parseError as Error;
+      if (state.failure) throw state.failure;
+      if (state.rows.length >= batchSize || (state.finished && state.rows.length > 0)) {
+        yield state.rows.splice(0, batchSize);
+      } else if (state.finished) {
+        return;
+      } else {
+        await new Promise<void>((resolve) => {
+          wake = resolve;
+          stream.resume();
+        });
       }
-
-      if (result === null) {
-        break;
-      }
-
-      yield result;
-      signalDrain();
     }
-
-    // Wait for parse to fully complete (handles any final cleanup)
-    await parsePromise;
   } finally {
-    // Unblock any paused step callback before destroying the stream,
-    // otherwise the waitForDrain() promise leaks if the consumer exits early.
-    signalDrain();
-    fileStream.destroy();
-    // oxlint-disable-next-line prefer-await-to-then -- fire-and-forget; awaiting would deadlock early-abort flows
-    parsePromise.catch(() => {});
+    stream.destroy();
   }
 }
 
 /**
- * Convert an Excel/ODS sheet to a CSV sidecar file.
+ * Render one Excel/ODS sheet as the CSV text the import streams.
  */
-const convertSheetToCSV = async (filePath: string, sheetIndex: number, csvPath: string): Promise<void> => {
+const readSheetAsCsv = async (filePath: string, sheetIndex: number): Promise<string> => {
   const { read, utils } = await loadXlsx();
   const fileBuffer = fs.readFileSync(filePath);
   const workbook = read(fileBuffer, { type: "buffer" });
@@ -247,7 +283,14 @@ const convertSheetToCSV = async (filePath: string, sheetIndex: number, csvPath: 
   // blankrows:false drops fully-empty rows from a padded used-range (tools that
   // delete rows but keep formatting leave stale "!ref" bounds) — otherwise they'd
   // become phantom all-comma CSV rows downstream.
-  const csvContent = utils.sheet_to_csv(worksheet, { blankrows: false });
+  return utils.sheet_to_csv(worksheet, { blankrows: false });
+};
+
+/**
+ * Convert an Excel/ODS sheet to a CSV sidecar file.
+ */
+const convertSheetToCSV = async (filePath: string, sheetIndex: number, csvPath: string): Promise<void> => {
+  const csvContent = await readSheetAsCsv(filePath, sheetIndex);
   // Only publish complete sidecars: existence is the reader's cache-validity check.
   const tempPath = `${csvPath}.${randomUUID()}.tmp`;
   try {
@@ -268,69 +311,37 @@ const convertSheetToCSV = async (filePath: string, sheetIndex: number, csvPath: 
 /**
  * Get total row count from a file.
  *
- * For CSV files, uses Papa's streaming parser to count records without loading the file into memory.
+ * For CSV files, streams the file to count records without loading it into memory.
  * For Excel/ODS files, loads the workbook (xlsx library requires this).
+ * Throws like the import reader for a missing sheet or an unsupported file type.
  */
 export const getFileRowCount = async (filePath: string, sheetIndex = 0): Promise<number> => {
   const fileExtension = getFileExtension(filePath);
 
   if (isDelimitedTextExtension(fileExtension)) {
-    return countCsvRecords(filePath);
-  } else if (isExcelExtension(fileExtension)) {
-    // xlsx library handles .xls, .xlsx, and .ods files
-    const { read, utils } = await loadXlsx();
-    const fileBuffer = fs.readFileSync(filePath);
-    const workbook = read(fileBuffer, { type: "buffer" });
-    const sheetName = workbook.SheetNames[sheetIndex];
-
-    if (!sheetName) {
-      return 0;
-    }
-
-    const worksheet = workbook.Sheets[sheetName];
-    if (!worksheet) {
-      return 0;
-    }
-
-    // Must mirror convertSheetToCSV + streamBatchesFromCSV exactly: a stale "!ref" pads the
-    // used range with blank rows, and counting those overstates the quota charge and rowsTotal.
-    const csvContent = utils.sheet_to_csv(worksheet, { blankrows: false });
-    return countCsvRecordsFromString(csvContent);
+    return (await scanCsvFile(filePath)).rowCount;
+  }
+  if (isExcelExtension(fileExtension)) {
+    let rowCount = 0;
+    parseCsvText(await readSheetAsCsv(filePath, sheetIndex), () => {
+      rowCount++;
+    });
+    return rowCount;
   }
 
-  return 0;
+  throw new Error(`Unsupported file type: ${fileExtension}`);
 };
 
-/** Count CSV records in an in-memory string with the import parser's semantics. */
-export const countCsvRecordsFromString = (csvContent: string): number => {
-  let count = 0;
-  Papa.parse(csvContent, {
-    header: true,
-    skipEmptyLines: true,
-    transformHeader: (header: string) => header.trim(),
-    transform: (value: string) => value.trim(),
-    step: () => {
-      count++;
-    },
-  });
-  return count;
-};
-
-/** Stream-count CSV records using the same parser semantics as import processing. */
-export const countCsvRecords = (filePath: string): Promise<number> =>
+/** Scan a CSV file with the import's semantics: its header (null when it has none) and record count. */
+export const scanCsvFile = (filePath: string): Promise<{ fields: string[] | null; rowCount: number }> =>
   new Promise((resolve, reject) => {
-    let count = 0;
-    const fileStream = createDecodedTextStream(filePath);
-
-    Papa.parse(fileStream, {
-      header: true,
-      skipEmptyLines: true,
-      transformHeader: (header: string) => header.trim(),
-      transform: (value: string) => value.trim(),
-      step: () => {
-        count++;
+    const builder = createCsvRecordBuilder();
+    let rowCount = 0;
+    parseCsvStream(createDecodedTextStream(filePath), builder, {
+      onRecord: () => {
+        rowCount++;
       },
-      complete: () => resolve(count),
-      error: (error: Error) => reject(error),
+      onComplete: () => resolve({ fields: builder.fields, rowCount }),
+      onError: reject,
     });
   });

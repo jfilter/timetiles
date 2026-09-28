@@ -9,7 +9,6 @@
  * @module
  * @category API Routes
  */
-import path from "node:path";
 
 import { z } from "zod";
 
@@ -27,8 +26,7 @@ export const GET = apiRoute({
     const meta = loadPreviewMetadata(query.previewId);
     validateRequest(meta, user);
 
-    const fileExtension = path.extname(meta.filePath).toLowerCase();
-    const sheets = await parseFileSheets(meta.filePath, fileExtension);
+    const sheets = await parseFileSheets(meta.filePath);
 
     return { sheets };
   },

@@ -11,11 +11,11 @@
  */
 import fs from "node:fs";
 
-import Papa from "papaparse";
 import type { Payload } from "payload";
 
 import { ValidationError } from "@/lib/api";
 import { decodeBufferToUtf8 } from "@/lib/ingest/file-encoding";
+import { isDelimitedTextFile, parseCsvText } from "@/lib/ingest/file-readers";
 import { getPreviewDir, savePreviewMetadata } from "@/lib/ingest/preview-store";
 import type { ConfidenceLevel, FieldMappingSuggestion, SheetInfo, SuggestedMappings } from "@/lib/ingest/types/wizard";
 import { loadXlsx } from "@/lib/ingest/xlsx-loader";
@@ -222,15 +222,8 @@ export const detectSuggestedMappings = (
 };
 
 const parseCSVSheet = (fileContent: string, index: number, name: string): SheetInfo => {
-  const fullResult = Papa.parse(fileContent, {
-    header: true,
-    skipEmptyLines: true,
-    transform: (value) => value.trim(),
-    transformHeader: (header) => header.trim(),
-  });
-
-  const headers = fullResult.meta.fields ?? [];
-  const allRows = fullResult.data as Record<string, unknown>[];
+  const allRows: Record<string, unknown>[] = [];
+  const headers = parseCsvText(fileContent, (row) => allRows.push(row));
   const sampleData = allRows.slice(0, SAMPLE_ROW_COUNT);
 
   // Detect suggested field mappings
@@ -264,8 +257,8 @@ export const parseExcelPreview = async (filePath: string): Promise<SheetInfo[]> 
 /**
  * Parse file sheets based on file extension.
  */
-export const parseFileSheets = async (filePath: string, fileExtension: string): Promise<SheetInfo[]> => {
-  if (fileExtension === ".csv") {
+export const parseFileSheets = async (filePath: string): Promise<SheetInfo[]> => {
+  if (isDelimitedTextFile(filePath)) {
     return parseCSVPreview(filePath);
   }
   // xlsx library handles .xls, .xlsx, and .ods files
@@ -336,7 +329,6 @@ export const loadConfigSuggestionDatasets = async (
 
 interface BuildPreviewResultParams {
   previewFilePath: string;
-  fileExtension: string;
   metadata: SavePreviewMetadataOpts;
   logContext: string;
   payload: Payload;
@@ -351,7 +343,6 @@ interface BuildPreviewResultParams {
  */
 export const buildPreviewResult = async ({
   previewFilePath,
-  fileExtension,
   metadata,
   logContext,
   payload,
@@ -359,7 +350,7 @@ export const buildPreviewResult = async ({
 }: BuildPreviewResultParams): Promise<{ sheets: SheetInfo[]; configSuggestions: ConfigSuggestion[] }> => {
   let sheets: SheetInfo[];
   try {
-    sheets = await parseFileSheets(previewFilePath, fileExtension);
+    sheets = await parseFileSheets(previewFilePath);
   } catch (parseError) {
     fs.unlinkSync(previewFilePath);
     logError(parseError, `preview-schema-${logContext}-parse`);

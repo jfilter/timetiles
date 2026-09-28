@@ -50,6 +50,14 @@ describe.sequential("File Readers", () => {
     return filePath;
   };
 
+  /** Copy a fixture file to temp dir so sidecar files are created there. */
+  const copyFixtureToTemp = (fixtureName: string): string => {
+    const src = getFixturePath(fixtureName);
+    const dest = path.join(tempDir, fixtureName);
+    fs.copyFileSync(src, dest);
+    return dest;
+  };
+
   describe("streamBatchesFromFile — CSV", () => {
     it("should stream a small file as a single batch", async () => {
       const csvPath = writeTempCSV("small.csv", "id,name\n1,Alice\n2,Bob\n3,Charlie\n");
@@ -297,7 +305,7 @@ describe.sequential("File Readers", () => {
       const rows = await flattenBatches(streamBatchesFromFile(csvPath, { batchSize: 10 }));
 
       expect(rows).toHaveLength(1);
-      // Papa Parse strips BOM from stream input — first header should be clean
+      // The BOM must not become part of the first header name
       expect(rows[0]).toHaveProperty("id");
       expect(rows[0]!.id).toBe("1");
     });
@@ -351,6 +359,57 @@ describe.sequential("File Readers", () => {
           if (count >= 2) throw new Error("Consumer error");
         }
       }).rejects.toThrow("Consumer error");
+    });
+  });
+
+  describe("streamBatchesFromFile — row sequence is independent of batch size", () => {
+    // Every pipeline stage numbers rows as offset + index with its own batch size, so any
+    // difference between batch sizes misaligns duplicate skips and updates.
+    it("keeps repeated and empty values in the row that follows a full batch", async () => {
+      const lines = Array.from({ length: 1500 }, (_, i) => `${i},,`);
+      const csvPath = writeTempCSV("empty-cells.csv", `id,start,end\n${lines.join("\n")}\n`);
+
+      const rows = await flattenBatches(streamBatchesFromFile(csvPath, { batchSize: 1000 }));
+
+      expect(rows).toHaveLength(1500);
+      expect(rows[1000]).toEqual({ id: "1000", start: "", end: "" });
+      expect(rows.filter((row) => row.end !== "")).toEqual([]);
+    });
+
+    it("yields identical rows for every batch size", async () => {
+      const csvPath = writeTempCSV(
+        "mixed.csv",
+        "id,start,end\n1,2024-01-01,2024-01-01\n2,,\n3,x,x\n   \n4,y,y\n,\n5,z,z\n"
+      );
+      const expected = [
+        { id: "1", start: "2024-01-01", end: "2024-01-01" },
+        { id: "2", start: "", end: "" },
+        { id: "3", start: "x", end: "x" },
+        { id: "" },
+        { id: "4", start: "y", end: "y" },
+        { id: "", start: "" },
+        { id: "5", start: "z", end: "z" },
+      ];
+
+      for (const batchSize of [1, 2, 3, 1000]) {
+        expect(await flattenBatches(streamBatchesFromFile(csvPath, { batchSize }))).toEqual(expected);
+      }
+    });
+  });
+
+  describe("streamBatchesFromFile — header row", () => {
+    it.each([
+      ["a blank line", "\na,a,b\n1,2,3\n"],
+      ["a whitespace-only line", "  \na,a,b\n1,2,3\n"],
+      ["two whitespace-only lines", "  \n \t\na,a,b\n1,2,3\n"],
+      ["a BOM followed by blank lines", "﻿\n\na,a,b\n1,2,3\n"],
+    ])("uses the first non-blank line as header after %s", async (_label, content) => {
+      const csvPath = writeTempCSV("leading.csv", content);
+
+      const rows = await flattenBatches(streamBatchesFromFile(csvPath, { batchSize: 10 }));
+
+      expect(rows).toEqual([{ a: "1", a_1: "2", b: "3" }]);
+      expect(await getFileRowCount(csvPath)).toBe(1);
     });
   });
 
@@ -419,11 +478,11 @@ describe.sequential("File Readers", () => {
     });
 
     it("should count Excel rows", async () => {
-      const fixturePath = getFixturePath("events.xlsx");
+      const xlsxPath = copyFixtureToTemp("events.xlsx");
+      const streamedRows = await flattenBatches(streamBatchesFromFile(xlsxPath, { batchSize: 100 }));
 
-      const count = await getFileRowCount(fixturePath);
-
-      expect(count).toBeGreaterThan(0);
+      expect(streamedRows.length).toBeGreaterThan(0);
+      expect(await getFileRowCount(xlsxPath)).toBe(streamedRows.length);
     });
 
     it("should not count phantom blank rows from a padded used-range", async () => {
@@ -449,10 +508,16 @@ describe.sequential("File Readers", () => {
       expect(await getFileRowCount(xlsxPath)).toBe(2);
     });
 
-    it("should return 0 for unsupported file type", async () => {
+    it("should reject an unsupported file type like the reader does", async () => {
       const filePath = writeTempCSV("data.json", '{"a":1}');
 
-      expect(await getFileRowCount(filePath)).toBe(0);
+      await expect(getFileRowCount(filePath)).rejects.toThrow("Unsupported file type: json");
+    });
+
+    it("should reject a sheet index the workbook does not have", async () => {
+      const xlsxPath = copyFixtureToTemp("multi-sheet.xlsx");
+
+      await expect(getFileRowCount(xlsxPath, 9)).rejects.toThrow("Sheet index 9 not found in workbook");
     });
   });
 });

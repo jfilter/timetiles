@@ -13,14 +13,11 @@
 import "@/tests/mocks/services/logger";
 import "@/tests/mocks/services/site-resolver";
 
-import type * as Papa from "papaparse";
-
 // 2. vi.hoisted for values needed in vi.mock factories
 const mocks = vi.hoisted(() => {
   const mockGetPayloadFn = vi.fn();
   return {
     mockGetPayload: mockGetPayloadFn,
-    mockPapaParse: vi.fn(),
     mockXlsxRead: vi.fn(),
     mockSheetToCsv: vi.fn(),
     mockFetchWithRetry: vi.fn(),
@@ -59,8 +56,6 @@ vi.mock("node:fs", () => ({
     unlinkSync: mocks.mockUnlinkSync,
   },
 }));
-
-vi.mock("papaparse", () => ({ default: { parse: mocks.mockPapaParse } }));
 
 vi.mock("xlsx", () => ({ read: mocks.mockXlsxRead, utils: { sheet_to_csv: mocks.mockSheetToCsv } }));
 
@@ -184,8 +179,7 @@ describe.sequential("POST /api/ingest/preview-schema/upload", () => {
     });
 
     it("should return 400 when file parsing fails", async () => {
-      mocks.mockReadFileSync.mockReturnValue(Buffer.from("bad content"));
-      mocks.mockPapaParse.mockImplementation(() => {
+      mocks.mockReadFileSync.mockImplementation(() => {
         throw new Error("Parse error");
       });
 
@@ -212,15 +206,10 @@ describe.sequential("POST /api/ingest/preview-schema/upload", () => {
         location: "San Francisco",
       };
 
-      mocks.mockPapaParse.mockReturnValueOnce({
-        data: [csvRow, csvRow, csvRow],
-        meta: { fields: csvHeaders },
-        errors: [],
-      });
-
       mocks.mockReadFileSync.mockReturnValue(
         Buffer.from(
-          "title,description,date,lat,lng,location\nEvent 1,A test event,2024-01-01,37.7749,-122.4194,San Francisco"
+          "title,description,date,lat,lng,location\n" +
+            "Event 1,A test event,2024-01-01,37.7749,-122.4194,San Francisco\n".repeat(3)
         )
       );
 
@@ -238,7 +227,6 @@ describe.sequential("POST /api/ingest/preview-schema/upload", () => {
       expect(sheet.name).toBe("Sheet1");
       expect(sheet.headers).toEqual(csvHeaders);
       expect(sheet.sampleData).toEqual([csvRow, csvRow, csvRow]);
-      expect(mocks.mockPapaParse).toHaveBeenCalledTimes(1);
       expect(sheet.rowCount).toBe(3);
 
       // Verify suggested mappings were generated
@@ -255,10 +243,6 @@ describe.sequential("POST /api/ingest/preview-schema/upload", () => {
     });
 
     it("should not persist authConfig to metadata file on disk (Bug 20)", async () => {
-      const csvHeaders = ["title", "date"];
-      const csvRow = { title: "Event 1", date: "2024-01-01" };
-
-      mocks.mockPapaParse.mockReturnValueOnce({ data: [csvRow], meta: { fields: csvHeaders }, errors: [] });
       mocks.mockReadFileSync.mockReturnValue(Buffer.from("title,date\nEvent 1,2024-01-01"));
 
       const formData = createFileFormData("events.csv", "csv-content", "text/csv");
@@ -279,11 +263,6 @@ describe.sequential("POST /api/ingest/preview-schema/upload", () => {
   });
 
   describe("Excel blank-column header mapping", () => {
-    beforeEach(async () => {
-      const { default: papa } = await vi.importActual<{ default: typeof Papa }>("papaparse");
-      mocks.mockPapaParse.mockImplementation(papa.parse);
-    });
-
     it("should map data to correct columns when blank headers exist", async () => {
       mocks.mockXlsxRead.mockReturnValue({ SheetNames: ["Sheet1"], Sheets: { Sheet1: {} } });
       mocks.mockSheetToCsv.mockReturnValue("Name,,Age\nAlice,BLANK_DATA,30");
@@ -434,11 +413,6 @@ describe.sequential("POST /api/ingest/preview-schema/url", () => {
       });
 
       mocks.mockReadFileSync.mockReturnValue(Buffer.from(csvContent));
-      mocks.mockPapaParse.mockReturnValueOnce({
-        data: [{ title: "Event 1", date: "2024-01-01" }],
-        meta: { fields: ["title", "date"] },
-        errors: [],
-      });
 
       const request = createUrlRequest({ sourceUrl: "https://example.com/events.csv" });
 
@@ -467,11 +441,6 @@ describe.sequential("POST /api/ingest/preview-schema/url", () => {
       });
 
       mocks.mockReadFileSync.mockReturnValue(Buffer.from(csvContent));
-      mocks.mockPapaParse.mockReturnValueOnce({
-        data: [{ title: "Event 1", date: "2024-01-01" }],
-        meta: { fields: ["title", "date"] },
-        errors: [],
-      });
 
       const request = createUrlRequest({
         sourceUrl: "https://example.com/events.csv",

@@ -8,7 +8,6 @@
  * @module
  * @category API Routes
  */
-import path from "node:path";
 
 import { apiRoute, ForbiddenError, requireFeatureEnabled, ValidationError } from "@/lib/api";
 import {
@@ -76,10 +75,9 @@ export const POST = apiRoute({
     // Parse preview sheets so processSheetMappings can validate that every
     // user-supplied field path exists in the detected schema. Catch parse
     // failures and translate them into a user-friendly ValidationError.
-    const fileExtension = path.extname(previewMeta.filePath).toLowerCase();
     let previewSheets;
     try {
-      previewSheets = await parseFileSheets(previewMeta.filePath, fileExtension);
+      previewSheets = await parseFileSheets(previewMeta.filePath);
     } catch (parseError) {
       const message = parseError instanceof Error ? parseError.message : "Unknown error";
       throw new ValidationError(`Failed to re-parse preview for validation: ${message}`);

@@ -16,10 +16,24 @@ import { logger } from "@/lib/logger";
 /** Bytes sampled from the start of the file for charset detection. */
 const DETECTION_SAMPLE_BYTES = 65536;
 
-/** Prefer unambiguous ASCII text over statistical guesses on short samples. */
+/** Line and tab controls; other control bytes point to UTF-16/32 or ISO-2022 rather than UTF-8 text. */
+const TEXT_CONTROL_BYTES = new Set([0x09, 0x0a, 0x0d]);
+const isSuspiciousControl = (byte: number): boolean => byte === 0x7f || (byte < 0x20 && !TEXT_CONTROL_BYTES.has(byte));
+
+/** A sample may end mid-character, so a trailing incomplete sequence still counts as valid. */
+const isUtf8Text = (sample: Buffer): boolean => {
+  if (sample.some(isSuspiciousControl)) return false;
+  try {
+    new TextDecoder("utf-8", { fatal: true }).decode(sample, { stream: true });
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+/** Trust valid UTF-8 before letting statistical detection guess on short samples. */
 const detectSampleEncoding = (sample: Buffer): string => {
-  // Exclude NUL and escape controls: they may identify UTF-16/32 or ISO-2022.
-  if (/^[\t\r\n\x20-\x7e]*$/.test(sample.toString("latin1"))) return "utf-8";
+  if (isUtf8Text(sample)) return "utf-8";
   const detected = chardet.detect(sample);
   return detected && iconv.encodingExists(detected) ? detected : "utf-8";
 };
@@ -41,33 +55,18 @@ export const detectFileEncoding = (filePath: string): string => {
 };
 
 /**
- * Decode an in-memory buffer to a UTF-8 string, detecting its source encoding
- * from a leading sample instead of assuming UTF-8.
+ * Decode an in-memory buffer to a UTF-8 string without a byte order mark,
+ * detecting its source encoding from a leading sample instead of assuming UTF-8.
  */
-export const decodeBufferToUtf8 = (buffer: Buffer): string => {
-  const sample = buffer.subarray(0, DETECTION_SAMPLE_BYTES);
-  const encoding = detectSampleEncoding(sample);
-
-  if (encoding.toLowerCase() === "utf-8" || encoding.toLowerCase() === "ascii") {
-    return buffer.toString("utf-8");
-  }
-
-  return iconv.decode(buffer, encoding);
-};
+export const decodeBufferToUtf8 = (buffer: Buffer): string =>
+  iconv.decode(buffer, detectSampleEncoding(buffer.subarray(0, DETECTION_SAMPLE_BYTES)));
 
 /**
- * Open a file as a UTF-8 text stream, transcoding on the fly if the source
- * bytes are in a different detected encoding.
+ * Open a file as a UTF-8 text stream without a byte order mark, transcoding on
+ * the fly if the source bytes are in a different detected encoding.
  */
 export const createDecodedTextStream = (filePath: string): Readable => {
   const encoding = detectFileEncoding(filePath);
-  const rawStream = fs.createReadStream(filePath);
-
-  if (encoding.toLowerCase() === "utf-8" || encoding.toLowerCase() === "ascii") {
-    rawStream.setEncoding("utf-8");
-    return rawStream;
-  }
-
-  logger.info("Transcoding non-UTF-8 ingest file", { filePath, encoding });
-  return compose(rawStream, iconv.decodeStream(encoding));
+  if (encoding !== "utf-8") logger.info("Transcoding non-UTF-8 ingest file", { filePath, encoding });
+  return compose(fs.createReadStream(filePath), iconv.decodeStream(encoding));
 };

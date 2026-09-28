@@ -114,7 +114,6 @@ export const POST = apiRoute({
 
     const { sheets, configSuggestions } = await buildPreviewResult({
       previewFilePath,
-      fileExtension: converted.extension,
       metadata: {
         previewId,
         userId: user.id,

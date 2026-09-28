@@ -9,7 +9,6 @@
  * @module
  * @category API Routes
  */
-import path from "node:path";
 
 import { commitTransaction, initTransaction, killTransaction, type PayloadRequest } from "payload";
 import { z } from "zod";
@@ -99,10 +98,9 @@ export const PATCH = apiRoute({
     // Re-parse preview sheets so processSheetMappings can validate that every
     // user-supplied field path exists in the detected schema (mirrors the
     // create endpoint — otherwise stale/invalid paths persist silently).
-    const fileExtension = path.extname(previewMeta.filePath).toLowerCase();
     let previewSheets;
     try {
-      previewSheets = await parseFileSheets(previewMeta.filePath, fileExtension);
+      previewSheets = await parseFileSheets(previewMeta.filePath);
     } catch (parseError) {
       const message = parseError instanceof Error ? parseError.message : "Unknown error";
       throw new ValidationError(`Failed to re-parse preview for validation: ${message}`);

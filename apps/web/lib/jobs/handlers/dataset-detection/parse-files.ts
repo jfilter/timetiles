@@ -9,9 +9,7 @@
  */
 import fs from "node:fs";
 
-import Papa from "papaparse";
-
-import { createDecodedTextStream } from "@/lib/ingest/file-encoding";
+import { parseCsvText, scanCsvFile } from "@/lib/ingest/file-readers";
 import { loadXlsx } from "@/lib/ingest/xlsx-loader";
 import { logger } from "@/lib/logger";
 
@@ -29,22 +27,8 @@ export interface SheetInfo {
 export const processCSVFile = async (filePath: string): Promise<SheetInfo[]> => {
   logger.info("Processing CSV file", { filePath });
 
-  let headers: string[] | undefined;
-  let rowCount = 0;
-  await new Promise<void>((resolve, reject) => {
-    Papa.parse<string[]>(createDecodedTextStream(filePath), {
-      header: false,
-      skipEmptyLines: true,
-      step: ({ data }) => {
-        if (headers === undefined) headers = data.map((header) => header.trim());
-        else rowCount++;
-      },
-      complete: () => resolve(),
-      error: reject,
-    });
-  });
-
-  if (!headers?.some((header) => header.length > 0)) {
+  const { fields: headers, rowCount } = await scanCsvFile(filePath);
+  if (headers === null) {
     throw new Error("No data rows found in file");
   }
 
@@ -63,21 +47,13 @@ export const processExcelFile = async (filePath: string): Promise<SheetInfo[]> =
     const worksheet = workbook.Sheets[sheetName!];
     if (!worksheet) continue;
 
-    // Both options match convertSheetToCSV/getFileRowCount: `blankrows: false` because a
-    // stale "!ref" pads the used range and counting that padding reports more rows than the
-    // import streams, and `raw: false` because the sidecar CSV holds FORMATTED text — a
-    // header cell that is a date or number was detected as a serial/number here while the
-    // import produced the formatted string, so the detected column name did not exist in
-    // the imported rows.
-    const jsonData = utils.sheet_to_json(worksheet, { header: 1, blankrows: false, raw: false });
-    if (jsonData.length > 0 && jsonData[0]) {
-      sheets.push({
-        name: sheetName ?? `Sheet${i}`,
-        index: i,
-        rowCount: jsonData.length - 1,
-        columnCount: Array.isArray(jsonData[0]) ? jsonData[0].length : 0,
-        headers: Array.isArray(jsonData[0]) ? jsonData[0] : [],
-      });
+    // Same conversion and parser as the import's sidecar, so headers and counts match it.
+    let rowCount = 0;
+    const headers = parseCsvText(utils.sheet_to_csv(worksheet, { blankrows: false }), () => {
+      rowCount++;
+    });
+    if (headers.length > 0) {
+      sheets.push({ name: sheetName ?? `Sheet${i}`, index: i, rowCount, columnCount: headers.length, headers });
     }
   }
 

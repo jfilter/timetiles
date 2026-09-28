@@ -18,6 +18,15 @@ describe("source buffer decoding", () => {
     expect(decodeBufferToUtf8(Buffer.from(content))).toBe(content);
   });
 
+  it("reads short valid UTF-8 as UTF-8 instead of guessing a single-byte charset", () => {
+    const content = "lon\t  value \tdate\rlon\t540.0882286485285\tdate17\t\rdate50\t879.4241074938327\tKöln";
+    expect(decodeBufferToUtf8(Buffer.from(content, "utf-8"))).toBe(content);
+  });
+
+  it("drops a UTF-8 byte order mark", () => {
+    expect(decodeBufferToUtf8(Buffer.from("\uFEFFname\nKöln\n", "utf-8"))).toBe("name\nKöln\n");
+  });
+
   it("preserves UTF-16 text with a byte-order mark", () => {
     const content = "name\nExample\n";
     const buffer = Buffer.concat([Buffer.from([0xff, 0xfe]), Buffer.from(content, "utf16le")]);

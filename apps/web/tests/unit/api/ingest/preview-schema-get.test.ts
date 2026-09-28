@@ -13,12 +13,9 @@
 import "@/tests/mocks/services/logger";
 import "@/tests/mocks/services/site-resolver";
 
-import type * as Papa from "papaparse";
-
 // 2. vi.hoisted for values needed in vi.mock factories
 const mocks = vi.hoisted(() => ({
   mockGetPayload: vi.fn(),
-  mockPapaParse: vi.fn(),
   mockXlsxRead: vi.fn(),
   mockSheetToCsv: vi.fn(),
   mockDetectLanguage: vi.fn(),
@@ -53,7 +50,6 @@ vi.mock("@/lib/config/app-config", () => ({
   resetAppConfig: vi.fn(),
 }));
 
-vi.mock("papaparse", () => ({ default: { parse: mocks.mockPapaParse } }));
 vi.mock("xlsx", () => ({ read: mocks.mockXlsxRead, utils: { sheet_to_csv: mocks.mockSheetToCsv } }));
 
 // Only language detection is stubbed (it is non-deterministic on short samples);
@@ -187,15 +183,10 @@ describe.sequential("GET /api/ingest/preview-schema", () => {
         .mockReturnValueOnce(mockMetadata())
         .mockReturnValueOnce(
           Buffer.from(
-            "title,description,date,lat,lng,location\nEvent 1,A test event,2024-01-01,37.7749,-122.4194,San Francisco"
+            "title,description,date,lat,lng,location\n" +
+              "Event 1,A test event,2024-01-01,37.7749,-122.4194,San Francisco\n".repeat(3)
           )
         );
-
-      mocks.mockPapaParse.mockReturnValueOnce({
-        data: [csvRow, csvRow, csvRow],
-        meta: { fields: csvHeaders },
-        errors: [],
-      });
 
       const request = createGetRequest(VALID_UUID);
       const response = await GET(request, {} as never);
@@ -207,7 +198,6 @@ describe.sequential("GET /api/ingest/preview-schema", () => {
       const sheet = body.sheets[0];
       expect(sheet.headers).toEqual(csvHeaders);
       expect(sheet.sampleData).toEqual([csvRow, csvRow, csvRow]);
-      expect(mocks.mockPapaParse).toHaveBeenCalledTimes(1);
       expect(sheet.rowCount).toBe(3);
       expect(sheet.suggestedMappings).toBeDefined();
       expect(sheet.suggestedMappings.mappings.titlePath.path).toBe("title");
@@ -229,8 +219,6 @@ describe.sequential("GET /api/ingest/preview-schema", () => {
 
       mocks.mockXlsxRead.mockReturnValue({ SheetNames: ["Events", "Venues"], Sheets: { Events: {}, Venues: {} } });
 
-      const { default: papa } = await vi.importActual<{ default: typeof Papa }>("papaparse");
-      mocks.mockPapaParse.mockImplementation(papa.parse);
       mocks.mockSheetToCsv
         .mockReturnValueOnce("title,date\nEvent 1,2024-01-01")
         .mockReturnValueOnce("venue,location\nHall A,123 Main St");

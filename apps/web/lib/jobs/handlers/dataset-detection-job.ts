@@ -17,6 +17,7 @@ import path from "node:path";
 import type { Payload } from "payload";
 
 import { COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
+import { isDelimitedTextFile } from "@/lib/ingest/file-readers";
 import { getIngestFilePath } from "@/lib/ingest/upload-path";
 import { logError, logger } from "@/lib/logger";
 import { asSystem } from "@/lib/services/system-payload";
@@ -36,27 +37,19 @@ import { buildSheetsFromWizardMetadata, processCSVFile, processExcelFile } from 
 
 /**
  * Convert GeoJSON or JSON files to CSV for pipeline processing.
- * Returns updated filePath and fileExtension, or null if no conversion needed.
+ * Returns the converted file path, or null if no conversion needed.
  */
-/** Extensions the CSV parser handles. `.txt` is accepted on upload and by the URL fetcher
- *  (a CSV served as `text/plain`), so it must not fall through to the Excel reader. */
-const CSV_LIKE_EXTENSIONS = new Set([".csv", ".txt"]);
-
 const convertToCsvIfNeeded = async (
   filePath: string,
   fileExtension: string
-): Promise<{ filePath: string; fileExtension: string; logInfo: Record<string, unknown> } | null> => {
+): Promise<{ filePath: string; logInfo: Record<string, unknown> } | null> => {
   if (fileExtension === ".geojson") {
     const { convertGeoJsonToCsv } = await import("@/lib/ingest/geojson-to-csv");
     const buffer = fs.readFileSync(filePath);
     const result = convertGeoJsonToCsv(buffer);
     const csvPath = filePath.replace(/\.geojson$/i, ".csv");
     fs.writeFileSync(csvPath, result.csv);
-    return {
-      filePath: csvPath,
-      fileExtension: ".csv",
-      logInfo: { format: "geojson", featureCount: result.featureCount },
-    };
+    return { filePath: csvPath, logInfo: { format: "geojson", featureCount: result.featureCount } };
   }
 
   if (fileExtension === ".json") {
@@ -67,18 +60,14 @@ const convertToCsvIfNeeded = async (
       const result = convertGeoJsonToCsv(buffer);
       const csvPath = filePath.replace(/\.json$/i, ".csv");
       fs.writeFileSync(csvPath, result.csv);
-      return {
-        filePath: csvPath,
-        fileExtension: ".csv",
-        logInfo: { format: "geojson-json", featureCount: result.featureCount },
-      };
+      return { filePath: csvPath, logInfo: { format: "geojson-json", featureCount: result.featureCount } };
     }
 
     const { convertJsonToCsv } = await import("@/lib/ingest/json-to-csv");
     const result = convertJsonToCsv(buffer);
     const csvPath = filePath.replace(/\.json$/i, ".csv");
     fs.writeFileSync(csvPath, result.csv);
-    return { filePath: csvPath, fileExtension: ".csv", logInfo: { format: "json", recordCount: result.recordCount } };
+    return { filePath: csvPath, logInfo: { format: "json", recordCount: result.recordCount } };
   }
 
   return null;
@@ -395,7 +384,7 @@ export const datasetDetectionJob = {
         sheets = wizardSheets;
         logger.info("Using wizard metadata fast-path", { ingestFileId, sheetCount: sheets.length });
       } else {
-        let fileExtension = path.extname(filePath).toLowerCase();
+        const fileExtension = path.extname(filePath).toLowerCase();
 
         // GeoJSON/JSON files need conversion to CSV before processing.
         // Write CSV alongside original and update the ingest-file record so downstream tasks
@@ -404,7 +393,6 @@ export const datasetDetectionJob = {
         const conversion = await convertToCsvIfNeeded(filePath, fileExtension);
         if (conversion) {
           filePath = conversion.filePath;
-          fileExtension = conversion.fileExtension;
 
           await asSystem(payload).update({
             collection: COLLECTION_NAMES.INGEST_FILES,
@@ -420,9 +408,7 @@ export const datasetDetectionJob = {
         }
 
         // xlsx library handles .xls, .xlsx, and .ods files
-        sheets = CSV_LIKE_EXTENSIONS.has(fileExtension)
-          ? await processCSVFile(filePath)
-          : await processExcelFile(filePath);
+        sheets = isDelimitedTextFile(filePath) ? await processCSVFile(filePath) : await processExcelFile(filePath);
       }
 
       if (sheets.length === 0) {

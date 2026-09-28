@@ -124,7 +124,6 @@ export const POST = apiRoute({
 
     const { sheets, configSuggestions } = await buildPreviewResult({
       previewFilePath,
-      fileExtension,
       metadata: { previewId, userId: user.id, originalName, filePath: previewFilePath, mimeType, fileSize, sourceUrl },
       logContext: "url",
       payload,
