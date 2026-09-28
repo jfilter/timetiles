@@ -81,14 +81,13 @@ teardown() {
 
 @test "mark_completed updates existing step" {
     init_state
-    mark_completed "STEP_ONE"
-    sleep 1
+    echo "STEP_ONE=2000-01-01T00:00:00Z" >> "$STATE_FILE"
     mark_completed "STEP_ONE"
 
-    # Should only have one entry
     local count
     count=$(grep -c "^STEP_ONE=" "$STATE_FILE")
     [ "$count" -eq 1 ]
+    [[ "$(grep "^STEP_ONE=" "$STATE_FILE")" != "STEP_ONE=2000-01-01T00:00:00Z" ]]
 }
 
 # =============================================================================

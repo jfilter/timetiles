@@ -75,21 +75,14 @@ describe.sequential("Analyze Duplicates Pipeline", () => {
     expect(importJobs.docs.length).toBeGreaterThanOrEqual(1);
     const importJobId = importJobs.docs[0].id;
 
-    // Check the workflow job completed without errors
+    // Payload deletes successfully completed jobs, so a remaining manual-ingest
+    // job is one that failed or never finished; the diff shows its error.
     const workflowJobs = await payload.find({
       collection: "payload-jobs",
       where: { workflowSlug: { equals: "manual-ingest" } },
-      limit: 1,
-      sort: "-createdAt",
     });
 
-    if (workflowJobs.docs.length > 0) {
-      const job = workflowJobs.docs[0];
-      if (job.hasError) {
-        console.error("manual-ingest workflow FAILED:", JSON.stringify(job.error, null, 2));
-      }
-      expect(job.hasError).toBeFalsy();
-    }
+    expect(workflowJobs.docs).toEqual([]);
 
     // Check import-job completed successfully (pipeline ran through analyze-duplicates and beyond)
     const updatedJob = await payload.findByID({ collection: "ingest-jobs", id: importJobId });

@@ -19,6 +19,9 @@ interface MapClusterFeature {
   properties: { id: string; type: "event-cluster" | "event-location"; count?: number; title?: string };
 }
 
+// cluster_events returns H3 cell indexes as 15 lowercase hex digits.
+const H3_CELL_ID = /^8[0-9a-f]{14}$/;
+
 describe.sequential("/api/v1/events/geo", () => {
   let payload: Payload;
   let testCatalogId: string;
@@ -150,23 +153,20 @@ describe.sequential("/api/v1/events/geo", () => {
     expect(data).toHaveProperty("features");
     expect(Array.isArray(data.features)).toBe(true);
 
-    // At zoom level 2, we should have clusters
+    // At zoom 2 the SF and NY groups each collapse into one H3 cluster; London,
+    // Paris and Tokyo stay single locations.
     const clusters = data.features.filter((f: MapClusterFeature) => f.properties.type === "event-cluster");
     const singles = data.features.filter((f: MapClusterFeature) => f.properties.type === "event-location");
 
-    expect(data.features.length).toBeGreaterThan(0);
-    expect(clusters.length + singles.length).toBeGreaterThan(0);
+    expect(clusters.map((c: MapClusterFeature) => c.properties.count).sort()).toEqual([3, 4]);
+    expect(singles).toHaveLength(3);
 
-    // Check cluster structure if clusters exist
-    if (clusters.length > 0) {
-      const cluster = clusters[0];
+    for (const cluster of clusters) {
       expect(cluster).toHaveProperty("type", "Feature");
-      expect(cluster).toHaveProperty("id"); // GeoJSON ID at root level
-      expect(cluster).toHaveProperty("geometry");
+      expect(cluster.id).toMatch(H3_CELL_ID);
+      expect(cluster.properties.clusterId).toBe(cluster.id);
       expect(cluster.geometry).toHaveProperty("type", "Point");
-      expect(cluster.geometry).toHaveProperty("coordinates");
-      expect(cluster.properties).toHaveProperty("count");
-      expect(cluster.properties.count).toBeGreaterThan(1);
+      expect(cluster.geometry.coordinates).toHaveLength(2);
     }
   });
 
@@ -189,31 +189,18 @@ describe.sequential("/api/v1/events/geo", () => {
 
     const data = await response.json();
 
-    // At zoom level 16 in SF area, we should see results (either clusters or individual events)
+    // At zoom 16 the four SF events split into one two-event cell and two singles.
     expect(data).toHaveProperty("type", "FeatureCollection");
-    expect(data.features.length).toBeGreaterThan(0);
+    const total = data.features.reduce((sum: number, f: MapClusterFeature) => sum + (f.properties.count ?? 1), 0);
+    expect(total).toBe(4);
 
-    // Check that we get proper feature structure
-    const feature = data.features[0];
-    expect(feature).toBeDefined();
-    if (feature) {
-      expect(feature).toHaveProperty("type", "Feature");
-      expect(feature).toHaveProperty("geometry");
-      expect(feature.geometry).toHaveProperty("type", "Point");
-      expect(feature).toHaveProperty("properties");
-      expect(feature.properties).toHaveProperty("type");
-      expect(["event-cluster", "event-location"]).toContain(feature.properties.type);
-    }
-
-    // If it's a single-event location, verify structure
     const singles = data.features.filter((f: MapClusterFeature) => f.properties.type === "event-location");
-    if (singles.length > 0) {
-      const single = singles[0];
-      expect(single).toBeDefined();
-      if (single) {
-        expect(single).toHaveProperty("id");
-        expect(single.properties).toHaveProperty("title");
-      }
+    expect(singles).toHaveLength(2);
+    for (const single of singles) {
+      expect(single.geometry).toHaveProperty("type", "Point");
+      expect(single.id).toBe(single.properties.eventId);
+      expect(single.properties.h3Cell).toMatch(H3_CELL_ID);
+      expect(single.properties.title).toMatch(/^Test Event \d+$/);
     }
   });
 
@@ -359,16 +346,8 @@ describe.sequential("/api/v1/events/geo", () => {
     // At zoom 11, we should have same or more clusters (subdivision)
     expect(result11.rows.length).toBeGreaterThanOrEqual(result10.rows.length);
 
-    // Verify cluster IDs follow tile coordinate pattern: should contain '@' separator
-    if (result10.rows.length > 0) {
-      const clusterIdValue = result10.rows[0]?.cluster_id;
-      // With H3 algorithm, cluster IDs are H3 cell IDs (15 chars)
-      // With other algorithms, they may be SHA256 hashes (64 chars) or numeric
-      if (typeof clusterIdValue === "string") {
-        expect(clusterIdValue).toBeTruthy();
-        expect(clusterIdValue.length).toBeGreaterThan(0);
-      }
-    }
+    expect(result10.rows).toHaveLength(1);
+    expect(result10.rows[0]?.cluster_id).toMatch(H3_CELL_ID);
   });
 
   it("should maintain cluster subdivision across zoom levels", async () => {

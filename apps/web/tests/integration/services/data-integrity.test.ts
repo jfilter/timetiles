@@ -108,16 +108,13 @@ describe.sequential("Data Integrity Tests", () => {
         },
       });
 
-      expect(result.output.ingestFileId).toBeDefined();
-      if (result.output.ingestFileId) {
-        const successOutput = result.output as any;
-        expect(successOutput.contentHash).toBe(expectedHash);
+      const successOutput = result.output as any;
+      expect(successOutput.ingestFileId).toBeTruthy();
+      expect(successOutput.contentHash).toBe(expectedHash);
 
-        // Check that the import file was created with the hash
-        const ingestFile = await payload.findByID({ collection: "ingest-files", id: successOutput.ingestFileId });
-
-        expect(ingestFile.metadata?.urlFetch?.contentHash).toBe(expectedHash);
-      }
+      // Check that the import file was created with the hash
+      const ingestFile = await payload.findByID({ collection: "ingest-files", id: successOutput.ingestFileId });
+      expect(ingestFile.metadata?.urlFetch?.contentHash).toBe(expectedHash);
     });
 
     it("should detect duplicate content across multiple imports", async () => {
@@ -149,18 +146,12 @@ describe.sequential("Data Integrity Tests", () => {
         },
       });
 
-      expect(result1.output.ingestFileId).toBeDefined();
-      if (result1.output.ingestFileId) {
-        const successOutput = result1.output as any;
-        expect(successOutput.isDuplicate).toBe(false);
+      expect(result1.output.ingestFileId).toBeTruthy();
+      const firstOutput = result1.output as any;
+      expect(firstOutput.isDuplicate).toBe(false);
 
-        // Mark the first import as completed so duplicate detection can find it
-        await payload.update({
-          collection: "ingest-files",
-          id: successOutput.ingestFileId,
-          data: { status: "completed" },
-        });
-      }
+      // Mark the first import as completed so duplicate detection can find it
+      await payload.update({ collection: "ingest-files", id: firstOutput.ingestFileId, data: { status: "completed" } });
 
       // Second execution (should detect duplicate)
       const result2 = await urlFetchJob.handler({
@@ -176,12 +167,10 @@ describe.sequential("Data Integrity Tests", () => {
         },
       });
 
-      expect(result2.output.ingestFileId).toBeDefined();
-      if (result2.output.ingestFileId) {
-        const successOutput = result2.output as any;
-        expect(successOutput.isDuplicate).toBe(true);
-        expect(successOutput.skippedReason).toContain("Duplicate");
-      }
+      expect(result2.output.ingestFileId).toBeTruthy();
+      const secondOutput = result2.output as any;
+      expect(secondOutput.isDuplicate).toBe(true);
+      expect(secondOutput.skippedReason).toContain("Duplicate");
     });
 
     it("should handle hash calculation for large files", async () => {
@@ -605,13 +594,11 @@ describe.sequential("Data Integrity Tests", () => {
         },
       });
 
-      expect(result.output.ingestFileId).toBeDefined();
-      if (result.output.ingestFileId) {
-        const successOutput = result.output as any;
-        // Content hash should be consistent
-        const expectedHash = crypto.createHash("sha256").update(specialContent).digest("hex");
-        expect(successOutput.contentHash).toBe(expectedHash);
-      }
+      expect(result.output.ingestFileId).toBeTruthy();
+      const successOutput = result.output as any;
+      // Content hash should be consistent
+      const expectedHash = crypto.createHash("sha256").update(specialContent).digest("hex");
+      expect(successOutput.contentHash).toBe(expectedHash);
     });
 
     it("should handle different encodings correctly", async () => {
@@ -647,11 +634,9 @@ describe.sequential("Data Integrity Tests", () => {
         },
       });
 
-      expect(result.output.ingestFileId).toBeDefined();
-      if (result.output.ingestFileId) {
-        const successOutput = result.output as any;
-        expect(successOutput.fileSize).toBe(latin1Content.length);
-      }
+      expect(result.output.ingestFileId).toBeTruthy();
+      const successOutput = result.output as any;
+      expect(successOutput.fileSize).toBe(latin1Content.length);
     });
   });
 

@@ -499,7 +499,8 @@ verify_backup_cron() {
 }
 
 verify_log_rotation() {
-    if [[ -f /etc/logrotate.d/timetiles ]] || [[ -f /etc/logrotate.d/docker-container ]]; then
+    local dir="${1:-/etc/logrotate.d}"
+    if [[ -f "$dir/timetiles" ]] || [[ -f "$dir/docker-container" ]]; then
         CHECK_MSG="Log rotation configured"
         return 0
     else

@@ -72,9 +72,12 @@ podman_bounded() {
 
 # Skip when the scraper feature was never installed (SKIP_SCRAPER=true).
 skip_if_no_podman() {
-    if ! command -v podman &>/dev/null; then
-        skip "Podman is not installed (scraper setup disabled)"
+    command -v podman &>/dev/null && return 0
+    if [[ "${DEPLOYMENT_EXPECTED:-}" == "1" && "${SKIP_SCRAPER:-false}" != "true" ]]; then
+        echo "Podman is not installed" >&2
+        return 1
     fi
+    skip "Podman is not installed (scraper setup disabled)"
 }
 
 # Skip when the scraper was never deployed on this host.

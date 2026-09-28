@@ -177,7 +177,7 @@ describe("POST /run endpoint", () => {
 
       const body = await res.json();
       expect(body.error).toBe("Invalid request");
-      expect(body.details).toBeDefined();
+      expect(Object.keys(body.details.fieldErrors)).toEqual(["run_id", "runtime", "entrypoint"]);
     });
 
     it("returns 400 without code_url and code", async () => {
@@ -208,7 +208,7 @@ describe("POST /run endpoint", () => {
 
       const body = await res.json();
       expect(body.error).toBe("Invalid request");
-      expect(body.details).toBeDefined();
+      expect(Object.keys(body.details.fieldErrors)).toEqual(["entrypoint"]);
     });
 
     it("returns 400 when output_file contains path traversal", async () => {
@@ -222,7 +222,7 @@ describe("POST /run endpoint", () => {
 
       const body = await res.json();
       expect(body.error).toBe("Invalid request");
-      expect(body.details).toBeDefined();
+      expect(Object.keys(body.details.fieldErrors)).toEqual(["output_file"]);
     });
 
     it("returns 400 when timeout_secs is below the shared minimum", async () => {
@@ -236,7 +236,7 @@ describe("POST /run endpoint", () => {
 
       const body = await res.json();
       expect(body.error).toBe("Invalid request");
-      expect(body.details).toBeDefined();
+      expect(Object.keys(body.details.fieldErrors)).toEqual(["limits"]);
     });
 
     it("accepts timeout_secs at the shared minimum", async () => {
@@ -273,7 +273,7 @@ describe("POST /run endpoint", () => {
 
       const body = await res.json();
       expect(body.error).toBe("Invalid request");
-      expect(body.details).toBeDefined();
+      expect(Object.keys(body.details.fieldErrors)).toEqual(["code_url"]);
     });
   });
 

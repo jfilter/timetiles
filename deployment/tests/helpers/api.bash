@@ -36,9 +36,12 @@ _api_curl() {
 }
 
 skip_if_no_api() {
-    if ! _api_curl -f "$API_BASE/api/health" >/dev/null 2>&1; then
-        skip "Web app is not reachable at $API_BASE"
+    _api_curl -f "$API_BASE/api/health" >/dev/null 2>&1 && return 0
+    if [[ "${DEPLOYMENT_EXPECTED:-}" == "1" ]]; then
+        echo "Web app is not reachable at $API_BASE" >&2
+        return 1
     fi
+    skip "Web app is not reachable at $API_BASE"
 }
 
 # Create the first admin if the deployment has none, then log in.

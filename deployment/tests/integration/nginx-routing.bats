@@ -105,9 +105,8 @@ curl_https_head() {
 
 @test "Strict-Transport-Security header present" {
     run curl_https_head /api/health
-    [[ "$output" == *"Strict-Transport-Security"* ]] || \
-    [[ "$output" == *"strict-transport-security"* ]] || \
-    skip "HSTS not enabled (expected for test environment)"
+    [ "$status" -eq 0 ]
+    [[ "${output,,}" == *"strict-transport-security"* ]]
 }
 
 # =============================================================================
@@ -116,8 +115,8 @@ curl_https_head() {
 
 @test "ACME challenge path accessible over HTTP" {
     # Create test challenge file
-    run_in_container certbot mkdir -p /var/www/certbot/.well-known/acme-challenge 2>/dev/null || true
-    run_in_container certbot sh -c 'echo "test-challenge" > /var/www/certbot/.well-known/acme-challenge/test.txt' 2>/dev/null || true
+    run_in_container certbot mkdir -p /var/www/certbot/.well-known/acme-challenge
+    run_in_container certbot sh -c 'echo "test-challenge" > /var/www/certbot/.well-known/acme-challenge/test.txt'
 
     run curl -sf http://localhost/.well-known/acme-challenge/test.txt
     [ "$status" -eq 0 ]

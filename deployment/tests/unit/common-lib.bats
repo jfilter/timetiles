@@ -152,14 +152,44 @@ setup() {
     [[ "$CHECK_MSG" == *"Compose"* ]]
 }
 
-@test "verify_swap sets CHECK_MSG with swap info" {
-    # This test just verifies the function runs and sets CHECK_MSG
-    # Actual swap presence depends on system
-    verify_swap || true
-    [[ -n "$CHECK_MSG" ]]
+# Stands in for `free -m`, reporting $SWAP_MB of swap.
+free() { echo "Swap: $SWAP_MB 0 $SWAP_MB"; }
+
+@test "verify_swap passes with 1GB or more" {
+    SWAP_MB=2048
+    local rc=0
+    verify_swap || rc=$?
+    [ "$rc" -eq 0 ]
+    [[ "$CHECK_MSG" == "Swap configured (2048MB)" ]]
 }
 
-@test "verify_log_rotation sets CHECK_MSG" {
-    verify_log_rotation || true
-    [[ -n "$CHECK_MSG" ]]
+@test "verify_swap fails when swap is small" {
+    SWAP_MB=512
+    local rc=0
+    verify_swap || rc=$?
+    [ "$rc" -eq 1 ]
+    [[ "$CHECK_MSG" == "Swap is small (512MB, recommend 2GB+)" ]]
+}
+
+@test "verify_swap fails without swap" {
+    SWAP_MB=0
+    local rc=0
+    verify_swap || rc=$?
+    [ "$rc" -eq 1 ]
+    [[ "$CHECK_MSG" == "No swap configured" ]]
+}
+
+@test "verify_log_rotation passes with a timetiles config" {
+    touch "$BATS_TEST_TMPDIR/timetiles"
+    local rc=0
+    verify_log_rotation "$BATS_TEST_TMPDIR" || rc=$?
+    [ "$rc" -eq 0 ]
+    [[ "$CHECK_MSG" == "Log rotation configured" ]]
+}
+
+@test "verify_log_rotation fails without a config" {
+    local rc=0
+    verify_log_rotation "$BATS_TEST_TMPDIR" || rc=$?
+    [ "$rc" -eq 1 ]
+    [[ "$CHECK_MSG" == "Log rotation not configured" ]]
 }

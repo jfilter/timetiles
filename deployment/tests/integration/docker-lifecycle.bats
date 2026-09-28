@@ -84,15 +84,21 @@ setup() {
 
 @test "worker containers stay running without restarts" {
     skip_if_services_not_running
-    local service id state
-    # A config load failure crashes a worker within seconds of its start.
-    sleep 30
-    for service in worker-ingest worker-general worker-maintenance; do
-        id=$($DC_CMD ps -q "$service")
-        [ -n "$id" ] || { echo "$service has no container"; return 1; }
-        state=$(docker inspect --format '{{.State.Status}} restarts={{.RestartCount}}' "$id")
-        echo "$service: $state"
-        [ "$state" = "running restarts=0" ]
+    local service id state started stable deadline=$((SECONDS + 60))
+    # A config load failure crashes a worker within seconds of its start, so
+    # every worker must have stayed up for 30s without a restart.
+    while :; do
+        stable=1
+        for service in worker-ingest worker-general worker-maintenance; do
+            id=$($DC_CMD ps -q "$service")
+            [ -n "$id" ] || { echo "$service has no container"; return 1; }
+            read -r state started < <(docker inspect --format '{{.State.Status}}/{{.RestartCount}} {{.State.StartedAt}}' "$id")
+            [ "$state" = "running/0" ] || { echo "$service: $state"; return 1; }
+            (( $(date +%s) - $(date -d "$started" +%s) >= 30 )) || stable=0
+        done
+        (( stable )) && return 0
+        (( SECONDS < deadline )) || { echo "workers not up for 30s within 60s"; return 1; }
+        sleep 2
     done
 }
 

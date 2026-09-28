@@ -40,8 +40,14 @@ setup_file() {
     command -v podman &>/dev/null || { _fixture_skip "Podman is not installed"; return 0; }
     systemctl cat timescrape-runner.service &>/dev/null \
         || { _fixture_skip "Scraper runner not deployed on this host"; return 0; }
-    _api_curl -f "$API_BASE/api/health" >/dev/null 2>&1 \
-        || { _fixture_skip "Web app is not reachable at $API_BASE"; return 0; }
+    if ! _api_curl -f "$API_BASE/api/health" >/dev/null 2>&1; then
+        if [[ "${DEPLOYMENT_EXPECTED:-}" == "1" ]]; then
+            _fixture_fail "Web app is not reachable at $API_BASE"
+        else
+            _fixture_skip "Web app is not reachable at $API_BASE"
+        fi
+        return 0
+    fi
 
     api_login || { _fixture_fail "could not obtain an admin session: ${API_LOGIN_ERROR:-no detail}"; return 0; }
 
@@ -101,7 +107,8 @@ setup_file() {
     # is a run that never leaves "running".
     local run_json
     api_poll_until "/api/scraper-runs?where[scraper][equals]=$scraper_id&sort=-createdAt&limit=1" \
-        'select(.docs[0].status != "running" and .docs[0].status != null) | .docs[0].status' 180 >/dev/null || true
+        'select(.docs[0].status != "running" and .docs[0].status != null) | .docs[0].status' 180 >/dev/null \
+        || { _fixture_fail "scraper run never reached a terminal status"; return 0; }
     run_json=$(api_get "/api/scraper-runs?where[scraper][equals]=$scraper_id&sort=-createdAt&limit=1")
 
     # Hand state to the tests; bats gives each test its own shell.
