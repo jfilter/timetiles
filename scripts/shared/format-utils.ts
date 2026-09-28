@@ -3,7 +3,7 @@
  *
  * CI runs `oxfmt --check` as its first quality gate, so an unformatted file
  * fails the build before lint, typecheck, or tests ever run. This helper lets
- * the `check-ai` scripts run the same gate locally.
+ * `scripts/check-ai.ts` run the same gate locally.
  *
  * @module
  * @category Scripts
@@ -76,12 +76,15 @@ export const runFormatCheck = (paths: string[], cwd: string): FormatCheckResult 
   };
 };
 
+/** True when the format gate failed, including oxfmt itself failing to run. */
+export const formatFailed = (result: FormatCheckResult): boolean =>
+  result.unformatted.length > 0 || result.toolError !== undefined;
+
 /**
  * Print the FORMAT section of a check-ai report.
  */
 export const reportFormatSection = (result: FormatCheckResult): void => {
   const { unformatted, toolError } = result;
-  /* eslint-disable no-console */
   console.log("\n" + "-".repeat(70));
   console.log("FORMAT:");
   console.log("-".repeat(70));
@@ -98,5 +101,4 @@ export const reportFormatSection = (result: FormatCheckResult): void => {
     console.log(`  ✗ ${file}`);
   }
   console.log(`\n  Fix with: pnpm exec oxfmt ${unformatted.map((f) => JSON.stringify(f)).join(" ")}`);
-  /* eslint-enable no-console */
 };

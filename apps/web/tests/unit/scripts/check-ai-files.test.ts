@@ -19,7 +19,7 @@ describe("file-scoped check", () => {
   beforeEach(() => {
     vi.resetModules();
     vi.resetAllMocks();
-    vi.spyOn(process, "argv", "get").mockReturnValue(["node", "check-ai-files.ts", "apps/web", "selected.ts"]);
+    vi.spyOn(process, "argv", "get").mockReturnValue(["node", "check-ai.ts", "--files", "apps/web", "selected.ts"]);
     vi.spyOn(console, "log").mockImplementation(() => {});
     vi.spyOn(process, "exit").mockImplementation((code) => {
       mocks.exit(code);
@@ -36,7 +36,7 @@ describe("file-scoped check", () => {
       stdout: JSON.stringify({ diagnostics: [], number_of_files: 1 }),
       stderr: "",
     });
-    await import("../../../../../scripts/check-ai-files");
+    await import("../../../../../scripts/check-ai");
     expect(mocks.exit).toHaveBeenCalledWith(status === 0 ? 0 : 1);
   });
 
@@ -48,7 +48,7 @@ describe("file-scoped check", () => {
     mocks.spawnSync
       .mockReturnValueOnce({ status: 0, stdout: JSON.stringify({ diagnostics: [], number_of_files: 1 }) })
       .mockReturnValueOnce({ status: 1, stdout: output, stderr: "" });
-    await import("../../../../../scripts/check-ai-files");
+    await import("../../../../../scripts/check-ai");
     expect(mocks.exit).toHaveBeenCalledWith(expected);
   });
 });

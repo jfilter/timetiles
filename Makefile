@@ -302,7 +302,7 @@ check-ai:
 		esac; \
 		FILE_LIST="$(FILES)"; \
 		set -f; \
-		pnpm exec tsx scripts/check-ai-files.ts "$$PKG_DIR" $$FILE_LIST; \
+		pnpm exec tsx scripts/check-ai.ts --files "$$PKG_DIR" $$FILE_LIST; \
 	elif [ -z "$(PACKAGE)" ]; then \
 		pnpm exec tsx scripts/check-ai.ts; \
 	else \
@@ -312,7 +312,7 @@ check-ai:
 			   echo "Available packages: web, docs, ui, timescrape"; \
 			   exit 1 ;; \
 		esac; \
-		pnpm exec tsx scripts/check-format-ai.ts || exit 1; \
+		pnpm exec tsx scripts/check-ai.ts --format || exit 1; \
 		case "$(PACKAGE)" in \
 			web) cd apps/web && pnpm check:ai ;; \
 			docs) pnpm --filter docs lint && pnpm --filter docs typecheck ;; \
