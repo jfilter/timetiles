@@ -32,8 +32,8 @@ export const GET = apiRoute({
     const catalogCounts = toCountRecord(catalogRows);
     const datasetCounts = toCountRecord(datasetRows);
 
-    // Calculate total events
-    const totalEvents = Object.values(catalogCounts).reduce((sum, count) => sum + count, 0);
+    // Every event has one dataset, but a dataset outlives a deleted catalog.
+    const totalEvents = Object.values(datasetCounts).reduce((sum, count) => sum + count, 0);
 
     logger.info(
       { catalogCount: Object.keys(catalogCounts).length, datasetCount: Object.keys(datasetCounts).length, totalEvents },
