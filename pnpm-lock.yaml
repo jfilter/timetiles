@@ -103,6 +103,9 @@ importers:
       '@timetiles/typescript-config':
         specifier: workspace:*
         version: link:packages/typescript-config
+      '@types/node':
+        specifier: ^26.1.1
+        version: 26.1.1
       '@typescript/native-preview':
         specifier: beta
         version: 7.0.0-dev.20260421.2

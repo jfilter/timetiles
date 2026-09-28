@@ -11,7 +11,7 @@
 import fs from "node:fs";
 import path from "node:path";
 
-export function loadEnvFile(): void {
+export const loadEnvFile = (): void => {
   const envPath = path.join(process.cwd(), ".env.local");
   if (fs.existsSync(envPath)) {
     const envContent = fs.readFileSync(envPath, "utf8");
@@ -26,4 +26,4 @@ export function loadEnvFile(): void {
       }
     });
   }
-}
+};

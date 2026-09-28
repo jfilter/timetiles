@@ -17,9 +17,9 @@
 import { execFileSync, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 
 import { type FormatCheckResult, formatFailed, reportFormatSection, runFormatCheck } from "./shared/format-utils";
+import { localBin } from "./shared/local-bin";
 import { parseTscOutput, type TypeScriptError } from "./shared/typecheck-utils";
 
 interface LintResult {
@@ -110,8 +110,6 @@ const PACKAGES = [
 
 const MAX_SAMPLE_ERRORS = 10;
 
-const scriptsDir = path.dirname(fileURLToPath(import.meta.url));
-
 const log = (...lines: string[]): void => lines.forEach((line) => console.log(line));
 const logError = (line: string): void => console.error(line);
 
@@ -164,7 +162,7 @@ const runCheckWithFreshResults = (scriptPath: string, cwd: string, resultDir: st
   let failureSummary: string | null = null;
 
   try {
-    execFileSync("tsx", [scriptPath], { cwd, stdio: "pipe" });
+    execFileSync(localBin("tsx", cwd), [scriptPath], { cwd, stdio: "pipe" });
   } catch (error) {
     // Expected to fail when a check reports errors, but still useful for runner failures.
     failureSummary = summarizeCommandFailure(error);
@@ -238,7 +236,7 @@ const summarizeTypecheck = (run: CheckRunResult | null): CheckSummary => {
 const checkPackage = (pkg: (typeof PACKAGES)[number]): PackageResults => {
   const pkgPath = path.join(process.cwd(), pkg.name);
   const run = (script: string, resultDir: string) =>
-    runCheckWithFreshResults(path.join(scriptsDir, script), pkgPath, path.join(pkgPath, resultDir));
+    runCheckWithFreshResults(path.join(__dirname, script), pkgPath, path.join(pkgPath, resultDir));
 
   return {
     package: pkg.name,
@@ -378,7 +376,7 @@ const lintFiles = (pkgPath: string, files: string[], toolFailures: string[]): Fi
   const configPath = path.resolve(process.cwd(), ".oxlintrc.json");
 
   // An argument array, not a shell string: word-splitting paths with spaces made oxlint lint nothing.
-  const lintRun = spawnSync("pnpm", ["exec", "oxlint", "--config", configPath, "--format=json", ...files], {
+  const lintRun = spawnSync(localBin("oxlint", pkgPath), ["--config", configPath, "--format=json", ...files], {
     encoding: "utf-8",
     cwd: pkgPath,
   });
@@ -429,7 +427,7 @@ const lintFiles = (pkgPath: string, files: string[], toolFailures: string[]): Fi
 };
 
 const typecheckFiles = (pkgPath: string, files: string[], toolFailures: string[]): FileTypecheckResult => {
-  const typecheckRun = spawnSync("pnpm", ["exec", "tsgo", "--noEmit", "--pretty", "false"], {
+  const typecheckRun = spawnSync(localBin("tsgo", pkgPath), ["--noEmit", "--pretty", "false"], {
     encoding: "utf-8",
     cwd: pkgPath,
   });

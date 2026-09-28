@@ -25,29 +25,37 @@ export interface TypeScriptError {
  * "space" collapses them into one trimmed line, "raw" keeps the original
  * newlines and indentation (used by check-summary's detailed report).
  */
+const DIAGNOSTIC_LOCATION = /\((\d+),(\d+)\):\s+(error|warning)\s+(TS\d+):\s+/;
+
+/** One `file(line,col): error TSxxxx: message` line, or null for any other line. */
+const parseDiagnosticLine = (line: string): TypeScriptError | null => {
+  const match = DIAGNOSTIC_LOCATION.exec(line);
+  if (!match?.[1] || !match[2] || !match[3] || !match[4]) return null;
+  const file = line.slice(0, match.index);
+  const message = line.slice(match.index + match[0].length);
+  if (file === "" || message === "") return null;
+  return {
+    file,
+    line: Number.parseInt(match[1], 10),
+    column: Number.parseInt(match[2], 10),
+    code: match[4],
+    message,
+    severity: match[3] as "error" | "warning",
+  };
+};
+
 export const parseTscOutput = (output: string, continuation: "space" | "raw" = "space"): TypeScriptError[] => {
   const lines = output.split("\n");
-  // eslint-disable-next-line sonarjs/slow-regex, regexp/no-super-linear-backtracking
-  const diagnosticPattern = /^(.+?)\((\d+),(\d+)\):\s+(error|warning)\s+(TS\d+):\s+(.*)$/;
   const errors: TypeScriptError[] = [];
   let currentError: TypeScriptError | null = null;
 
   lines.forEach((line) => {
-    const match = diagnosticPattern.exec(line);
-    if (match?.[1] && match[2] && match[3] && match[4] && match[5] && match[6]) {
+    const diagnostic = parseDiagnosticLine(line);
+    if (diagnostic) {
       if (currentError) {
         errors.push(currentError);
       }
-
-      const severity = match[4] as "error" | "warning";
-      currentError = {
-        file: match[1],
-        line: Number.parseInt(match[2], 10),
-        column: Number.parseInt(match[3], 10),
-        code: match[5],
-        message: match[6],
-        severity,
-      };
+      currentError = diagnostic;
     } else if (currentError && line.trim() && !/^\s*$/.test(line)) {
       currentError.message += continuation === "raw" ? "\n" + line : " " + line.trim();
     }

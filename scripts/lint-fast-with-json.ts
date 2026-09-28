@@ -9,6 +9,7 @@ import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 
+import { localBin } from "./shared/local-bin";
 import { createTimestamp, pruneOldResults } from "./shared/typecheck-utils";
 
 interface OxlintDiagnostic {
@@ -105,7 +106,7 @@ const createConfigErrorResults = (message: string): ESLintFileResult[] => [
 let exitCode = 0;
 
 try {
-  const output = execFileSync("pnpm", ["exec", "oxlint", "--config", configPath, "--format=json", "."], {
+  const output = execFileSync(localBin("oxlint"), ["--config", configPath, "--format=json", "."], {
     encoding: "utf-8",
     stdio: "pipe",
   });
@@ -121,7 +122,7 @@ try {
   const commandOutput = [stdout, stderr].filter(Boolean).join("\n").trim();
 
   try {
-    const oxlintResult: OxlintOutput = JSON.parse(stdout || commandOutput);
+    const oxlintResult: OxlintOutput = JSON.parse(stdout === "" ? commandOutput : stdout);
     const eslintResults = transformOxlintToEslint(oxlintResult.diagnostics);
     writeResults(eslintResults);
   } catch {

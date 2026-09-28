@@ -140,15 +140,15 @@ export default async function globalSetup(): Promise<void> {
   const standaloneServerPath = path.join(webDir, ".next", "standalone", "server.js");
   const useStandalone = fs.existsSync(standaloneServerPath);
 
-  const serverCommand = useStandalone
-    ? `cd "${webDir}/.next/standalone" && PORT=${serverPort} node server.js`
-    : `cd "${webDir}" && pnpm exec next start --port ${serverPort}`;
+  const [serverBin, serverArgs, serverCwd] = useStandalone
+    ? [process.execPath, ["server.js"], path.dirname(standaloneServerPath)]
+    : [path.join(webDir, "node_modules", ".bin", "next"), ["start", "--port", String(serverPort)], webDir];
 
   console.log(`🚀 Starting ${useStandalone ? "standalone" : "production"} server on port ${serverPort}...`);
 
-  // eslint-disable-next-line sonarjs/no-os-command-from-path -- Running pnpm in controlled test setup environment
-  const serverProcess = spawn("sh", ["-c", serverCommand], {
-    env: serverEnv,
+  const serverProcess = spawn(serverBin, serverArgs, {
+    cwd: serverCwd,
+    env: { ...serverEnv, PORT: String(serverPort) },
     stdio: ["ignore", "pipe", "pipe"],
     detached: true,
   });

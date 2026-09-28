@@ -8,13 +8,12 @@
  * @module
  * @category Scripts
  */
-import { execSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 
-// eslint-disable-next-line boundaries/dependencies -- dev-only script sharing the root tooling's diagnostic parser; no runtime coupling
+import { localBin, rootScriptCommand, WORKSPACE_ROOT } from "../../../scripts/shared/local-bin";
 import { parseTscOutput } from "../../../scripts/shared/typecheck-utils";
-import { runPnpmSync } from "./run-pnpm";
 
 interface LintMessage {
   ruleId: string | null;
@@ -92,7 +91,7 @@ const runOxlintCheck = (): OxlintResults => {
   const resultsPath = path.join(historyDir, `${ts}-oxlint.json`);
 
   try {
-    const output = execSync("pnpm exec oxlint --config ../../.oxlintrc.json . --format json", {
+    const output = execFileSync(localBin("oxlint"), ["--config", "../../.oxlintrc.json", ".", "--format", "json"], {
       stdio: "pipe",
       encoding: "utf-8",
     });
@@ -143,11 +142,12 @@ const runLintCheck = (): CheckResults["lint"] => {
   const resultsPath = path.join(historyDir, `${ts}.json`);
 
   try {
-    // Use the shared root invocation so SonarJS can resolve pnpm catalogs.
-    runPnpmSync(
+    // The root `lint:eslint` script, run from the workspace root so SonarJS can resolve pnpm catalogs.
+    const eslint = rootScriptCommand("lint:eslint");
+    execFileSync(
+      eslint.bin,
       [
-        "-w",
-        "lint:eslint",
+        ...eslint.args,
         "apps/web",
         "--ext",
         ".ts,.tsx,.js,.jsx",
@@ -159,7 +159,7 @@ const runLintCheck = (): CheckResults["lint"] => {
         "--output-file",
         resultsPath,
       ],
-      { stdio: "pipe" }
+      { cwd: WORKSPACE_ROOT, stdio: "pipe" }
     );
   } catch {
     // ESLint exits with non-zero on errors, that's expected
@@ -227,7 +227,7 @@ const runTypeCheck = (): CheckResults["typecheck"] => {
 
   try {
     // Run tsgo with machine-readable output and parse the diagnostics below.
-    execSync("pnpm exec tsgo --noEmit --pretty false", { stdio: "pipe" });
+    execFileSync(localBin("tsgo"), ["--noEmit", "--pretty", "false"], { stdio: "pipe" });
 
     // No errors, save empty results
     const results = { success: true, errorCount: 0, warningCount: 0, errors: [], timestamp: new Date().toISOString() };

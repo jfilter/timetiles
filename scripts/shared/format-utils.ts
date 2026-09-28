@@ -10,12 +10,22 @@
  */
 import { spawnSync } from "node:child_process";
 
+import { localBin } from "./local-bin";
+
+const DURATION_SUFFIX = /\(\d+ms\)$/;
+
 /**
- * Match the per-file lines oxfmt prints for unformatted files, e.g.
- * `apps/web/lib/foo.ts (8ms)`. The trailing summary line ends in `threads.`
- * and therefore does not match.
+ * File name from a per-file line oxfmt prints for unformatted files, e.g.
+ * `apps/web/lib/foo.ts (8ms)`. The summary line ends in `threads.` and yields
+ * undefined. Expects a trimmed line.
  */
-const UNFORMATTED_FILE_PATTERN = /^(\S.*?)\s+\(\d+ms\)$/;
+const parseUnformattedFile = (line: string): string | undefined => {
+  const suffix = DURATION_SUFFIX.exec(line);
+  if (!suffix) return undefined;
+  const head = line.slice(0, suffix.index);
+  const file = head.trimEnd();
+  return file !== "" && file !== head ? file : undefined;
+};
 
 /** oxfmt exit code when it ran fine and every file was already formatted. */
 const OXFMT_CLEAN = 0;
@@ -44,7 +54,7 @@ export interface FormatCheckResult {
 export const runFormatCheck = (paths: string[], cwd: string): FormatCheckResult => {
   const targets = paths.length > 0 ? paths : ["."];
 
-  const run = spawnSync("pnpm", ["exec", "oxfmt", "--check", ...targets], { encoding: "utf-8", cwd });
+  const run = spawnSync(localBin("oxfmt", cwd), ["--check", ...targets], { encoding: "utf-8", cwd });
 
   if (run.error) {
     return { unformatted: [], toolError: `oxfmt could not be started: ${run.error.message}` };
@@ -53,7 +63,7 @@ export const runFormatCheck = (paths: string[], cwd: string): FormatCheckResult 
   const output = (run.stdout ?? "") + "\n" + (run.stderr ?? "");
   const unformatted = output
     .split("\n")
-    .map((line) => UNFORMATTED_FILE_PATTERN.exec(line.trim())?.[1])
+    .map((line) => parseUnformattedFile(line.trim()))
     .filter((file): file is string => file !== undefined);
 
   if (run.status === OXFMT_CLEAN) {
@@ -68,10 +78,11 @@ export const runFormatCheck = (paths: string[], cwd: string): FormatCheckResult 
   }
 
   const detail = output.trim().split("\n").slice(0, 5).join("\n      ") || "(no output)";
+  const exit = run.status ?? `on signal ${run.signal}`;
   return {
     unformatted,
     toolError:
-      `oxfmt exited ${run.status ?? `on signal ${run.signal}`} without reporting any ` +
+      `oxfmt exited ${exit} without reporting any ` +
       `unformatted files, so the format gate did not run.\n      ${detail}`,
   };
 };

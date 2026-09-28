@@ -9,6 +9,7 @@ import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 
+import { localBin } from "./shared/local-bin";
 import { createTimestamp, parseTscOutput, pruneOldResults, type TypeScriptError } from "./shared/typecheck-utils";
 
 const historyDir = path.join(process.cwd(), ".typecheck-results");
@@ -24,7 +25,7 @@ let errors: TypeScriptError[] = [];
  */
 let runnerError: string | undefined;
 
-const run = spawnSync("pnpm", ["exec", "tsgo", "--noEmit", "--pretty", "false"], { encoding: "utf-8" });
+const run = spawnSync(localBin("tsgo"), ["--noEmit", "--pretty", "false"], { encoding: "utf-8" });
 const output = (run.stdout ?? "") + "\n" + (run.stderr ?? "");
 
 if (run.error) {
@@ -32,8 +33,9 @@ if (run.error) {
 } else if (run.status !== 0) {
   errors = parseTscOutput(output);
   if (errors.length === 0) {
+    const exit = run.status ?? `on signal ${run.signal}`;
     runnerError =
-      `tsgo exited ${run.status ?? `on signal ${run.signal}`} without emitting any parseable ` +
+      `tsgo exited ${exit} without emitting any parseable ` +
       `diagnostics, so no typecheck was performed.\n${output.trim() || "(no output)"}`;
   }
 }
@@ -48,7 +50,6 @@ fs.writeFileSync(
 pruneOldResults(historyDir);
 
 if (runnerError !== undefined) {
-  // eslint-disable-next-line no-console
   console.error(`❌ Typecheck did not run: ${runnerError}`);
 }
 

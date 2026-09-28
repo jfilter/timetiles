@@ -12,10 +12,11 @@
  * @module
  */
 
-import { execSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
+import { localBin } from "../../../scripts/shared/local-bin";
 import { createLogger, logError } from "../lib/logger.js";
 
 const logger = createLogger("payload-generate");
@@ -75,12 +76,12 @@ const generate = () => {
 
     // Generate TypeScript types
     logger.info("📝 Generating TypeScript types...");
-    execSync("payload generate:types", { stdio: "pipe" });
+    execFileSync(localBin("payload"), ["generate:types"], { stdio: "pipe" });
     logger.info("✓ TypeScript types generated");
 
     // Generate database schema
     logger.info("🗄️ Generating database schema...");
-    execSync("payload generate:db-schema", { stdio: "pipe" });
+    execFileSync(localBin("payload"), ["generate:db-schema"], { stdio: "pipe" });
     logger.info("✓ Database schema generated");
 
     // Fix circular foreign key references in generated schema

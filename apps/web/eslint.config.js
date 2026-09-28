@@ -254,7 +254,6 @@ export default [
       [NO_HARDCODED_PASSWORDS_RULE]: "off", // Config files may have test credentials
       "sonarjs/no-duplicate-string": "off", // Config files often repeat strings
       "sonarjs/os-command": "off", // Config/scripts legitimately use OS commands
-      "sonarjs/no-os-command-from-path": "off", // Config files may use PATH commands
     },
   },
   // Seed files - relax rules for seed data generation
@@ -275,7 +274,6 @@ export default [
       "sonarjs/max-lines-per-function": ["error", { maximum: 150 }], // Scripts often need longer functions
       [NO_HARDCODED_PASSWORDS_RULE]: "off", // Scripts may have test passwords
       "sonarjs/os-command": "warn", // Scripts legitimately use OS commands
-      "sonarjs/no-os-command-from-path": "off", // Scripts may use PATH commands
       "@typescript-eslint/no-explicit-any": "warn",
       "@typescript-eslint/no-unsafe-assignment": "warn",
       "@typescript-eslint/no-unsafe-member-access": "warn",

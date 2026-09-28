@@ -11,9 +11,11 @@ import path from "node:path";
 import { Linter } from "eslint";
 import { describe, expect, it } from "vitest";
 
-const runLint = (args: string[]) => {
-  const result = spawnSync("pnpm", args, {
-    cwd: process.cwd(),
+import { localBin, rootScriptCommand, WORKSPACE_ROOT } from "../../../../../scripts/shared/local-bin";
+
+const runEslint = (bin: string, args: string[], cwd: string) => {
+  const result = spawnSync(bin, args, {
+    cwd,
     encoding: "utf8",
     timeout: 30000,
     // The test runner suppresses Node warnings; these CLI tests must observe them.
@@ -24,15 +26,21 @@ const runLint = (args: string[]) => {
   return result;
 };
 
+// The root `lint:eslint` script, run from the workspace root like `pnpm -w lint:eslint`.
+const runLint = (args: string[]) => {
+  const eslint = rootScriptCommand("lint:eslint");
+  return runEslint(eslint.bin, [...eslint.args, ...args], WORKSPACE_ROOT);
+};
+
 describe.sequential("root ESLint invocation", () => {
   it("ignores temporary export artifacts", () => {
-    const result = runLint(["--silent", "-w", "lint:eslint", "--print-config", "apps/web/.exports-test/fixture.ts"]);
+    const result = runLint(["--print-config", "apps/web/.exports-test/fixture.ts"]);
     expect(result.stdout.trim()).toBe("undefined");
   }, 60000);
 
   it("preserves Payload's generated migration conventions", () => {
     const file = "apps/web/migrations/20260909_093926.ts";
-    const result = runLint(["--silent", "-w", "lint:eslint", "--print-config", file]);
+    const result = runLint(["--print-config", file]);
     const config = JSON.parse(result.stdout) as Linter.Config;
     expect(config.rules?.["@typescript-eslint/consistent-type-imports"]).toEqual([0]);
     expect(config.rules?.["@typescript-eslint/no-duplicate-type-constituents"]).toEqual([0]);
@@ -42,7 +50,7 @@ describe.sequential("root ESLint invocation", () => {
   it.each(["proxy.ts", "lib/services/cache/storage/file-system.ts"])(
     "distinguishes static SQL from interpolation in %s",
     (file) => {
-      const result = runLint(["--silent", "-w", "lint:eslint", "--print-config", `apps/web/${file}`]);
+      const result = runLint(["--print-config", `apps/web/${file}`]);
       const config = JSON.parse(result.stdout) as Linter.Config;
       const linter = new Linter();
       const rules = { "no-restricted-syntax": config.rules!["no-restricted-syntax"]! };
@@ -59,7 +67,7 @@ describe.sequential("root ESLint invocation", () => {
   );
 
   it("loads the shared root configuration as explicit ESM", () => {
-    const result = runLint(["--silent", "-w", "lint:eslint", "--print-config", "packages/eslint-config/base.js"]);
+    const result = runLint(["--print-config", "packages/eslint-config/base.js"]);
     expect(result.stderr).not.toContain("MODULE_TYPELESS_PACKAGE_JSON");
     const config = JSON.parse(result.stdout) as { rules: Record<string, unknown> };
     // The shared Oxlint bridge disables the duplicate ESLint rule.
@@ -68,8 +76,8 @@ describe.sequential("root ESLint invocation", () => {
 
   it("preserves the Web API's package-specific rules", () => {
     const file = "app/api/data-exports/[id]/download/route.ts";
-    const local = runLint(["exec", "eslint", "--print-config", file]);
-    const root = runLint(["--silent", "-w", "lint:eslint", "--print-config", `apps/web/${file}`]);
+    const local = runEslint(localBin("eslint"), ["--print-config", file], process.cwd());
+    const root = runLint(["--print-config", `apps/web/${file}`]);
     const localConfig = JSON.parse(local.stdout) as { rules: Record<string, unknown> };
     const rootConfig = JSON.parse(root.stdout) as { rules: Record<string, unknown> };
     expect(rootConfig.rules).toEqual(localConfig.rules);
@@ -77,7 +85,7 @@ describe.sequential("root ESLint invocation", () => {
 
   it("resolves catalog dependencies and the Oxlint bridge from the root", () => {
     const file = "apps/web/lib/utils/is-enoent.ts";
-    const result = runLint(["--silent", "-w", "lint:eslint", file, "--no-cache", "--format", "json"]);
+    const result = runLint([file, "--no-cache", "--format", "json"]);
     const output = result.stdout + result.stderr;
     expect(output).not.toContain("could not be resolved for catalog");
     expect(output).not.toContain("could not find oxlint config file");

@@ -1,5 +1,4 @@
 // @vitest-environment node
-/* eslint-disable boundaries/dependencies -- This regression test intentionally executes the repository-root check runner. */
 /**
  * Ensure fresh reports cannot hide failed quality-check subprocesses.
  * @module
@@ -10,16 +9,18 @@ import { resolve } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type * as FormatUtils from "../../../../../scripts/shared/format-utils";
+import { parseTscOutput } from "../../../../../scripts/shared/typecheck-utils";
 
 const mocks = vi.hoisted(() => ({
   execFileSync: vi.fn(),
+  spawnSync: vi.fn(),
   existsSync: vi.fn(),
   readdirSync: vi.fn(),
   readFileSync: vi.fn(),
   runFormatCheck: vi.fn(),
   exit: vi.fn(),
 }));
-vi.mock("node:child_process", () => ({ execFileSync: mocks.execFileSync }));
+vi.mock("node:child_process", () => ({ execFileSync: mocks.execFileSync, spawnSync: mocks.spawnSync }));
 vi.mock("node:fs", () => ({
   default: {
     existsSync: mocks.existsSync,
@@ -68,7 +69,7 @@ describe("quality runner subprocess failures", () => {
     await runCheckAi();
     expect(mocks.exit).toHaveBeenCalledWith(0);
     expect(mocks.execFileSync).toHaveBeenCalledWith(
-      "tsx",
+      expect.stringMatching(/\/node_modules\/\.bin\/tsx$/),
       [expect.stringContaining("/scripts/typecheck-with-json.ts")],
       expect.objectContaining({ stdio: "pipe" })
     );
@@ -82,7 +83,7 @@ describe("quality runner subprocess failures", () => {
     await runCheckAi();
     for (const script of ["lint-fast-with-json.ts", "typecheck-with-json.ts"]) {
       expect(mocks.execFileSync).toHaveBeenCalledWith(
-        "tsx",
+        expect.stringMatching(/\/node_modules\/\.bin\/tsx$/),
         [expect.stringContaining(`/scripts/${script}`)],
         expect.objectContaining({ cwd: resolve(process.cwd(), "packages", pkg) })
       );
@@ -145,5 +146,60 @@ describe("format-only check", () => {
     expect(mocks.runFormatCheck).toHaveBeenCalledWith(["apps/web"], process.cwd());
     expect(mocks.execFileSync).not.toHaveBeenCalled();
     expect(mocks.exit).toHaveBeenCalledWith(expected);
+  });
+});
+
+describe("tsc diagnostic parsing", () => {
+  const output = [
+    "app/(frontend)/page.tsx(12,5): error TS2322: Type 'string' is not assignable to type 'number'.",
+    "  Type detail",
+    "lib/x.ts(1,1): warning TS6133: 'a' is declared but never used.",
+  ].join("\n");
+
+  it("keeps parentheses in file paths and joins continuation lines", () => {
+    expect(parseTscOutput(output)).toEqual([
+      {
+        file: "app/(frontend)/page.tsx",
+        line: 12,
+        column: 5,
+        code: "TS2322",
+        message: "Type 'string' is not assignable to type 'number'. Type detail",
+        severity: "error",
+      },
+      {
+        file: "lib/x.ts",
+        line: 1,
+        column: 1,
+        code: "TS6133",
+        message: "'a' is declared but never used.",
+        severity: "warning",
+      },
+    ]);
+    expect(parseTscOutput(output, "raw")[0]?.message).toBe(
+      "Type 'string' is not assignable to type 'number'.\n  Type detail"
+    );
+  });
+
+  it("parses nothing from diagnostics without a file location", () => {
+    expect(parseTscOutput("error TS2688: Cannot find type definition file for 'node'.")).toEqual([]);
+  });
+});
+
+describe("oxfmt output parsing", () => {
+  beforeEach(() => vi.resetAllMocks());
+
+  it("lists the files oxfmt reports and ignores its summary line", async () => {
+    const { runFormatCheck } = await vi.importActual<typeof FormatUtils>("../../../../../scripts/shared/format-utils");
+    mocks.spawnSync.mockReturnValue({
+      status: 1,
+      stdout: "apps/web/app/(frontend)/page.tsx (8ms)\nFinished in 37ms on 2 files using 10 threads.",
+      stderr: "",
+    });
+    expect(runFormatCheck(["apps/web"], "/repo")).toEqual({ unformatted: ["apps/web/app/(frontend)/page.tsx"] });
+    expect(mocks.spawnSync).toHaveBeenCalledWith(
+      expect.stringMatching(/\/node_modules\/\.bin\/oxfmt$/),
+      ["--check", "apps/web"],
+      expect.objectContaining({ cwd: "/repo" })
+    );
   });
 });

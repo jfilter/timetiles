@@ -10,9 +10,10 @@
  * @category Scripts
  */
 
-import { execSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 
+import { localBin } from "../../../scripts/shared/local-bin";
 import { createLogger, logError } from "../lib/logger.js";
 
 const logger = createLogger("payload-validation");
@@ -53,7 +54,7 @@ const validateTypes = () => {
     if (fs.existsSync(schemaFile)) fs.copyFileSync(schemaFile, schemaBackupFile);
 
     // Generate fresh files
-    execSync("tsx scripts/generate-payload.ts", { stdio: "pipe" });
+    execFileSync(localBin("tsx"), ["scripts/generate-payload.ts"], { stdio: "pipe" });
 
     // Compare files with backups
     const typesChanged = validateFile(typesFile, typesBackupFile, "Types");

@@ -10,7 +10,7 @@
 
 import * as readline from "readline";
 
-import { loadEnvFile } from "./shared/load-env";
+import { fetchAllPages, PAGE_SIZE, readSonarCredentials, SONAR_API, type SonarCredentials } from "./shared/sonarcloud";
 
 interface SonarCloudHotspot {
   key: string;
@@ -29,12 +29,27 @@ interface GroupedHotspots {
   files: Map<string, SonarCloudHotspot[]>;
 }
 
-function stripProjectKey(component: string): string {
-  const colonIndex = component.indexOf(":");
-  return colonIndex >= 0 ? component.slice(colonIndex + 1) : component;
+interface ReviewOptions {
+  allSafe: boolean;
+  dryRun: boolean;
+  filterCategory?: string;
 }
 
-function groupHotspots(hotspots: SonarCloudHotspot[]): GroupedHotspots[] {
+interface ReviewTally {
+  reviewed: number;
+  skipped: number;
+}
+
+const SEPARATOR = "=".repeat(60);
+
+const basicAuth = (token: string): string => `Basic ${Buffer.from(token + ":").toString("base64")}`;
+
+const stripProjectKey = (component: string): string => {
+  const colonIndex = component.indexOf(":");
+  return colonIndex >= 0 ? component.slice(colonIndex + 1) : component;
+};
+
+const groupHotspots = (hotspots: SonarCloudHotspot[]): GroupedHotspots[] => {
   const groups = new Map<string, GroupedHotspots>();
 
   for (const h of hotspots) {
@@ -59,144 +74,139 @@ function groupHotspots(hotspots: SonarCloudHotspot[]): GroupedHotspots[] {
 
   // Sort by count descending
   return Array.from(groups.values()).sort((a, b) => b.hotspots.length - a.hotspots.length);
-}
+};
 
-async function markHotspot(token: string, hotspotKey: string, status: string, resolution?: string): Promise<boolean> {
+const markHotspot = async (
+  token: string,
+  hotspotKey: string,
+  status: string,
+  resolution?: string
+): Promise<boolean> => {
   const params = new URLSearchParams({ hotspot: hotspotKey, status });
   if (resolution) {
     params.set("resolution", resolution);
   }
 
-  const response = await fetch("https://sonarcloud.io/api/hotspots/change_status", {
+  const response = await fetch(`${SONAR_API}/hotspots/change_status`, {
     method: "POST",
-    headers: {
-      Authorization: `Basic ${Buffer.from(token + ":").toString("base64")}`,
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
+    headers: { Authorization: basicAuth(token), "Content-Type": "application/x-www-form-urlencoded" },
     body: params.toString(),
   });
 
   return response.status === 204;
-}
+};
 
-async function ask(rl: readline.Interface, question: string): Promise<string> {
-  return new Promise((resolve) => {
+const markSafe = (token: string, hotspot: SonarCloudHotspot): Promise<boolean> =>
+  markHotspot(token, hotspot.key, "REVIEWED", "SAFE");
+
+const ask = (rl: readline.Interface, question: string): Promise<string> =>
+  new Promise((resolve) => {
     rl.question(question, (answer) => resolve(answer.trim().toLowerCase()));
   });
-}
 
-async function main(): Promise<void> {
-  loadEnvFile();
+const parseOptions = (args: string[]): ReviewOptions => ({
+  allSafe: args.includes("--all-safe"),
+  dryRun: args.includes("--dry-run"),
+  filterCategory: args.find((a) => a.startsWith("--category="))?.split("=")[1],
+});
 
-  const args = process.argv.slice(2);
-  const allSafe = args.includes("--all-safe");
-  const dryRun = args.includes("--dry-run");
-  const filterCategory = args.find((a) => a.startsWith("--category="))?.split("=")[1];
+const fetchHotspots = ({ token, projectKey }: SonarCredentials): Promise<SonarCloudHotspot[]> =>
+  fetchAllPages(
+    (page) => `${SONAR_API}/hotspots/search?projectKey=${projectKey}&status=TO_REVIEW&ps=${PAGE_SIZE}&p=${page}`,
+    { Authorization: basicAuth(token) },
+    "SonarCloud hotspots API",
+    (data: { paging: { total: number; pageIndex: number; pageSize: number }; hotspots: SonarCloudHotspot[] }) =>
+      data.hotspots
+  );
 
-  const token = process.env.SONARCLOUD_TOKEN;
-  const projectKey = process.env.SONARCLOUD_PROJECT_KEY;
-
-  if (!token || !projectKey) {
-    console.error("SONARCLOUD_TOKEN and SONARCLOUD_PROJECT_KEY must be set in .env.local");
-    process.exit(1);
+const printVerifyHint = (reviewed: number, leadingNewline: boolean): void => {
+  if (reviewed > 0) {
+    console.log(`${leadingNewline ? "\n" : ""}Run 'pnpm sonarcloud:fetch' to verify updated status.`);
   }
+};
 
-  // Fetch current hotspots directly from API
-  console.log("Fetching Security Hotspots from SonarCloud...");
-
-  let allHotspots: SonarCloudHotspot[] = [];
-  let page = 1;
-  const pageSize = 100;
-  let totalPages = 1;
-  const headers = { Authorization: `Basic ${Buffer.from(token + ":").toString("base64")}` };
-
-  while (page <= totalPages) {
-    const url = `https://sonarcloud.io/api/hotspots/search?projectKey=${projectKey}&status=TO_REVIEW&ps=${pageSize}&p=${page}`;
-    const response = await fetch(url, { method: "GET", headers });
-
-    if (!response.ok) {
-      console.error(`API error: ${response.status} ${response.statusText}`);
-      process.exit(1);
-    }
-
-    const data = (await response.json()) as {
-      paging: { total: number; pageIndex: number; pageSize: number };
-      hotspots: SonarCloudHotspot[];
-    };
-
-    allHotspots = allHotspots.concat(data.hotspots);
-    totalPages = Math.ceil(data.paging.total / data.paging.pageSize);
-    page++;
-  }
-
-  if (allHotspots.length === 0) {
-    console.log("\n✅ No Security Hotspots to review!");
+/** Non-interactive `--all-safe`: mark every hotspot SAFE. */
+const markAllSafe = async (token: string, hotspots: SonarCloudHotspot[], dryRun: boolean): Promise<void> => {
+  if (dryRun) {
+    console.log(`\n[DRY RUN] Would mark ${hotspots.length} hotspots as SAFE`);
     return;
   }
 
-  let filteredHotspots = allHotspots;
-  if (filterCategory) {
-    filteredHotspots = allHotspots.filter((h) => h.securityCategory === filterCategory);
-    if (filteredHotspots.length === 0) {
-      console.log(`\nNo hotspots found for category "${filterCategory}"`);
-      return;
+  console.log(`\nMarking all ${hotspots.length} hotspots as SAFE...`);
+  let reviewed = 0;
+  for (const [i, h] of hotspots.entries()) {
+    if (await markSafe(token, h)) {
+      reviewed++;
+    } else {
+      console.log(`  ❌ Failed: ${stripProjectKey(h.component)}:${h.line}`);
     }
-    console.log(`\nFiltered to category "${filterCategory}": ${filteredHotspots.length} hotspots`);
+    process.stdout.write(`\r  Progress: ${i + 1}/${hotspots.length}`);
   }
+  console.log(`\n\n✅ Marked ${reviewed} hotspots as SAFE`);
+  printVerifyHint(reviewed, false);
+};
 
-  const groups = groupHotspots(filteredHotspots);
+const printGroup = (group: GroupedHotspots): void => {
+  console.log(`\n${SEPARATOR}`);
+  console.log(`Category: ${group.category} [${group.probability}]`);
+  console.log(`${group.hotspots.length} hotspots in ${group.files.size} files:`);
 
-  console.log(`\nFound ${filteredHotspots.length} hotspots in ${groups.length} categories:\n`);
-  groups.forEach((g, i) => {
-    console.log(
-      `  ${i + 1}. ${g.category} [${g.probability}] — ${g.hotspots.length} hotspots in ${g.files.size} files`
-    );
-  });
-
-  let totalReviewed = 0;
-  let totalSkipped = 0;
-
-  // Non-interactive mode: --all-safe
-  if (allSafe) {
-    if (dryRun) {
-      console.log(`\n[DRY RUN] Would mark ${filteredHotspots.length} hotspots as SAFE`);
-      return;
+  for (const [filePath, fileHotspots] of group.files) {
+    console.log(`  ${filePath}`);
+    for (const h of fileHotspots) {
+      const line = h.line ? `:${h.line}` : "";
+      console.log(`    L${line} ${h.message}`);
     }
+  }
+};
 
-    console.log(`\nMarking all ${filteredHotspots.length} hotspots as SAFE...`);
-    for (let i = 0; i < filteredHotspots.length; i++) {
-      const h = filteredHotspots[i];
-      const ok = await markHotspot(token, h.key, "REVIEWED", "SAFE");
-      if (ok) {
-        totalReviewed++;
+const markGroupSafe = async (token: string, group: GroupedHotspots, tally: ReviewTally): Promise<void> => {
+  let count = 0;
+  for (const h of group.hotspots) {
+    const ok = await markSafe(token, h);
+    count++;
+    if (ok) {
+      tally.reviewed++;
+      process.stdout.write(`\r  Reviewed ${count}/${group.hotspots.length}`);
+    } else {
+      console.log(`\n  ❌ Failed to mark hotspot ${h.key}`);
+    }
+  }
+  console.log(`\n  ✅ Marked ${count} hotspots as SAFE`);
+};
+
+const reviewFileByFile = async (
+  rl: readline.Interface,
+  token: string,
+  group: GroupedHotspots,
+  tally: ReviewTally
+): Promise<void> => {
+  for (const [filePath, fileHotspots] of group.files) {
+    const fileAnswer = await ask(rl, `  Mark ${fileHotspots.length} hotspot(s) in ${filePath} as SAFE? [y/n]: `);
+
+    if (fileAnswer !== "y" && fileAnswer !== "yes") {
+      tally.skipped += fileHotspots.length;
+      console.log(`    Skipped`);
+      continue;
+    }
+    for (const h of fileHotspots) {
+      if (await markSafe(token, h)) {
+        tally.reviewed++;
       } else {
-        console.log(`  ❌ Failed: ${stripProjectKey(h.component)}:${h.line}`);
+        console.log(`    ❌ Failed: ${h.key}`);
       }
-      process.stdout.write(`\r  Progress: ${i + 1}/${filteredHotspots.length}`);
     }
-    console.log(`\n\n✅ Marked ${totalReviewed} hotspots as SAFE`);
-
-    if (totalReviewed > 0) {
-      console.log("Run 'pnpm sonarcloud:fetch' to verify updated status.");
-    }
-    return;
+    console.log(`    ✅ Marked ${fileHotspots.length} as SAFE`);
   }
+};
 
-  // Interactive mode
+/** Interactive review, one prompt per category. */
+const reviewInteractively = async (token: string, groups: GroupedHotspots[], dryRun: boolean): Promise<void> => {
   const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+  const tally: ReviewTally = { reviewed: 0, skipped: 0 };
 
   for (const group of groups) {
-    console.log(`\n${"=".repeat(60)}`);
-    console.log(`Category: ${group.category} [${group.probability}]`);
-    console.log(`${group.hotspots.length} hotspots in ${group.files.size} files:`);
-
-    for (const [filePath, fileHotspots] of group.files) {
-      console.log(`  ${filePath}`);
-      for (const h of fileHotspots) {
-        const line = h.line ? `:${h.line}` : "";
-        console.log(`    L${line} ${h.message}`);
-      }
-    }
+    printGroup(group);
 
     if (dryRun) {
       console.log(`  [DRY RUN] Would prompt for review`);
@@ -214,54 +224,71 @@ async function main(): Promise<void> {
     }
 
     if (answer === "y" || answer === "yes") {
-      let count = 0;
-      for (const h of group.hotspots) {
-        const ok = await markHotspot(token, h.key, "REVIEWED", "SAFE");
-        count++;
-        if (ok) {
-          totalReviewed++;
-          process.stdout.write(`\r  Reviewed ${count}/${group.hotspots.length}`);
-        } else {
-          console.log(`\n  ❌ Failed to mark hotspot ${h.key}`);
-        }
-      }
-      console.log(`\n  ✅ Marked ${count} hotspots as SAFE`);
+      await markGroupSafe(token, group, tally);
     } else if (answer === "f" || answer === "file") {
-      for (const [filePath, fileHotspots] of group.files) {
-        const fileAnswer = await ask(rl, `  Mark ${fileHotspots.length} hotspot(s) in ${filePath} as SAFE? [y/n]: `);
-
-        if (fileAnswer === "y" || fileAnswer === "yes") {
-          for (const h of fileHotspots) {
-            const ok = await markHotspot(token, h.key, "REVIEWED", "SAFE");
-            if (ok) {
-              totalReviewed++;
-            } else {
-              console.log(`    ❌ Failed: ${h.key}`);
-            }
-          }
-          console.log(`    ✅ Marked ${fileHotspots.length} as SAFE`);
-        } else {
-          totalSkipped += fileHotspots.length;
-          console.log(`    Skipped`);
-        }
-      }
+      await reviewFileByFile(rl, token, group, tally);
     } else {
-      totalSkipped += group.hotspots.length;
+      tally.skipped += group.hotspots.length;
       console.log("  Skipped");
     }
   }
 
   rl.close();
 
-  console.log(`\n${"=".repeat(60)}`);
-  console.log(`Done! Reviewed: ${totalReviewed}, Skipped: ${totalSkipped}`);
+  console.log(`\n${SEPARATOR}`);
+  console.log(`Done! Reviewed: ${tally.reviewed}, Skipped: ${tally.skipped}`);
+  printVerifyHint(tally.reviewed, true);
+};
 
-  if (totalReviewed > 0) {
-    console.log("\nRun 'pnpm sonarcloud:fetch' to verify updated status.");
+/** Hotspots in the requested category, or all of them; null when the category has none. */
+const filterByCategory = (hotspots: SonarCloudHotspot[], category: string | undefined): SonarCloudHotspot[] | null => {
+  if (!category) return hotspots;
+  const filtered = hotspots.filter((h) => h.securityCategory === category);
+  if (filtered.length === 0) {
+    console.log(`\nNo hotspots found for category "${category}"`);
+    return null;
   }
-}
+  console.log(`\nFiltered to category "${category}": ${filtered.length} hotspots`);
+  return filtered;
+};
 
-main().catch((error) => {
-  console.error("Fatal error:", error);
-  process.exit(1);
-});
+const run = async (): Promise<void> => {
+  const options = parseOptions(process.argv.slice(2));
+  const credentials = readSonarCredentials();
+
+  console.log("Fetching Security Hotspots from SonarCloud...");
+  const allHotspots = await fetchHotspots(credentials);
+
+  if (allHotspots.length === 0) {
+    console.log("\n✅ No Security Hotspots to review!");
+    return;
+  }
+
+  const hotspots = filterByCategory(allHotspots, options.filterCategory);
+  if (!hotspots) return;
+
+  const groups = groupHotspots(hotspots);
+  console.log(`\nFound ${hotspots.length} hotspots in ${groups.length} categories:\n`);
+  groups.forEach((g, i) => {
+    console.log(
+      `  ${i + 1}. ${g.category} [${g.probability}] — ${g.hotspots.length} hotspots in ${g.files.size} files`
+    );
+  });
+
+  if (options.allSafe) {
+    await markAllSafe(credentials.token, hotspots, options.dryRun);
+    return;
+  }
+  await reviewInteractively(credentials.token, groups, options.dryRun);
+};
+
+const main = async (): Promise<void> => {
+  try {
+    await run();
+  } catch (error) {
+    console.error("Fatal error:", error);
+    process.exit(1);
+  }
+};
+
+void main();

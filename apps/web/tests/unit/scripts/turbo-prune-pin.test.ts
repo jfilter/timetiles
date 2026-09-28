@@ -42,7 +42,7 @@ describe(VERSION_SCRIPT, () => {
     const requireFromRoot = createRequire(path.join(REPO_ROOT, "package.json"));
     const installed = (requireFromRoot("turbo/package.json") as { version: string }).version;
 
-    const printed = execFileSync("sh", [VERSION_SCRIPT], { cwd: REPO_ROOT, encoding: "utf-8" }).trim();
+    const printed = execFileSync("/bin/sh", [VERSION_SCRIPT], { cwd: REPO_ROOT, encoding: "utf-8" }).trim();
 
     expect(printed).toBe(installed);
   });
@@ -56,7 +56,7 @@ describe(VERSION_SCRIPT, () => {
         "importers:\n\n  .:\n    devDependencies:\n      tsx:\n        specifier: ^4.0.0\n        version: 4.0.0\n"
       );
 
-      const result = spawnSync("sh", [VERSION_SCRIPT, lockfile], { cwd: REPO_ROOT, encoding: "utf-8" });
+      const result = spawnSync("/bin/sh", [VERSION_SCRIPT, lockfile], { cwd: REPO_ROOT, encoding: "utf-8" });
 
       expect(result.status).not.toBe(0);
       expect(result.stdout).toBe("");

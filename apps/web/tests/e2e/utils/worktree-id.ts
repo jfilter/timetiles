@@ -8,7 +8,7 @@
  * @category E2E Utils
  */
 
-import { execSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 
 /**
@@ -30,8 +30,7 @@ export const getWorktreeId = (): string => {
 
   try {
     // Get git worktree root (works for both main repo and worktrees)
-    // eslint-disable-next-line sonarjs/no-os-command-from-path -- Safe: hardcoded git command in test utility, no user input
-    const worktreeRoot = execSync("git rev-parse --show-toplevel", {
+    const worktreeRoot = execFileSync("/usr/bin/git", ["rev-parse", "--show-toplevel"], {
       encoding: "utf8",
       stdio: ["pipe", "pipe", "pipe"],
     }).trim();

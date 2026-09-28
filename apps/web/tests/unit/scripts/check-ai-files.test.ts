@@ -1,5 +1,4 @@
 // @vitest-environment node
-/* eslint-disable boundaries/dependencies -- Tests the repository-root file-scoped check directly. */
 /**
  * File filtering must not hide checking-tool failures.
  * @module

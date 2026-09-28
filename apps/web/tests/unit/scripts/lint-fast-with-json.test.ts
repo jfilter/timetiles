@@ -1,5 +1,4 @@
 // @vitest-environment node
-/* eslint-disable boundaries/dependencies -- Tests the repository-root lint wrapper directly. */
 /**
  * Preserve failed oxlint exit status even with valid empty diagnostics.
  * @module
@@ -9,7 +8,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({ execFileSync: vi.fn(), writeFileSync: vi.fn(), exit: vi.fn() }));
 vi.mock("node:child_process", () => ({ execFileSync: mocks.execFileSync }));
-vi.mock("node:fs", () => ({ default: { mkdirSync: vi.fn(), writeFileSync: mocks.writeFileSync } }));
+vi.mock("node:fs", () => ({
+  default: { existsSync: () => false, mkdirSync: vi.fn(), writeFileSync: mocks.writeFileSync },
+}));
 vi.mock("../../../../../scripts/shared/typecheck-utils", () => ({
   createTimestamp: () => "test-run",
   pruneOldResults: vi.fn(),
@@ -34,8 +35,8 @@ describe("oxlint wrapper exit status", () => {
     });
     await import("../../../../../scripts/lint-fast-with-json");
     expect(mocks.execFileSync).toHaveBeenCalledWith(
-      "pnpm",
-      ["exec", "oxlint", "--config", expect.stringContaining(".oxlintrc.json"), "--format=json", "."],
+      expect.stringMatching(/\/node_modules\/\.bin\/oxlint$/),
+      ["--config", expect.stringContaining(".oxlintrc.json"), "--format=json", "."],
       { encoding: "utf-8", stdio: "pipe" }
     );
     expect(mocks.exit).toHaveBeenCalledWith(failed ? 1 : 0);

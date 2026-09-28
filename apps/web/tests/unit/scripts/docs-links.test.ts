@@ -12,7 +12,6 @@ import {
   extractLinks,
   findRepoDocsSiteLinks,
   resolveDocsSiteUrl,
-  // eslint-disable-next-line boundaries/dependencies -- Tooling test hosted in the shared Vitest suite, not a web runtime dependency.
 } from "../../../../docs/scripts/check-links";
 
 describe("documentation site URLs outside the docs content", () => {

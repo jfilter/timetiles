@@ -7,13 +7,16 @@
  *
  * @module
  */
-import { execSync } from "child_process";
+import { execFileSync } from "child_process";
 import { copyFileSync, existsSync, mkdirSync, readFileSync } from "fs";
 import { join } from "path";
+
+import { localBin } from "./shared/local-bin";
 
 const ROOT_DIR = process.cwd();
 const COVERAGE_DIR = join(ROOT_DIR, "coverage");
 const NYC_OUTPUT_DIR = join(ROOT_DIR, ".nyc_output");
+const NYC = localBin("nyc");
 
 // Ensure directories exist
 if (!existsSync(NYC_OUTPUT_DIR)) {
@@ -49,16 +52,27 @@ console.log(`\n📊 Merging ${coverageFiles.length} coverage reports...`);
 
 try {
   // Use nyc to merge and generate reports
-  execSync(`npx nyc merge ${NYC_OUTPUT_DIR} ${join(COVERAGE_DIR, "coverage-final.json")}`, { stdio: "pipe" });
+  execFileSync(NYC, ["merge", NYC_OUTPUT_DIR, join(COVERAGE_DIR, "coverage-final.json")], { stdio: "pipe" });
 
   // Generate text-summary for single number
-  const summaryOutput = execSync(`npx nyc report --temp-dir ${NYC_OUTPUT_DIR} --reporter=text-summary`, {
+  const summaryOutput = execFileSync(NYC, ["report", "--temp-dir", NYC_OUTPUT_DIR, "--reporter=text-summary"], {
     encoding: "utf8",
   });
 
   // Generate full reports
-  execSync(
-    `npx nyc report --temp-dir ${NYC_OUTPUT_DIR} --report-dir ${COVERAGE_DIR} --reporter=text --reporter=lcov --reporter=html --reporter=json-summary`,
+  execFileSync(
+    NYC,
+    [
+      "report",
+      "--temp-dir",
+      NYC_OUTPUT_DIR,
+      "--report-dir",
+      COVERAGE_DIR,
+      "--reporter=text",
+      "--reporter=lcov",
+      "--reporter=html",
+      "--reporter=json-summary",
+    ],
     { stdio: "inherit" }
   );
 
@@ -66,8 +80,8 @@ try {
   console.log("\n" + summaryOutput);
 
   // Extract overall percentage from summary
-  const match = summaryOutput.match(/All files[^|]*\|\s*([\d.]+)/);
-  if (match) {
+  const match = /All files[^|]*\|\s*([\d.]+)/.exec(summaryOutput);
+  if (match?.[1]) {
     const overallCoverage = Number.parseFloat(match[1]);
     console.log(`\n🎯 Overall Coverage: ${overallCoverage.toFixed(2)}%`);
   }

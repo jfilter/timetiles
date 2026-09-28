@@ -54,6 +54,8 @@
     "TRUSTED_PROXY_CIDRS",
     "PASSWORD_HIBP_CHECK"
   ],
+  // Read by the SonarCloud scripts, which turbo never runs; passed through, not hashed.
+  "globalPassThroughEnv": ["SONARCLOUD_TOKEN", "SONARCLOUD_PROJECT_KEY"],
   "tasks": {
     "transit": { "dependsOn": ["^transit"] },
     "build": {
@@ -64,8 +66,31 @@
       // out/** a cache hit restored no static export at all.
       "outputs": [".next/**", "!.next/cache/**", "dist/**", "out/**"]
     },
+    // The repo-root scripts/ belong to no package, so every lint and typecheck run
+    // also checks them through these root tasks.
+    "//#lint:scripts": {
+      "inputs": [
+        "scripts/**/*.ts",
+        ".oxlintrc.json",
+        "eslint.config.mjs",
+        "packages/eslint-config/*.js",
+        "turbo.json",
+        "package.json",
+        "pnpm-workspace.yaml"
+      ]
+    },
+    "//#typecheck:scripts": {
+      "inputs": [
+        "scripts/**/*.ts",
+        "scripts/tsconfig.json",
+        "tsconfig.json",
+        "packages/typescript-config/base.json",
+        "package.json",
+        "pnpm-workspace.yaml"
+      ]
+    },
     "lint": {
-      "dependsOn": ["transit"],
+      "dependsOn": ["transit", "//#lint:scripts"],
       "inputs": [
         "**/*.{ts,tsx,js,jsx}",
         "content/**/*.{md,mdx}",
@@ -83,7 +108,7 @@
     "typecheck": {
       // ^build, not transit: web resolves @timetiles/{shared,ui} through their
       // dist "types", so a stale build silently typechecks against old exports.
-      "dependsOn": ["^build"],
+      "dependsOn": ["^build", "//#typecheck:scripts"],
       "inputs": ["**/*.{ts,tsx}", "tsconfig.json", "tsconfig.*.json"],
       "outputs": [".typecheck-results/**"]
     },

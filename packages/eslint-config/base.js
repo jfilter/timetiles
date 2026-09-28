@@ -240,6 +240,10 @@ export default [
           ],
         },
         { category: "root-config-file", pattern: ["*.js", "*.ts", "*.json"] },
+        // Dev-only runners that share the repo-root script helpers.
+        { category: "web-dev-script", pattern: ["apps/web/scripts/*.ts"] },
+        // Tests of repo tooling hosted in the web Vitest suite.
+        { category: "web-tooling-test", pattern: ["apps/web/tests/unit/scripts/*.ts"] },
       ],
     },
     rules: {
@@ -417,6 +421,11 @@ export default [
             // foundation-file case, narrow down from — that folder-based classification.
             { from: { file: { categories: "web-config-file" } }, allow: { to: { element: { type: "*" } } } },
             { from: { file: { categories: "root-config-file" } }, allow: { to: { element: { type: "*" } } } },
+            { from: { file: { categories: "web-dev-script" } }, allow: { to: { element: { type: "root" } } } },
+            {
+              from: { file: { categories: "web-tooling-test" } },
+              allow: { to: { element: { type: ["root", "app-docs"] } } },
+            },
             // Foundational modules living in higher-layer folders (lib/logger.ts,
             // lib/config/env.ts, payload-types.ts, ...) must be as restricted as any other
             // Foundation file, not as permissive as their folder's fallback type — so first

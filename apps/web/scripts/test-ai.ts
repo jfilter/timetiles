@@ -32,10 +32,11 @@
  * @module
  * @category Scripts
  */
+import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 
-import { runPnpmSync } from "./run-pnpm";
+import { localBin } from "../../../scripts/shared/local-bin";
 
 const MAX_RESULT_FILES = 50;
 
@@ -83,8 +84,6 @@ const resultsPath = path.join(historyDir, resultsFilename);
 
 // Build vitest command with timestamped output
 const vitestArgs = [
-  "exec",
-  "vitest",
   "run",
   ...processedFilters,
   "--reporter=json",
@@ -95,7 +94,7 @@ const vitestArgs = [
 // Run vitest and track wall-clock time
 let childFailed = false;
 try {
-  runPnpmSync(vitestArgs, {
+  execFileSync(localBin("vitest"), vitestArgs, {
     // The report is written to a file. Do not buffer unused stdout or swallow
     // stderr: worker crashes and startup failures may leave no usable report.
     stdio: ["ignore", "ignore", "inherit"],
