@@ -489,13 +489,12 @@ enable_scraper_url() {
     print_success "SCRAPER_RUNNER_URL enabled"
 }
 
-create_runner_systemd_service() {
+# The runner's systemd unit on stdout.
+runner_unit() {
     local install_dir="$1"
     local user="$2"
 
-    print_step "Creating systemd service for scraper runner..."
-
-    cat > /etc/systemd/system/timescrape-runner.service << EOF
+    cat << EOF
 [Unit]
 Description=TimeScrape Runner
 Documentation=https://github.com/jfilter/timetiles/blob/main/apps/timescrape/docs/SETUP.md
@@ -516,6 +515,8 @@ WorkingDirectory=$install_dir/scraper-runner
 # podman's default location under this user's home and is granted back through
 # ReadWritePaths below; moving it breaks network lookup, see the note at the top.
 Environment=XDG_RUNTIME_DIR=$(runtime_dir_for "$user")
+# The runner has no default work area; it gets the one ReadWritePaths grants below.
+Environment=SCRAPER_DATA_DIR=$SCRAPER_WORK_DIR
 EnvironmentFile=$install_dir/.env.production
 ExecStart=/usr/bin/node $install_dir/scraper-runner/dist/index.js
 Restart=on-failure
@@ -544,6 +545,15 @@ PrivateTmp=no
 [Install]
 WantedBy=multi-user.target
 EOF
+}
+
+create_runner_systemd_service() {
+    local install_dir="$1"
+    local user="$2"
+
+    print_step "Creating systemd service for scraper runner..."
+
+    runner_unit "$install_dir" "$user" > /etc/systemd/system/timescrape-runner.service
 
     systemctl daemon-reload
     systemctl enable timescrape-runner.service

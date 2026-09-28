@@ -15,8 +15,8 @@ import { nodeScraperTemplate } from "./templates/node-scraper.js";
 import { pythonScraperTemplate } from "./templates/python-scraper.js";
 import { readmeTemplate } from "./templates/readme.js";
 
-// eslint-disable-next-line security/detect-unsafe-regex -- kebab-case validator: dash-delimited, non-overlapping segments, so no catastrophic backtracking
-const VALID_NAME_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+/** Kebab-case: lowercase alphanumeric segments joined by single hyphens. */
+const isValidName = (name: string): boolean => name.split("-").every((segment) => /^[a-z0-9]+$/.test(segment));
 const VALID_RUNTIMES = ["python", "node"] as const;
 type Runtime = (typeof VALID_RUNTIMES)[number];
 
@@ -62,7 +62,7 @@ const parseArgs = (argv: string[]): { name: string; runtime: Runtime } | null =>
     process.exit(1);
   }
 
-  if (!VALID_NAME_PATTERN.test(name)) {
+  if (!isValidName(name)) {
     console.error(`Error: invalid name "${name}".`);
     console.error("Name must be lowercase alphanumeric with hyphens (e.g. my-scraper).");
     process.exit(1);
@@ -78,6 +78,16 @@ const parseArgs = (argv: string[]): { name: string; runtime: Runtime } | null =>
       process.exit(1);
     }
     runtime = runtimeValue as Runtime;
+  }
+
+  const unexpected =
+    runtimeIndex === -1
+      ? restArgs
+      : restArgs.filter((_, index) => index !== runtimeIndex && index !== runtimeIndex + 1);
+  if (unexpected.length > 0) {
+    console.error(`Error: unexpected argument "${unexpected[0]}".`);
+    console.error('Run "timetiles-scraper --help" for usage.');
+    process.exit(1);
   }
 
   return { name, runtime };

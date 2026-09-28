@@ -123,20 +123,21 @@ runRoutes.get("/output/:runId/:filename", async (c) => {
   const config = getConfig();
   const filePath = join(config.SCRAPER_DATA_DIR, "outputs", runId, filename);
 
+  let size: number;
   try {
-    const stats = await stat(filePath);
-    const fileStream = createReadStream(filePath);
-
-    return new Response(Readable.toWeb(fileStream) as ReadableStream, {
-      headers: {
-        "Content-Type": "text/csv",
-        "Content-Length": stats.size.toString(),
-        "Content-Disposition": `attachment; filename="${filename}"`,
-      },
-    });
-  } catch {
-    return c.json({ error: "Output not found" }, 404);
+    size = (await stat(filePath)).size;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return c.json({ error: "Output not found" }, 404);
+    throw error;
   }
+
+  return new Response(Readable.toWeb(createReadStream(filePath)) as ReadableStream, {
+    headers: {
+      "Content-Type": "text/csv",
+      "Content-Length": size.toString(),
+      "Content-Disposition": `attachment; filename="${filename}"`,
+    },
+  });
 });
 
 runRoutes.delete("/output/:runId", async (c) => {
@@ -149,12 +150,8 @@ runRoutes.delete("/output/:runId", async (c) => {
   const config = getConfig();
   const outputDir = join(config.SCRAPER_DATA_DIR, "outputs", runId);
 
-  try {
-    await rm(outputDir, { recursive: true, force: true });
-  } catch {
-    /* already cleaned */
-  }
-
+  // `force` already accepts an output that is gone; any other failure must not answer "deleted".
+  await rm(outputDir, { recursive: true, force: true });
   return c.json({ status: "deleted" });
 });
 

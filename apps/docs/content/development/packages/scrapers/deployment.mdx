@@ -152,7 +152,7 @@ SCRAPER_MAX_OUTPUT_SIZE_MB=50
 # Maximum files and directories a run may create in its output directory (default: 10000)
 SCRAPER_MAX_OUTPUT_ENTRIES=10000
 
-# Run workspaces and downloadable outputs (default: /tmp/timescrape)
+# Run workspaces and downloadable outputs; required, absolute path
 SCRAPER_DATA_DIR=/tmp/timescrape
 ```
 
@@ -314,20 +314,20 @@ you and then verifies it by probing the runner from inside `worker-ingest`.
 
 ### Runner Variables (apps/timescrape)
 
-| Variable                     | Default           | Required | Description                                                                     |
-| ---------------------------- | ----------------- | -------- | ------------------------------------------------------------------------------- |
-| `SCRAPER_API_KEY`            | --                | Yes      | Shared secret for API authentication. Minimum 16 characters.                    |
-| `SCRAPER_PORT`               | `4000`            | No       | HTTP server port.                                                               |
-| `SCRAPER_MAX_CONCURRENT`     | `3`               | No       | Maximum simultaneous container runs. Additional requests are rejected with 429. |
-| `SCRAPER_DEFAULT_TIMEOUT`    | `300`             | No       | Default timeout per run in seconds. Individual scrapers can override.           |
-| `SCRAPER_DEFAULT_MEMORY`     | `512`             | No       | Default memory limit per container in MB. Individual scrapers can override.     |
-| `SCRAPER_MAX_REPO_SIZE_MB`   | `50`              | No       | Maximum Git repo size for shallow clones.                                       |
-| `SCRAPER_GIT_CLONE_TIMEOUT`  | `60000`           | No       | Idle timeout for git operations in milliseconds; a stalled clone is aborted.    |
-| `SCRAPER_MAX_OUTPUT_SIZE_MB` | `50`              | No       | Maximum CSV output size. A run exceeding it is killed and recorded as failed.   |
-| `SCRAPER_MAX_OUTPUT_ENTRIES` | `10000`           | No       | Maximum files and directories in a run's output. Exceeding it kills the run.    |
-| `SCRAPER_DATA_DIR`           | `/tmp/timescrape` | No       | Run workspaces (removed after each run) and downloadable outputs.               |
-| `SCRAPER_OUTPUT_TTL_HOURS`   | `24`              | No       | Hours before an output that was never deleted by TimeTiles is swept.            |
-| `NODE_ENV`                   | `development`     | No       | Node.js environment mode.                                                       |
+| Variable                     | Default       | Required | Description                                                                     |
+| ---------------------------- | ------------- | -------- | ------------------------------------------------------------------------------- |
+| `SCRAPER_API_KEY`            | --            | Yes      | Shared secret for API authentication. Minimum 16 characters.                    |
+| `SCRAPER_PORT`               | `4000`        | No       | HTTP server port.                                                               |
+| `SCRAPER_MAX_CONCURRENT`     | `3`           | No       | Maximum simultaneous container runs. Additional requests are rejected with 429. |
+| `SCRAPER_DEFAULT_TIMEOUT`    | `300`         | No       | Default timeout per run in seconds. Individual scrapers can override.           |
+| `SCRAPER_DEFAULT_MEMORY`     | `512`         | No       | Default memory limit per container in MB. Individual scrapers can override.     |
+| `SCRAPER_MAX_REPO_SIZE_MB`   | `50`          | No       | Maximum Git repo size for shallow clones.                                       |
+| `SCRAPER_GIT_CLONE_TIMEOUT`  | `60000`       | No       | Idle timeout for git operations in milliseconds; a stalled clone is aborted.    |
+| `SCRAPER_MAX_OUTPUT_SIZE_MB` | `50`          | No       | Maximum CSV output size. A run exceeding it is killed and recorded as failed.   |
+| `SCRAPER_MAX_OUTPUT_ENTRIES` | `10000`       | No       | Maximum files and directories in a run's output. Exceeding it kills the run.    |
+| `SCRAPER_DATA_DIR`           | --            | Yes      | Absolute path for run workspaces (removed after each run) and outputs.          |
+| `SCRAPER_OUTPUT_TTL_HOURS`   | `24`          | No       | Hours before an output that was never deleted by TimeTiles is swept.            |
+| `NODE_ENV`                   | `development` | No       | Node.js environment mode.                                                       |
 
 ### TimeTiles Variables (apps/web)
 

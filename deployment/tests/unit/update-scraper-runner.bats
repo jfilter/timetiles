@@ -40,6 +40,7 @@ esac'
     stub id 'case "$*" in "-un") echo operator ;; *) echo 1000 ;; esac'
     stub sleep ':'
     stub curl 'echo "curl $*" >> "$CALLS"; exit "${HEALTH_RC:-0}"'
+    stub systemctl 'echo "XDG_RUNTIME_DIR=/run/user/1000 ${UNIT_ENV-SCRAPER_DATA_DIR=/tmp/timescrape}"'
     PATH="$STUB_BIN:$PATH"
 
     _source_bootstrap_file "$deploy/timetiles"
@@ -84,6 +85,15 @@ assert_old_runner_intact() {
     [ -z "$(find "$RUNNER" -maxdepth 1 -name '.staging.*')" ]
     assert_contains "$(cat "$CALLS")" "systemctl restart timescrape-runner.service"
     assert_contains "$(cat "$CALLS")" "http://localhost:4000/health"
+}
+
+@test "a runner unit without SCRAPER_DATA_DIR leaves the runner to step 13 and names it" {
+    UNIT_ENV="" run update_scraper_runner
+
+    [ "$status" -eq 0 ]
+    assert_old_runner_intact
+    assert_not_contains "$(cat "$CALLS")" "docker pull"
+    assert_contains "$output" "bootstrap.sh --step 13-scraper-setup"
 }
 
 @test "a runner that never becomes healthy after the restart fails the update" {

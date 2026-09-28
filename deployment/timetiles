@@ -308,6 +308,14 @@ update_scraper_runner() {
 
     echo -e "${YELLOW}Updating scraper runner...${NC}"
 
+    # The runner refuses to start without SCRAPER_DATA_DIR. Step 13 rewrites the unit and installs
+    # the runner itself, so leave the working one in place until it has run.
+    if ! systemctl show --property=Environment --value timescrape-runner.service | grep -q 'SCRAPER_DATA_DIR='; then
+        echo -e "${YELLOW}Scraper runner not updated: its unit predates SCRAPER_DATA_DIR${NC}" >&2
+        echo -e "${YELLOW}Run: sudo $SCRIPT_DIR/bootstrap/bootstrap.sh --step 13-scraper-setup${NC}" >&2
+        return 0
+    fi
+
     # Update runner: try GHCR image first, fall back to local build
     image="${SCRAPER_IMAGE:-ghcr.io/jfilter/timetiles-timescrape}:$version"
 

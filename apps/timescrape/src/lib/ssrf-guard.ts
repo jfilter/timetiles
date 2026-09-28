@@ -25,13 +25,12 @@ import { RunnerError } from "./errors.js";
 
 /**
  * Resolve a git URL's host and reject it when any answer is a private/internal
- * address. Throws a {@link RunnerError} on a blocked target. DNS-lookup failures
- * are left to surface as the normal clone transport error, so an unresolvable
- * host is not blocked here (the clone will fail anyway).
+ * address. Throws a {@link RunnerError} on a blocked target, and on a failed
+ * DNS lookup: git resolves again on its own, so an unchecked host is never cloned.
  *
  * @param gitUrl - The clone URL (without the optional `#branch` fragment).
- * @throws {RunnerError} when the host resolves to a private/internal IP, or when
- *   the URL is not a parseable http(s) URL.
+ * @throws {RunnerError} when the host resolves to a private/internal IP, cannot be
+ *   resolved, or the URL is not a parseable http(s) URL.
  */
 export const assertGitTargetIsPublic = async (gitUrl: string): Promise<void> => {
   let parsed: URL;
@@ -57,9 +56,10 @@ export const assertGitTargetIsPublic = async (gitUrl: string): Promise<void> => 
   let resolved: Array<{ address: string; family: number }>;
   try {
     resolved = await dns.promises.lookup(hostname, { all: true, verbatim: true });
-  } catch {
-    // Non-blocking: let the clone surface the transport-level failure.
-    return;
+  } catch (error) {
+    // Fail closed: a host this process cannot resolve is a host the check never inspected.
+    const reason = error instanceof Error ? error.message : String(error);
+    throw new RunnerError(`Cannot resolve git host "${hostname}": ${reason}`, "GIT_CLONE_FAILED", 500);
   }
 
   for (const entry of resolved) {

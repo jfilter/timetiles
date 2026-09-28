@@ -104,7 +104,7 @@ SCRAPER_MAX_REPO_SIZE_MB=50
 # Maximum CSV output file size in MB (default: 100)
 SCRAPER_MAX_OUTPUT_SIZE_MB=100
 
-# Temp directory for run workspaces (default: /tmp/timescrape)
+# Run workspaces and downloadable outputs; required, absolute path
 SCRAPER_DATA_DIR=/tmp/timescrape
 ```
 
@@ -148,8 +148,8 @@ node dist/index.js
 ```
 
 Use systemd to keep it running. `deployment/bootstrap/steps/13-scraper-setup.sh` generates a hardened
-unit and is the reference for what the service needs (`XDG_RUNTIME_DIR`, the writable paths rootless
-Podman requires, and ordering after `user@$UID.service`).
+unit and is the reference for what the service needs (`XDG_RUNTIME_DIR`, `SCRAPER_DATA_DIR` inside the
+writable paths rootless Podman requires, and ordering after `user@$UID.service`).
 
 Verify the service is running:
 

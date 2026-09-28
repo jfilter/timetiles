@@ -97,17 +97,13 @@ describe("buildPodmanArgs", () => {
   it("uses correct image and command for python", () => {
     const args = buildPodmanArgs(baseConfig);
 
-    expect(args).toContain("timescrape-python");
-    expect(args).toContain("python");
-    expect(args).toContain("/scraper/scraper.py");
+    expect(args.slice(-3)).toEqual(["timescrape-python", "python", "/scraper/scraper.py"]);
   });
 
   it("uses correct image and command for node", () => {
     const args = buildPodmanArgs({ ...baseConfig, runtime: "node", entrypoint: "scraper.js" });
 
-    expect(args).toContain("timescrape-node");
-    expect(args).toContain("node");
-    expect(args).toContain("/scraper/scraper.js");
+    expect(args.slice(-3)).toEqual(["timescrape-node", "node", "/scraper/scraper.js"]);
   });
 
   it("includes tmpfs with noexec", () => {

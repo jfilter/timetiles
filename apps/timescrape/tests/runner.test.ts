@@ -43,6 +43,8 @@ const {
   sweepStaleRunData,
 } = await import("../src/services/runner.js");
 
+const { logError } = await import("../src/lib/logger.js");
+
 const STUB_DIR = resolve(import.meta.dirname, "fixtures/podman-stub");
 const originalPath = process.env.PATH;
 
@@ -194,6 +196,13 @@ describe("runner", () => {
       expect(existsSync(join(dataDir, "runs", runId))).toBe(false);
     });
 
+    it("names the signal that ended podman instead of a bare exit code 1", async () => {
+      const result = await runStub({ STUB_OUTPUT: "id\n1\n", STUB_SELF_SIGNAL: "SIGKILL" });
+
+      expect(result.status).toBe("failed");
+      expect(result.stderr).toContain("podman ended by SIGKILL");
+    });
+
     it("refuses an output symlink to a host file instead of persisting its content", async () => {
       const secretFile = join(stateDir, "env.production");
       writeFileSync(secretFile, "id,secret\n1,hunter2\n");
@@ -291,6 +300,37 @@ describe("runner", () => {
       }
     });
 
+    it.each([["300"], ["600"]])(
+      "kills a run whose output directory mode %s hides its size from the watchdog",
+      { timeout: 20_000 },
+      async (mode) => {
+        const runId = randomUUID();
+        const result = await runStub(
+          { STUB_SUBDIR_MODE: mode, STUB_SUBDIR_BYTES: String(2 * 1024 * 1024), STUB_SLEEP_MS: "12000" },
+          { run_id: runId }
+        );
+
+        expect(result.status).toBe("failed");
+        expect(result.stderr).toContain(
+          `could not be inspected (EACCES at /output/subdir${mode === "600" ? "/blob" : ""})`
+        );
+        expect(result.duration_ms).toBeLessThan(12_000);
+        expect(podmanCalls()).toContain(`stop run-${runId}`);
+      }
+    );
+
+    it("lets a run with a readable output subdirectory finish", { timeout: 15_000 }, async () => {
+      const result = await runStub({
+        STUB_OUTPUT: "id\n1\n",
+        STUB_SUBDIR_MODE: "755",
+        STUB_SUBDIR_BYTES: "10",
+        STUB_SLEEP_MS: "2500",
+      });
+
+      expect(result.status).toBe("success");
+      expect(result.output!.rows).toBe(1);
+    });
+
     it.each([["HOME"], ["LD_PRELOAD"], ["SCRAPER_API_KEY"], ["bad-key"]])(
       "rejects env key %s with 400 before fetching code or starting a container",
       async (key) => {
@@ -357,6 +397,20 @@ describe("runner", () => {
       await sweepStaleRunData();
 
       expect(existsSync(leftover)).toBe(true);
+    });
+
+    it("logs a data directory it cannot list and still sweeps the other one", async () => {
+      vi.mocked(logError).mockClear();
+      writeFileSync(join(dataDir, "outputs"), "not a directory");
+      const leftover = join(dataDir, "runs", randomUUID());
+      mkdirSync(leftover, { recursive: true });
+
+      await sweepStaleRunData();
+
+      expect(logError).toHaveBeenCalledWith(expect.objectContaining({ code: "ENOTDIR" }), expect.any(String), {
+        dir: join(dataDir, "outputs"),
+      });
+      expect(existsSync(leftover)).toBe(false);
     });
 
     it("sweeps once immediately when started", async () => {

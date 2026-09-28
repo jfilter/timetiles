@@ -338,11 +338,20 @@ describe("POST /run endpoint", () => {
     });
 
     it("returns 404 when file does not exist", async () => {
-      mockStat.mockRejectedValue(new Error("ENOENT"));
+      mockStat.mockRejectedValue(Object.assign(new Error("no such file"), { code: "ENOENT" }));
       const res = await app.request("/output/run-123/data.csv", {
         headers: { Authorization: `Bearer ${TEST_API_KEY}` },
       });
       expect(res.status).toBe(404);
+    });
+
+    it("answers 500 instead of 404 when the output exists but cannot be read", async () => {
+      mockStat.mockRejectedValue(Object.assign(new Error("permission denied"), { code: "EACCES" }));
+      const res = await app.request("/output/run-123/data.csv", {
+        headers: { Authorization: `Bearer ${TEST_API_KEY}` },
+      });
+      expect(res.status).toBe(500);
+      expect(mockCreateReadStream).not.toHaveBeenCalled();
     });
 
     it("streams file with correct headers when found", async () => {
@@ -392,6 +401,16 @@ describe("POST /run endpoint", () => {
       const body = await res.json();
       expect(body.status).toBe("deleted");
       expect(mockRm).toHaveBeenCalledWith("/tmp/timescrape-test/outputs/run-123", { recursive: true, force: true });
+    });
+
+    it("answers 500 instead of deleted when the output cannot be removed", async () => {
+      mockRm.mockRejectedValueOnce(Object.assign(new Error("permission denied"), { code: "EACCES" }));
+      const res = await app.request("/output/run-123", {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${TEST_API_KEY}` },
+      });
+      expect(res.status).toBe(500);
+      expect(await res.json()).not.toMatchObject({ status: "deleted" });
     });
   });
 });

@@ -114,9 +114,16 @@ export class OutputWriter<T extends OutputRow = OutputRow> {
     return outputPath;
   }
 
-  /** Return collected rows as a CSV string (identical to what save() writes). */
+  /**
+   * Return collected rows as a CSV string (identical to what save() writes).
+   *
+   * @throws Error when rows were collected but none has a field: CSV cannot hold a record without a column.
+   */
   toCsvString(): string {
     const headers = this.#columns();
+    if (!headers.length && this.#rows.length) {
+      throw new Error(`Collected ${this.#rows.length} rows but none has a field, so there is nothing to write`);
+    }
     if (!headers.length) return "";
     const lines = [formatRecord(headers)];
     for (const row of this.#rows) {

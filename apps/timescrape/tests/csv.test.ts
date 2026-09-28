@@ -36,6 +36,27 @@ describe("countCsvRecords", () => {
     expect(countCsvDataRows("id,title\n")).toBe(0);
   });
 
+  it("treats a quote inside an unquoted field as a literal character", () => {
+    // Python's csv module and the import parser read `55" TV` as one field; a
+    // quote only opens a quoted field at the start of that field.
+    expect(countCsvDataRows('size,item\n55" TV,a\n12,b\n')).toBe(2);
+    expect(countCsvDataRows('size"s,item\nA,B\n')).toBe(1);
+  });
+
+  it("reads consecutive quoted fields that each span lines as one record", () => {
+    expect(countCsvDataRows('h1,h2,h3\n"x","y\n1","z\n2"\n')).toBe(1);
+  });
+
+  it("skips a record whose only field is a quoted empty string, as the import does", () => {
+    expect(countCsvDataRows('title\r\nfirst\r\n""\r\nthird\r\n')).toBe(2);
+    expect(countCsvDataRows('a,b\n"",""\n')).toBe(1);
+    expect(countCsvDataRows('a,b\n""\n"x"\n')).toBe(1);
+  });
+
+  it("counts a record whose only field is whitespace", () => {
+    expect(countCsvDataRows("title\r\nfirst\r\n \r\nthird\r\n")).toBe(3);
+  });
+
   it("reports zero data rows for an empty document", () => {
     expect(countCsvRecords("")).toBe(0);
     expect(countCsvDataRows("")).toBe(0);

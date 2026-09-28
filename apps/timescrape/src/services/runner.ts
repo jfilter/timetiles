@@ -13,16 +13,18 @@
 
 import type { ChildProcess } from "node:child_process";
 import { execFile } from "node:child_process";
+import type { Dirent } from "node:fs";
 import { constants } from "node:fs";
 import type { FileHandle } from "node:fs/promises";
-import { mkdir, open, readdir, rm, stat, writeFile } from "node:fs/promises";
-import { join, resolve } from "node:path";
+import { mkdir, open, rm, stat, writeFile } from "node:fs/promises";
+import { join, relative, resolve } from "node:path";
 import { promisify } from "node:util";
 
 import { SCRAPER_CLONE_DEADLINE_SECONDS, SCRAPER_DEFAULT_OUTPUT_FILE, SCRAPER_RUNTIMES } from "@timetiles/shared";
 
 import { getConfig } from "../config.js";
 import { countCsvDataRows } from "../lib/csv.js";
+import { listDirectory, measureDirectory } from "../lib/directory.js";
 import { ConcurrencyError, OutputValidationError, RunnerError } from "../lib/errors.js";
 import { logError, logger } from "../lib/logger.js";
 import { isShuttingDown } from "../lib/shutdown.js";
@@ -146,8 +148,8 @@ export const sweepStaleRunData = async (): Promise<void> => {
   const outputsBase = join(config.SCRAPER_DATA_DIR, "outputs");
   const runsBase = join(config.SCRAPER_DATA_DIR, "runs");
 
-  for (const entry of await readdir(outputsBase).catch(() => [] as string[])) {
-    const dir = join(outputsBase, entry);
+  for (const { name } of await listForSweep(outputsBase)) {
+    const dir = join(outputsBase, name);
     try {
       const stats = await stat(dir);
       if (Date.now() - stats.mtimeMs > ttlMs) {
@@ -167,15 +169,25 @@ export const sweepStaleRunData = async (): Promise<void> => {
     return;
   }
 
-  for (const entry of await readdir(runsBase).catch(() => [] as string[])) {
-    if (activeRuns.has(entry)) continue;
-    const dir = join(runsBase, entry);
+  for (const { name } of await listForSweep(runsBase)) {
+    if (activeRuns.has(name)) continue;
+    const dir = join(runsBase, name);
     try {
       await removeContainerWrittenDir(dir);
       logger.info({ dir }, "Swept leftover scraper work directory");
     } catch (error) {
       logError(error, "Failed to sweep scraper work directory", { dir });
     }
+  }
+};
+
+/** Entries of a sweep target; a listing failure is logged so the rest of the sweep still runs. */
+const listForSweep = async (dir: string): Promise<Dirent[]> => {
+  try {
+    return await listDirectory(dir);
+  } catch (error) {
+    logError(error, "Failed to list scraper data directory", { dir });
+    return [];
   }
 };
 
@@ -281,12 +293,9 @@ const runPodmanContainer = async (
     const { stdout, stderr } = await run;
     result = { stdout, stderr, exitCode: 0 };
   } catch (error: unknown) {
-    // `code` is typed number but Node sets STRING codes for non-exit failures
-    // ("ERR_CHILD_PROCESS_STDIO_MAXBUFFER", "ENOENT"); keep those out of the numeric exit_code.
-    const execError = error as { stdout?: string; stderr?: string; code?: number | string };
+    const execError = error as ExecFailure;
     const exitCode = typeof execError.code === "number" ? execError.code : 1;
-    const codeNote = typeof execError.code === "string" ? `\n[runner] process error: ${execError.code}` : "";
-    result = { stdout: execError.stdout ?? "", stderr: `${execError.stderr ?? ""}${codeNote}`, exitCode };
+    result = { stdout: execError.stdout ?? "", stderr: `${execError.stderr ?? ""}${failureNote(execError)}`, exitCode };
   } finally {
     clearTimeout(timer);
   }
@@ -298,6 +307,18 @@ const runPodmanContainer = async (
   return { ...result, timedOut: false };
 };
 
+type ExecFailure = { stdout?: string; stderr?: string; code?: number | string | null; signal?: string | null };
+
+/**
+ * Why podman ended without an exit code of its own. `code` is typed number, but Node
+ * sets STRING codes for non-exit failures ("ENOENT"), and none at all when a signal ended it.
+ */
+const failureNote = ({ code, signal }: ExecFailure): string => {
+  if (typeof code === "string") return `\n[runner] process error: ${code}`;
+  if (signal) return `\n[runner] podman ended by ${signal}`;
+  return "";
+};
+
 const killContainerAndClient = async (runId: string, client: ChildProcess): Promise<void> => {
   await forceKillContainer(runId);
   client.kill("SIGKILL");
@@ -305,42 +326,6 @@ const killContainerAndClient = async (runId: string, client: ChildProcess): Prom
 
 /** How often the output watchdog samples the output directory. */
 const OUTPUT_WATCHDOG_INTERVAL_MS = 2000;
-
-/** Size of a file in bytes, or 0 when it vanished or cannot be read. */
-const fileSize = async (path: string): Promise<number> => {
-  try {
-    return (await stat(path)).size;
-  } catch {
-    return 0;
-  }
-};
-
-interface DirectoryUsage {
-  bytes: number;
-  entries: number;
-}
-
-/** Bytes and entries in a directory tree, ignoring anything unreadable; stops counting past `maxEntries`. */
-const measureDirectory = async (
-  dir: string,
-  maxEntries: number,
-  usage: DirectoryUsage = { bytes: 0, entries: 0 }
-): Promise<DirectoryUsage> => {
-  const entries = await readdir(dir, { withFileTypes: true }).catch(() => []);
-
-  for (const entry of entries) {
-    usage.entries++;
-    if (usage.entries > maxEntries) return usage;
-    const full = join(dir, entry.name);
-    if (entry.isDirectory()) {
-      await measureDirectory(full, maxEntries, usage);
-    } else if (entry.isFile()) {
-      const size = await fileSize(full);
-      usage.bytes += size;
-    }
-  }
-  return usage;
-};
 
 /**
  * Kill a run as soon as its output exceeds the configured size or entry cap.
@@ -356,6 +341,10 @@ const measureDirectory = async (
  * writes within one interval. That is a far weaker guarantee than a quota, but
  * it turns "fills the host disk" into "overshoots the cap briefly". A hard
  * bound requires SCRAPER_DATA_DIR to sit on a size-limited filesystem.
+ *
+ * The container owns the tree and can chmod parts of it out of the runner's
+ * reach. What the watchdog cannot measure it cannot bound, so a permission
+ * error is a breach too; the runner needs the output readable anyway.
  */
 const startOutputWatchdog = (
   runId: string,
@@ -366,18 +355,25 @@ const startOutputWatchdog = (
   let breach: string | undefined;
   let checking = false;
 
-  const check = async (): Promise<void> => {
+  const findBreach = async (): Promise<string | undefined> => {
     try {
       const { bytes, entries } = await measureDirectory(outputDir, limits.maxEntries);
-      if (breach) return;
-      if (entries > limits.maxEntries) {
-        breach = `Output held more than ${limits.maxEntries} entries`;
-      } else if (bytes > maxBytes) {
-        breach = `Output exceeded the ${limits.maxSizeMb}MB limit`;
-      } else {
-        return;
-      }
-      logger.warn({ runId, bytes, entries, ...limits }, "Scraper output exceeded its limits, killing container");
+      if (entries > limits.maxEntries) return `Output held more than ${limits.maxEntries} entries`;
+      if (bytes > maxBytes) return `Output exceeded the ${limits.maxSizeMb}MB limit`;
+      return undefined;
+    } catch (error) {
+      const { code, path = outputDir } = error as NodeJS.ErrnoException;
+      if (code !== "EACCES" && code !== "EPERM") throw error;
+      return `Output could not be inspected (${code} at ${join("/output", relative(outputDir, path))})`;
+    }
+  };
+
+  const check = async (): Promise<void> => {
+    try {
+      const found = await findBreach();
+      if (found === undefined || breach !== undefined) return;
+      breach = found;
+      logger.warn({ runId, breach, ...limits }, "Scraper output exceeded its limits, killing container");
       await forceKillContainer(runId);
     } catch (error) {
       logError(error, "Output watchdog check failed", { runId, outputDir });

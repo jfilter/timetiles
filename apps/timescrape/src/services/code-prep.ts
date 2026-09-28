@@ -78,7 +78,10 @@ const cloneRepo = async (codeUrl: string, codeDir: string): Promise<void> => {
     // Check repo size
     const stdout = await git.cwd(codeDir).raw(["count-objects", "-v"]);
     const sizeMatch = /size-pack:\s+(\d+)/.exec(stdout);
-    const sizeMb = sizeMatch ? Number(sizeMatch[1]) / 1024 : 0;
+    if (!sizeMatch) {
+      throw new RunnerError("Could not determine the cloned repository's size", "GIT_CLONE_FAILED", 500);
+    }
+    const sizeMb = Number(sizeMatch[1]) / 1024;
 
     if (sizeMb > config.SCRAPER_MAX_REPO_SIZE_MB) {
       throw new RunnerError(

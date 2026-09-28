@@ -4,7 +4,16 @@
  * appended to `$STUB_STATE_DIR/calls.log`.
  */
 import { execFileSync } from "node:child_process";
-import { appendFileSync, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import {
+  appendFileSync,
+  chmodSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { join } from "node:path";
 
 const [command, ...args] = process.argv.slice(2);
@@ -38,6 +47,14 @@ const runContainer = () => {
   for (let i = 0; i < Number(env.STUB_OUTPUT_ENTRIES ?? 0); i++) writeFileSync(join(outputDir, `entry-${i}`), "");
   if (env.STUB_SYMLINK) symlinkSync(env.STUB_SYMLINK, outputFile);
   if (env.STUB_FIFO) execFileSync("mkfifo", [outputFile]);
+  if (env.STUB_SUBDIR_MODE) {
+    const subdir = join(outputDir, "subdir");
+    mkdirSync(subdir);
+    writeFileSync(join(subdir, "blob"), Buffer.alloc(Number(env.STUB_SUBDIR_BYTES ?? 0), "a"));
+    chmodSync(subdir, Number.parseInt(env.STUB_SUBDIR_MODE, 8));
+  }
+
+  if (env.STUB_SELF_SIGNAL) process.kill(process.pid, env.STUB_SELF_SIGNAL);
 
   const exitCode = Number(env.STUB_EXIT ?? 0);
   setTimeout(() => process.exit(exitCode), Number(env.STUB_SLEEP_MS ?? 0));
@@ -75,6 +92,17 @@ const exists = () => {
   process.exit(missing.includes(containerName) ? 1 : 0);
 };
 
+const unlockTree = (dir) => {
+  try {
+    chmodSync(dir, 0o700);
+  } catch {
+    return; // Nothing there to remove.
+  }
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    if (entry.isDirectory()) unlockTree(join(dir, entry.name));
+  }
+};
+
 switch (command) {
   case "run":
     runContainer();
@@ -92,6 +120,8 @@ switch (command) {
     exists();
     break;
   case "unshare":
+    // Inside the user namespace the runner is root over the tree, so modes do not stop the removal.
+    unlockTree(args.at(-1));
     rmSync(args.at(-1), { recursive: true, force: true });
     break;
   default:

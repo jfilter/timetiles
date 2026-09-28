@@ -52,7 +52,7 @@ describe.each(IMAGES)("$runtime scraper image", ({ runtime, sdkDir, registryInst
     expect(job.some((line) => line.trim().startsWith("context:"))).toBe(false);
   });
 
-  it.each(["Makefile", "deployment/timetiles", "deployment/bootstrap/steps/13-scraper-setup.sh"])(
+  it.each(["Makefile", "deployment/bootstrap/lib/common.sh"])(
     "is built with the SDK-aware ignore file in %s",
     (file) => {
       const lines = readLines(file);
@@ -61,6 +61,18 @@ describe.each(IMAGES)("$runtime scraper image", ({ runtime, sdkDir, registryInst
       expect(lines.some((line) => /images\/\w+\/"?$/.test(line.trimEnd()))).toBe(false);
       expect(script).toContain("--ignorefile");
       expect(script).toContain("Dockerfile.dockerignore");
+    }
+  );
+
+  it.each(["deployment/timetiles", "deployment/bootstrap/steps/13-scraper-setup.sh"])(
+    "is built by the shared image helper in %s",
+    (file) => {
+      const lines = readLines(file).map((line) => line.trim());
+
+      expect(lines.some((line) => /images\/\w+\/"?$/.test(line))).toBe(false);
+      expect(lines.some((line) => line.startsWith("pull_or_build_base_image ") && line.includes(` ${runtime} `))).toBe(
+        true
+      );
     }
   );
 });

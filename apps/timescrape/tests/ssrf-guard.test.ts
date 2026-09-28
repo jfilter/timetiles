@@ -23,4 +23,11 @@ describe("assertGitTargetIsPublic", () => {
     await expect(assertGitTargetIsPublic("https://[2606:4700:4700::1111]/repo.git")).resolves.toBeUndefined();
     await expect(assertGitTargetIsPublic("https://1.1.1.1/repo.git")).resolves.toBeUndefined();
   });
+
+  it("refuses a host whose DNS lookup fails instead of skipping the check", async () => {
+    // .invalid never resolves (RFC 6761), online or offline.
+    await expect(assertGitTargetIsPublic("https://no-such-host.invalid/r.git")).rejects.toMatchObject({
+      code: "GIT_CLONE_FAILED",
+    });
+  });
 });

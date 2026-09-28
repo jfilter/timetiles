@@ -336,6 +336,7 @@ jobs:
           echo "==> Starting scraper runner..."
           docker run -d --name scraper-test -p 4000:4000 \
             -e SCRAPER_API_KEY="${SCRAPER_KEY}" \
+            -e SCRAPER_DATA_DIR=/tmp/timescrape \
             "${IMAGE}-timescrape:${VERSION}"
 
           # The image only ships the runner the host extracts; without the host's

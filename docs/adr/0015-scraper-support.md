@@ -301,16 +301,16 @@ Quotas are checked in `beforeChange` hooks on collection create and in the `scra
 
 **apps/timescrape (runner):**
 
-| Variable                     | Default           | Purpose                              |
-| ---------------------------- | ----------------- | ------------------------------------ |
-| `SCRAPER_API_KEY`            | (required)        | Shared secret for API authentication |
-| `SCRAPER_PORT`               | `4000`            | HTTP server port                     |
-| `SCRAPER_MAX_CONCURRENT`     | `3`               | Max simultaneous container runs      |
-| `SCRAPER_DEFAULT_TIMEOUT`    | `300`             | Default timeout in seconds           |
-| `SCRAPER_DEFAULT_MEMORY`     | `512`             | Default memory limit in MB           |
-| `SCRAPER_MAX_REPO_SIZE_MB`   | `50`              | Max Git repo size for clone          |
-| `SCRAPER_MAX_OUTPUT_SIZE_MB` | `100`             | Max CSV output size                  |
-| `SCRAPER_DATA_DIR`           | `/tmp/timescrape` | Temp directory for run workspaces    |
+| Variable                     | Default    | Purpose                              |
+| ---------------------------- | ---------- | ------------------------------------ |
+| `SCRAPER_API_KEY`            | (required) | Shared secret for API authentication |
+| `SCRAPER_PORT`               | `4000`     | HTTP server port                     |
+| `SCRAPER_MAX_CONCURRENT`     | `3`        | Max simultaneous container runs      |
+| `SCRAPER_DEFAULT_TIMEOUT`    | `300`      | Default timeout in seconds           |
+| `SCRAPER_DEFAULT_MEMORY`     | `512`      | Default memory limit in MB           |
+| `SCRAPER_MAX_REPO_SIZE_MB`   | `50`       | Max Git repo size for clone          |
+| `SCRAPER_MAX_OUTPUT_SIZE_MB` | `100`      | Max CSV output size                  |
+| `SCRAPER_DATA_DIR`           | (required) | Temp directory for run workspaces    |
 
 Source: `apps/timescrape/src/config.ts`
 

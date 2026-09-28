@@ -80,15 +80,20 @@ class OutputWriter:
             self._filename = filename
 
         output_path = os.path.join(self._output_dir, self._filename)
+        content = self.to_csv_string()
 
         with open(output_path, "w", newline="", encoding="utf-8") as f:
-            f.write(self.to_csv_string())
+            f.write(content)
 
         return output_path
 
     def to_csv_string(self) -> str:
         """Return collected rows as a CSV string (identical to what save() writes)."""
         headers = self._columns()
+        if not headers and self._rows:
+            raise ValueError(
+                f"Collected {len(self._rows)} rows but none has a field, so there is nothing to write"
+            )
         if not headers:
             return ""
 

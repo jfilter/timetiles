@@ -4,6 +4,7 @@
  * `LOG_FILE` is one deployment-level contract shared with apps/web: set it, and the process
  * writes to stdout AND the file. This app used to silently skip the file in development.
  */
+import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -41,10 +42,23 @@ describe.sequential("timescrape logger", () => {
     });
   });
 
-  it("logs without a file when LOG_FILE is unset", async () => {
-    const logger = await readLoggerWithEnv({ NODE_ENV: "production", LOG_LEVEL: "info" });
+  it("logs to stdout when LOG_FILE is unset", () => {
+    // A child process, because pino writes to file descriptor 1 directly rather than through process.stdout.
+    const env: NodeJS.ProcessEnv = { ...process.env, NODE_ENV: "production", LOG_LEVEL: "info" };
+    delete env.LOG_FILE;
+    const loggerUrl = new URL("../src/lib/logger.ts", import.meta.url).href;
 
-    expect(() => logger.info("no file configured")).not.toThrow();
-    expect(fs.readdirSync(tempDir)).toHaveLength(0);
+    const stdout = execFileSync(
+      process.execPath,
+      [
+        "--import",
+        "tsx",
+        "-e",
+        `const { logger } = await import(${JSON.stringify(loggerUrl)}); logger.info("stdout check");`,
+      ],
+      { env, encoding: "utf-8" }
+    );
+
+    expect(JSON.parse(stdout.trim())).toMatchObject({ name: "timescrape", msg: "stdout check" });
   });
 });
