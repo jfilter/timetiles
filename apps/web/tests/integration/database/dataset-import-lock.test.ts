@@ -8,7 +8,7 @@
  *
  * @module
  */
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { acquireDatasetImportLease, closeDatasetLeasePool } from "@/lib/database/dataset-import-lock";
 import { createLogger } from "@/lib/logger";
@@ -34,15 +34,19 @@ describe.sequential("dataset import lease (real advisory locks)", () => {
     const datasetId = 987_001;
     const lease1 = await acquireDatasetImportLease(payload, datasetId, log, { pollIntervalMs: 10 });
 
+    const waiterLog = createLogger("dataset-lease-waiter");
+    const waiterInfo = vi.spyOn(waiterLog, "info");
     let acquired2 = false;
     let lease2: Awaited<ReturnType<typeof acquireDatasetImportLease>> | undefined;
     const lease2Promise = (async () => {
-      lease2 = await acquireDatasetImportLease(payload, datasetId, log, { pollIntervalMs: 10 });
+      lease2 = await acquireDatasetImportLease(payload, datasetId, waiterLog, { pollIntervalMs: 10 });
       acquired2 = true;
     })();
 
-    // The waiter polls repeatedly but must NOT acquire while lease1 is held.
-    await new Promise((resolve) => setTimeout(resolve, 120));
+    // The waiter announces its wait only after a try-lock against lease1 has failed.
+    await vi.waitFor(() =>
+      expect(waiterInfo).toHaveBeenCalledWith(expect.stringMatching(/^Waiting for a concurrent/), { datasetId })
+    );
     expect(acquired2).toBe(false);
 
     await lease1.release();

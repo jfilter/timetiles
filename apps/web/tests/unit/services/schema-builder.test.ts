@@ -86,8 +86,8 @@ describe("ProgressiveSchemaBuilder", () => {
       deepBuilder.processBatch([deepObject]);
       const state = deepBuilder.getState();
 
-      expect(state.fieldStats["level1"]).toBeDefined();
-      expect(state.fieldStats["level1.level2"]).toBeDefined();
+      expect(state.fieldStats["level1"]).toMatchObject({ occurrences: 1, typeDistribution: { object: 1 } });
+      expect(state.fieldStats["level1.level2"]).toMatchObject({ occurrences: 1, typeDistribution: { object: 1 } });
       expect(state.fieldStats["level1.level2.level3"]).toBeUndefined(); // Beyond max depth
     });
 
@@ -223,15 +223,12 @@ describe("ProgressiveSchemaBuilder", () => {
       builder.processBatch(records);
       const schema = await builder.getSchema();
 
-      expect(schema).toBeDefined();
       expect(schema.type).toBe("object");
-      expect(schema.properties).toBeDefined();
-
-      // Verify properties are correctly inferred
-      const properties = schema.properties as Record<string, unknown>;
-      expect(properties.id).toBeDefined();
-      expect(properties.name).toBeDefined();
-      expect(properties.active).toBeDefined();
+      expect(schema.properties).toMatchObject({
+        id: { type: "integer" },
+        name: { type: "string" },
+        active: { type: "boolean" },
+      });
     });
 
     it("enhances schema with field statistics", async () => {
@@ -252,7 +249,6 @@ describe("ProgressiveSchemaBuilder", () => {
     it("handles empty samples gracefully", async () => {
       const builder = new ProgressiveSchemaBuilder();
       const schema = await builder.getSchema();
-      expect(schema).toBeDefined();
       expect(schema.type).toBe("object");
       expect(schema.properties).toEqual({});
     });
@@ -412,7 +408,6 @@ describe("ProgressiveSchemaBuilder", () => {
 
       // Check that enum change is detected
       const enumChange = comparison.changes.find((c) => c.type === "enum_change" && c.path === "status");
-      expect(enumChange).toBeDefined();
       expect(enumChange).toMatchObject({ type: "enum_change", path: "status", severity: "info", autoApprovable: true });
       const details = enumChange!.details as { added?: unknown[]; removed?: unknown[] };
       expect(details.added).toContain("completed");
@@ -449,7 +444,6 @@ describe("ProgressiveSchemaBuilder", () => {
 
       // Check for enum change
       const enumChange = comparison.changes.find((c) => c.type === "enum_change" && c.path === "status");
-      expect(enumChange).toBeDefined();
       expect(enumChange).toMatchObject({
         type: "enum_change",
         path: "status",
@@ -508,6 +502,8 @@ describe("ProgressiveSchemaBuilder", () => {
       const state = builder.getState();
 
       expect(state.fieldStats["tags"]?.typeDistribution.array).toBe(2);
+      // Primitive items are not descended into.
+      expect(Object.keys(state.fieldStats).filter((key) => key.startsWith("tags["))).toEqual([]);
     });
 
     it("handles empty objects", () => {
@@ -518,7 +514,6 @@ describe("ProgressiveSchemaBuilder", () => {
       const state = builder.getState();
 
       expect(state.recordCount).toBe(2);
-      expect(state.fieldStats["id"]).toBeDefined();
       expect(state.fieldStats["id"]?.occurrences).toBe(1);
     });
 
@@ -571,18 +566,6 @@ describe("ProgressiveSchemaBuilder", () => {
   });
 
   describe("getSchemaSync", () => {
-    it("should return manually built schema synchronously", () => {
-      const builder = new ProgressiveSchemaBuilder();
-      builder.processBatch([{ id: 1, name: "Test" }]);
-
-      const schema = builder.getSchemaSync();
-      expect(schema.type).toBe("object");
-      expect(schema.properties).toBeDefined();
-      const props = schema.properties as Record<string, unknown>;
-      expect(props.id).toBeDefined();
-      expect(props.name).toBeDefined();
-    });
-
     it("should return empty schema when no data processed", () => {
       const builder = new ProgressiveSchemaBuilder();
 
@@ -603,9 +586,7 @@ describe("ProgressiveSchemaBuilder", () => {
 
       const schema = builder.getSchemaSync();
       const props = schema.properties as Record<string, any>;
-      expect(props.name).toBeDefined();
       expect(props.name.type).toBe("string");
-      expect(props.age).toBeDefined();
       expect(props.age.type).toBe("integer");
     });
 
@@ -623,10 +604,7 @@ describe("ProgressiveSchemaBuilder", () => {
 
       const schema = builder.getSchemaSync();
       const props = schema.properties as Record<string, any>;
-      expect(props.status.enum).toBeDefined();
-      expect(props.status.enum).toContain("active");
-      expect(props.status.enum).toContain("pending");
-      expect(props.status.enum).toContain("done");
+      expect(props.status.enum).toEqual(["active", "pending", "done"]);
     });
 
     it("should set required fields that appear in 90%+ of records", () => {
@@ -667,9 +645,8 @@ describe("ProgressiveSchemaBuilder", () => {
 
       const schema = builder.getSchemaSync();
       const props = schema.properties as Record<string, any>;
-      expect(props.value).toBeDefined();
-      // Should have nullable set since there are nulls and multiple non-null types
-      expect(props.value.nullable).toBe(true);
+      // Nulls plus several non-null types yield a type union marked nullable.
+      expect(props.value).toMatchObject({ type: ["integer", "string"], nullable: true });
     });
 
     it("should handle multiple non-null types without nullable", () => {
@@ -678,9 +655,7 @@ describe("ProgressiveSchemaBuilder", () => {
 
       const schema = builder.getSchemaSync();
       const props = schema.properties as Record<string, any>;
-      expect(props.value).toBeDefined();
-      // Multiple types but no nulls - should be an array type without nullable
-      expect(Array.isArray(props.value.type)).toBe(true);
+      expect(props.value.type).toEqual(["integer", "string"]);
       expect(props.value.nullable).toBeUndefined();
     });
   });
@@ -693,12 +668,7 @@ describe("ProgressiveSchemaBuilder", () => {
 
       const schema = builder.getSchemaSync();
       const props = schema.properties as Record<string, any>;
-      // Date type maps to "string" in JSON Schema
-      expect(props.created).toBeDefined();
-      // The type should be "string" since date maps to string
-      if (typeof props.created.type === "string") {
-        expect(props.created.type).toBe("string");
-      }
+      expect(props.created.type).toBe("string");
     });
 
     it("should map boolean-string type to string in schema", () => {
@@ -707,7 +677,6 @@ describe("ProgressiveSchemaBuilder", () => {
 
       const schema = builder.getSchemaSync();
       const props = schema.properties as Record<string, any>;
-      expect(props.flag).toBeDefined();
       expect(props.flag.type).toBe("string");
     });
 
@@ -717,7 +686,6 @@ describe("ProgressiveSchemaBuilder", () => {
 
       const schema = builder.getSchemaSync();
       const props = schema.properties as Record<string, any>;
-      expect(props.value).toBeDefined();
       expect(props.value.type).toBe("boolean");
     });
   });
@@ -729,7 +697,7 @@ describe("ProgressiveSchemaBuilder", () => {
 
       const schema = await builder.getSchema();
       expect(schema.type).toBe("object");
-      expect(schema.properties).toBeDefined();
+      expect(schema.properties).toMatchObject({ items: { type: "array", items: { type: "object" } } });
     });
 
     it("handles $ref and definitions in quicktype output", async () => {
@@ -743,7 +711,11 @@ describe("ProgressiveSchemaBuilder", () => {
       const schema = await builder.getSchema();
       // Should successfully extract schema regardless of quicktype's format
       expect(schema.type).toBe("object");
-      expect(schema.properties).toBeDefined();
+      expect(schema.properties).toMatchObject({
+        id: { type: "integer" },
+        name: { type: "string" },
+        data: { type: "object" },
+      });
     });
   });
 
@@ -754,19 +726,9 @@ describe("ProgressiveSchemaBuilder", () => {
 
       const state = builder.getState();
       // tags is tracked as array type
-      expect(state.fieldStats["tags"]).toBeDefined();
       expect(state.fieldStats["tags"]?.typeDistribution.array).toBe(1);
-      // Nested items get "tags[]" prefix in processNestedValue
-      expect(state.fieldStats["tags[].name"]).toBeDefined();
-    });
-
-    it("handles array of primitives (no nesting)", () => {
-      const builder = new ProgressiveSchemaBuilder();
-      builder.processBatch([{ values: [1, 2, 3] }]);
-
-      const state = builder.getState();
-      expect(state.fieldStats["values"]).toBeDefined();
-      expect(state.fieldStats["values"]?.typeDistribution.array).toBe(1);
+      // Only the first array item is sampled, under the "tags[]" prefix.
+      expect(state.fieldStats["tags[].name"]).toMatchObject({ occurrences: 1, typeDistribution: { string: 1 } });
     });
 
     it("handles nested object fields in schema", () => {
@@ -774,8 +736,8 @@ describe("ProgressiveSchemaBuilder", () => {
       builder.processBatch([{ meta: { title: "Test" } }]);
 
       const state = builder.getState();
-      expect(state.fieldStats["meta"]).toBeDefined();
-      expect(state.fieldStats["meta.title"]).toBeDefined();
+      expect(state.fieldStats["meta"]).toMatchObject({ occurrences: 1, typeDistribution: { object: 1 } });
+      expect(state.fieldStats["meta.title"]).toMatchObject({ occurrences: 1, typeDistribution: { string: 1 } });
     });
   });
 });
@@ -859,7 +821,6 @@ describe("field-statistics — direct function tests", () => {
     it("updates numeric stats with existing stats", () => {
       const stats = createFieldStats("value");
       updateFieldStats(stats, 10, 100);
-      expect(stats.numericStats).toBeDefined();
       expect(stats.numericStats!.min).toBe(10);
       expect(stats.numericStats!.max).toBe(10);
 

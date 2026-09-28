@@ -187,12 +187,9 @@ test.describe("Access Control - User Perspective", () => {
     test("should not display admin navigation elements", async ({ page }) => {
       await page.goto("/", { timeout: 10000 });
 
-      // Should not see dashboard link
-      const adminLink = page.locator('a[href="/dashboard"]').first();
-      const isVisible = await adminLink.isVisible().catch(() => false);
-
-      // Admin link should either not exist or not be visible
-      expect(isVisible).toBe(false);
+      // The anonymous header renders a sign-in link where signed-in users get the dashboard link.
+      await expect(page.locator('a[href$="/login"]').first()).toBeVisible();
+      await expect(page.locator('a[href="/dashboard"]')).toHaveCount(0);
     });
   });
 

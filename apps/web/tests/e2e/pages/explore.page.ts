@@ -123,36 +123,23 @@ export class ExplorePage {
    * In edit mode, two date input fields are visible.
    */
   async enterDateEditMode() {
-    // Check if we're already in edit mode by looking for date input fields
     const dateInputs = this.page.locator('input[type="date"]');
-    const inputCount = await dateInputs.count();
-
-    if (inputCount >= 2) {
-      // Already in edit mode (two date inputs visible)
-      const firstInput = dateInputs.first();
-      if (await firstInput.isVisible()) {
-        return;
-      }
-    }
-
-    // Wait for timeline to be loaded first
-    await this.waitForTimelineReady();
-
     // The date range button shows format like "Jan 2024 → Dec 2025"
-    // It's inside the Time Range section and contains "→" text
-    // Look for a button with text containing months and arrow
     const dateRangeButton = this.page
       .locator("button")
       .filter({ hasText: /\w{3} \d{4} → \w{3} \d{4}/ })
       .first();
 
-    // Wait for the button to be visible, then let `click()` handle the rest. It re-resolves
-    // the locator on every actionability retry, whereas an explicit scrollIntoViewIfNeeded
-    // holds one element handle and throws "not attached to the DOM" if the section remounts
-    // underneath it — which it does, because this button's own label is the date range and a
-    // committed filter change rerenders it. Previously `force: true` hid that by skipping
-    // actionability entirely.
-    await dateRangeButton.waitFor({ state: "visible", timeout: 10000 });
+    await this.waitForTimelineReady();
+
+    // Settle on one of the two states before branching: already editing, or the range button.
+    await expect(dateInputs.first().or(dateRangeButton).first()).toBeVisible({ timeout: 10000 });
+    if (await dateInputs.first().isVisible()) {
+      return;
+    }
+
+    // `click()` re-resolves the locator on every actionability retry, so a remount of the
+    // section (its label is the date range) cannot leave it holding a detached handle.
     await dateRangeButton.click({ timeout: 10000 });
 
     // Wait for edit mode to open (date inputs to appear)
@@ -356,32 +343,15 @@ export class ExplorePage {
   }
 
   async clearDateFilters() {
-    // Try to use the "Clear date filters" button if visible
-    const clearButton = this.page.getByRole("button", { name: /Clear date filters/i });
-    const isClearButtonVisible = await clearButton.isVisible().catch(() => false);
-
-    if (isClearButtonVisible) {
-      await clearButton.click();
-      await this.page.waitForFunction(
-        () => {
-          const url = new URL(globalThis.location.href);
-          return !url.searchParams.has("startDate") && !url.searchParams.has("endDate");
-        },
-        undefined,
-        { timeout: 5000 }
-      );
-    } else {
-      // Fallback: clear dates by navigating to /explore without date params
-      const currentUrl = new URL(this.page.url());
-      currentUrl.searchParams.delete("startDate");
-      currentUrl.searchParams.delete("endDate");
-
-      // Navigate to the URL without date params
-      await this.page.goto(currentUrl.toString());
-
-      // Wait for page to stabilize
-      await this.map.waitFor({ state: "visible", timeout: 10000 });
-    }
+    await this.page.getByRole("button", { name: /Clear date filters/i }).click({ timeout: 5000 });
+    await this.page.waitForFunction(
+      () => {
+        const url = new URL(globalThis.location.href);
+        return !url.searchParams.has("startDate") && !url.searchParams.has("endDate");
+      },
+      undefined,
+      { timeout: 5000 }
+    );
   }
 
   async panMap(deltaX: number, deltaY: number) {

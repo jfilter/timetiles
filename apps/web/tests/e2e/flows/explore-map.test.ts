@@ -78,11 +78,13 @@ test.describe("Explore Page - Map Interactions", () => {
     await explorePage.waitForApiResponse();
     await explorePage.waitForEventsToLoad();
 
-    // Zoom in
+    const zoomParam = () => Number(new URL(page.url()).searchParams.get("zoom"));
+    const zoomBefore = zoomParam();
+
     await explorePage.zoomIn();
 
-    // Wait for map zoom animation
-    await page.waitForLoadState("networkidle", { timeout: 2000 }).catch(() => {});
+    // The map writes its zoom into the URL once the zoom animation ends.
+    await expect.poll(zoomParam, { timeout: 10_000 }).toBeGreaterThan(zoomBefore);
 
     // Verify map is still visible and functional after zoom
     await expect(explorePage.map).toBeVisible();

@@ -280,5 +280,5 @@ afterAll(async () => {
 // Import centralized mocks only for non-E2E tests
 // eslint-disable-next-line turbo/no-undeclared-env-vars
 if (!process.env.PLAYWRIGHT_TEST) {
-  void import("../../mocks/external/next-navigation");
+  await import("../../mocks/external/next-navigation");
 }

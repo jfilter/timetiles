@@ -14,7 +14,7 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getAppConfig, resetAppConfig } from "@/lib/config/app-config";
 import { buildAuthHeaders } from "@/lib/ingest/url-fetch/auth";
@@ -362,6 +362,15 @@ describe.sequential("HTTP Cache Integration", () => {
   });
 
   describe("Advanced caching features", () => {
+    // Freshness is computed from Date; faking only Date keeps real I/O timers working.
+    beforeEach(() => {
+      vi.useFakeTimers({ toFake: ["Date"], now: new Date("2026-01-01T00:00:00Z") });
+    });
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+    const advanceClock = (ms: number) => vi.setSystemTime(Date.now() + ms);
+
     it.each([
       ["must-revalidate", false],
       ["MUST-REVALIDATE", false],
@@ -381,7 +390,7 @@ describe.sequential("HTTP Cache Integration", () => {
 
       const url = `${serverUrl}/mandatory-revalidation`;
       expect((await fetchWithRetry(url)).data.toString()).toBe("Old response");
-      await new Promise((resolve) => setTimeout(resolve, 1100));
+      advanceClock(1100);
 
       const result = fetchWithRetry(url, { retryConfig: { maxRetries: 0 } });
       if (directive) {
@@ -414,7 +423,7 @@ describe.sequential("HTTP Cache Integration", () => {
 
         const url = `${serverUrl}/automatic-revalidation`;
         expect((await fetchWithRetry(url)).cacheStatus).toBe("MISS");
-        await new Promise((resolve) => setTimeout(resolve, 1100));
+        advanceClock(1100);
 
         const result = await fetchWithRetry(url);
         expect(result.data.toString()).toBe("Unchanged response");
@@ -730,12 +739,11 @@ describe.sequential("HTTP Cache Integration", () => {
       const result2 = await fetchWithRetry(cacheUrl, { cacheOptions: { useCache: true } });
       expect(result2.cacheStatus).toBe("HIT");
 
-      // Wait for cache to expire
-      await new Promise((resolve) => setTimeout(resolve, 3000));
+      advanceClock(3000);
 
-      // Third fetch - cache should be stale
+      // Expired without ETag/Last-Modified, so the cache cannot revalidate and refetches.
       const result3 = await fetchWithRetry(cacheUrl, { cacheOptions: { useCache: true } });
-      expect(["MISS", "REVALIDATED"]).toContain(result3.cacheStatus);
+      expect(result3.cacheStatus).toBe("MISS");
     });
   });
 

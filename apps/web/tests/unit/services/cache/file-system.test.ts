@@ -331,20 +331,18 @@ describe.sequential("FileSystemCacheStorage", () => {
 
     it("should expire entries after TTL", async () => {
       const key = "fs-ttl-key";
-      const value = "test-value";
+      vi.useFakeTimers({ toFake: ["Date"] });
+      try {
+        await storage.set(key, "test-value", { ttl: 0.1 });
+        vi.setSystemTime(Date.now() + 99);
+        expect(await storage.has(key)).toBe(true);
 
-      // Set with 0.1 second TTL
-      await storage.set(key, value, { ttl: 0.1 });
-
-      // Should exist immediately
-      expect(await storage.has(key)).toBe(true);
-
-      // Wait for expiration
-      await new Promise((resolve) => setTimeout(resolve, 150));
-
-      // Should be expired
-      expect(await storage.has(key)).toBe(false);
-      expect(await storage.get(key)).toBeNull();
+        vi.setSystemTime(Date.now() + 1);
+        expect(await storage.has(key)).toBe(false);
+        expect(await storage.get(key)).toBeNull();
+      } finally {
+        vi.useRealTimers();
+      }
     });
 
     it("should update access metadata on get", async () => {
@@ -538,16 +536,18 @@ describe.sequential("FileSystemCacheStorage", () => {
     });
 
     it("should cleanup stale entries", async () => {
-      await storage.set("fs-stale-1", "value1", { ttl: 0.1 }); // Expires in 100ms
-      await storage.set("fs-stale-2", "value2", { ttl: 10 }); // Expires in 10s
+      vi.useFakeTimers({ toFake: ["Date"] });
+      try {
+        await storage.set("fs-stale-1", "value1", { ttl: 0.1 });
+        await storage.set("fs-stale-2", "value2", { ttl: 10 });
+        vi.setSystemTime(Date.now() + 100);
 
-      // Wait for first entry to expire
-      await new Promise((resolve) => setTimeout(resolve, 150));
-
-      const cleaned = await storage.cleanup();
-      expect(cleaned).toBe(1);
-      expect(await storage.has("fs-stale-1")).toBe(false);
-      expect(await storage.has("fs-stale-2")).toBe(true);
+        expect(await storage.cleanup()).toBe(1);
+        expect(await storage.has("fs-stale-1")).toBe(false);
+        expect(await storage.has("fs-stale-2")).toBe(true);
+      } finally {
+        vi.useRealTimers();
+      }
     });
 
     it("should clear all entries", async () => {

@@ -69,9 +69,8 @@ const pages: PageConfig[] = [
     requiresAuth: true,
     waitFor: async (page) => {
       await page.getByRole("region", { name: "Map" }).first().waitFor({ state: "visible", timeout: 15_000 });
-      await page.waitForSelector('button:has-text("datasets")', { timeout: 15_000 }).catch(() => {
-        // Dataset buttons may not appear if no data, continue anyway
-      });
+      // Seeded data must be rendered so the scan covers the populated page.
+      await page.locator('button:has-text("datasets")').first().waitFor({ state: "visible", timeout: 15_000 });
     },
     exclude: [
       ".maplibregl-canvas", // WebGL canvas — not analyzable by axe

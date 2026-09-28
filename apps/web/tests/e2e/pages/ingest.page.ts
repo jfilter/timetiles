@@ -174,16 +174,12 @@ export class IngestPage {
         );
       });
 
-    // If already on upload step, we're done
-    if (await uploadHeading.isVisible().catch(() => false)) {
+    // The wait above settled which step is shown; a restored wizard may already be on upload.
+    if (await uploadHeading.isVisible()) {
       return;
     }
 
-    // Click on sign in tab if visible
-    const signInTab = this.page.getByRole("tab", { name: /Sign In/i });
-    if (await signInTab.isVisible().catch(() => false)) {
-      await signInTab.click();
-    }
+    await this.page.getByRole("tab", { name: /Sign In/i }).click();
 
     // Wait for form to be ready
     await this.emailInput.waitFor({ state: "visible", timeout: 5000 });
@@ -205,16 +201,8 @@ export class IngestPage {
       throw new Error(`Login API failed with status ${status}: ${body}`);
     }
 
-    // After login the wizard shows an explicit "You're signed in / Continue"
-    // step (no auto-advance — users must confirm before moving on). Click
-    // that Continue button when present, then wait for the upload step.
-    const signedInContinue = this.page.getByRole("button", { name: /^Continue$/i });
-    await signedInContinue.waitFor({ state: "visible", timeout: 5000 }).catch(() => {
-      // Skip if the wizard already moved to upload on its own.
-    });
-    if (await signedInContinue.isVisible().catch(() => false)) {
-      await signedInContinue.click();
-    }
+    // The wizard never auto-advances after login: users confirm via "Continue".
+    await this.page.getByRole("button", { name: /^Continue$/i }).click({ timeout: 5000 });
 
     await uploadHeading.waitFor({ state: "visible", timeout: 15000 }).catch(async () => {
       const currentUrl = this.page.url();
@@ -264,18 +252,18 @@ export class IngestPage {
     const catalogDropdown = this.page.locator("#catalog-select");
     const catalogNameInput = this.page.locator("#new-catalog-name");
 
-    // Dismiss the dataset-suggestion banner if it's visible — the test wants
-    // a fresh catalog, not the server's match.
-    const ignoreButton = this.page
-      .locator('[data-testid="dataset-suggestion-banner"]')
-      .getByRole("button", { name: /ignore/i });
-    if (await ignoreButton.isVisible().catch(() => false)) {
-      await ignoreButton.click();
-    }
-
     // Wait for the loading spinner to disappear and the form to render.
     const formReady = catalogDropdown.or(catalogNameInput);
     await expect(formReady).toBeVisible({ timeout: 10000 });
+
+    // Suggestions arrive with the upload step, so the banner state is settled once the form shows.
+    // Dismiss it when the server matched an existing dataset: the test wants a fresh catalog.
+    const ignoreButton = this.page
+      .locator('[data-testid="dataset-suggestion-banner"]')
+      .getByRole("button", { name: /ignore/i });
+    if (await ignoreButton.isVisible()) {
+      await ignoreButton.click();
+    }
 
     // Check if the catalog dropdown is visible (existing catalogs exist)
     if (await catalogDropdown.isVisible()) {
@@ -339,34 +327,6 @@ export class IngestPage {
     if (options.location) {
       await this.locationFieldSelect.click();
       await this.page.getByRole("option", { name: options.location }).click();
-    }
-  }
-
-  /**
-   * Select a value in a Radix UI Select component by its trigger locator.
-   * Retries the click→select cycle if the dropdown closes unexpectedly
-   * (Radix portals can take time to mount in CI).
-   */
-  async selectFieldValue(triggerLocator: Locator, value: string): Promise<void> {
-    const maxAttempts = 3;
-    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-      await triggerLocator.click();
-      const option = this.page.getByRole("option", { name: value, exact: true });
-      try {
-        await expect(option).toBeVisible({ timeout: 5000 });
-        await option.click();
-        // Verify the dropdown closed and value was set
-        await expect(option).not.toBeVisible({ timeout: 2000 });
-        return;
-      } catch {
-        if (attempt === maxAttempts)
-          throw new Error(`selectFieldValue: failed to select "${value}" after ${maxAttempts} attempts`);
-        // Dismiss any open dropdown before retrying
-        await this.page.keyboard.press("Escape");
-        await expect(option)
-          .not.toBeVisible({ timeout: 1000 })
-          .catch(() => {});
-      }
     }
   }
 

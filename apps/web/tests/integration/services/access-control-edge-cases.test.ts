@@ -270,9 +270,11 @@ describe.sequential("Access Control Edge Cases", () => {
       });
       console.log(`[TEST] Import file created: ${ingestFile.id}`);
 
-      // Wait for file to be written and hook to trigger
-      console.log("[TEST] Waiting for hooks to complete...");
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      // The afterChange hook queues the workflow inside the create transaction.
+      const { jobId } = await payload.findByID({ collection: "ingest-files", id: ingestFile.id });
+      await expect(payload.findByID({ collection: "payload-jobs", id: jobId! })).resolves.toMatchObject({
+        workflowSlug: "manual-ingest",
+      });
 
       // Process the dataset-detection job queued by ingest-files afterChange hook
       console.log("[TEST] Running queued jobs...");
@@ -338,8 +340,11 @@ describe.sequential("Access Control Edge Cases", () => {
         triggerWorkflow: true,
       });
 
-      // Wait for hooks to complete and process jobs
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      // The afterChange hook queues the workflow inside the create transaction.
+      const { jobId } = await payload.findByID({ collection: "ingest-files", id: ingestFile.id });
+      await expect(payload.findByID({ collection: "payload-jobs", id: jobId! })).resolves.toMatchObject({
+        workflowSlug: "manual-ingest",
+      });
       await payload.jobs.run({ allQueues: true });
 
       // otherUser should not be able to read it

@@ -16,6 +16,9 @@ import {
 } from "../../../lib/services/rate-limit-service";
 import { createIntegrationTestEnvironment } from "../../setup/integration/environment";
 
+// Window expiry reads Date.now(); fake only Date so I/O timers stay real.
+const advanceClock = (ms: number) => vi.setSystemTime(Date.now() + ms);
+
 describe.sequential("RateLimitService", () => {
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: any;
@@ -39,6 +42,7 @@ describe.sequential("RateLimitService", () => {
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     rateLimitService.destroy();
     vi.unstubAllEnvs();
     resetEnv();
@@ -114,6 +118,7 @@ describe.sequential("RateLimitService", () => {
     });
 
     it("should reset after window expires", async () => {
+      vi.useFakeTimers({ toFake: ["Date"] });
       const shortWindow = 100; // 100ms
 
       // Exhaust the limit
@@ -126,7 +131,7 @@ describe.sequential("RateLimitService", () => {
       expect(result.allowed).toBe(false);
 
       // Wait for window to expire
-      await new Promise((resolve) => setTimeout(resolve, 150));
+      advanceClock(150);
 
       // Should be allowed again
       result = await rateLimitService.checkRateLimit(testIdentifier, limit, shortWindow);
@@ -190,12 +195,13 @@ describe.sequential("RateLimitService", () => {
     });
 
     it("should return null for expired entries", async () => {
+      vi.useFakeTimers({ toFake: ["Date"] });
       const shortWindow = 50;
 
       await rateLimitService.checkRateLimit(testIdentifier, limit, shortWindow);
 
       // Wait for expiry
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      advanceClock(100);
 
       const status = await rateLimitService.getRateLimitStatus(testIdentifier);
       expect(status).toBeNull();
@@ -279,6 +285,7 @@ describe.sequential("RateLimitService", () => {
     });
 
     it("should unblock after duration expires", async () => {
+      vi.useFakeTimers({ toFake: ["Date"] });
       const shortDuration = 100;
       await rateLimitService.blockIdentifier(testIdentifier, shortDuration);
 
@@ -287,7 +294,7 @@ describe.sequential("RateLimitService", () => {
       expect(result.allowed).toBe(false);
 
       // Wait for block to expire
-      await new Promise((resolve) => setTimeout(resolve, 150));
+      advanceClock(150);
 
       // Should be allowed again
       result = await rateLimitService.checkRateLimit(testIdentifier, limit, windowMs);
@@ -334,6 +341,7 @@ describe.sequential("RateLimitService", () => {
 
   describe.sequential("cleanup", () => {
     it("should remove expired entries", async () => {
+      vi.useFakeTimers({ toFake: ["Date"] });
       const shortWindow = 50;
       const identifier1 = "cleanup-client-1";
       const identifier2 = "cleanup-client-2";
@@ -343,7 +351,7 @@ describe.sequential("RateLimitService", () => {
       await rateLimitService.checkRateLimit(identifier2, 5, 60 * 1000); // Long window
 
       // Wait for first entry to expire
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      advanceClock(100);
 
       // Trigger cleanup
       await rateLimitService["cleanup"]();
@@ -373,11 +381,12 @@ describe.sequential("RateLimitService", () => {
     });
 
     it("should not count expired entries as active", async () => {
+      vi.useFakeTimers({ toFake: ["Date"] });
       const shortWindow = 50;
       await rateLimitService.checkRateLimit("expired-client", 5, shortWindow);
 
       // Wait for expiry
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      advanceClock(100);
 
       const stats = await rateLimitService.getStatistics();
       expect(stats.activeEntries).toBe(0);
@@ -486,6 +495,7 @@ describe.sequential("Multi-window rate limiting", () => {
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     rateLimitService.destroy();
     vi.unstubAllEnvs();
     resetEnv();
@@ -538,6 +548,7 @@ describe.sequential("Multi-window rate limiting", () => {
     });
 
     it("should use unique identifiers for each window", async () => {
+      vi.useFakeTimers({ toFake: ["Date"] });
       const identifier = "test-id";
       const windows = [
         { limit: 1, windowMs: 100, name: "short" },
@@ -551,7 +562,7 @@ describe.sequential("Multi-window rate limiting", () => {
       expect((await rateLimitService.checkMultiWindowRateLimit(identifier, windows)).allowed).toBe(false);
 
       // Wait for short window to expire
-      await new Promise((resolve) => setTimeout(resolve, 150));
+      advanceClock(150);
 
       // Should pass again (short window reset, long window still has capacity)
       const result = await rateLimitService.checkMultiWindowRateLimit(identifier, windows);

@@ -122,14 +122,7 @@ describe.sequential("/api/v1/events/geo", () => {
   });
 
   afterAll(async () => {
-    // Clean up test environment
-    if (testEnv?.cleanup) {
-      try {
-        await testEnv.cleanup();
-      } catch {
-        // Cleanup error (non-critical) - silently continue
-      }
-    }
+    await testEnv?.cleanup();
   });
 
   it("should return clustered events for global view", async () => {

@@ -100,13 +100,7 @@ describe.sequential("Event API Access Control Consistency", () => {
   });
 
   afterAll(async () => {
-    if (testEnv?.cleanup) {
-      try {
-        await testEnv.cleanup();
-      } catch {
-        // Cleanup error - silently continue
-      }
-    }
+    await testEnv?.cleanup();
   });
 
   describe("Anonymous user accessing PRIVATE catalog", () => {

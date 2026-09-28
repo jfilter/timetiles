@@ -170,12 +170,8 @@ describe.sequential("Geocoding Cache Integration", () => {
 
     // Drain lingering pipeline jobs before truncation to avoid deadlocks.
     for (let i = 0; i < 5; i++) {
-      try {
-        const result = await payload.jobs.run({ limit: 50 });
-        if (result.noJobsRemaining) break;
-      } catch {
-        break;
-      }
+      const result = await payload.jobs.run({ limit: 50 });
+      if (result.noJobsRemaining) break;
     }
 
     await testEnv.seedManager.truncate(collectionsToReset);

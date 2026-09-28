@@ -123,19 +123,12 @@ test.describe("Scraper Flow - API", () => {
       ].join("\n"),
     };
 
-    // The feature flag service has a 1-minute in-memory cache. Retry until
-    // the server-side cache expires and the flag takes effect.
-    let createResponse!: Awaited<ReturnType<typeof request.post>>;
-    const maxAttempts = 15;
-    for (let attempt = 0; attempt < maxAttempts; attempt++) {
-      createResponse = await request.post(`${baseUrl}/api/scraper-repos`, {
-        headers: { Authorization: `JWT ${token}`, "Content-Type": "application/json" },
-        data: { name: `E2E Test Scraper Repo ${attemptSuffix} ${Date.now()}`, sourceType: "upload", code: inlineCode },
-        timeout: 10000,
-      });
-      if (createResponse.status() === 201) break;
-      await new Promise((resolve) => setTimeout(resolve, 5000));
-    }
+    // Saving the settings global drops the cached flags, so the flag enabled above applies at once.
+    const createResponse = await request.post(`${baseUrl}/api/scraper-repos`, {
+      headers: { Authorization: `JWT ${token}`, "Content-Type": "application/json" },
+      data: { name: `E2E Test Scraper Repo ${attemptSuffix} ${Date.now()}`, sourceType: "upload", code: inlineCode },
+      timeout: 10000,
+    });
 
     expect(createResponse.status()).toBe(201);
 
