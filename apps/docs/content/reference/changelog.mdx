@@ -8,6 +8,13 @@ See the [release process](/development/contributing/release-process) for how new
 
 Changes landed on `main` since the last tagged release.
 
+## [0.1.0-alpha.12] - 2026-09-28
+
+### Fixed
+
+- Bootstrap: steps run from `/`, so podman invoked as the app user no longer aborts on an inherited working directory it cannot enter
+- Bootstrap: the scraper-setup step restarts the runner, so a rerun applies the rewritten systemd unit instead of leaving the old one active
+
 ## [0.1.0-alpha.11] - 2026-09-28
 
 Republishes alpha.10: its image release stopped at the deployment test, so no alpha.10 images were published. The upgrade note from alpha.10 applies.
