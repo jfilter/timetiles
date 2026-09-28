@@ -216,7 +216,9 @@ describe.sequential("Catalog validation hooks", () => {
         user: importer,
       });
 
-      await expect(resolveOrCreateImportCatalog(payload, undefined, importer.id)).rejects.toThrow(/Maximum catalogs reached/);
+      await expect(resolveOrCreateImportCatalog(payload, undefined, importer.id)).rejects.toThrow(
+        /Maximum catalogs reached/
+      );
 
       const owned = await payload.find({
         collection: "catalogs",
