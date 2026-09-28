@@ -129,7 +129,7 @@ describe.sequential("/api/v1/events/geo", () => {
     const bounds = { north: 90, south: -90, east: 180, west: -180 };
 
     const request = new NextRequest(
-      `http://localhost:3000/api/events/map-clusters?bounds=${encodeURIComponent(JSON.stringify(bounds))}&zoom=2`
+      `http://localhost:3000/api/events/map-clusters?bounds=${encodeURIComponent(JSON.stringify(bounds))}&zoom=2&datasets=${testDatasetId}`
     );
 
     const response = await GET(request, { params: Promise.resolve({}) });
@@ -151,7 +151,9 @@ describe.sequential("/api/v1/events/geo", () => {
     const clusters = data.features.filter((f: MapClusterFeature) => f.properties.type === "event-cluster");
     const singles = data.features.filter((f: MapClusterFeature) => f.properties.type === "event-location");
 
-    expect(clusters.map((c: MapClusterFeature) => c.properties.count).sort()).toEqual([3, 4]);
+    expect(
+      clusters.map((c: MapClusterFeature) => c.properties.count ?? 0).toSorted((a: number, b: number) => a - b)
+    ).toEqual([3, 4]);
     expect(singles).toHaveLength(3);
 
     for (const cluster of clusters) {
@@ -170,7 +172,7 @@ describe.sequential("/api/v1/events/geo", () => {
     // Through the real route: a hand-rolled copy of its row-to-feature transform
     // stood here and had already fallen behind the h3Cell / clusterId / root-id rules.
     const request = new NextRequest(
-      `http://localhost:3000/api/events/map-clusters?bounds=${encodeURIComponent(JSON.stringify(bounds))}&zoom=16`
+      `http://localhost:3000/api/events/map-clusters?bounds=${encodeURIComponent(JSON.stringify(bounds))}&zoom=16&datasets=${testDatasetId}`
     );
 
     const response = await GET(request, { params: Promise.resolve({}) });
@@ -233,7 +235,7 @@ describe.sequential("/api/v1/events/geo", () => {
     const request = new NextRequest(
       `http://localhost:3000/api/events/map-clusters?bounds=${encodeURIComponent(
         JSON.stringify(bounds)
-      )}&zoom=2&startDate=${startDate}&endDate=${endDate}`
+      )}&zoom=2&datasets=${testDatasetId}&startDate=${startDate}&endDate=${endDate}`
     );
 
     const response = await GET(request, { params: Promise.resolve({}) });
@@ -246,15 +248,12 @@ describe.sequential("/api/v1/events/geo", () => {
     expect(response.status).toBe(200);
     const data = await response.json();
 
-    // Should only return events from Jan 5-8
+    // Events 5–8 fall on Jan 5–8
     const totalEvents = data.features.reduce((sum: number, feature: MapClusterFeature) => {
       return sum + (feature.properties.count ?? 1);
     }, 0);
 
-    // Since there may be other events in the test database,
-    // let's just verify that we get fewer events with date filtering than without
-    expect(totalEvents).toBeGreaterThan(0);
-    expect(totalEvents).toBeLessThan(50); // Reasonable upper bound
+    expect(totalEvents).toBe(4);
   });
 
   it("should filter clusters by deeply nested field path", async () => {
