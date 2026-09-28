@@ -80,8 +80,8 @@ const renderHero = (block: HeroBlock) => {
       {block.description && <HeroDescription>{block.description}</HeroDescription>}
       {block.buttons && block.buttons.length > 0 && (
         <HeroActions>
-          {block.buttons.map((button, btnIndex) => (
-            <Button key={button.id ?? `btn-${btnIndex}`} asChild variant={button.variant ?? "default"}>
+          {block.buttons.map((button) => (
+            <Button key={button.id} asChild variant={button.variant ?? "default"}>
               <a href={button.link}>{button.text}</a>
             </Button>
           ))}
@@ -102,8 +102,8 @@ const renderFeatures = (block: FeaturesBlock) => {
         </FeaturesHeader>
       )}
       <FeaturesGrid columns={columnCount}>
-        {block.features.map((feature, featureIndex) => (
-          <Feature key={feature.id ?? `feature-${featureIndex}`} accent={feature.accent ?? "none"}>
+        {block.features.map((feature) => (
+          <Feature key={feature.id} accent={feature.accent ?? "none"}>
             <FeatureIcon>
               <IconMapper name={feature.icon} size={64} />
             </FeatureIcon>
@@ -120,8 +120,8 @@ const renderStats = (block: StatsBlock) => (
   <div className="bg-muted/30 py-16">
     <div className="container mx-auto max-w-6xl px-6">
       <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
-        {block.stats.map((stat, statIndex) => (
-          <div key={stat.id ?? `stat-${statIndex}`} className="text-center">
+        {block.stats.map((stat) => (
+          <div key={stat.id} className="text-center">
             {stat.icon && (
               <div className="text-primary mb-4 flex justify-center">
                 <IconMapper name={stat.icon} size={48} />
@@ -143,7 +143,7 @@ const renderDetailsGrid = (block: DetailsGridBlock) => (
     )}
     <DetailsGrid variant={block.variant ?? "grid-3"}>
       {block.items.map((item, itemIndex) => (
-        <DetailsItem key={item.id ?? `item-${itemIndex}`} index={itemIndex}>
+        <DetailsItem key={item.id} index={itemIndex}>
           <DetailsIcon>
             <IconMapper name={item.icon} size={20} />
           </DetailsIcon>
@@ -170,7 +170,7 @@ const renderTimeline = (block: TimelineBlock) => (
     )}
     <Timeline variant={block.variant ?? "vertical"}>
       {block.items.map((item, itemIndex) => (
-        <TimelineItem key={item.id ?? `timeline-${itemIndex}`} index={itemIndex}>
+        <TimelineItem key={item.id} index={itemIndex}>
           <TimelineDate>{item.date}</TimelineDate>
           <TimelineTitle>{item.title}</TimelineTitle>
           <TimelineDescription>{item.description}</TimelineDescription>
@@ -187,7 +187,7 @@ const renderTestimonials = (block: TestimonialsBlock) => (
     )}
     <Testimonials variant={block.variant ?? "grid"}>
       {block.items.map((item, itemIndex) => (
-        <TestimonialCard key={item.id ?? `testimonial-${itemIndex}`} index={itemIndex}>
+        <TestimonialCard key={item.id} index={itemIndex}>
           {item.avatar && (
             <TestimonialAvatar>
               <IconMapper name={item.avatar} size={20} />
