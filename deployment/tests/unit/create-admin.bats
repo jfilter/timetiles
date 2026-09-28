@@ -5,7 +5,7 @@ setup() {
     load '../helpers/common.bash'
     setup_temp_dir
     mkdir -p "$TEST_TEMP_DIR/deployment"
-    cp "$DEPLOY_DIR/timetiles" "$TEST_TEMP_DIR/deployment/timetiles"
+    install_cli "$TEST_TEMP_DIR/deployment"
     cat > "$TEST_TEMP_DIR/deployment/.env.production" << 'EOF2'
 DB_PASSWORD=test
 DOMAIN_NAME=test.local

@@ -7,7 +7,7 @@
 # after opening its sqlite backend and never returns, turning any invocation
 # into a silent bootstrap hang. Observed here at 47 minutes with no output,
 # with the run otherwise healthy — so the cap below is the load-bearing part.
-# Every call goes through podman_as, which bounds the call and pins
+# Every call goes through common.sh's podman_as, which bounds the call and pins
 # XDG_RUNTIME_DIR, since sudo does not carry it over.
 #
 # The timeout is what guarantees the bootstrap makes progress. The runtime dir
@@ -57,20 +57,6 @@ SCRAPER_IMAGE_STORE_SUBDIR=".local/share/containers"
 # ReadWritePaths without a leading dash, so a missing one keeps the unit from
 # starting at all.
 SCRAPER_WORK_DIR="/tmp/timescrape"
-
-# Usage: podman_as <user> <timeout-seconds> <podman args...>
-podman_as() {
-    local user="$1"
-    local timeout_s="$2"
-    shift 2
-
-    # Same runroot and graphroot the service uses. If these differed, the images
-    # pulled here would land somewhere the runner cannot see and every run would
-    # fail with "image not known" after a bootstrap that reported success.
-    timeout "$timeout_s" sudo -u "$user" \
-        env "XDG_RUNTIME_DIR=$(runtime_dir_for "$user")" \
-            podman "$@"
-}
 
 run_step() {
     if [[ "${SKIP_SCRAPER:-true}" == "true" ]]; then
@@ -200,41 +186,9 @@ pull_base_images() {
     local python_image="${SCRAPER_PYTHON_IMAGE:-ghcr.io/jfilter/timetiles-scraper-python:$version}"
     local node_image="${SCRAPER_NODE_IMAGE:-ghcr.io/jfilter/timetiles-scraper-node:$version}"
 
-    # Try pulling from GHCR first, fall back to local build
     print_step "Setting up scraper base images..."
-
-    if podman_as "$user" 900 pull "$python_image" 2>/dev/null; then
-        podman_as "$user" 60 tag "$python_image" timescrape-python
-        print_success "Pulled timescrape-python from registry"
-    elif [[ -f "$src_dir/apps/timescrape/images/python/Dockerfile" && -d "$src_dir/packages/python" ]]; then
-        print_info "Registry pull failed, building timescrape-python locally..."
-        build_base_image "$user" python "$src_dir"
-        print_success "Built timescrape-python locally"
-    else
-        die "Cannot pull or build timescrape-python image"
-    fi
-
-    if podman_as "$user" 900 pull "$node_image" 2>/dev/null; then
-        podman_as "$user" 60 tag "$node_image" timescrape-node
-        print_success "Pulled timescrape-node from registry"
-    elif [[ -f "$src_dir/apps/timescrape/images/node/Dockerfile" && -d "$src_dir/packages/scraper" ]]; then
-        print_info "Registry pull failed, building timescrape-node locally..."
-        build_base_image "$user" node "$src_dir"
-        print_success "Built timescrape-node locally"
-    else
-        die "Cannot pull or build timescrape-node image"
-    fi
-}
-
-# Build a scraper base image from the repo root, which carries the SDK sources.
-build_base_image() {
-    local user="$1"
-    local runtime="$2"
-    local src_dir="$3"
-    local image_dir="$src_dir/apps/timescrape/images/$runtime"
-
-    podman_as "$user" 1800 build -t "timescrape-$runtime" -f "$image_dir/Dockerfile" \
-        --ignorefile "$image_dir/Dockerfile.dockerignore" "$src_dir"
+    pull_or_build_base_image "$user" python "$python_image" "$src_dir" || die "Setting up timescrape-python failed"
+    pull_or_build_base_image "$user" node "$node_image" "$src_dir" || die "Setting up timescrape-node failed"
 }
 
 # Pinned so firewall rules and diagnostics can name it; inside podman's own
@@ -377,7 +331,7 @@ allow_runner_ingress() {
         return 0
     fi
 
-    subnet="$(sed -n 's/^DOCKER_NETWORK_SUBNET=//p' "$env_file" 2>/dev/null | tail -1)"
+    subnet="$(env_get "$env_file" DOCKER_NETWORK_SUBNET)" || true
     subnet="${subnet:-$DEFAULT_DOCKER_NETWORK_SUBNET}"
 
     print_step "Allowing the compose network to reach the runner..."
@@ -415,31 +369,8 @@ install_runner() {
 
     print_step "Installing scraper runner..."
 
-    mkdir -p "$runner_dir"
-
-    # Clean previous installation
-    rm -rf "${runner_dir:?}/dist" "${runner_dir:?}/node_modules" "${runner_dir:?}/package.json"
-
     # Strategy 1: Extract pre-built runner from GHCR Docker image (no build tools needed)
     local image="${SCRAPER_IMAGE:-ghcr.io/jfilter/timetiles-timescrape}:$version"
-
-    # Helper: extract /app from a Docker image into runner_dir using tar (resolves symlinks)
-    extract_from_image() {
-        local img="$1"
-        docker rm -f tt-scraper-extract 2>/dev/null || true
-        docker create --name tt-scraper-extract "$img"
-        # Use tar to extract — docker cp preserves symlinks which break outside the container
-        if ! docker export tt-scraper-extract | tar -xf - -C "$runner_dir" --strip-components=1 app/dist app/node_modules app/package.json; then
-            docker rm -f tt-scraper-extract 2>/dev/null || true
-            die "Failed to extract runner from image $img"
-        fi
-        docker rm tt-scraper-extract
-
-        # Verify extraction
-        if [[ ! -f "$runner_dir/dist/index.js" ]]; then
-            die "Runner extraction failed — dist/index.js not found"
-        fi
-    }
 
     # Refuse a local build the context cannot support, before spending a
     # monorepo build on it.
@@ -482,11 +413,11 @@ install_runner() {
             -f "$src_dir/apps/timescrape/Dockerfile" "$src_dir"; then
             die "Failed to build scraper runner image from source"
         fi
-        extract_from_image timescrape-runner-local
+        install_runner_from_image timescrape-runner-local "$runner_dir" || die "Installing the scraper runner failed"
         print_success "Built runner from source"
-    elif docker pull "$image" 2>/dev/null; then
+    elif docker pull "$image"; then
         print_info "Extracting runner from image: $image"
-        extract_from_image "$image"
+        install_runner_from_image "$image" "$runner_dir" || die "Installing the scraper runner failed"
     # Strategy 2: Build via Docker and extract (same as strategy 1, but build locally)
     # Needs repo root as context for turbo prune (monorepo workspace resolution)
     elif [[ "$build_context_ok" == "true" ]]; then
@@ -497,7 +428,7 @@ install_runner() {
             -f "$src_dir/apps/timescrape/Dockerfile" "$src_dir"; then
             die "Failed to build scraper runner image"
         fi
-        extract_from_image timescrape-runner-local
+        install_runner_from_image timescrape-runner-local "$runner_dir" || die "Installing the scraper runner failed"
         print_success "Built runner locally"
     elif [[ -f "$src_dir/apps/timescrape/Dockerfile" ]]; then
         die_incomplete_monorepo "$src_dir" "pulling $image failed"
@@ -700,7 +631,7 @@ verify_runner_reachable_from_worker() {
         return 0
     fi
 
-    project="$(sed -n 's/^COMPOSE_PROJECT_NAME=//p' "$env_file" 2>/dev/null | tail -1)"
+    project="$(env_get "$env_file" COMPOSE_PROJECT_NAME)" || true
     container="${project:-timetiles}-worker-ingest"
 
     print_step "Verifying the runner is reachable from $container..."

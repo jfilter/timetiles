@@ -35,20 +35,24 @@ COMPOSE_FILE="$SCRIPT_DIR/docker-compose.prod.yml"
 TEST_OVERRIDE="$SCRIPT_DIR/docker-compose.test.yml"
 SSL_OVERRIDE="$SCRIPT_DIR/docker-compose.ssl-override.yml"
 
-# Build compose command, layering optional overrides
-DC_CMD="docker compose -f $COMPOSE_FILE"
 BUILD_OVERRIDE="$SCRIPT_DIR/docker-compose.override.yml"
-[ -f "$BUILD_OVERRIDE" ] && DC_CMD="$DC_CMD -f $BUILD_OVERRIDE"
-[ -f "$SSL_OVERRIDE" ]   && DC_CMD="$DC_CMD -f $SSL_OVERRIDE"
-[ -f "$TEST_OVERRIDE" ]  && DC_CMD="$DC_CMD -f $TEST_OVERRIDE"
-DC_CMD="$DC_CMD --env-file $ENV_FILE"
+
+# common.sh installs bootstrap's EXIT/INT/TERM traps; this CLI handles its own exits.
+# shellcheck source=bootstrap/lib/common.sh
+source "$SCRIPT_DIR/bootstrap/lib/common.sh"
+trap - EXIT INT TERM
+
+# Build the compose command, layering the optional overrides that exist
+build_dc_cmd() {
+    DC_CMD="docker compose -f $COMPOSE_FILE"
+    [ -f "$BUILD_OVERRIDE" ] && DC_CMD="$DC_CMD -f $BUILD_OVERRIDE"
+    [ -f "$SSL_OVERRIDE" ]   && DC_CMD="$DC_CMD -f $SSL_OVERRIDE"
+    [ -f "$TEST_OVERRIDE" ]  && DC_CMD="$DC_CMD -f $TEST_OVERRIDE"
+    DC_CMD="$DC_CMD --env-file $ENV_FILE"
+}
+build_dc_cmd
 
 cd "$SCRIPT_DIR/.."
-
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-NC='\033[0m'
 
 ALERT_SCRIPT="${TIMETILES_ALERT_SCRIPT:-/opt/timetiles/scripts/alert.sh}"
 
@@ -56,29 +60,17 @@ send_alert() {
     local subject="$1"
     local message="$2"
     if [ -x "$ALERT_SCRIPT" ]; then
-        "$ALERT_SCRIPT" "$subject" "$message" 2>/dev/null || true
+        "$ALERT_SCRIPT" "$subject" "$message" \
+            || echo -e "${YELLOW}Warning: alert script $ALERT_SCRIPT failed; alert '$subject' not sent${NC}" >&2
     fi
 }
 
 # Restic configuration
 load_restic_config() {
-    # Extract only backup-related variables (not full env source to avoid leaking secrets)
-    # Uses cut instead of IFS='=' to preserve values containing '=' (e.g., base64 passwords)
-    while IFS= read -r line; do
-        local key="${line%%=*}"
-        local value="${line#*=}"
-        case "$key" in
-            RESTIC_PASSWORD|RESTIC_REPOSITORY|RESTIC_OFFSITE_REPOSITORY|\
-            AWS_ACCESS_KEY_ID|AWS_SECRET_ACCESS_KEY|AWS_ENDPOINT_URL|\
-            BACKUP_KEEP_DAILY|BACKUP_KEEP_WEEKLY|BACKUP_KEEP_MONTHLY|\
-            UPLOAD_HOST_DIR)
-                # Remove surrounding quotes if present
-                value="${value%\"}"
-                value="${value#\"}"
-                export "$key=$value"
-                ;;
-        esac
-    done < <(grep -E '^(RESTIC_|AWS_|BACKUP_KEEP_|UPLOAD_HOST_DIR)' "$ENV_FILE" 2>/dev/null || true)
+    # Only backup-related variables, not the whole file, to avoid exporting other secrets
+    load_env_vars RESTIC_PASSWORD RESTIC_REPOSITORY RESTIC_OFFSITE_REPOSITORY \
+        AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_ENDPOINT_URL \
+        BACKUP_KEEP_DAILY BACKUP_KEEP_WEEKLY BACKUP_KEEP_MONTHLY UPLOAD_HOST_DIR
 
     RESTIC_PASSWORD="${RESTIC_PASSWORD:-}"
     RESTIC_REPOSITORY="${RESTIC_REPOSITORY:-$SCRIPT_DIR/backups/restic-repo}"
@@ -205,7 +197,7 @@ print_usage() {
 # TIMETILES_VERSION, otherwise the tracked branch.
 deploy_files_ref() {
     local version
-    version=$(grep "^TIMETILES_VERSION=" "$ENV_FILE" 2>/dev/null | cut -d= -f2 | tr -d '"') || true
+    [[ -f "$ENV_FILE" ]] && version=$(env_get "$ENV_FILE" TIMETILES_VERSION) || true
     if [[ -n "$version" && "$version" != "edge" && "$version" != "latest" ]]; then
         echo "v$version"
     else
@@ -236,58 +228,15 @@ check_env() {
     fi
 }
 
-# Load specific variables from env file without exposing secrets
+# Export the named variables that the env file sets, and no others
 # Usage: load_env_vars VAR1 VAR2 ...
-# Run a command as the deploy user.
-# Avoids two pitfalls in `sudo -u "$DEPLOY_USER" …`:
-#   - When the script is already running as DEPLOY_USER (e.g. invoked by
-#     `sudo -u timetiles timetiles check` or by the systemd unit), sudo
-#     to self is denied by the default policy.
-#   - sudo inherits cwd; if it isn't readable by the target user (e.g.
-#     /home/ubuntu when sudoing to timetiles), every command fails with
-#     "cannot chdir". Always change to a known-readable dir first.
-as_deploy_user() {
-    if [[ "$(id -un)" == "${DEPLOY_USER:-timetiles}" ]]; then
-        ( cd /tmp && "$@" )
-    else
-        sudo -u "${DEPLOY_USER:-timetiles}" --chdir=/tmp -- "$@"
-    fi
-}
-
-# Rootless Podman blocks in a futex wait — it does not fail — when its
-# per-user runtime dir is missing, so an unbounded call hangs the CLI with no
-# output. Pin it (sudo drops it) and cap every invocation.
-#
-# It must match the runner unit. Pointing the CLI at a different runtime dir
-# would make `timetiles` report on a different store than the runner uses.
-#
-# Usage: podman_as_deploy_user <timeout-seconds> <podman args...>
-podman_as_deploy_user() {
-    local timeout_s="$1"
-    shift
-
-    local runtime_dir
-    runtime_dir="/run/user/$(id -u "${DEPLOY_USER:-timetiles}")"
-    as_deploy_user timeout "$timeout_s" env \
-        "XDG_RUNTIME_DIR=$runtime_dir" \
-        podman "$@"
-}
-
 load_env_vars() {
-    local wanted="$*"
-    while IFS= read -r line; do
-        [[ -z "$line" || "$line" == \#* ]] && continue
-        local key="${line%%=*}"
-        local value="${line#*=}"
-        for var in $wanted; do
-            if [[ "$key" == "$var" ]]; then
-                value="${value%\"}"
-                value="${value#\"}"
-                export "$key=$value"
-                break
-            fi
-        done
-    done < "$ENV_FILE"
+    local var value
+    for var in "$@"; do
+        if value=$(env_get "$ENV_FILE" "$var"); then
+            export "$var=$value"
+        fi
+    done
 }
 
 init_ssl() {
@@ -336,11 +285,7 @@ init_ssl() {
         if [[ -f "$SSL_OVERRIDE" ]]; then
             echo -e "${YELLOW}Removing self-signed SSL override...${NC}"
             rm -f "$SSL_OVERRIDE"
-            # Rebuild compose command without the override
-            DC_CMD="docker compose -f $COMPOSE_FILE"
-            [ -f "$BUILD_OVERRIDE" ] && DC_CMD="$DC_CMD -f $BUILD_OVERRIDE"
-            [ -f "$TEST_OVERRIDE" ]  && DC_CMD="$DC_CMD -f $TEST_OVERRIDE"
-            DC_CMD="$DC_CMD --env-file $ENV_FILE"
+            build_dc_cmd
             # Recreate nginx to pick up new volume config
             $DC_CMD up -d --no-deps --force-recreate nginx
         else
@@ -366,36 +311,6 @@ update_scraper_runner() {
     # Update runner: try GHCR image first, fall back to local build
     image="${SCRAPER_IMAGE:-ghcr.io/jfilter/timetiles-timescrape}:$version"
 
-    # Helper: extract /app from image using tar (docker cp breaks pnpm symlinks).
-    # Extracts into a staging dir and swaps only a complete runner in, so any failure keeps the old one.
-    extract_runner() {
-        local img="$1"
-        local staging part
-        docker rm -f tt-scraper-extract 2>/dev/null || true
-        docker create --name tt-scraper-extract "$img"
-        mkdir -p "$runner_dir"
-        staging=$(mktemp -d "$runner_dir/.staging.XXXXXX")
-        if ! docker export tt-scraper-extract | tar -xf - -C "$staging" --strip-components=1 app/dist app/node_modules app/package.json; then
-            docker rm -f tt-scraper-extract 2>/dev/null || true
-            rm -rf "$staging"
-            echo -e "${RED}Failed to extract runner from image $img${NC}"
-            exit 1
-        fi
-        docker rm tt-scraper-extract
-
-        if [[ ! -f "$staging/dist/index.js" ]]; then
-            rm -rf "$staging"
-            echo -e "${RED}Runner extraction failed — dist/index.js not found${NC}"
-            exit 1
-        fi
-
-        for part in dist node_modules package.json; do
-            rm -rf "${runner_dir:?}/$part"
-            mv "$staging/$part" "$runner_dir/$part"
-        done
-        rm -rf "$staging"
-    }
-
     # The local build needs the monorepo ROOT, not just the app dir:
     # apps/timescrape/Dockerfile runs `turbo prune`, which reads
     # package.json / pnpm-workspace.yaml / turbo.json and the workspace
@@ -408,8 +323,8 @@ update_scraper_runner() {
     # the missing files. Same guard as
     # bootstrap/steps/13-scraper-setup.sh.
     src_root="$SCRIPT_DIR/.."
-    if docker pull "$image" 2>/dev/null; then
-        extract_runner "$image"
+    if docker pull "$image"; then
+        install_runner_from_image "$image" "$runner_dir" || exit 1
     elif [[ -f "$src_root/apps/timescrape/Dockerfile" \
         && -f "$src_root/pnpm-workspace.yaml" \
         && -f "$src_root/package.json" \
@@ -419,7 +334,7 @@ update_scraper_runner() {
             echo -e "${RED}Failed to build the scraper runner image${NC}"
             exit 1
         fi
-        extract_runner timescrape-runner-local
+        install_runner_from_image timescrape-runner-local "$runner_dir" || exit 1
     elif [[ -f "$src_root/apps/timescrape/Dockerfile" ]]; then
         echo -e "${RED}Cannot pull the runner image, and $src_root is not a full checkout${NC}"
         echo -e "${YELLOW}The local build runs 'turbo prune' and needs the monorepo root${NC}"
@@ -439,41 +354,13 @@ update_scraper_runner() {
     python_image="${SCRAPER_PYTHON_IMAGE:-ghcr.io/jfilter/timetiles-scraper-python:$version}"
     node_image="${SCRAPER_NODE_IMAGE:-ghcr.io/jfilter/timetiles-scraper-node:$version}"
 
-    # Neither branch matches when the registry pull fails (rate limit,
-    # transient network, bad tag) and no local sources exist — the sparse
-    # checkout only includes apps/timescrape/ when SKIP_SCRAPER != true.
-    # Falling through silently left timescrape-python/node on the old
-    # version while "Scraper runner updated!" printed, so scrapes ran on an
-    # image that did not match the deployed release. Bootstrap dies here
-    # too — see bootstrap/steps/13-scraper-setup.sh:156 and :167.
-    if podman_as_deploy_user 900 pull "$python_image" 2>/dev/null; then
-        podman_as_deploy_user 60 tag "$python_image" timescrape-python
-    elif [[ -f "$src_root/apps/timescrape/images/python/Dockerfile" && -d "$src_root/packages/python" ]]; then
-        podman_as_deploy_user 1800 build -t timescrape-python \
-            -f "$src_root/apps/timescrape/images/python/Dockerfile" \
-            --ignorefile "$src_root/apps/timescrape/images/python/Dockerfile.dockerignore" "$src_root"
-    else
-        echo -e "${RED}Cannot pull or build timescrape-python image${NC}"
-        exit 1
-    fi
-
-    if podman_as_deploy_user 900 pull "$node_image" 2>/dev/null; then
-        podman_as_deploy_user 60 tag "$node_image" timescrape-node
-    elif [[ -f "$src_root/apps/timescrape/images/node/Dockerfile" && -d "$src_root/packages/scraper" ]]; then
-        podman_as_deploy_user 1800 build -t timescrape-node \
-            -f "$src_root/apps/timescrape/images/node/Dockerfile" \
-            --ignorefile "$src_root/apps/timescrape/images/node/Dockerfile.dockerignore" "$src_root"
-    else
-        echo -e "${RED}Cannot pull or build timescrape-node image${NC}"
-        exit 1
-    fi
+    # A failed pull without local sources exits: scrapes must not run on base images older than the release.
+    pull_or_build_base_image "$DEPLOY_USER" python "$python_image" "$src_root" || exit 1
+    pull_or_build_base_image "$DEPLOY_USER" node "$node_image" "$src_root" || exit 1
 
     sudo -n /bin/systemctl restart timescrape-runner.service
 
     # restart exits 0 for a unit that dies right after starting; only the health endpoint proves it runs.
-    trap - EXIT INT TERM
-    source "$SCRIPT_DIR/bootstrap/lib/common.sh"
-    trap - EXIT INT TERM
     if ! wait_for_health "http://localhost:4000/health" 60 2; then
         echo -e "${RED}Scraper runner is not healthy after the update; see: journalctl -u timescrape-runner -n 100${NC}"
         exit 1
@@ -1185,16 +1072,6 @@ EOF
         set +e
         set +o pipefail
 
-        # Source shared verification functions
-        BOOTSTRAP_LIB="$SCRIPT_DIR/bootstrap/lib/common.sh"
-        if [[ -f "$BOOTSTRAP_LIB" ]]; then
-            # Disable trap handler from common.sh (we handle our own exit)
-            trap - EXIT INT TERM
-            source "$BOOTSTRAP_LIB"
-            # common.sh re-installs the trap when sourced; clear it again.
-            trap - EXIT INT TERM
-        fi
-
         ERRORS=0
         WARNINGS=0
 
@@ -1251,7 +1128,7 @@ EOF
             # Check required vars
             MISSING_VARS=""
             for var in PAYLOAD_SECRET DB_PASSWORD DOMAIN_NAME; do
-                val=$(grep "^$var=" "$ENV_FILE" 2>/dev/null | cut -d= -f2-)
+                val=$(env_get "$ENV_FILE" "$var")
                 if [[ -z "$val" ]] || [[ "$val" == *"CHANGE_ME"* ]] || [[ "$val" == *"your-domain"* ]]; then
                     MISSING_VARS="${MISSING_VARS:+$MISSING_VARS, }$var"
                 fi
@@ -1402,7 +1279,7 @@ EOF
 
             # Check base images (as deploy user)
             for img in timescrape-python timescrape-node; do
-                if podman_as_deploy_user 60 images --format '{{.Repository}}' 2>/dev/null | grep -q "$img"; then
+                if podman_as "$DEPLOY_USER" 60 images --format '{{.Repository}}' 2>/dev/null | grep -q "$img"; then
                     print_ok "Base image: $img"
                 else
                     print_fail "Base image missing: $img"
@@ -1410,7 +1287,7 @@ EOF
             done
 
             # Check sandbox network
-            if podman_as_deploy_user 60 network ls --format '{{.Name}}' 2>/dev/null | grep -q "^scraper-sandbox$"; then
+            if podman_as "$DEPLOY_USER" 60 network ls --format '{{.Name}}' 2>/dev/null | grep -q "^scraper-sandbox$"; then
                 print_ok "Scraper sandbox network exists"
             else
                 print_fail "Scraper sandbox network missing"
@@ -1431,7 +1308,7 @@ EOF
             fi
 
             # Verify API key is configured (runner reads from same .env.production)
-            SCRAPER_KEY=$(grep "^SCRAPER_API_KEY=" "$ENV_FILE" 2>/dev/null | cut -d= -f2-)
+            SCRAPER_KEY=$(env_get "$ENV_FILE" SCRAPER_API_KEY)
             if [[ -n "$SCRAPER_KEY" && ${#SCRAPER_KEY} -ge 16 ]]; then
                 print_ok "SCRAPER_API_KEY configured (${#SCRAPER_KEY} chars)"
             elif [[ -n "$SCRAPER_KEY" ]]; then
@@ -1671,7 +1548,7 @@ EOF
         # safe form: re-tagging on update orphans the old layer (reclaimed here)
         # without removing a tag a running scrape still needs.
         if grep -q "^SCRAPER_RUNNER_URL=" "$ENV_FILE" 2>/dev/null; then
-            podman_as_deploy_user 300 image prune -f >/dev/null 2>&1 || true
+            podman_as "$DEPLOY_USER" 300 image prune -f >/dev/null 2>&1 || true
         fi
         echo -e "${GREEN}Image cleanup done.${NC}"
         ;;

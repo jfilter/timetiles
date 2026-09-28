@@ -8,7 +8,7 @@ setup() {
     setup_temp_dir
     TEST_TEMP_DIR=$(cd "$TEST_TEMP_DIR" && pwd -P)
     mkdir -p "$TEST_TEMP_DIR/deployment"
-    cp "$DEPLOY_DIR/timetiles" "$TEST_TEMP_DIR/deployment/timetiles"
+    install_cli "$TEST_TEMP_DIR/deployment"
     export TEST_CLI="$TEST_TEMP_DIR/deployment/timetiles"
     unset RESTIC_PASSWORD
 

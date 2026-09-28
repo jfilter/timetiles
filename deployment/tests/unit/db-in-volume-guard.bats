@@ -7,7 +7,7 @@ setup() {
     setup_temp_dir
     TEST_TEMP_DIR=$(cd "$TEST_TEMP_DIR" && pwd -P)
     mkdir -p "$TEST_TEMP_DIR/deployment" "$TEST_TEMP_DIR/bin"
-    cp "$DEPLOY_DIR/timetiles" "$TEST_TEMP_DIR/deployment/timetiles"
+    install_cli "$TEST_TEMP_DIR/deployment"
     export TEST_CLI="$TEST_TEMP_DIR/deployment/timetiles"
     printf 'DB_PASSWORD=test\nDOMAIN_NAME=test.local\nPAYLOAD_SECRET=testsecret\n' \
         > "$TEST_TEMP_DIR/deployment/.env.production"

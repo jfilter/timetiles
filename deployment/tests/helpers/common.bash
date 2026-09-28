@@ -30,6 +30,13 @@ _source_bootstrap_file() {
     eval "${saved_term:-}"
 }
 
+# Copy the timetiles CLI and the library it sources into <dir>
+install_cli() {
+    mkdir -p "$1/bootstrap/lib"
+    cp "$DEPLOY_DIR/timetiles" "$1/timetiles"
+    cp "$DEPLOY_DIR/bootstrap/lib/common.sh" "$1/bootstrap/lib/common.sh"
+}
+
 # Source a bootstrap library for testing
 # Usage: load_lib "common" or load_lib "state"
 load_lib() {

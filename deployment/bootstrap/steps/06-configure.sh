@@ -142,7 +142,7 @@ read_existing_secret() {
 
     [[ -f "$file" ]] || return 0
 
-    value="$(grep -m1 "^${key}=" "$file" 2>/dev/null | cut -d= -f2-)" || true
+    value="$(env_get "$file" "$key")" || true
 
     case "$value" in
         "" | *CHANGE_ME* | *your-*) return 0 ;;
@@ -164,11 +164,8 @@ verify_env_file() {
 
     for var in "${required_vars[@]}"; do
         local value
-        # `|| true`: a grep miss is precisely the case the die below exists to
-        # report, but under `set -o pipefail` grep's exit 1 propagates through
-        # the pipe and would abort the step here — swallowing the diagnostic
-        # and leaving the operator with a bare "failed with exit code 1".
-        value=$(grep -m1 "^${var}=" "$env_file" | cut -d= -f2-) || true
+        # `|| true`: a missing key is exactly what the die below reports.
+        value=$(env_get "$env_file" "$var") || true
 
         if [[ -z "$value" ]] || [[ "$value" == *"CHANGE_ME"* ]] || [[ "$value" == *"your-"* ]]; then
             die "Environment variable not properly configured: $var"

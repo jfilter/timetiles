@@ -228,6 +228,80 @@ wait_for_health() {
     return 1
 }
 
+# Print KEY's value from an env file (last assignment wins, one pair of surrounding
+# quotes removed). Returns 1 when the key is absent, 2 when the file is unreadable.
+env_get() {
+    local file="$1" key="$2" line value
+    line=$(grep "^${key}=" "$file") || return
+    line="${line##*$'\n'}"
+    value="${line#*=}"
+    if [[ ${#value} -ge 2 && ( "$value" == \"*\" || "$value" == \'*\' ) ]]; then
+        value="${value:1:${#value}-2}"
+    fi
+    printf '%s' "$value"
+}
+
+# Rootless Podman wedges instead of failing without its runtime dir, which sudo drops:
+# pin XDG_RUNTIME_DIR to the runner unit's and cap every call. cwd /tmp stays readable.
+# Usage: podman_as <user> <timeout-seconds> <podman args...>
+podman_as() {
+    local user="$1" timeout_s="$2"
+    shift 2
+    local runtime_dir
+    runtime_dir="/run/user/$(id -u "$user")" || return
+    if [[ "$(id -un)" == "$user" ]]; then
+        ( cd /tmp && timeout "$timeout_s" env "XDG_RUNTIME_DIR=$runtime_dir" podman "$@" )
+    else
+        ( cd /tmp && timeout "$timeout_s" sudo -u "$user" env "XDG_RUNTIME_DIR=$runtime_dir" podman "$@" )
+    fi
+}
+
+# Tag <image> as timescrape-<runtime>, building it from <src_dir> when the pull fails.
+# Usage: pull_or_build_base_image <user> <python|node> <image> <src_dir>
+pull_or_build_base_image() {
+    local user="$1" runtime="$2" image="$3" src_dir="$4"
+    local image_dir="$src_dir/apps/timescrape/images/$runtime" package=scraper
+    [[ "$runtime" == "python" ]] && package=python
+
+    if podman_as "$user" 900 pull "$image"; then
+        podman_as "$user" 60 tag "$image" "timescrape-$runtime" || return 1
+        print_success "Pulled timescrape-$runtime from registry"
+    elif [[ -f "$image_dir/Dockerfile" && -d "$src_dir/packages/$package" ]]; then
+        print_info "Registry pull failed, building timescrape-$runtime locally..."
+        podman_as "$user" 1800 build -t "timescrape-$runtime" -f "$image_dir/Dockerfile" \
+            --ignorefile "$image_dir/Dockerfile.dockerignore" "$src_dir" || return 1
+        print_success "Built timescrape-$runtime locally"
+    else
+        print_error "Cannot pull or build timescrape-$runtime image"
+        return 1
+    fi
+}
+
+# Extract the runner from <image> into <runner_dir> via a staging dir, so a failure keeps
+# the installed runner. tar, not docker cp: copied pnpm symlinks break outside the image.
+install_runner_from_image() {
+    local image="$1" runner_dir="$2" staging part
+    docker rm -f tt-scraper-extract >/dev/null 2>&1 || true
+    docker create --name tt-scraper-extract "$image" >/dev/null || return 1
+    mkdir -p "$runner_dir" && staging=$(mktemp -d "$runner_dir/.staging.XXXXXX") || return 1
+    if ! docker export tt-scraper-extract | tar -xf - -C "$staging" --strip-components=1 app/dist app/node_modules app/package.json; then
+        docker rm -f tt-scraper-extract >/dev/null
+        rm -rf "$staging"
+        print_error "Failed to extract runner from image $image"
+        return 1
+    fi
+    docker rm tt-scraper-extract >/dev/null
+    if [[ ! -f "$staging/dist/index.js" ]]; then
+        rm -rf "$staging"
+        print_error "Runner extraction failed — dist/index.js not found"
+        return 1
+    fi
+    for part in dist node_modules package.json; do
+        { rm -rf "${runner_dir:?}/$part" && mv "$staging/$part" "$runner_dir/$part"; } || return 1
+    done
+    rm -rf "$staging"
+}
+
 # Get public IPv4 address
 get_public_ip() {
     curl -4 -sf --max-time 5 https://api.ipify.org 2>/dev/null || \

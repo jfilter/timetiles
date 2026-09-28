@@ -1,5 +1,5 @@
 #!/usr/bin/env bats
-# `timetiles update` runner replacement, with docker, sudo, chown, curl and sleep stubbed on PATH.
+# `timetiles update` runner replacement, with docker, sudo, id, chown, curl and sleep stubbed on PATH.
 
 stub() {
     printf '#!/bin/bash\n%s\n' "$2" > "$STUB_BIN/$1"
@@ -12,9 +12,7 @@ setup() {
     TEST_TEMP_DIR=$(cd "$TEST_TEMP_DIR" && pwd -P)
 
     local deploy="$TEST_TEMP_DIR/deployment"
-    mkdir -p "$deploy/bootstrap/lib"
-    cp "$DEPLOY_DIR/timetiles" "$deploy/timetiles"
-    cp "$DEPLOY_DIR/bootstrap/lib/common.sh" "$deploy/bootstrap/lib/common.sh"
+    install_cli "$deploy"
     printf 'SCRAPER_RUNNER_URL=http://host.docker.internal:4000\nTIMETILES_VERSION=1.2.3\n' > "$deploy/.env.production"
 
     RUNNER="$deploy/scraper-runner"
@@ -33,17 +31,18 @@ setup() {
     : > "$CALLS"
     stub docker 'echo "docker $*" >> "$CALLS"
 case "$1" in
-    pull) exit "${PULL_RC:-0}" ;;
+    pull) [[ "${PULL_RC:-0}" -eq 0 ]] || echo "fixture: registry denied" >&2; exit "${PULL_RC:-0}" ;;
     export) if [[ -n "${EXPORT_BROKEN:-}" ]]; then echo "not a tar stream"; else tar -C "$IMAGE_ROOT" -cf - app; fi ;;
     build) exit 1 ;;
 esac'
     stub sudo 'echo "sudo $*" >> "$CALLS"'
     stub chown ':'
+    stub id 'case "$*" in "-un") echo operator ;; *) echo 1000 ;; esac'
     stub sleep ':'
     stub curl 'echo "curl $*" >> "$CALLS"; exit "${HEALTH_RC:-0}"'
     PATH="$STUB_BIN:$PATH"
 
-    source "$deploy/timetiles"
+    _source_bootstrap_file "$deploy/timetiles"
 }
 
 teardown() {
@@ -63,6 +62,7 @@ assert_old_runner_intact() {
     [ "$status" -ne 0 ]
     assert_old_runner_intact
     assert_not_contains "$(cat "$CALLS")" "systemctl restart"
+    assert_contains "$output" "fixture: registry denied"
 }
 
 @test "a failed extraction leaves the installed runner untouched" {
@@ -91,4 +91,19 @@ assert_old_runner_intact() {
 
     [ "$status" -eq 1 ]
     assert_contains "$output" "not healthy"
+}
+
+@test "a failing alert script is reported, not fatal" {
+    printf '#!/bin/bash\nexit 3\n' > "$STUB_BIN/alert"
+    chmod +x "$STUB_BIN/alert"
+
+    ALERT_SCRIPT="$STUB_BIN/alert" run send_alert "Backup Failed" "details"
+
+    [ "$status" -eq 0 ]
+    assert_contains "$output" "alert 'Backup Failed' not sent"
+}
+
+@test "deploy_files_ref reads a quoted version" {
+    printf "TIMETILES_VERSION='1.2.3'\n" > "$ENV_FILE"
+    [ "$(deploy_files_ref)" = "v1.2.3" ]
 }

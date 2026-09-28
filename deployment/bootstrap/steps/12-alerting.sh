@@ -40,7 +40,7 @@ run_step() {
     # Check if SMTP is configured
     if [[ -f "$install_dir/.env.production" ]]; then
         local smtp_host
-        smtp_host=$(grep "^EMAIL_SMTP_HOST=" "$install_dir/.env.production" 2>/dev/null | cut -d= -f2 || echo "")
+        smtp_host=$(env_get "$install_dir/.env.production" EMAIL_SMTP_HOST) || true
         if [[ -n "$smtp_host" ]] && [[ "$smtp_host" != "localhost" ]] && [[ "$smtp_host" != "smtp.example.com" ]]; then
             print_success "SMTP configured: $smtp_host"
         else

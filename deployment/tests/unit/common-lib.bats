@@ -193,3 +193,57 @@ free() { echo "Swap: $SWAP_MB 0 $SWAP_MB"; }
     [ "$rc" -eq 1 ]
     [[ "$CHECK_MSG" == "Log rotation not configured" ]]
 }
+
+# =============================================================================
+# env_get
+# =============================================================================
+
+@test "env_get keeps '=' inside a value" {
+    printf 'SECRET=abc==\n' > "$BATS_TEST_TMPDIR/env"
+    run env_get "$BATS_TEST_TMPDIR/env" SECRET
+    [ "$status" -eq 0 ]
+    [ "$output" = "abc==" ]
+}
+
+@test "env_get strips one pair of double or single quotes" {
+    printf 'A="x=1"\nB='"'"'y z'"'"'\nC="\n' > "$BATS_TEST_TMPDIR/env"
+    [ "$(env_get "$BATS_TEST_TMPDIR/env" A)" = "x=1" ]
+    [ "$(env_get "$BATS_TEST_TMPDIR/env" B)" = "y z" ]
+    [ "$(env_get "$BATS_TEST_TMPDIR/env" C)" = '"' ]
+}
+
+@test "env_get returns the last assignment and ignores prefixed keys" {
+    printf 'KEY=first\nKEY_OTHER=no\nKEY=second\n' > "$BATS_TEST_TMPDIR/env"
+    [ "$(env_get "$BATS_TEST_TMPDIR/env" KEY)" = "second" ]
+}
+
+@test "env_get distinguishes a missing key from an unreadable file" {
+    printf 'OTHER=1\n' > "$BATS_TEST_TMPDIR/env"
+    run env_get "$BATS_TEST_TMPDIR/env" KEY
+    [ "$status" -eq 1 ]
+    [ -z "$output" ]
+    run env_get "$BATS_TEST_TMPDIR/missing" KEY
+    [ "$status" -eq 2 ]
+}
+
+# =============================================================================
+# pull_or_build_base_image
+# =============================================================================
+
+@test "pull_or_build_base_image shows the pull error before building locally" {
+    local bin="$BATS_TEST_TMPDIR/bin" src="$BATS_TEST_TMPDIR/src"
+    mkdir -p "$bin" "$src/apps/timescrape/images/node" "$src/packages/scraper"
+    touch "$src/apps/timescrape/images/node/Dockerfile"
+    printf '#!/bin/bash\n[ "$1" = -un ] && echo operator || echo 1000\n' > "$bin/id"
+    printf '#!/bin/bash\nshift 2; exec "$@"\n' > "$bin/sudo"
+    printf '#!/bin/bash\necho "podman $1" >> "%s/calls"\n[ "$1" = pull ] && { echo "denied: rate limit" >&2; exit 125; }\nexit 0\n' \
+        "$BATS_TEST_TMPDIR" > "$bin/podman"
+    chmod +x "$bin"/*
+
+    PATH="$bin:$PATH" run pull_or_build_base_image timetiles node ghcr.io/x/node:1 "$src"
+
+    [ "$status" -eq 0 ]
+    assert_contains "$output" "denied: rate limit"
+    assert_contains "$output" "building timescrape-node locally"
+    grep -qx "podman build" "$BATS_TEST_TMPDIR/calls"
+}
