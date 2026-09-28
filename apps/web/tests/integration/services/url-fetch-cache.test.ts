@@ -19,7 +19,8 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 import { getAppConfig, resetAppConfig } from "@/lib/config/app-config";
 import { buildAuthHeaders } from "@/lib/ingest/url-fetch/auth";
 import { fetchWithRetry } from "@/lib/ingest/url-fetch/fetch-utils";
-import { type Cache, getUrlFetchCache } from "@/lib/services/cache";
+import { getUrlFetchCache } from "@/lib/services/cache";
+import type { Cache } from "@/lib/services/cache/cache";
 import { resetUrlFetchCache } from "@/lib/services/cache/url-fetch-cache";
 import { TEST_CREDENTIALS } from "@/tests/constants/test-credentials";
 import { createIntegrationTestEnvironment } from "@/tests/setup/integration/environment";
@@ -36,8 +37,6 @@ describe.sequential("HTTP Cache Integration", () => {
     const testEnv = await createIntegrationTestEnvironment();
     cacheDir = await mkdtemp(join(tmpdir(), "timetiles-http-cache-test-"));
     getAppConfig().cache.urlFetch.dir = cacheDir;
-    resetUrlFetchCache();
-    urlFetchCache = getUrlFetchCache();
 
     // Create test server with routes before starting
     const { TestServer } = await import("@/tests/setup/integration/http-server");
@@ -93,13 +92,9 @@ describe.sequential("HTTP Cache Integration", () => {
   }); // Default 10s timeout - should be plenty with direct pool.end()
 
   beforeEach(async () => {
-    // Clear cache before each test
-    await urlFetchCache.clear();
-  });
-
-  afterEach(async () => {
-    // Clean up after tests
-    await urlFetchCache.clear();
+    await rm(cacheDir, { recursive: true, force: true });
+    resetUrlFetchCache();
+    urlFetchCache = getUrlFetchCache();
   });
 
   describe("Real HTTP requests", () => {
@@ -210,24 +205,6 @@ describe.sequential("HTTP Cache Integration", () => {
   });
 
   describe("Cache management", () => {
-    it("should clear cache", async () => {
-      // Cache multiple URLs
-      await fetchWithRetry(`${serverUrl}/json`, { cacheOptions: { useCache: true } });
-      await fetchWithRetry(`${serverUrl}/uuid`, { cacheOptions: { useCache: true } });
-
-      // Verify they are cached
-      const jsonCached = await fetchWithRetry(`${serverUrl}/json`, { cacheOptions: { useCache: true } });
-      expect(jsonCached.cacheStatus).toBe("HIT");
-
-      // Clear all cache
-      const cleared = await urlFetchCache.clear();
-      expect(cleared).toBeGreaterThan(0);
-
-      // JSON endpoint should no longer be cached
-      const jsonAfterClear = await fetchWithRetry(`${serverUrl}/json`, { cacheOptions: { useCache: true } });
-      expect(jsonAfterClear.cacheStatus).toBe("MISS");
-    });
-
     it("should provide cache statistics", async () => {
       // Make some cached requests
       await fetchWithRetry(`${serverUrl}/json`, { cacheOptions: { useCache: true } });
@@ -618,7 +595,7 @@ describe.sequential("HTTP Cache Integration", () => {
       const entry = await internals.cache.get<{ metadata: { varyFingerprint?: string } }>(key);
       expect(entry?.metadata.varyFingerprint).toMatch(/^[a-f0-9]{64}$/);
       delete entry!.metadata.varyFingerprint;
-      await internals.cache.set(key, entry, { ttl: 60 });
+      await internals.cache.set(key, entry, 60);
 
       expect((await urlFetchCache.fetch(url)).headers["X-Cache"]).toBe("MISS");
       expect(requests).toBe(2);

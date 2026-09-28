@@ -16,35 +16,35 @@ TimeTiles uses **three test tiers**, each with its own runner configuration, iso
 
 ### Test Tiers
 
-| Property    | Unit                           | Integration                    | E2E                       |
-| ----------- | ------------------------------ | ------------------------------ | ------------------------- |
-| Runner      | Vitest (`unit` project)        | Vitest (`integration` project) | Playwright                |
-| Database    | None                           | Real PostgreSQL + PostGIS      | Real PostgreSQL + PostGIS |
-| Payload CMS | Mocked                         | Real instance                  | Full Next.js server       |
-| Browser     | None (node env)                | None (node env)                | Chromium (headless)       |
-| Timeout     | 10s                            | 30s (hooks: 45s)               | 60s local, 120s CI        |
-| Isolation   | `isolate: false` (shared fork) | `isolate: false` (shared fork) | Separate server + DB      |
-| Speed       | Fast (~ms per test)            | Moderate (~s per test)         | Slow (~s per test)        |
-| Location    | `tests/unit/`                  | `tests/integration/`           | `tests/e2e/`              |
+| Property    | Unit                       | Integration                    | E2E                       |
+| ----------- | -------------------------- | ------------------------------ | ------------------------- |
+| Runner      | Vitest (`unit` project)    | Vitest (`integration` project) | Playwright                |
+| Database    | None                       | Real PostgreSQL + PostGIS      | Real PostgreSQL + PostGIS |
+| Payload CMS | Mocked                     | Real instance                  | Full Next.js server       |
+| Browser     | None (node env)            | None (node env)                | Chromium (headless)       |
+| Timeout     | 10s                        | 30s (hooks: 45s)               | 60s local, 120s CI        |
+| Isolation   | `isolate: true` (per file) | `isolate: false` (shared fork) | Separate server + DB      |
+| Speed       | Fast (~ms per test)        | Moderate (~s per test)         | Slow (~s per test)        |
+| Location    | `tests/unit/`              | `tests/integration/`           | `tests/e2e/`              |
 
 ### Test Runner: Vitest with Forks
 
-Vitest is configured with `pool: "forks"` and up to 4 workers (`maxWorkers: 4`). Forks, not threads, because threads share memory within the same V8 isolate. With threads, `vi.mock()` calls in one file can leak into another file running in the same thread, causing unpredictable failures. Forks give each worker its own process with clean module state.
+Vitest is configured with `pool: "forks"`; the worker count comes from `TEST_WORKERS`, with the default set in `vitest.config.ts`. Forks, not threads, because threads share memory within the same V8 isolate. With threads, `vi.mock()` calls in one file can leak into another file running in the same thread, causing unpredictable failures. Forks give each worker its own process with clean module state.
 
-Within each fork, `isolate: false` means multiple test files share the module cache. This is a deliberate trade-off: faster execution (no per-file module reload) at the cost of requiring disciplined mock cleanup in `beforeEach`.
+Unit tests run with `isolate: true`: every file gets a fresh module registry, so `vi.mock()` calls, fake timers and module-level singletons cannot leak between files.
 
-The one exception is `tests/unit/services/cache/**/*.test.ts`, which runs in a separate `unit-isolated` project with `isolate: true` because cache tests modify module-level singletons that cannot be safely shared.
+Integration tests run with `isolate: false`, so files in the same fork share the module cache. This is a deliberate trade-off: faster execution (no per-file Payload reload) at the cost of requiring disciplined mock cleanup in `beforeEach`. Files whose module mocks must not meet an already-loaded real module run in a separate `integration-isolated` project with `isolate: true`; `vitest.config.ts` lists them.
 
-Component tests (`tests/unit/components/**/*.test.tsx`) run in a `components` project with `jsdom` environment and `@vitejs/plugin-react`.
+Component tests (every `tests/unit/**/*.test.tsx`) run in a `components` project with `jsdom` environment and `@vitejs/plugin-react`.
 
 The full project configuration lives in `vitest.config.ts`:
 
 ```
 projects:
-  unit            — tests/unit/**  (excluding cache), node env, isolate: false
-  unit-isolated   — tests/unit/services/cache/**, node env, isolate: true
-  components      — tests/unit/components/**, jsdom env
-  integration     — tests/integration/**, node env, isolate: false
+  unit                  — tests/unit/**/*.test.ts, node env, isolate: true
+  components            — tests/unit/**/*.test.tsx, jsdom env
+  integration-isolated  — listed integration files, node env, isolate: true
+  integration           — the remaining tests/integration/**, node env, isolate: false
 ```
 
 ### Database Isolation for Integration Tests
@@ -163,7 +163,7 @@ cat apps/web/.test-results/$(ls -t apps/web/.test-results/ | head -1) | jq '.tes
 - Unit tests run in under 10 seconds, giving fast feedback during development
 - Integration tests require PostgreSQL but provide real database coverage including PostGIS operations
 - The template-clone strategy keeps integration test startup under 5 seconds per worker
-- `isolate: false` means tests must clean up after themselves; a forgotten mock can leak to the next file in the same fork
+- Integration tests run with `isolate: false`, so they must clean up after themselves; a forgotten mock can leak to the next file in the same fork
 - UNLOGGED tables improve write speed but mean test databases do not survive a PostgreSQL crash (acceptable since they are disposable)
 - E2E tests are slow (build + server startup + browser) but catch issues that unit and integration tests miss, such as client-server interaction bugs and UI rendering problems
 - Centralized test credentials add a small import overhead but eliminate an entire class of SonarCloud findings

@@ -28,19 +28,15 @@ describe.sequential("FileSystemCacheStorage", () => {
     // Create a unique temp directory for each test
     tempDir = path.join(os.tmpdir(), `cache-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
 
-    storage = new FileSystemCacheStorage({
-      cacheDir: tempDir,
-      maxSize: 1024 * 1024, // 1MB
-      defaultTTL: 60, // 1 minute
-      // No cleanupIntervalMs — timers leak across tests with isolate:false
-    });
+    storage = new FileSystemCacheStorage({ cacheDir: tempDir, maxSize: 1024 * 1024 });
   });
 
-  afterEach(async () => {
-    if (storage) {
-      await storage.destroy();
-    }
+  const indexedKeys = async () => {
+    const data = JSON.parse(await fs.readFile(path.join(tempDir, "index.json"), "utf8")) as { index: object };
+    return Object.keys(data.index);
+  };
 
+  afterEach(async () => {
     await fs.rm(tempDir, { recursive: true, force: true });
   });
 
@@ -49,7 +45,7 @@ describe.sequential("FileSystemCacheStorage", () => {
       await fs.mkdir(tempDir, { recursive: true });
       const blockedPath = path.join(tempDir, "not-a-directory");
       await fs.writeFile(blockedPath, "file");
-      const cache = new Cache({ storage: new FileSystemCacheStorage({ cacheDir: blockedPath }) });
+      const cache = new Cache(new FileSystemCacheStorage({ cacheDir: blockedPath, maxSize: 1024 }), "");
 
       await expect(cache.cleanup()).rejects.toEqual(new Error("Cache cleanup failed"));
     });
@@ -57,7 +53,7 @@ describe.sequential("FileSystemCacheStorage", () => {
     it("allows revalidation reads of expired entries without exempting them from cleanup", async () => {
       vi.useFakeTimers({ toFake: ["Date"] });
       try {
-        await storage.set("expired", "validator source", { ttl: 0.01 });
+        await storage.set("expired", "validator source", 0.01);
         vi.setSystemTime(Date.now() + 10);
 
         expect((await storage.get("expired", { allowExpired: true }))?.value).toBe("validator source");
@@ -68,39 +64,15 @@ describe.sequential("FileSystemCacheStorage", () => {
       }
     });
 
-    it("isolates listing and clearing between cache namespaces", async () => {
-      const cache = new Cache({ storage, keyPrefix: "http:v2:" });
-      await storage.set("http:legacy", "old");
-      await storage.set("other:http:v2:embedded", "foreign");
-      await cache.set("current", "new");
-
-      expect(await cache.keys()).toEqual(["current"]);
-      expect(await cache.clear()).toBe(1);
-      expect(await storage.keys()).toEqual(["http:legacy", "other:http:v2:embedded"]);
-    });
-
-    it("treats namespace characters literally when applying patterns", async () => {
-      const cache = new Cache({ storage, keyPrefix: "v2.:" });
-      await storage.set("v2x:entry", "foreign");
-      await cache.set("entry", "own");
-      await cache.set("keep", "own");
-
-      expect(await cache.keys("entry")).toEqual(["entry"]);
-      expect(await cache.clear("entry")).toBe(1);
-      expect(await storage.keys()).toEqual(["v2x:entry", "v2.:keep"]);
-    });
-
     it("should store and retrieve a value", async () => {
       const key = "fs-test-key";
       const value = { data: "test-value" };
 
-      await storage.set(key, value);
+      await storage.set(key, value, 60);
       const entry = await storage.get(key);
 
-      expect(entry).toBeDefined();
-      expect(entry?.key).toBe(key);
-      expect(entry?.value).toEqual(value);
-      expect(entry?.metadata).toBeDefined();
+      expect(entry).toMatchObject({ key, value, metadata: { accessCount: 1 } });
+      expect(entry!.metadata.expiresAt!.getTime() - entry!.metadata.createdAt.getTime()).toBe(60_000);
     });
 
     it("should return null for non-existent key", async () => {
@@ -110,7 +82,7 @@ describe.sequential("FileSystemCacheStorage", () => {
 
     it("should delete a value", async () => {
       const key = "fs-delete-key";
-      await storage.set(key, "value");
+      await storage.set(key, "value", 60);
 
       const deleted = await storage.delete(key);
       expect(deleted).toBe(true);
@@ -119,22 +91,11 @@ describe.sequential("FileSystemCacheStorage", () => {
       expect(entry).toBeNull();
     });
 
-    it("should check if key exists", async () => {
-      const key = "fs-exists-key";
-      await storage.set(key, "value");
-
-      const hasKey = await storage.has(key);
-      expect(hasKey).toBe(true);
-
-      const hasNonExistent = await storage.has("non-existent");
-      expect(hasNonExistent).toBe(false);
-    });
-
     it.each(["delete", "get"] as const)(
       "retains the index and size when %s cannot remove a cache file",
       async (action) => {
         const key = "unlink-failure";
-        await storage.set(key, "value");
+        await storage.set(key, "value", 60);
         const before = await storage.getStats();
         const indexFile = path.join(tempDir, "index.json");
         const indexBefore = await fs.readFile(indexFile, "utf8");
@@ -145,7 +106,6 @@ describe.sequential("FileSystemCacheStorage", () => {
         await fs.mkdir(file);
 
         await expect(storage[action](key)).rejects.toThrow();
-        expect(await storage.keys()).toContain(key);
         expect(await storage.getStats()).toMatchObject({ entries: 1, totalSize: before.totalSize });
         expect(await fs.readFile(indexFile, "utf8")).toBe(indexBefore);
 
@@ -158,14 +118,14 @@ describe.sequential("FileSystemCacheStorage", () => {
 
     it("releases accounting when a cache file is already missing", async () => {
       const key = "missing-file";
-      await storage.set(key, "value");
+      await storage.set(key, "value", 60);
       const index = JSON.parse(await fs.readFile(path.join(tempDir, "index.json"), "utf8")) as {
         index: Record<string, { file: string }>;
       };
       await fs.unlink(index.index[key]!.file);
 
       expect(await storage.delete(key)).toBe(false);
-      expect(await storage.keys()).toEqual([]);
+      expect(await indexedKeys()).toEqual([]);
       expect(await storage.getStats()).toMatchObject({ entries: 0, totalSize: 0 });
     });
   });
@@ -225,21 +185,21 @@ describe.sequential("FileSystemCacheStorage", () => {
         })
       );
       expect(await storage.getStats()).toMatchObject({ entries: 0, totalSize: 0, hits: 0 });
-      await storage.set("healthy", "value");
+      await storage.set("healthy", "value", 60);
       expect((await storage.get("healthy"))?.value).toBe("value");
     });
 
     it("recovers the index write queue after a failed rename", async () => {
-      await storage.set("before", "first");
+      await storage.set("before", "first", 60);
       const indexFile = path.join(tempDir, "index.json");
       await fs.unlink(indexFile);
       await fs.mkdir(indexFile);
 
-      await expect(storage.set("failed", "second")).rejects.toThrow();
+      await expect(storage.set("failed", "second", 60)).rejects.toThrow();
       expect((await fs.readdir(tempDir)).filter((name) => name.endsWith(".tmp"))).toEqual([]);
 
       await fs.rmdir(indexFile);
-      await storage.set("after", "third");
+      await storage.set("after", "third", 60);
 
       const persisted = JSON.parse(await fs.readFile(indexFile, "utf8")) as { index: Record<string, unknown> };
       expect(new Set(Object.keys(persisted.index))).toEqual(new Set(["after", "before", "failed"]));
@@ -251,69 +211,71 @@ describe.sequential("FileSystemCacheStorage", () => {
 
       // Store data with first instance — set() awaits saveIndex(),
       // so the index file is on disk when this returns.
-      await storage.set(key, value);
+      await storage.set(key, value, 60);
 
-      // Don't call destroy() here — it fires a floating saveIndex() that
-      // races with the new instance's loadIndex(). The afterEach hook
-      // handles cleanup. The index is already persisted by set().
-
-      // Create new instance with same cache directory
-      const newStorage = new FileSystemCacheStorage({ cacheDir: tempDir });
-
-      // Should be able to retrieve the data
-      const entry = await newStorage.get(key);
-      expect(entry?.value).toEqual(value);
-
-      await newStorage.destroy();
+      const newStorage = new FileSystemCacheStorage({ cacheDir: tempDir, maxSize: 1024 * 1024 });
+      expect((await newStorage.get(key))?.value).toEqual(value);
     });
 
-    it("persists every setMany entry to the index file", async () => {
-      // Reading back through the same instance only proves the in-memory map;
-      // the index on disk is what a second process sees, and overlapping writes
-      // to that single file used to be able to truncate it.
-      const entries = new Map([
-        ["many-1", "value1"],
-        ["many-2", "value2"],
-        ["many-3", "value3"],
-      ]);
-
-      await storage.setMany(entries);
-
-      const newStorage = new FileSystemCacheStorage({ cacheDir: tempDir });
-      for (const [key, value] of entries) {
-        const entry = await newStorage.get(key);
-        expect(entry?.value).toBe(value);
+    it("serializes index writes of concurrent sets and persists every entry", async () => {
+      // Holding payload writes until all have started makes the index saves collide.
+      const keys = ["many-1", "many-2", "many-3"];
+      let releasePayloads!: () => void;
+      const payloadsStarted = new Promise<void>((resolve) => {
+        releasePayloads = resolve;
+      });
+      let payloads = 0;
+      let indexWrites = 0;
+      let maxIndexWrites = 0;
+      const { writeFile, rename } = fs;
+      vi.spyOn(fs, "writeFile").mockImplementation(async (file, data) => {
+        if (typeof file === "string" && file.endsWith(".tmp")) maxIndexWrites = Math.max(maxIndexWrites, ++indexWrites);
+        else if (++payloads === keys.length) releasePayloads();
+        await payloadsStarted;
+        return writeFile(file, data);
+      });
+      vi.spyOn(fs, "rename").mockImplementation(async (from, to) => {
+        await rename(from, to);
+        indexWrites--;
+      });
+      try {
+        await Promise.all(keys.map((key) => storage.set(key, `value-for-${key}`, 60)));
+      } finally {
+        vi.restoreAllMocks();
       }
 
-      await newStorage.destroy();
+      expect(maxIndexWrites).toBe(1);
+
+      const newStorage = new FileSystemCacheStorage({ cacheDir: tempDir, maxSize: 1024 * 1024 });
+      for (const key of keys) {
+        expect((await newStorage.get(key))?.value).toBe(`value-for-${key}`);
+      }
     });
 
     it("should handle cache directory creation", async () => {
       const nestedDir = path.join(tempDir, "nested", "deep", "cache");
-      const tempStorage = new FileSystemCacheStorage({ cacheDir: nestedDir });
+      const tempStorage = new FileSystemCacheStorage({ cacheDir: nestedDir, maxSize: 1024 * 1024 });
 
-      await tempStorage.set("test", "value");
+      await tempStorage.set("test", "value", 60);
 
       // Check directory was created
       const stats = await fs.stat(nestedDir);
       expect(stats.isDirectory()).toBe(true);
-
-      await tempStorage.destroy();
     });
   });
 
   describe("TTL and expiration", () => {
-    it("expires has() and cleanup() entries exactly at their deadline", async () => {
-      await storage.set("has-deadline", "value", { ttl: 60 });
-      const entry = await storage.get("has-deadline");
+    it("expires get() and cleanup() entries exactly at their deadline", async () => {
+      await storage.set("get-deadline", "value", 60);
+      const entry = await storage.get("get-deadline");
       const clock = vi.spyOn(Date, "now").mockReturnValue(entry!.metadata.expiresAt!.getTime());
       try {
-        expect(await storage.has("has-deadline")).toBe(false);
+        expect(await storage.get("get-deadline")).toBeNull();
       } finally {
         clock.mockRestore();
       }
 
-      await storage.set("cleanup-deadline", "value", { ttl: 60 });
+      await storage.set("cleanup-deadline", "value", 60);
       const cleanupEntry = await storage.get("cleanup-deadline");
       const cleanupClock = vi.spyOn(Date, "now").mockReturnValue(cleanupEntry!.metadata.expiresAt!.getTime());
       try {
@@ -328,12 +290,11 @@ describe.sequential("FileSystemCacheStorage", () => {
       const key = "fs-ttl-key";
       vi.useFakeTimers({ toFake: ["Date"] });
       try {
-        await storage.set(key, "test-value", { ttl: 0.1 });
+        await storage.set(key, "test-value", 0.1);
         vi.setSystemTime(Date.now() + 99);
-        expect(await storage.has(key)).toBe(true);
+        expect((await storage.get(key))?.value).toBe("test-value");
 
         vi.setSystemTime(Date.now() + 1);
-        expect(await storage.has(key)).toBe(false);
         expect(await storage.get(key)).toBeNull();
       } finally {
         vi.useRealTimers();
@@ -342,7 +303,7 @@ describe.sequential("FileSystemCacheStorage", () => {
 
     it("should update access metadata on get", async () => {
       const key = "fs-metadata-key";
-      await storage.set(key, "value");
+      await storage.set(key, "value", 60);
 
       const entry1 = await storage.get(key);
       expect(entry1?.metadata.accessCount).toBe(1);
@@ -355,65 +316,6 @@ describe.sequential("FileSystemCacheStorage", () => {
     });
   });
 
-  describe("batch operations", () => {
-    it("should get multiple values", async () => {
-      await storage.set("fs-batch-1", "value1");
-      await storage.set("fs-batch-2", "value2");
-      await storage.set("fs-batch-3", "value3");
-
-      const entries = await storage.getMany(["fs-batch-1", "fs-batch-2", "non-existent"]);
-
-      expect(entries.size).toBe(2);
-      expect(entries.get("fs-batch-1")?.value).toBe("value1");
-      expect(entries.get("fs-batch-2")?.value).toBe("value2");
-      expect(entries.has("non-existent")).toBe(false);
-    });
-
-    it("should set multiple values", async () => {
-      const entries = new Map([
-        ["fs-set-1", "value1"],
-        ["fs-set-2", "value2"],
-        ["fs-set-3", "value3"],
-      ]);
-
-      await storage.setMany(entries, { tags: ["batch"] });
-
-      for (const [key, value] of entries) {
-        const entry = await storage.get(key);
-        expect(entry?.value).toBe(value);
-        expect(entry?.metadata.tags).toEqual(["batch"]);
-      }
-    });
-  });
-
-  describe("pattern matching", () => {
-    it("should clear entries by pattern", async () => {
-      await storage.set("user:1", "data1");
-      await storage.set("user:2", "data2");
-      await storage.set("post:1", "data3");
-
-      const cleared = await storage.clear("^user:");
-
-      expect(cleared).toBe(2);
-      expect(await storage.has("user:1")).toBe(false);
-      expect(await storage.has("user:2")).toBe(false);
-      expect(await storage.has("post:1")).toBe(true);
-    });
-
-    it("should get keys by pattern", async () => {
-      await storage.set("pattern:1", "data1");
-      await storage.set("pattern:2", "data2");
-      await storage.set("other:1", "data3");
-
-      const keys = await storage.keys("^pattern:");
-
-      expect(keys).toHaveLength(2);
-      expect(keys).toContain("pattern:1");
-      expect(keys).toContain("pattern:2");
-      expect(keys).not.toContain("other:1");
-    });
-  });
-
   describe("file handling", () => {
     it("should handle large values", async () => {
       const largeData = {
@@ -421,7 +323,7 @@ describe.sequential("FileSystemCacheStorage", () => {
         nested: { array: Array(1000).fill("item") },
       };
 
-      await storage.set("large-key", largeData);
+      await storage.set("large-key", largeData, 60);
       const entry = await storage.get("large-key");
 
       expect(entry?.value).toEqual(largeData);
@@ -438,7 +340,7 @@ describe.sequential("FileSystemCacheStorage", () => {
         maxSize: 64 * 1024 * 1024,
       });
 
-      await binaryStorage.set("binary-key", { data: body, status: 200 });
+      await binaryStorage.set("binary-key", { data: body, status: 200 }, 60);
       const entry = await binaryStorage.get<{ data: Buffer; status: number }>("binary-key");
 
       expect(entry?.value.status).toBe(200);
@@ -451,23 +353,20 @@ describe.sequential("FileSystemCacheStorage", () => {
       const cacheFile = path.join(tempDir, "binary", keyHash.substring(0, 2), `${keyHash}.cache`);
       const fileSize = (await fs.stat(cacheFile)).size;
       expect(fileSize).toBeLessThan(body.length * 2);
-
-      await binaryStorage.destroy();
     });
 
     it("should not rewrite the payload file on a cache hit", async () => {
       const key = "no-rewrite-key";
-      await storage.set(key, { data: Buffer.from("hello world") });
+      await storage.set(key, { data: Buffer.from("hello world") }, 60);
 
-      const keyHash = (await import("node:crypto")).createHash("sha256").update(key).digest("hex");
+      const keyHash = createHash("sha256").update(key).digest("hex");
       const cacheFile = path.join(tempDir, keyHash.substring(0, 2), `${keyHash}.cache`);
-      const before = await fs.stat(cacheFile);
+      // A past mtime makes any rewrite visible without waiting for the clock to advance.
+      const past = new Date("2020-01-01T00:00:00Z");
+      await fs.utimes(cacheFile, past, past);
 
-      await new Promise((resolve) => setTimeout(resolve, 20));
-      await storage.get(key);
-
-      const after = await fs.stat(cacheFile);
-      expect(after.mtimeMs).toBe(before.mtimeMs);
+      expect((await storage.get(key))?.value).toEqual({ data: Buffer.from("hello world") });
+      expect((await fs.stat(cacheFile)).mtime).toEqual(past);
     });
 
     it("should handle special characters in keys", async () => {
@@ -480,7 +379,7 @@ describe.sequential("FileSystemCacheStorage", () => {
       ];
 
       for (const key of specialKeys) {
-        await storage.set(key, `value-for-${key}`);
+        await storage.set(key, `value-for-${key}`, 60);
         const entry = await storage.get(key);
         expect(entry?.value).toBe(`value-for-${key}`);
       }
@@ -491,7 +390,7 @@ describe.sequential("FileSystemCacheStorage", () => {
 
       // Concurrent writes
       for (let i = 0; i < 10; i++) {
-        promises.push(storage.set(`concurrent-${i}`, `value-${i}`));
+        promises.push(storage.set(`concurrent-${i}`, `value-${i}`, 60));
       }
 
       await Promise.all(promises);
@@ -515,16 +414,16 @@ describe.sequential("FileSystemCacheStorage", () => {
       storage = new FileSystemCacheStorage({ cacheDir: tempDir, maxSize: 4000 });
       const value = Buffer.alloc(1000);
       for (const key of ["oldest", "older", "recent"]) {
-        await storage.set(key, value);
+        await storage.set(key, value, 60);
       }
       const index = JSON.parse(await fs.readFile(path.join(tempDir, "index.json"), "utf8")) as {
         index: Record<string, { file: string }>;
       };
       await fs.unlink(index.index.oldest!.file);
 
-      await storage.set("newest", value);
+      await storage.set("newest", value, 60);
 
-      expect(await storage.keys()).toEqual(["recent", "newest"]);
+      expect(await indexedKeys()).toEqual(["recent", "newest"]);
       expect(await storage.getStats()).toMatchObject({ entries: 2, evictions: 1 });
       expect((await storage.get<Buffer>("recent"))?.value).toEqual(value);
       expect((await storage.get<Buffer>("newest"))?.value).toEqual(value);
@@ -533,33 +432,20 @@ describe.sequential("FileSystemCacheStorage", () => {
     it("should cleanup stale entries", async () => {
       vi.useFakeTimers({ toFake: ["Date"] });
       try {
-        await storage.set("fs-stale-1", "value1", { ttl: 0.1 });
-        await storage.set("fs-stale-2", "value2", { ttl: 10 });
+        await storage.set("fs-stale-1", "value1", 0.1);
+        await storage.set("fs-stale-2", "value2", 10);
         vi.setSystemTime(Date.now() + 100);
 
         expect(await storage.cleanup()).toBe(1);
-        expect(await storage.has("fs-stale-1")).toBe(false);
-        expect(await storage.has("fs-stale-2")).toBe(true);
+        expect(await indexedKeys()).toEqual(["fs-stale-2"]);
       } finally {
         vi.useRealTimers();
       }
     });
 
-    it("should clear all entries", async () => {
-      await storage.set("fs-clear-1", "value1");
-      await storage.set("fs-clear-2", "value2");
-      await storage.set("fs-clear-3", "value3");
-
-      const cleared = await storage.clear();
-      expect(cleared).toBe(3);
-
-      const stats = await storage.getStats();
-      expect(stats.entries).toBe(0);
-    });
-
     it("should handle corrupted cache files gracefully", async () => {
       const key = `https://example.com/?token=${TEST_SECRETS.payloadSecret}`;
-      await storage.set(key, "valid-value");
+      await storage.set(key, "valid-value", 60);
 
       // Corrupt the cache file - match the actual implementation
       const crypto = await import("node:crypto");
@@ -576,7 +462,7 @@ describe.sequential("FileSystemCacheStorage", () => {
       expect(mockLogger.logger.debug).toHaveBeenCalledWith("Failed to read cache file");
 
       // Should be able to overwrite corrupted entry
-      await storage.set(key, "new-value");
+      await storage.set(key, "new-value", 60);
       const newEntry = await storage.get(key);
       expect(newEntry?.value).toBe("new-value");
     });
@@ -584,7 +470,7 @@ describe.sequential("FileSystemCacheStorage", () => {
     it("rejects truncated binary cache data instead of returning a partial value", async () => {
       const key = "truncated-binary";
       const value = Buffer.from("complete binary payload");
-      await storage.set(key, value);
+      await storage.set(key, value, 60);
       const index = JSON.parse(await fs.readFile(path.join(tempDir, "index.json"), "utf8")) as {
         index: Record<string, { file: string }>;
       };
@@ -595,7 +481,7 @@ describe.sequential("FileSystemCacheStorage", () => {
       expect(await storage.get(key)).toBeNull();
       expect(await storage.getStats()).toMatchObject({ entries: 0, totalSize: 0, hits: 0, misses: 1 });
 
-      await storage.set(key, value);
+      await storage.set(key, value, 60);
       expect((await storage.get<Buffer>(key))?.value).toEqual(value);
     });
   });
@@ -605,10 +491,10 @@ describe.sequential("FileSystemCacheStorage", () => {
       vi.useFakeTimers({ toFake: ["Date"] });
       try {
         vi.setSystemTime(new Date("2024-01-01T00:00:00Z"));
-        await storage.set("replaced", "original", { ttl: 0 });
+        await storage.set("replaced", "original", 0);
         const replacementTime = new Date("2024-02-01T00:00:00Z");
         vi.setSystemTime(replacementTime);
-        await storage.set("replaced", "replacement", { ttl: 0 });
+        await storage.set("replaced", "replacement", 0);
 
         expect(await storage.getStats()).toMatchObject({ oldestEntry: replacementTime, newestEntry: replacementTime });
       } finally {
@@ -618,9 +504,9 @@ describe.sequential("FileSystemCacheStorage", () => {
 
     it("should track hits and misses", async () => {
       // Create fresh storage for accurate stats
-      const statsStorage = new FileSystemCacheStorage({ cacheDir: path.join(tempDir, "stats") });
+      const statsStorage = new FileSystemCacheStorage({ cacheDir: path.join(tempDir, "stats"), maxSize: 1024 * 1024 });
 
-      await statsStorage.set("stats-key", "value1");
+      await statsStorage.set("stats-key", "value1", 60);
 
       // Hit
       await statsStorage.get("stats-key");
@@ -632,8 +518,6 @@ describe.sequential("FileSystemCacheStorage", () => {
       const stats = await statsStorage.getStats();
       expect(stats.hits).toBe(1);
       expect(stats.misses).toBe(2);
-
-      await statsStorage.destroy();
     });
 
     it("tracks exact file bytes across UTF-8 writes, replacements, and deletion", async () => {
@@ -642,15 +526,15 @@ describe.sequential("FileSystemCacheStorage", () => {
         return (await fs.stat(path.join(tempDir, hash.substring(0, 2), `${hash}.cache`))).size;
       };
 
-      await storage.set("fs-size-1", { data: "Grüße 🌍" });
-      await storage.set("fs-size-2", { data: Buffer.alloc(1000) });
+      await storage.set("fs-size-1", { data: "Grüße 🌍" }, 60);
+      await storage.set("fs-size-2", { data: Buffer.alloc(1000) }, 60);
       const secondSize = await fileSize("fs-size-2");
       expect(await storage.getStats()).toMatchObject({
         totalSize: (await fileSize("fs-size-1")) + secondSize,
         entries: 2,
       });
 
-      await storage.set("fs-size-1", { data: "東京".repeat(1000) });
+      await storage.set("fs-size-1", { data: "東京".repeat(1000) }, 60);
       expect(await storage.getStats()).toMatchObject({
         totalSize: (await fileSize("fs-size-1")) + secondSize,
         entries: 2,
@@ -660,16 +544,6 @@ describe.sequential("FileSystemCacheStorage", () => {
       expect(await storage.getStats()).toMatchObject({ totalSize: secondSize, entries: 1 });
       await storage.delete("fs-size-2");
       expect(await storage.getStats()).toMatchObject({ totalSize: 0, entries: 0 });
-    });
-  });
-
-  describe("tags and metadata", () => {
-    it("should store tags with entries", async () => {
-      await storage.set("fs-tags-key", "value1", { tags: ["tag1", "tag2"], metadata: { custom: "data" } });
-
-      const entry = await storage.get("fs-tags-key");
-      expect(entry?.metadata.tags).toEqual(["tag1", "tag2"]);
-      expect(entry?.metadata.custom).toEqual({ custom: "data" });
     });
   });
 });

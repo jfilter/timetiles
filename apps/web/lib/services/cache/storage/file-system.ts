@@ -18,7 +18,7 @@ import { z } from "zod";
 import { logger } from "@/lib/logger";
 import { isENOENT } from "@/lib/utils/is-enoent";
 
-import type { CacheEntry, CacheSetOptions, CacheStats, CacheStorage, FileSystemCacheOptions } from "../types";
+import type { CacheEntry, CacheStats } from "../types";
 import { decodeEntry, encodeEntry } from "./entry-codec";
 
 const counterSchema = z.number().int().nonnegative();
@@ -26,7 +26,6 @@ const indexEntrySchema = z.object({
   file: z.string().min(1),
   expires: z.number().optional(),
   size: counterSchema,
-  tags: z.array(z.string()).optional(),
   createdAt: z.number().optional(),
   lastAccessedAt: z.number().optional(),
   accessCount: counterSchema.optional(),
@@ -53,14 +52,12 @@ type IndexData = z.infer<typeof indexDataSchema>;
  * their `index.json` writes are last-write-wins — that is by design, every caller
  * owns its own cache directory. Do not share a directory between instances.
  */
-export class FileSystemCacheStorage implements CacheStorage {
+export class FileSystemCacheStorage {
   private readonly cacheDir: string;
   private readonly indexFile: string;
   private index: Map<string, IndexEntry>;
   private stats: CacheStats;
   private readonly maxSize: number;
-  private readonly defaultTTL: number;
-  private cleanupInterval: NodeJS.Timeout | null = null;
   private initPromise: Promise<void> | null = null;
   /** Serializes index writes; every set() rewrites the same file. */
   private indexWriteChain: Promise<void> = Promise.resolve();
@@ -68,25 +65,14 @@ export class FileSystemCacheStorage implements CacheStorage {
   private static instanceCounter = 0;
   private readonly instanceId: number;
 
-  constructor(options: FileSystemCacheOptions = {}) {
+  constructor({ cacheDir, maxSize }: { cacheDir: string; maxSize: number }) {
     FileSystemCacheStorage.instanceCounter += 1;
     this.instanceId = FileSystemCacheStorage.instanceCounter;
-    this.cacheDir = options.cacheDir ?? path.join(process.cwd(), ".cache", "general");
+    this.cacheDir = cacheDir;
     this.indexFile = path.join(this.cacheDir, "index.json");
     this.index = new Map();
-    this.maxSize = options.maxSize ?? 500 * 1024 * 1024; // 500MB default
-    this.defaultTTL = options.defaultTTL ?? 3600; // 1 hour default
+    this.maxSize = maxSize;
     this.stats = { entries: 0, totalSize: 0, hits: 0, misses: 0, evictions: 0 };
-
-    // Setup periodic cleanup
-    if (options.cleanupIntervalMs) {
-      this.cleanupInterval = setInterval(() => {
-        // oxlint-disable-next-line promise/prefer-await-to-then
-        void this.cleanup().catch(() => {
-          logger.error("Cache cleanup error");
-        });
-      }, options.cleanupIntervalMs);
-    }
   }
 
   private async initialize(): Promise<void> {
@@ -146,7 +132,6 @@ export class FileSystemCacheStorage implements CacheStorage {
       indexEntry.lastAccessedAt = accessedAt;
       entry.metadata.accessCount = indexEntry.accessCount;
       entry.metadata.lastAccessedAt = new Date(accessedAt);
-      entry.metadata.size ??= indexEntry.size;
 
       this.stats.hits++;
       return entry;
@@ -160,7 +145,8 @@ export class FileSystemCacheStorage implements CacheStorage {
     }
   }
 
-  async set<T>(key: string, value: T, options?: CacheSetOptions): Promise<void> {
+  /** Store a value for `ttl` seconds; a ttl of 0 never expires. */
+  async set<T>(key: string, value: T, ttl: number): Promise<void> {
     await this.ensureInitialized();
 
     const filePath = this.getCacheFilePath(key);
@@ -170,7 +156,6 @@ export class FileSystemCacheStorage implements CacheStorage {
     await fs.mkdir(fileDir, { recursive: true });
 
     const now = new Date();
-    const ttl = options?.ttl ?? this.defaultTTL;
     const entry: CacheEntry<T> = {
       key,
       value,
@@ -179,8 +164,6 @@ export class FileSystemCacheStorage implements CacheStorage {
         expiresAt: ttl > 0 ? new Date(now.getTime() + ttl * 1000) : undefined,
         accessCount: 0,
         lastAccessedAt: now,
-        tags: options?.tags,
-        custom: options?.metadata,
       },
     };
 
@@ -193,7 +176,6 @@ export class FileSystemCacheStorage implements CacheStorage {
       file: filePath,
       expires: entry.metadata.expiresAt?.getTime(),
       size: serialized.length,
-      tags: options?.tags,
       createdAt: now.getTime(),
       lastAccessedAt: now.getTime(),
       accessCount: 0,
@@ -235,69 +217,6 @@ export class FileSystemCacheStorage implements CacheStorage {
     this.releaseIndexEntry(key);
     await this.saveIndex();
     return deleted;
-  }
-
-  async has(key: string): Promise<boolean> {
-    await this.ensureInitialized();
-
-    const indexEntry = this.index.get(key);
-    if (!indexEntry) return false;
-
-    // Check expiration
-    if (indexEntry.expires && indexEntry.expires <= Date.now()) {
-      await this.delete(key);
-      return false;
-    }
-
-    return true;
-  }
-
-  async clear(pattern?: string): Promise<number> {
-    const keys = await this.keys(pattern);
-    let cleared = 0;
-    for (const key of keys) {
-      if (await this.delete(key)) {
-        cleared++;
-      }
-    }
-
-    return cleared;
-  }
-
-  async keys(pattern?: string): Promise<string[]> {
-    await this.ensureInitialized();
-
-    const allKeys = Array.from(this.index.keys());
-    if (!pattern) return allKeys;
-
-    const regex = new RegExp(pattern);
-    return allKeys.filter((key) => regex.test(key));
-  }
-
-  async getMany<T>(keys: string[]): Promise<Map<string, CacheEntry<T>>> {
-    await this.ensureInitialized();
-
-    const result = new Map<string, CacheEntry<T>>();
-
-    // Batch read for efficiency
-    await Promise.all(
-      keys.map(async (key) => {
-        const entry = await this.get<T>(key);
-        if (entry) {
-          result.set(key, entry);
-        }
-      })
-    );
-
-    return result;
-  }
-
-  async setMany<T>(entries: Map<string, T>, options?: CacheSetOptions): Promise<void> {
-    await this.ensureInitialized();
-
-    for (const [key, value] of entries) {
-      await this.set(key, value, options);
-    }
   }
 
   async getStats(): Promise<CacheStats> {
@@ -446,7 +365,9 @@ export class FileSystemCacheStorage implements CacheStorage {
     // would otherwise queue the same temp path and rename each other's file away.
     const tempFile = `${this.indexFile}.${process.pid}.${this.instanceId}.${this.indexWriteSeq}.tmp`;
 
-    const write = async (): Promise<void> => {
+    const write = async (previous: Promise<void>): Promise<void> => {
+      // An earlier failure belongs to its own caller; this write still runs.
+      await previous.catch(() => undefined);
       try {
         await fs.writeFile(tempFile, payload);
         await fs.rename(tempFile, this.indexFile);
@@ -455,19 +376,8 @@ export class FileSystemCacheStorage implements CacheStorage {
         throw error;
       }
     };
-    this.indexWriteChain = this.indexWriteChain.then(write, write);
+    this.indexWriteChain = write(this.indexWriteChain);
 
     return this.indexWriteChain;
-  }
-
-  async destroy(): Promise<void> {
-    if (this.cleanupInterval) {
-      clearInterval(this.cleanupInterval);
-      this.cleanupInterval = null;
-    }
-    if (this.initPromise) {
-      await this.initPromise;
-      await this.saveIndex();
-    }
   }
 }

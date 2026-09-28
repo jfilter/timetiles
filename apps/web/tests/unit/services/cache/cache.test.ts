@@ -1,74 +1,66 @@
 /**
- * Unit tests for the Cache facade (key prefixing and TTL defaulting).
+ * Unit tests for the Cache facade (key prefixing and failure policy).
  *
  * @module
  * @category Tests
  */
 import "@/tests/mocks/services/logger";
 
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import fs from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
+
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { Cache } from "@/lib/services/cache/cache";
-import type { CacheStorage } from "@/lib/services/cache/types";
+import { FileSystemCacheStorage } from "@/lib/services/cache/storage/file-system";
 import { TEST_SECRETS } from "@/tests/constants/test-credentials";
 import { mockLogger } from "@/tests/mocks/services/logger";
 
-const createStorage = () =>
-  ({
-    get: vi.fn().mockResolvedValue(null),
-    set: vi.fn().mockResolvedValue(undefined),
-    delete: vi.fn().mockResolvedValue(undefined),
-    clear: vi.fn().mockResolvedValue(undefined),
-    keys: vi.fn().mockResolvedValue([]),
-    cleanup: vi.fn().mockResolvedValue(0),
-    getStats: vi.fn().mockResolvedValue({}),
-  }) as unknown as CacheStorage & { set: ReturnType<typeof vi.fn> };
-
 describe.sequential("Cache", () => {
-  let storage: ReturnType<typeof createStorage>;
+  const secretKey = `https://example.com/?token=${TEST_SECRETS.payloadSecret}`;
+  let tempDir: string;
+  let storage: FileSystemCacheStorage;
   let cache: Cache;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks();
-    storage = createStorage();
-    cache = new Cache({ storage, keyPrefix: "p:", defaultTTL: 1234 });
+    tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "cache-facade-test-"));
+    storage = new FileSystemCacheStorage({ cacheDir: tempDir, maxSize: 1024 * 1024 });
+    cache = new Cache(storage, "p:");
   });
 
-  it.each(["get", "set", "delete", "clear", "keys", "getStats"] as const)(
-    "keeps %s failures secret-safe and preserves the fallback",
-    async (operation) => {
-      const key = `https://example.com/?token=${TEST_SECRETS.payloadSecret}`;
-      vi.mocked(storage[operation]).mockRejectedValueOnce(new Error(key));
-
-      const result = operation === "set" ? await cache.set(key, "value") : await cache[operation](key);
-      const fallbacks = {
-        get: null,
-        set: undefined,
-        delete: false,
-        clear: 0,
-        keys: [],
-        getStats: { entries: 0, totalSize: 0, hits: 0, misses: 0, evictions: 0 },
-      };
-      expect(result).toEqual(fallbacks[operation]);
-      expect(mockLogger.logger.error).toHaveBeenCalledWith(`Cache ${operation} error`);
-    }
-  );
-
-  it("propagates maintenance failure without exposing storage details", async () => {
-    vi.spyOn(storage, "cleanup").mockRejectedValueOnce(new Error(TEST_SECRETS.payloadSecret));
-
-    await expect(cache.cleanup()).rejects.toEqual(new Error("Cache cleanup failed"));
+  afterEach(async () => {
+    vi.restoreAllMocks();
+    await fs.rm(tempDir, { recursive: true, force: true });
   });
 
-  it("applies the configured defaultTTL on set", async () => {
-    await cache.set("a", 1);
+  it.each([
+    ["get", null, () => cache.get(secretKey)],
+    ["set", undefined, () => cache.set(secretKey, "value", 60)],
+    ["delete", false, () => cache.delete(secretKey)],
+  ] as const)("keeps request-path %s failures secret-safe and best-effort", async (operation, fallback, run) => {
+    vi.spyOn(storage, operation).mockRejectedValueOnce(new Error(secretKey));
 
-    expect(storage.set.mock.lastCall?.[0]).toBe("p:a");
-    expect(storage.set.mock.lastCall?.[2]?.ttl).toBe(1234);
+    await expect(run()).resolves.toEqual(fallback);
+    expect(mockLogger.logger.error).toHaveBeenCalledWith(`Cache ${operation} error`);
   });
 
-  it.each([0, 5])("keeps an explicit TTL of %s on set", async (ttl) => {
-    await cache.set("a", 1, { ttl });
-    expect(storage.set).toHaveBeenCalledWith("p:a", 1, { ttl });
+  it.each([
+    ["getStats", () => cache.getStats()],
+    ["cleanup", () => cache.cleanup()],
+  ] as const)("propagates %s failure without exposing storage details", async (operation, run) => {
+    vi.spyOn(storage, operation).mockRejectedValueOnce(new Error(secretKey));
+
+    await expect(run()).rejects.toEqual(new Error(`Cache ${operation} failed`));
+  });
+
+  it.each([0, 5])("stores under the prefixed key with a TTL of %s", async (ttl) => {
+    await cache.set("a", 1, ttl);
+
+    const entry = await storage.get("p:a");
+    const { createdAt, expiresAt } = entry!.metadata;
+    expect(expiresAt?.getTime()).toBe(ttl === 0 ? undefined : createdAt.getTime() + ttl * 1000);
+    expect(await cache.get("a")).toBe(1);
   });
 });

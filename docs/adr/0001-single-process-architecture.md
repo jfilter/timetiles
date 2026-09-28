@@ -34,8 +34,7 @@ TimeTiles assumes a **single Node.js process** for its server runtime. All in-me
 | **ProviderRateLimiter**    | `lib/services/geocoding/provider-rate-limiter.ts` | `Map<string, ProviderState>` per geocoding provider                     | External API rate limits exceeded — e.g., 2 processes each send 1 req/s to a 1 req/s API    |
 | **ViewResolver**           | `lib/services/view-resolver.ts`                   | `Map` caches for domain/slug/default views (5-min TTL)                  | Stale views served after admin changes until per-process TTL expires                        |
 | **FeatureFlagService**     | `lib/services/feature-flag-service.ts`            | Module-level `cachedFlags` + timestamp (1-min TTL)                      | Each process caches flags independently; settings changes propagate unevenly                |
-| **CacheManager**           | `lib/services/cache/manager.ts`                   | Static `instances` Map + `MemoryCacheStorage` LRU                       | No cache sharing — same data fetched redundantly per process                                |
-| **FileSystemCacheStorage** | `lib/services/cache/storage/file-system.ts`       | Cleanup interval + index `Map`                                          | Concurrent cleanup of shared files could race                                               |
+| **FileSystemCacheStorage** | `lib/services/cache/storage/file-system.ts`       | In-memory index `Map` persisted to `index.json`                         | Processes sharing a cache directory overwrite each other's index                            |
 
 ### Local Filesystem Assumptions
 

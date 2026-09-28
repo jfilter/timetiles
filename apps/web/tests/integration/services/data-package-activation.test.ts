@@ -71,9 +71,6 @@ vi.mock("@/lib/services/cache/url-fetch-cache", () => {
         if (timeoutId) clearTimeout(timeoutId);
       }
     },
-    get: vi.fn().mockResolvedValue(null),
-    set: vi.fn().mockResolvedValue(undefined),
-    clear: vi.fn().mockResolvedValue(0),
     cleanup: vi.fn().mockResolvedValue(0),
     getStats: vi.fn().mockResolvedValue({}),
   });

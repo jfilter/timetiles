@@ -25,7 +25,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vites
 import { getAppConfig, resetAppConfig } from "@/lib/config/app-config";
 import { fetchRemoteData } from "@/lib/ingest/fetch-remote-data";
 import { fetchPaginated } from "@/lib/ingest/url-fetch/paginated-fetch";
-import { getUrlFetchCache, resetUrlFetchCache } from "@/lib/services/cache/url-fetch-cache";
+import { resetUrlFetchCache } from "@/lib/services/cache/url-fetch-cache";
 import { TestServer } from "@/tests/setup/integration/http-server";
 
 describe.sequential("JSON fetch integration", () => {
@@ -35,8 +35,6 @@ describe.sequential("JSON fetch integration", () => {
   beforeAll(async () => {
     cacheDir = await mkdtemp(join(tmpdir(), "timetiles-json-fetch-"));
     getAppConfig().cache.urlFetch.dir = cacheDir;
-    resetUrlFetchCache();
-    getUrlFetchCache();
     server = new TestServer();
     await server.start();
   });
@@ -49,7 +47,8 @@ describe.sequential("JSON fetch integration", () => {
   });
 
   beforeEach(async () => {
-    await getUrlFetchCache().clear();
+    await rm(cacheDir, { recursive: true, force: true });
+    resetUrlFetchCache();
     server.reset();
     vi.clearAllMocks();
   });

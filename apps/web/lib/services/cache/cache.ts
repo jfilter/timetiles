@@ -1,8 +1,8 @@
 /**
- * Main cache service that provides high-level caching operations.
+ * Key-prefixed facade over the file-system cache storage.
  *
- * Wraps storage operations with key prefixing and TTL defaults. Request-path operations
- * are best-effort; maintenance failures propagate so the job runner can retry.
+ * Request-path reads and writes are best-effort. Statistics and cleanup propagate
+ * failures so callers never act on invented results.
  *
  * @module
  * @category Services/Cache
@@ -10,129 +10,59 @@
 
 import { logger } from "@/lib/logger";
 
-import type { CacheConfig, CacheSetOptions, CacheStorage } from "./types";
+import type { FileSystemCacheStorage } from "./storage/file-system";
+import type { CacheStats } from "./types";
 
-/**
- * Main cache service that provides high-level caching operations
- */
+const bestEffort = async <T>(operation: string, fallback: T, run: () => Promise<T>): Promise<T> => {
+  try {
+    return await run();
+  } catch {
+    logger.error(`Cache ${operation} error`);
+    return fallback;
+  }
+};
+
+// Storage errors can include cache keys; callers such as Payload jobs persist the message.
+const withoutDetails = async <T>(operation: string, run: () => Promise<T>): Promise<T> => {
+  try {
+    return await run();
+  } catch {
+    throw new Error(`Cache ${operation} failed`);
+  }
+};
+
 export class Cache {
-  private readonly storage: CacheStorage;
-  private readonly config: CacheConfig;
-  private readonly keyPrefix: string;
+  constructor(
+    private readonly storage: FileSystemCacheStorage,
+    private readonly keyPrefix: string
+  ) {}
 
-  constructor(config: CacheConfig) {
-    this.storage = config.storage;
-    this.config = config;
-    this.keyPrefix = config.keyPrefix ?? "";
-  }
-
-  private makeKey(key: string): string {
-    return this.keyPrefix + key;
-  }
-
-  private makePattern(pattern?: string): string | undefined {
-    if (!this.keyPrefix) return pattern;
-    const prefix = this.keyPrefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const suffix = pattern ? `(?:${pattern})` : "";
-    return `^${prefix}${suffix}`;
-  }
-
-  /**
-   * Get a value from cache
-   */
   async get<T>(key: string, options?: { allowExpired?: boolean }): Promise<T | null> {
-    const fullKey = this.makeKey(key);
-    try {
-      const entry = await this.storage.get<T>(fullKey, options);
-      return entry?.value ?? null;
-    } catch {
-      logger.error("Cache get error");
-      return null;
-    }
+    return bestEffort(
+      "get",
+      null,
+      async () => (await this.storage.get<T>(this.keyPrefix + key, options))?.value ?? null
+    );
   }
 
-  /**
-   * Set a value in cache
-   */
-  async set<T>(key: string, value: T, options?: CacheSetOptions): Promise<void> {
-    const fullKey = this.makeKey(key);
-    const ttl = options?.ttl ?? this.config.defaultTTL;
-    try {
-      await this.storage.set(fullKey, value, { ...options, ttl });
-    } catch {
-      logger.error("Cache set error");
-    }
+  /** Store a value for `ttl` seconds; a ttl of 0 never expires. */
+  async set<T>(key: string, value: T, ttl: number): Promise<void> {
+    return bestEffort("set", undefined, () => this.storage.set(this.keyPrefix + key, value, ttl));
   }
 
-  /**
-   * Delete a value from cache
-   */
   async delete(key: string): Promise<boolean> {
-    const fullKey = this.makeKey(key);
-    try {
-      return await this.storage.delete(fullKey);
-    } catch {
-      logger.error("Cache delete error");
-      return false;
-    }
+    return bestEffort("delete", false, () => this.storage.delete(this.keyPrefix + key));
   }
 
-  /**
-   * Clear cache entries matching pattern
-   */
-  async clear(pattern?: string): Promise<number> {
-    const fullPattern = this.makePattern(pattern);
-    try {
-      return await this.storage.clear(fullPattern);
-    } catch {
-      logger.error("Cache clear error");
-      return 0;
-    }
+  async getStats(): Promise<CacheStats> {
+    return withoutDetails("getStats", () => this.storage.getStats());
   }
 
-  /**
-   * Get all keys matching pattern
-   */
-  async keys(pattern?: string): Promise<string[]> {
-    const fullPattern = this.makePattern(pattern);
-    try {
-      const keys = await this.storage.keys(fullPattern);
-
-      // Remove prefix from keys
-      const prefixLength = this.keyPrefix.length;
-      return keys.map((k) => k.substring(prefixLength));
-    } catch {
-      logger.error("Cache keys error");
-      return [];
-    }
-  }
-
-  /**
-   * Get cache statistics
-   */
-  async getStats() {
-    try {
-      return await this.storage.getStats();
-    } catch {
-      logger.error("Cache getStats error");
-      return { entries: 0, totalSize: 0, hits: 0, misses: 0, evictions: 0 };
-    }
-  }
-
-  /**
-   * Clean up expired entries
-   */
   async cleanup(): Promise<number> {
-    try {
-      const cleaned = await this.storage.cleanup();
-      if (cleaned > 0) {
-        logger.info("Cache cleanup completed", { cleaned });
-      }
-      return cleaned;
-    } catch {
-      // Storage errors can include sensitive cache keys. Fail the maintenance
-      // job without copying those details into Payload's persisted job error.
-      throw new Error("Cache cleanup failed");
+    const cleaned = await withoutDetails("cleanup", () => this.storage.cleanup());
+    if (cleaned > 0) {
+      logger.info("Cache cleanup completed", { cleaned });
     }
+    return cleaned;
   }
 }

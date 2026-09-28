@@ -1,8 +1,8 @@
 /**
- * Type definitions for the generic caching system.
+ * Type definitions for the cache services.
  *
- * This module defines the core interfaces and types used throughout the cache
- * implementation and its filesystem backend.
+ * Entry, statistics and request-option shapes shared by the file-system cache
+ * and the URL fetch cache.
  *
  * @module
  * @category Services/Cache
@@ -25,21 +25,6 @@ export interface CacheEntryMetadata {
   expiresAt?: Date;
   accessCount: number;
   lastAccessedAt: Date;
-  size?: number;
-  tags?: string[];
-  custom?: Record<string, unknown>;
-}
-
-/**
- * Options for setting a cache value
- */
-export interface CacheSetOptions {
-  /** Time to live in seconds; 0 disables expiration, omitted uses the backend default. */
-  ttl?: number;
-  /** Tags for grouping related entries */
-  tags?: string[];
-  /** Custom metadata */
-  metadata?: Record<string, unknown>;
 }
 
 /**
@@ -60,94 +45,6 @@ export interface CacheStats {
   oldestEntry?: Date;
   /** Newest entry timestamp */
   newestEntry?: Date;
-}
-
-/**
- * Cache storage interface for different backends
- */
-export interface CacheStorage {
-  /**
-   * Get a value from cache
-   */
-  get<T = unknown>(key: string, options?: { allowExpired?: boolean }): Promise<CacheEntry<T> | null>;
-
-  /**
-   * Set a value in cache
-   */
-  set<T = unknown>(key: string, value: T, options?: CacheSetOptions): Promise<void>;
-
-  /**
-   * Delete a value from cache
-   */
-  delete(key: string): Promise<boolean>;
-
-  /**
-   * Check if key exists
-   */
-  has(key: string): Promise<boolean>;
-
-  /**
-   * Clear cache entries matching pattern
-   * @returns Number of entries cleared
-   */
-  clear(pattern?: string): Promise<number>;
-
-  /**
-   * Get all keys matching pattern
-   */
-  keys(pattern?: string): Promise<string[]>;
-
-  /**
-   * Get multiple values at once
-   */
-  getMany<T = unknown>(keys: string[]): Promise<Map<string, CacheEntry<T>>>;
-
-  /**
-   * Set multiple values at once
-   */
-  setMany<T = unknown>(entries: Map<string, T>, options?: CacheSetOptions): Promise<void>;
-
-  /**
-   * Get cache statistics
-   */
-  getStats(): Promise<CacheStats>;
-
-  /**
-   * Clean up expired entries
-   * @returns Number of entries cleaned
-   */
-  cleanup(): Promise<number>;
-
-  /**
-   * Destroy the storage (cleanup resources)
-   */
-  destroy?(): Promise<void>;
-}
-
-/**
- * Cache configuration
- */
-export interface CacheConfig {
-  /** Storage backend */
-  storage: CacheStorage;
-  /** Default TTL in seconds */
-  defaultTTL?: number;
-  /** Key prefix */
-  keyPrefix?: string;
-}
-
-/**
- * Options for filesystem cache storage
- */
-export interface FileSystemCacheOptions {
-  /** Cache directory path */
-  cacheDir?: string;
-  /** Maximum cache size in bytes */
-  maxSize?: number;
-  /** Cleanup interval in milliseconds */
-  cleanupIntervalMs?: number;
-  /** Default TTL in seconds */
-  defaultTTL?: number;
 }
 
 /**

@@ -49,20 +49,6 @@ interface CachedEntry {
   };
 }
 
-/**
- * Whether a cache key belongs to exactly this user.
- *
- * Keys are `GET:<url hash>:user:<id>` (legacy keys contain the URL) with an optional
- * `:auth:<fingerprint>` suffix, so the user id
- * is a whole segment at the end, not arbitrary URL text. Matching inside the URL can
- * invalidate another user's entries and force unnecessary external fetches.
- */
-export const belongsToUser = (key: string, userId: string): boolean => {
-  const segments = key.split(":");
-  if (segments.at(-2) === "auth") segments.splice(-2);
-  return segments.at(-2) === "user" && segments.at(-1) === userId;
-};
-
 /** Split directives without interpreting commas inside quoted extension values. */
 const parseCacheControl = (header = ""): Map<string, string> => {
   const directives = new Map<string, string>();
@@ -96,16 +82,15 @@ export class UrlFetchCache {
 
   constructor() {
     const { urlFetch } = getAppConfig().cache;
-    const cacheDir = urlFetch.dir;
-    const maxSize = urlFetch.maxSizeBytes;
     this.defaultTTL = urlFetch.defaultTtlSeconds;
     this.maxTTL = urlFetch.maxTtlSeconds;
     this.respectCacheControl = urlFetch.respectCacheControl;
 
-    const storage = new FileSystemCacheStorage({ cacheDir, maxSize, defaultTTL: this.defaultTTL });
-
     // Do not reuse legacy entries that conflated paths and reordered query strings.
-    this.cache = new Cache({ storage, keyPrefix: "http:v2:" });
+    this.cache = new Cache(
+      new FileSystemCacheStorage({ cacheDir: urlFetch.dir, maxSize: urlFetch.maxSizeBytes }),
+      "http:v2:"
+    );
   }
 
   /**
@@ -562,7 +547,7 @@ export class UrlFetchCache {
       },
     };
 
-    await this.cache.set(cacheKey, entry, { ttl });
+    await this.cache.set(cacheKey, entry, ttl);
     logger.info("HTTP response cached", {
       size: data.length,
       ttl,
@@ -610,30 +595,12 @@ export class UrlFetchCache {
     return status >= 200 && status < 300 && status !== 206;
   }
 
-  async clear(): Promise<number> {
-    return this.cache.clear();
-  }
-
   async cleanup(): Promise<number> {
     return this.cache.cleanup();
   }
 
   async getStats() {
     return this.cache.getStats();
-  }
-
-  /**
-   * Invalidate all cached entries for a specific user
-   */
-  async invalidateForUser(userId: string): Promise<void> {
-    const allKeys = await this.cache.keys();
-    const userKeys = allKeys.filter((k) => belongsToUser(k, userId));
-
-    for (const key of userKeys) {
-      await this.cache.delete(key);
-    }
-
-    logger.info("Invalidated user cache", { userId, count: userKeys.length });
   }
 }
 
