@@ -15,7 +15,8 @@ if [ "$(id -u)" = "0" ]; then
     if id "$DEPLOY_USER" &>/dev/null; then
         # Shell-escape each argument to prevent injection via sg -c
         ESCAPED_ARGS=$(printf '%q ' "$@")
-        exec sg docker -c "sudo -u $DEPLOY_USER $0 $ESCAPED_ARGS"
+        # sudo resets the environment; carry the operator's opt-in across.
+        exec sg docker -c "sudo --preserve-env=TIMETILES_DISCARD_CONTAINER_DB -u $DEPLOY_USER $0 $ESCAPED_ARGS"
     else
         echo "Warning: User '$DEPLOY_USER' not found, running as root"
     fi
