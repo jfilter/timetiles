@@ -8,6 +8,24 @@ See the [release process](/development/contributing/release-process) for how new
 
 Changes landed on `main` since the last tagged release.
 
+## [0.1.0-alpha.14] - 2026-09-28
+
+### Changed
+
+- Ingest: uploads accept one shared MIME allow-list; the Google Sheets type is gone because no parser reads it
+- CLI and bootstrap: runner install, podman calls and `.env` reads share one implementation; bootstrap replaces the runner atomically, so a failed install keeps the old one
+- CLI and bootstrap: `.env` values containing `=` or quotes are read whole; a repeated key takes its last assignment
+
+### Fixed
+
+- Scrapers: an invalid cron expression disables the scraper and marks the run failed instead of skipping it silently forever
+- Ingest and seeding: lookup errors other than "not found" are raised instead of treated as a missing record
+- CLI: a failed image pull shows the registry error before falling back to a local build; a failing alert script is reported as a warning
+
+### Security
+
+- URL fetches and scraper repo sync refuse the request when the SSRF DNS check cannot resolve the host, instead of skipping the check
+
 ## [0.1.0-alpha.13] - 2026-09-28
 
 ### Fixed
