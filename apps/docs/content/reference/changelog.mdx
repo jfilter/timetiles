@@ -8,10 +8,17 @@ See the [release process](/development/contributing/release-process) for how new
 
 Changes landed on `main` since the last tagged release.
 
+## [0.1.0-alpha.13] - 2026-09-28
+
 ### Fixed
 
 - CLI: a root invocation keeps `TIMETILES_DISCARD_CONTAINER_DB` when it hands over to the deploy user, so the "Database Outside the Volume" reset works under `sudo`
 - CLI: `create-admin` without a terminal fails with a message naming `TIMETILES_ADMIN_PASSWORD` instead of exiting silently
+- File cache: `destroy()` waits for the index write and reports its errors instead of dropping them
+- CMS blocks: list items are keyed by their Payload id
+
+### Security
+
 - Ingest: transform expressions use `expr-eval-fork`, which rejects prototype access such as `constructor` and `__proto__` (CVE-2025-12735, CVE-2025-13204)
 
 ## [0.1.0-alpha.12] - 2026-09-28
