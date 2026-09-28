@@ -78,7 +78,7 @@ export interface StringOpTransform extends BaseTransform {
   pattern?: string;
   /** Replacement string for replace operation */
   replacement?: string;
-  /** Expression for expression operation (uses expr-eval) */
+  /** Expression for expression operation (uses expr-eval-fork) */
   expression?: string;
 }
 

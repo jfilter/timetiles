@@ -13,7 +13,7 @@
  * @category Services
  */
 
-import { Parser } from "expr-eval";
+import { Parser } from "expr-eval-fork";
 
 import { safeExtractMatch } from "@/lib/ingest/safe-regex";
 import { buildTransformsFromDataset } from "@/lib/ingest/transform-builders";
@@ -415,7 +415,7 @@ const parseAsBoolean = (value: unknown): boolean => {
 /**
  * Create a safe expression parser with predefined helper functions.
  *
- * Uses expr-eval instead of new Function() to prevent arbitrary code execution.
+ * Uses expr-eval-fork instead of new Function() to prevent arbitrary code execution.
  * Only supports mathematical and string expressions — no access to require,
  * process, global, or any Node.js APIs.
  */
@@ -472,7 +472,7 @@ const safeParser = createSafeParser();
 /**
  * Run a custom transformation expression.
  *
- * Uses expr-eval to evaluate the expression in a sandboxed context.
+ * Uses expr-eval-fork to evaluate the expression in a sandboxed context.
  * The expression has access to `value` and predefined helper functions only.
  * No access to require, process, global, or any Node.js APIs.
  */

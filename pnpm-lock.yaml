@@ -318,9 +318,9 @@ importers:
       croner:
         specifier: 10.0.1
         version: 10.0.1
-      expr-eval:
-        specifier: ^2.0.2
-        version: 2.0.2
+      expr-eval-fork:
+        specifier: ^3.0.3
+        version: 3.0.3
       franc:
         specifier: 'catalog:'
         version: 6.2.0
@@ -5999,8 +5999,9 @@ packages:
     resolution: {integrity: sha512-KfYbmpRm0VbLjEvVa9yGwCi9GI34xvi7A/HXYWQO65CSD2u3MczUJSuwXKFIxlGsgBQizV9q5J9NHj4VG0n+pA==}
     engines: {node: '>=12.0.0'}
 
-  expr-eval@2.0.2:
-    resolution: {integrity: sha512-4EMSHGOPSwAfBiibw3ndnP0AvjDWLsMvGOvWEZ2F96IGk0bIVdjQisOHxReSkE13mHcfbuCiXw+G4y0zv6N8Eg==}
+  expr-eval-fork@3.0.3:
+    resolution: {integrity: sha512-BhC+hbc5lIVjygr840n5DEkW3MQq7H9o+mc1/N7Z5uIiCFVyESLL5DIE7LNq4CYUNxy+XjA+3jRrL/h0Kt2xcg==}
+    engines: {node: '>=16.9.0'}
 
   extend-shallow@2.0.1:
     resolution: {integrity: sha512-zCnTtlxNoAiDc3gqY2aYAWFx7XWWiasuF2K8Me5WbN8otHKTUKBwjPtNpRs/rbUZm7KxWAaNj7P1a/p52GbVug==}
@@ -15112,7 +15113,7 @@ snapshots:
 
   expect-type@1.4.0: {}
 
-  expr-eval@2.0.2: {}
+  expr-eval-fork@3.0.3: {}
 
   extend-shallow@2.0.1:
     dependencies:

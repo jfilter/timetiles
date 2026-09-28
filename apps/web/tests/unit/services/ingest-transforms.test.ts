@@ -514,6 +514,13 @@ describe("string-op edge cases", () => {
   });
 });
 
+describe("string-op expression sandbox", () => {
+  it.each(["constructor", "__proto__"])("should not expose prototype properties via %s", (expression) => {
+    const transforms: IngestTransform[] = [stringOp("title", "expression", { expression })];
+    expect(applyTransforms({ title: "hello" }, transforms).title).toBe("hello");
+  });
+});
+
 describe("string-op expression on numeric values", () => {
   it("should apply expression to numeric value", () => {
     const transforms: IngestTransform[] = [

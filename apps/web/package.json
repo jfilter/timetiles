@@ -62,7 +62,7 @@
     "chardet": "^2.2.0",
     "cheerio": "^1.2.0",
     "croner": "10.0.1",
-    "expr-eval": "^2.0.2",
+    "expr-eval-fork": "^3.0.3",
     "franc": "catalog:",
     "graphql": "^16.14.2",
     "h3-js": "^4.5.0",
