@@ -3,8 +3,8 @@
  *
  * Extracted to its own module to avoid circular imports between
  * `app-config.ts` (which defines default quotas per trust level)
- * and `quota-constants.ts` (which re-exports trust levels alongside
- * quota descriptors and reads from `getAppConfig()`).
+ * and `quota-constants.ts` (which defines quota descriptors and reads
+ * from `getAppConfig()`).
  *
  * @module
  * @category Constants

@@ -11,7 +11,8 @@ import "@/tests/mocks/services/logger";
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { hasActivePayloadJob, isResourceStuck } from "@/lib/jobs/utils/stuck-detection";
+import { isResourceStuck } from "@/lib/jobs/utils/stuck-detection";
+import { hasActivePayloadJob } from "@/lib/services/payload-job-queries";
 import { createMockPayload } from "@/tests/setup/factories";
 
 const expectClauseUsesKnownFields = (clause: Record<string, unknown>): void => {

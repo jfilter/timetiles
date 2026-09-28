@@ -22,6 +22,7 @@ import { InputData, jsonInputForTargetLanguage, quicktype } from "quicktype-core
 import { logger } from "@/lib/logger";
 import { enrichEnumFields } from "@/lib/services/schema-detection/utilities";
 import type { FieldStatistics, SchemaBuilderState, SchemaChange, SchemaComparison } from "@/lib/types/schema-detection";
+import { isRecord } from "@/lib/utils/is-record";
 
 import { createFieldStats, getValueType, updateFieldStats } from "./field-statistics";
 import type { SchemaProperty } from "./schema-comparison";
@@ -213,7 +214,7 @@ export class ProgressiveSchemaBuilder {
     const changes: SchemaChange[] = [];
 
     // Recursively process nested objects
-    if (typeof value === "object" && value !== null && !Array.isArray(value)) {
+    if (isRecord(value)) {
       const nestedChanges = this.processRecord(value, fieldPath, depth + 1);
       changes.push(...nestedChanges);
     }

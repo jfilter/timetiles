@@ -28,6 +28,7 @@ import { STAGE_TIME_WEIGHTS } from "@/lib/constants/stage-time-weights";
 import type { StageProgress } from "@/lib/ingest/types/progress-tracking";
 import { hasInvalidIsoDatePart, isValidDate } from "@/lib/utils/date";
 import { normalizeJobId } from "@/lib/utils/event-params";
+import { isRecord } from "@/lib/utils/is-record";
 import type { IngestJob } from "@/payload-types";
 
 /**
@@ -102,17 +103,10 @@ export class ProgressTrackingService {
     return isValidDate(parsed) ? parsed : null;
   }
 
-  /**
-   * Type guard to check if value is a stages record.
-   */
-  private static isStagesRecord(value: unknown): value is Record<string, unknown> {
-    return typeof value === "object" && value !== null && !Array.isArray(value);
-  }
-
   private static deserializeStages(stages: unknown): Record<string, StageProgress> {
     const deserialized: Record<string, StageProgress> = {};
 
-    if (!this.isStagesRecord(stages)) {
+    if (!isRecord(stages)) {
       return deserialized;
     }
 

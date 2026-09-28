@@ -24,16 +24,16 @@ vi.mock("@/lib/services/feature-flag-service", () => ({
 }));
 
 const mockHasActivePayloadJob = vi.hoisted(() => vi.fn());
-vi.mock("@/lib/jobs/utils/stuck-detection", async (importOriginal) => ({
-  // Keep the real isResourceStuck and cancelOrphanedWorkflowJobs; only the job lookup is stubbed.
-  ...(await importOriginal<typeof StuckDetection>()),
+vi.mock("@/lib/services/payload-job-queries", async (importOriginal) => ({
+  // Keep the real buildResourceIdMatch; only the job lookup is stubbed.
+  ...(await importOriginal<typeof PayloadJobQueries>()),
   hasActivePayloadJob: mockHasActivePayloadJob,
 }));
 
 vi.mock("@/lib/utils/date", () => ({ parseDateInput: vi.fn((input: string) => new Date(input)) }));
 
 import { cleanupStuckScrapersJob } from "@/lib/jobs/handlers/cleanup-stuck-scrapers-job";
-import type * as StuckDetection from "@/lib/jobs/utils/stuck-detection";
+import type * as PayloadJobQueries from "@/lib/services/payload-job-queries";
 
 describe.sequential("cleanupStuckScrapersJob", () => {
   let mockPayload: {

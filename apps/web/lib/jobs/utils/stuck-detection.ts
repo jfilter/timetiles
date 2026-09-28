@@ -9,10 +9,6 @@ import type { Payload } from "payload";
 import { buildResourceIdMatch } from "@/lib/services/payload-job-queries";
 import { parseDateInput } from "@/lib/utils/date";
 
-// Payload-jobs read helper lives in the infrastructure layer; re-exported here
-// for the existing cleanup-job callers.
-export { hasActivePayloadJob } from "@/lib/services/payload-job-queries";
-
 /**
  * Check if a resource is stuck in a "running" state beyond a time threshold.
  *

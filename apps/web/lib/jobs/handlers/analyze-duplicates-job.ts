@@ -20,6 +20,7 @@ import {
   MAX_UNIQUE_ROWS_PER_SHEET,
   PROCESSING_STAGE,
 } from "@/lib/constants/ingest-constants";
+import { REVIEW_REASONS } from "@/lib/constants/review-reasons";
 import { getFileRowCount, streamBatchesFromFile } from "@/lib/ingest/file-readers";
 import { interpretRow, planFromOps, readInterpretationPlan } from "@/lib/ingest/interpret";
 import { ProgressTrackingService } from "@/lib/ingest/progress-tracking";
@@ -43,7 +44,6 @@ import {
 import {
   checkQuotaForSheet,
   parseReviewChecksConfig,
-  REVIEW_REASONS,
   setNeedsReview,
   shouldReviewHighDuplicates,
 } from "../workflows/review-checks";

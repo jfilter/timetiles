@@ -18,13 +18,14 @@ import type { Payload } from "payload";
 import { COLLECTION_NAMES, PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
 import { failIngestJob } from "@/lib/jobs/utils/resource-loading";
 import { logError, logger } from "@/lib/logger";
+import { hasActivePayloadJob } from "@/lib/services/payload-job-queries";
 import { asSystem } from "@/lib/services/system-payload";
 import { recordScheduledIngestFailure, resolveScheduledIngestStats } from "@/lib/types/run-statistics";
 import { parseDateInput } from "@/lib/utils/date";
 import type { ScheduledIngest } from "@/payload-types";
 
 import type { JobHandlerContext } from "../utils/job-context";
-import { cancelOrphanedWorkflowJobs, hasActivePayloadJob, isResourceStuck } from "../utils/stuck-detection";
+import { cancelOrphanedWorkflowJobs, isResourceStuck } from "../utils/stuck-detection";
 import { updateScheduledIngestPaused, updateScheduledIngestSuccess } from "./url-fetch-job/scheduled-ingest-utils";
 
 export interface CleanupStuckScheduledIngestsJobInput {

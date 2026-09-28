@@ -77,19 +77,6 @@ vi.mock("@/lib/jobs/workflows/review-checks", async (importOriginal) => {
   const actual = await importOriginal<typeof ReviewChecksModule>();
   return {
     AMBIGUOUS_INTERPRETATION_CHECKS: actual.AMBIGUOUS_INTERPRETATION_CHECKS,
-    REVIEW_REASONS: {
-      SCHEMA_DRIFT: "schema-drift",
-      QUOTA_EXCEEDED: "quota-exceeded",
-      HIGH_DUPLICATE_RATE: "high-duplicates",
-      GEOCODING_PARTIAL: "geocoding-partial",
-      HIGH_ROW_ERROR_RATE: "high-row-errors",
-      HIGH_EMPTY_ROW_RATE: "high-empty-rows",
-      NO_TIMESTAMP_DETECTED: "no-timestamp",
-      NO_LOCATION_DETECTED: "no-location",
-      AMBIGUOUS_COORDINATE_ORDER: "ambiguous-coordinate-order",
-      AMBIGUOUS_DATE_ORDER: "ambiguous-date-order",
-      FILE_TOO_LARGE: "file-too-large",
-    },
     shouldReviewHighEmptyRows: vi.fn().mockReturnValue({ needsReview: false }),
     shouldReviewNoTimestamp: vi.fn().mockReturnValue({ needsReview: false }),
     shouldReviewNoLocation: vi.fn().mockReturnValue({ needsReview: false }),

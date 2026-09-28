@@ -14,7 +14,7 @@ import { POST as forgotPasswordPOST } from "@/app/api/auth/forgot-password/route
 import { POST as resetPasswordPOST } from "@/app/api/users/reset-password/route";
 import { EMAIL_CONTEXTS } from "@/lib/email/send";
 
-import { TRUST_LEVELS } from "../../../lib/constants/quota-constants.js";
+import { TRUST_LEVELS } from "../../../lib/constants/trust-levels.js";
 import { TEST_CREDENTIALS } from "../../constants/test-credentials.js";
 import { createIntegrationTestEnvironment } from "../../setup/integration/environment.js";
 

@@ -103,17 +103,12 @@ export const DATASET_COLORS = [
 
 type AxisLike = Record<string, Record<string, unknown> | undefined>;
 
-// Helper function to safely spread axis options
-const safeSpreadAxis = (axis: unknown): AxisLike => {
-  if (typeof axis === "object" && axis !== null && !Array.isArray(axis)) {
-    return axis as AxisLike;
-  }
-  return {};
-};
-
 // Helper to safely spread a nested axis sub-object (e.g. axisLine, axisLabel)
 const safeSpread = (value: unknown): Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
+
+// Helper function to safely spread axis options
+const safeSpreadAxis = (axis: unknown): AxisLike => safeSpread(axis) as AxisLike;
 
 export const applyThemeToOption = (option: EChartsOption, theme: ChartTheme): EChartsOption => {
   const result: EChartsOption = {

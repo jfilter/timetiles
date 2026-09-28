@@ -78,41 +78,19 @@ export const parseDateInput = (date: string | number | Date | null | undefined):
 };
 
 /**
- * Format a date string or Date object for display.
- *
- * By default includes time. Pass `{ includeTime: false }` for date-only format.
+ * Format a date for short display (just the date, no time).
  */
-type DateInput = string | Date | null | undefined;
-
-export const formatDate = (date: DateInput, options?: { includeTime?: boolean; locale?: string }): string => {
+export const formatDateShort = (date: string | Date | null | undefined, locale?: string): string => {
   if (!date) return "N/A";
 
   try {
     const dateObj = parseDateInput(date);
-
-    if (!dateObj) {
-      return "Invalid date";
-    }
-
-    const formatOptions: Intl.DateTimeFormatOptions = { year: "numeric", month: "short", day: "numeric" };
-
-    if (options?.includeTime !== false) {
-      formatOptions.hour = "numeric";
-      formatOptions.minute = "2-digit";
-      formatOptions.hour12 = true;
-    }
-
-    return new Intl.DateTimeFormat(options?.locale, formatOptions).format(dateObj);
+    if (!dateObj) return "Invalid date";
+    return new Intl.DateTimeFormat(locale, { year: "numeric", month: "short", day: "numeric" }).format(dateObj);
   } catch {
     return "Invalid date";
   }
 };
-
-/**
- * Format a date for short display (just the date, no time).
- */
-export const formatDateShort = (date: string | Date | null | undefined, locale?: string): string =>
-  formatDate(date, { includeTime: false, locale });
 
 /**
  * Format a date in long format with weekday, suitable for emails and notifications.

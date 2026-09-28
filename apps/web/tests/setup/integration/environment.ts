@@ -23,7 +23,6 @@ import fs from "node:fs";
 import type { Payload } from "payload";
 import { getPayload } from "payload";
 
-import { createTestConfig } from "@/lib/config/payload-config-factory";
 import { type CollectionName, COLLECTIONS } from "@/lib/config/payload-shared-config";
 import { readInterpretationPlan } from "@/lib/ingest/interpret";
 import {
@@ -37,6 +36,7 @@ import type { IngestTransform } from "@/lib/ingest/types/transforms";
 import { createLogger } from "@/lib/logger";
 import { SeedManager } from "@/lib/seed/index";
 import type { IngestJob } from "@/payload-types";
+import { createTestConfig } from "@/tests/setup/test-config";
 
 import { TEST_CREDENTIALS } from "../../constants/test-credentials";
 import { createTestDatabase } from "./database";
@@ -298,7 +298,8 @@ export class TestEnvironmentBuilder {
 
     // Use the same database URL that was set up in the global setup
     // Or get test database URL for this worker
-    const { getTestDatabaseUrl, parseDatabaseUrl } = await import("../../../lib/database/url");
+    const { parseDatabaseUrl } = await import("../../../lib/database/url");
+    const { getTestDatabaseUrl } = await import("../test-database-url");
     const dbUrl = process.env.DATABASE_URL ?? getTestDatabaseUrl();
     const dbName = parseDatabaseUrl(dbUrl).database;
 

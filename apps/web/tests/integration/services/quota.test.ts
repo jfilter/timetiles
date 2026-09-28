@@ -9,7 +9,7 @@
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-import { TRUST_LEVELS } from "@/lib/constants/quota-constants";
+import { TRUST_LEVELS } from "@/lib/constants/trust-levels";
 import { createQuotaService, QuotaExceededError } from "@/lib/services/quota-service";
 import type { User, UserUsage } from "@/payload-types";
 

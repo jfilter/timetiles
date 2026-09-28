@@ -9,14 +9,9 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { resetEnv } from "@/lib/config/env";
 
-import {
-  deriveDatabaseUrl,
-  getDatabaseUrl,
-  getTestDatabaseUrl,
-  parseDatabaseUrl,
-  withDatabaseName,
-} from "../../../lib/database/url";
+import { deriveDatabaseUrl, getDatabaseUrl, parseDatabaseUrl, withDatabaseName } from "../../../lib/database/url";
 import { TEST_CREDENTIALS } from "../../constants/test-credentials";
+import { getTestDatabaseUrl } from "../../setup/test-database-url";
 
 // Construct reusable test database URLs from centralized credentials
 const TEST_DB_USER = TEST_CREDENTIALS.basic.alternateUsername;

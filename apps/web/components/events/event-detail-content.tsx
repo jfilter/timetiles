@@ -20,10 +20,10 @@ import { useLocale, useTranslations } from "next-intl";
 
 import { Link } from "@/i18n/navigation";
 import { getDatasetBadgeClass } from "@/lib/constants/dataset-colors";
+import { formatDateRange } from "@/lib/utils/date";
 import {
   buildConsumedFieldSet,
   extractEventFields,
-  formatDateRange,
   getDatasetInfo,
   getEventData,
   getLocationDisplay,

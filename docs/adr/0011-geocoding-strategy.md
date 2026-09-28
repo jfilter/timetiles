@@ -22,7 +22,7 @@ The geocoding system uses a four-component facade pattern:
 | `CacheManager`        | `lib/services/geocoding/cache-manager.ts`         | Reads/writes the `location-cache` collection; normalizes addresses; enforces TTL     |
 | `ProviderRateLimiter` | `lib/services/geocoding/provider-rate-limiter.ts` | In-memory token bucket per provider; singleton instance                              |
 
-A simplified entry point (`lib/services/geocoding.ts`) exposes `createGeocodingService(payload)` which returns a `GeocodingService` instance for use by the import pipeline.
+The service module (`lib/services/geocoding/geocoding-service.ts`) exposes `createGeocodingService(payload)` which returns a `GeocodingService` instance for use by the import pipeline.
 
 ### Supported Providers
 

@@ -9,10 +9,10 @@
  */
 import { describe, expect, it } from "vitest";
 
+import { formatDateRange } from "@/lib/utils/date";
 import {
   buildConsumedFieldSet,
   extractEventFields,
-  formatDateRange,
   getDatasetInfo,
   getEventData,
   getEventTitle,

@@ -17,13 +17,8 @@ import { memo, useRef } from "react";
 
 import { getDatasetBadgeClass } from "@/lib/constants/dataset-colors";
 import type { EventListItem } from "@/lib/schemas/events";
-import {
-  extractEventFields,
-  formatDateRange,
-  getDatasetInfo,
-  getEventData,
-  getLocationDisplay,
-} from "@/lib/utils/event-detail";
+import { formatDateRange } from "@/lib/utils/date";
+import { extractEventFields, getDatasetInfo, getEventData, getLocationDisplay } from "@/lib/utils/event-detail";
 
 import { EventsListSkeleton } from "./events-list-skeleton";
 

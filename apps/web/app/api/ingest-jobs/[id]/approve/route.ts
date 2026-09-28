@@ -16,6 +16,7 @@ import { z } from "zod";
 
 import { apiRoute, ForbiddenError, safeFindByID, ValidationError } from "@/lib/api";
 import { COLLECTION_NAMES, PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
+import { REVIEW_REASONS } from "@/lib/constants/review-reasons";
 import { readInterpretationPlan } from "@/lib/ingest/interpret";
 import { legacyDayMonthToDateOrder, toCoordinateOrder } from "@/lib/ingest/plan-builder";
 import type {
@@ -25,7 +26,6 @@ import type {
   InterpretationRoles,
 } from "@/lib/ingest/types/interpretation";
 import { readConfigSnapshot } from "@/lib/jobs/utils/resource-loading";
-import { REVIEW_REASONS } from "@/lib/jobs/workflows/review-checks";
 import { logger } from "@/lib/logger";
 import { NumericIdParamSchema } from "@/lib/schemas/common";
 import { extractRelationId } from "@/lib/utils/relation-id";

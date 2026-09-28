@@ -8,8 +8,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { resetEnv } from "@/lib/config/env";
-import { RATE_LIMITS_BY_TRUST_LEVEL, TRUST_LEVELS } from "@/lib/constants/quota-constants";
+import { RATE_LIMITS_BY_TRUST_LEVEL } from "@/lib/constants/quota-constants";
 import { RATE_LIMITS } from "@/lib/constants/rate-limits";
+import { TRUST_LEVELS } from "@/lib/constants/trust-levels";
 import { logger } from "@/lib/logger";
 import { createRateLimitStore } from "@/lib/services/rate-limit/factory";
 import { MemoryRateLimitStore } from "@/lib/services/rate-limit/memory-store";

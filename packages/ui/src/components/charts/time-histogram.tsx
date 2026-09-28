@@ -165,7 +165,7 @@ export const formatDateTime = (date: Date, includeSeconds: boolean, locale?: str
  * @param bucketSeconds - Size of the bucket in seconds (null for default daily format)
  * @returns Formatted date range string
  */
-export const formatDateRange = (
+export const formatBucketLabel = (
   startDate: Date,
   endDate: Date,
   bucketSeconds: number | null | undefined,
@@ -313,7 +313,7 @@ const getTooltipConfig = (
     const pointCount = typeof point.data[1] === "number" ? point.data[1] : 0;
 
     if (!isStacked) {
-      return `<div style="padding: 4px 8px;"><div style="font-weight: 600;">${formatDateRange(startDate, endDate, bucketSeconds, locale)}</div><div>${escapeHtml(eventsLabel)}: ${pointCount.toLocaleString(locale)}</div></div>`;
+      return `<div style="padding: 4px 8px;"><div style="font-weight: 600;">${formatBucketLabel(startDate, endDate, bucketSeconds, locale)}</div><div>${escapeHtml(eventsLabel)}: ${pointCount.toLocaleString(locale)}</div></div>`;
     }
 
     // Stacked: show each group's count. `seriesName` is a raw value from imported data and
@@ -327,7 +327,7 @@ const getTooltipConfig = (
         (entry) => `<div>${entry.marker} ${escapeHtml(entry.seriesName)}: ${entry.data[1].toLocaleString(locale)}</div>`
       )
       .join("");
-    return `<div style="padding: 4px 8px; max-width: 320px;"><div style="font-weight: 600;">${formatDateRange(startDate, endDate, bucketSeconds, locale)}</div><div style="font-weight: 600;">${escapeHtml(totalLabel)}: ${total.toLocaleString(locale)}</div>${rows}</div>`;
+    return `<div style="padding: 4px 8px; max-width: 320px;"><div style="font-weight: 600;">${formatBucketLabel(startDate, endDate, bucketSeconds, locale)}</div><div style="font-weight: 600;">${escapeHtml(totalLabel)}: ${total.toLocaleString(locale)}</div>${rows}</div>`;
   },
 });
 

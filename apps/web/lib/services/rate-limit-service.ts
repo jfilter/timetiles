@@ -19,8 +19,9 @@ import { BlockList, isIP } from "node:net";
 import type { Payload } from "payload";
 
 import { getEnv } from "@/lib/config/env";
-import { normalizeTrustLevel, RATE_LIMITS_BY_TRUST_LEVEL, TRUST_LEVELS } from "@/lib/constants/quota-constants";
+import { normalizeTrustLevel, RATE_LIMITS_BY_TRUST_LEVEL } from "@/lib/constants/quota-constants";
 import { RATE_LIMITS, type RateLimitConfig, type RateLimitWindow } from "@/lib/constants/rate-limits";
+import { TRUST_LEVELS } from "@/lib/constants/trust-levels";
 import type { User } from "@/payload-types";
 
 import { createLogger } from "../logger";

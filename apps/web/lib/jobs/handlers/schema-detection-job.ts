@@ -17,6 +17,7 @@
 import type { Payload } from "payload";
 
 import { COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
+import { REVIEW_REASONS } from "@/lib/constants/review-reasons";
 import { readInterpretationPlan } from "@/lib/ingest/interpret";
 import { ProgressTrackingService } from "@/lib/ingest/progress-tracking";
 import type { AmbiguityResolution } from "@/lib/ingest/types/interpretation";
@@ -40,7 +41,6 @@ import type { ReviewChecksConfig } from "../workflows/review-checks";
 import {
   AMBIGUOUS_INTERPRETATION_CHECKS,
   parseReviewChecksConfig,
-  REVIEW_REASONS,
   setNeedsReview,
   shouldReviewAmbiguousInterpretation,
   shouldReviewHighEmptyRows,

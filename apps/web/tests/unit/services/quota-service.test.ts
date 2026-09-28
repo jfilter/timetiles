@@ -11,7 +11,8 @@ import { PgDialect } from "@payloadcms/db-postgres/drizzle/pg-core";
 import type { Payload } from "payload";
 import { describe, expect, it, vi } from "vitest";
 
-import { DEFAULT_QUOTAS, TRUST_LEVELS } from "@/lib/constants/quota-constants";
+import { DEFAULT_QUOTAS } from "@/lib/constants/quota-constants";
+import { TRUST_LEVELS } from "@/lib/constants/trust-levels";
 import { QuotaService } from "@/lib/services/quota-service";
 
 vi.mock("@/lib/logger", () => ({

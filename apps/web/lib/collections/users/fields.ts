@@ -5,7 +5,8 @@
  */
 import type { Field, NumberField } from "payload";
 
-import { TRUST_LEVEL_DESCRIPTIONS, TRUST_LEVEL_LABELS, TRUST_LEVELS } from "@/lib/constants/quota-constants";
+import { TRUST_LEVEL_DESCRIPTIONS, TRUST_LEVEL_LABELS } from "@/lib/constants/quota-constants";
+import { TRUST_LEVELS } from "@/lib/constants/trust-levels";
 
 const quotaFields = [
   {

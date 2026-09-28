@@ -24,7 +24,7 @@ vi.mock("payload", () => ({ getPayload: mockGetPayload }));
 
 // The geocoding check now performs a live probe, so the service has to be
 // stubbed here or every health test would try to reach a real provider.
-vi.mock("@/lib/services/geocoding", () => ({
+vi.mock("@/lib/services/geocoding/geocoding-service", () => ({
   createGeocodingService: vi.fn(() => ({ testConfiguration: mockTestConfiguration })),
 }));
 

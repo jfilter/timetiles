@@ -18,8 +18,6 @@ import { getAppConfig } from "@/lib/config/app-config";
 import { TRUST_LEVELS, type TrustLevel } from "@/lib/constants/trust-levels";
 import { parseStrictInteger } from "@/lib/utils/event-params";
 
-export { TRUST_LEVELS } from "@/lib/constants/trust-levels";
-
 /**
  * User quota configuration interface.
  */

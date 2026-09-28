@@ -17,6 +17,7 @@ import type { Payload } from "payload";
 
 import { extractDenormalizedAccessFields } from "@/lib/collections/catalog-ownership";
 import { BATCH_SIZES, COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
+import { REVIEW_REASONS } from "@/lib/constants/review-reasons";
 import { acquireDatasetImportLease, type DatasetImportLease } from "@/lib/database/dataset-import-lock";
 import { cleanupSidecarFiles, streamBatchesFromFile } from "@/lib/ingest/file-readers";
 import { ProgressTrackingService } from "@/lib/ingest/progress-tracking";
@@ -35,12 +36,7 @@ import {
   readDuplicateStrategy,
   setJobStage,
 } from "../utils/resource-loading";
-import {
-  parseReviewChecksConfig,
-  REVIEW_REASONS,
-  setNeedsReview,
-  shouldReviewHighRowErrors,
-} from "../workflows/review-checks";
+import { parseReviewChecksConfig, setNeedsReview, shouldReviewHighRowErrors } from "../workflows/review-checks";
 import { EventSnapshotStore } from "./create-events-batch/event-snapshots";
 import {
   checkEventQuotaBeforeProcessing,

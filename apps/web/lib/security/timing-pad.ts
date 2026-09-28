@@ -9,6 +9,8 @@
  * @category Security
  */
 
+import { sleep } from "@/lib/utils/sleep";
+
 /** Minimum durations for timing-sensitive auth operations (ms). */
 export const TIMING_PAD_MS = {
   /** Registration: checks for existing user + sends verification email */
@@ -53,7 +55,7 @@ export const withTimingPad = async <T>(minDurationMs: number, fn: () => Promise<
   }
   const elapsed = Date.now() - startTime;
   if (elapsed < minDurationMs) {
-    await new Promise((resolve) => setTimeout(resolve, minDurationMs - elapsed));
+    await sleep(minDurationMs - elapsed);
   }
   // eslint-disable-next-line @typescript-eslint/only-throw-error -- re-throwing the original caught error preserves stack trace
   if (caughtError) throw caughtError;

@@ -9,6 +9,7 @@
  * @category Services
  */
 import { createLogger } from "@/lib/logger";
+import { sleep } from "@/lib/utils/sleep";
 
 import { DEFAULT_NOMINATIM_RATE_LIMIT } from "./types";
 
@@ -87,12 +88,12 @@ export class ProviderRateLimiter {
     const previousSlot = state.lastSlotPromise;
     const mySlot = (async () => {
       await previousSlot;
-      await this.delay(minInterval);
+      await sleep(minInterval);
 
       let backoffWait = state.backoffUntil - Date.now();
       while (backoffWait > 0) {
         logger.debug("Provider in backoff, waiting", { providerName, backoffWaitMs: backoffWait });
-        await this.delay(backoffWait);
+        await sleep(Math.min(backoffWait, MAX_TIMER_DELAY_MS));
         backoffWait = state.backoffUntil - Date.now();
       }
     })();
@@ -195,10 +196,6 @@ export class ProviderRateLimiter {
       state = this.state.get(providerName)!;
     }
     return state;
-  }
-
-  private delay(ms: number): Promise<void> {
-    return new Promise((resolve) => setTimeout(resolve, Math.min(ms, MAX_TIMER_DELAY_MS)));
   }
 }
 

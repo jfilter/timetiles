@@ -185,7 +185,7 @@ const summarizeGeocodingProbe = (probe: Record<string, unknown>, enabledCount: n
 };
 
 const runGeocodingProbe = async (payload: Payload, enabledCount: number): Promise<HealthCheckResult> => {
-  const { createGeocodingService } = await import("./services/geocoding");
+  const { createGeocodingService } = await import("./services/geocoding/geocoding-service");
   const service = createGeocodingService(payload);
 
   const TIMED_OUT = Symbol("geocoding-probe-timeout");

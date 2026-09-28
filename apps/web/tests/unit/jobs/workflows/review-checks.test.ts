@@ -5,10 +5,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { COLLECTION_NAMES, PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
 import { getResumePointForReason } from "@/lib/constants/review-reasons";
+import { REVIEW_REASONS } from "@/lib/constants/review-reasons";
 import {
   AMBIGUOUS_INTERPRETATION_CHECKS,
   parseReviewChecksConfig,
-  REVIEW_REASONS,
   setNeedsReview,
   shouldReviewAmbiguousInterpretation,
   shouldReviewGeocodingPartial,

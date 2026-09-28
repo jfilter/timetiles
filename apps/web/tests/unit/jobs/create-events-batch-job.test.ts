@@ -78,17 +78,6 @@ vi.mock("@/lib/collections/catalog-ownership", () => ({
 
 // Mock review checks — default: no review needed
 vi.mock("@/lib/jobs/workflows/review-checks", () => ({
-  REVIEW_REASONS: {
-    SCHEMA_DRIFT: "schema-drift",
-    QUOTA_EXCEEDED: "quota-exceeded",
-    HIGH_DUPLICATE_RATE: "high-duplicates",
-    GEOCODING_PARTIAL: "geocoding-partial",
-    HIGH_ROW_ERROR_RATE: "high-row-errors",
-    HIGH_EMPTY_ROW_RATE: "high-empty-rows",
-    NO_TIMESTAMP_DETECTED: "no-timestamp",
-    NO_LOCATION_DETECTED: "no-location",
-    FILE_TOO_LARGE: "file-too-large",
-  },
   shouldReviewHighRowErrors: vi.fn().mockReturnValue({ needsReview: false }),
   setNeedsReview: vi.fn().mockResolvedValue(undefined),
   parseReviewChecksConfig: vi.fn().mockReturnValue({ config: undefined }),

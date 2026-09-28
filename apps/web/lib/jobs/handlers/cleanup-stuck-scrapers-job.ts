@@ -19,13 +19,14 @@
 import type { Payload } from "payload";
 
 import { logError, logger } from "@/lib/logger";
+import { hasActivePayloadJob } from "@/lib/services/payload-job-queries";
 import { asSystem } from "@/lib/services/system-payload";
 import { recordScraperRun, resolveScraperStats } from "@/lib/types/run-statistics";
 import { parseDateInput } from "@/lib/utils/date";
 import type { Scraper } from "@/payload-types";
 
 import type { JobHandlerContext } from "../utils/job-context";
-import { cancelOrphanedWorkflowJobs, hasActivePayloadJob, isResourceStuck } from "../utils/stuck-detection";
+import { cancelOrphanedWorkflowJobs, isResourceStuck } from "../utils/stuck-detection";
 
 export interface CleanupStuckScrapersJobInput {
   /** Hours after which a running scraper is considered stuck (default: 4).

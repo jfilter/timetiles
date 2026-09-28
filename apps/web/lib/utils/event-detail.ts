@@ -152,9 +152,6 @@ export const getDatasetInfo = (dataset: unknown): { id: number; name: string; ca
   return null;
 };
 
-// Re-exported from date.ts — canonical home for date formatting utilities
-export { formatDateRange } from "@/lib/utils/date";
-
 /** Build a location display string from top-level event fields (extracted during import) */
 export const getLocationDisplay = (event: Record<string, unknown> | object): string | null => {
   const eventRecord = event as Record<string, unknown>;

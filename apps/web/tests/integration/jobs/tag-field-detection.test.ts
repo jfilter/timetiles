@@ -11,7 +11,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { FieldTypeMap } from "@/lib/jobs/utils/event-creation-helpers";
-import * as geocodingModule from "@/lib/services/geocoding";
+import * as geocodingModule from "@/lib/services/geocoding/geocoding-service";
 import type { FieldStatistics } from "@/lib/types/schema-detection";
 
 import {

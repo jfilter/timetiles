@@ -40,7 +40,7 @@ vi.mock("sharp", () => ({ default: {} }));
 
 vi.mock("@/lib/collections/users", () => ({ default: { slug: "users" } }));
 
-import { createTestConfig } from "@/lib/config/payload-config-factory";
+import { createTestConfig } from "@/tests/setup/test-config";
 
 describe("createTestConfig", () => {
   beforeEach(() => {

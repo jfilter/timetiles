@@ -16,6 +16,7 @@ import { logger } from "@/lib/logger";
 import { hashOpaqueValue } from "@/lib/security/hash";
 import { getUrlFetchCache, type UrlFetchCache, type UrlFetchCacheOptions } from "@/lib/services/cache";
 import { compareCodeUnits } from "@/lib/utils/compare";
+import { sleep } from "@/lib/utils/sleep";
 import { sanitizeUrlForLogging } from "@/lib/utils/url-sanitize";
 
 export interface FetchResult {
@@ -340,7 +341,7 @@ export const fetchWithRetry = async (
         break;
       }
 
-      await new Promise((resolve) => setTimeout(resolve, currentDelay));
+      await sleep(currentDelay);
       currentDelay *= backoffMultiplier;
     }
   }

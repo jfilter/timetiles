@@ -57,7 +57,7 @@ const mocks = vi.hoisted(() => {
 });
 
 // Mock external dependencies
-vi.mock("@/lib/services/geocoding", () => ({
+vi.mock("@/lib/services/geocoding/geocoding-service", () => ({
   GeocodingService: class MockGeocodingService {
     geocode = mocks.geocode;
   },
@@ -89,13 +89,6 @@ vi.mock("@/lib/jobs/utils/resource-loading", async (importOriginal) => {
 
 // Mock review checks — default: no review needed
 vi.mock("@/lib/jobs/workflows/review-checks", () => ({
-  REVIEW_REASONS: {
-    SCHEMA_DRIFT: "schema-drift",
-    QUOTA_EXCEEDED: "quota-exceeded",
-    HIGH_DUPLICATE_RATE: "high-duplicates",
-    GEOCODING_PARTIAL: "geocoding-partial",
-    FILE_TOO_LARGE: "file-too-large",
-  },
   shouldReviewGeocodingPartial: vi.fn().mockReturnValue({ needsReview: false }),
   setNeedsReview: vi.fn().mockResolvedValue(undefined),
   parseReviewChecksConfig: vi.fn().mockReturnValue({ config: undefined }),

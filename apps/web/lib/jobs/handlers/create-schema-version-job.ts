@@ -17,6 +17,7 @@ import { SchemaVersioningService } from "@/lib/ingest/schema-versioning";
 import { createJobLogger, logError } from "@/lib/logger";
 import { compareSchemas } from "@/lib/services/schema-builder/schema-comparison";
 import { getFieldStats } from "@/lib/types/schema-detection";
+import { isRecord } from "@/lib/utils/is-record";
 import { datasets } from "@/payload-generated-schema";
 
 import type { CreateSchemaVersionJobInput } from "../types/job-inputs";
@@ -49,8 +50,7 @@ const shouldSkipSchemaVersionCreation = (job: {
 };
 
 /** Normalize a stored/detected schema to a plain object for comparison. */
-const asSchemaObject = (raw: unknown): Record<string, unknown> =>
-  typeof raw === "object" && raw !== null && !Array.isArray(raw) ? (raw as Record<string, unknown>) : {};
+const asSchemaObject = (raw: unknown): Record<string, unknown> => (isRecord(raw) ? raw : {});
 
 /**
  * Return the dataset's latest schema version when the job's detected schema is

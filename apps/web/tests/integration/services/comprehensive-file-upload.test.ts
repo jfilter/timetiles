@@ -19,7 +19,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vites
 
 import { PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
 import { logger } from "@/lib/logger";
-import * as geocodingModule from "@/lib/services/geocoding";
+import * as geocodingModule from "@/lib/services/geocoding/geocoding-service";
 import type { IngestJob } from "@/payload-types";
 
 import {

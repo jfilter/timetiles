@@ -22,7 +22,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import { POST as loginPOST } from "@/app/api/auth/login/route";
 import { POST as registerPOST } from "@/app/api/auth/register/route";
-import { TRUST_LEVELS } from "@/lib/constants/quota-constants";
+import { TRUST_LEVELS } from "@/lib/constants/trust-levels";
 import { hashEmail } from "@/lib/security/hash";
 import { AUDIT_ACTIONS } from "@/lib/services/audit-log-service";
 import { resetRateLimitService } from "@/lib/services/rate-limit-service";

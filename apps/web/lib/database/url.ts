@@ -116,15 +116,3 @@ export const getDatabaseUrl = (required: boolean = true): string | undefined => 
 
   return url;
 };
-
-/**
- * Get test database URL for current worker
- *
- * @returns The test database URL for the current worker
- */
-export const getTestDatabaseUrl = (): string => {
-  const baseUrl = getDatabaseUrl(true)!;
-  const workerId = process.env.VITEST_WORKER_ID;
-
-  return deriveDatabaseUrl(baseUrl, { workerId });
-};

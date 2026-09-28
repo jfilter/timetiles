@@ -15,8 +15,9 @@ import type {
 } from "payload";
 import { APIError, AuthenticationError, LockedAuth } from "payload";
 
-import { DEFAULT_QUOTAS, normalizeTrustLevel, TRUST_LEVELS } from "@/lib/constants/quota-constants";
+import { DEFAULT_QUOTAS, normalizeTrustLevel } from "@/lib/constants/quota-constants";
 import { RATE_LIMITS } from "@/lib/constants/rate-limits";
+import { TRUST_LEVELS } from "@/lib/constants/trust-levels";
 import { getTransactionAwareDrizzle } from "@/lib/database/drizzle-transaction";
 import { logger } from "@/lib/logger";
 import { validatePassword } from "@/lib/security/password-policy";

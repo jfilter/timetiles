@@ -15,6 +15,7 @@
 import type { Payload } from "payload";
 
 import { BATCH_SIZES, COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
+import { REVIEW_REASONS } from "@/lib/constants/review-reasons";
 import { parseCoordinate } from "@/lib/geospatial/parsing";
 import { isValidCoordinate } from "@/lib/geospatial/validation";
 import { streamBatchesFromFile } from "@/lib/ingest/file-readers";
@@ -27,8 +28,8 @@ import type { DatasetInterpretationPlan } from "@/lib/ingest/types/interpretatio
 import { getIngestFilePath } from "@/lib/ingest/upload-path";
 import { createJobLogger, logError, logPerformance } from "@/lib/logger";
 import { hashForLog } from "@/lib/security/hash";
-import { createGeocodingService, type GeocodingService } from "@/lib/services/geocoding";
 import { normalizeGeocodingAddress } from "@/lib/services/geocoding/cache-manager";
+import { createGeocodingService, type GeocodingService } from "@/lib/services/geocoding/geocoding-service";
 import type { GeocodingBias } from "@/lib/services/geocoding/types";
 import { getByPathOrKey } from "@/lib/utils/object-path";
 import type { IngestJob } from "@/payload-types";
@@ -44,12 +45,7 @@ import {
   loadJobResources,
   setJobStage,
 } from "../utils/resource-loading";
-import {
-  parseReviewChecksConfig,
-  REVIEW_REASONS,
-  setNeedsReview,
-  shouldReviewGeocodingPartial,
-} from "../workflows/review-checks";
+import { parseReviewChecksConfig, setNeedsReview, shouldReviewGeocodingPartial } from "../workflows/review-checks";
 
 /** Coordinate source columns a row may carry instead of needing geocoding. */
 interface CoordinateFields {

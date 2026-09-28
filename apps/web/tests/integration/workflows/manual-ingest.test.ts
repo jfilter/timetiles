@@ -11,7 +11,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
-import * as geocodingModule from "@/lib/services/geocoding";
+import * as geocodingModule from "@/lib/services/geocoding/geocoding-service";
 
 import { TEST_CREDENTIALS } from "../../constants/test-credentials";
 import {

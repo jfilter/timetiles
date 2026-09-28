@@ -12,7 +12,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { readInterpretationPlan } from "@/lib/ingest/interpret";
-import * as geocodingModule from "@/lib/services/geocoding";
+import * as geocodingModule from "@/lib/services/geocoding/geocoding-service";
 import type { IngestJob } from "@/payload-types";
 
 import {

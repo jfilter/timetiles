@@ -26,14 +26,14 @@ import { isAdmin } from "@/lib/collections/shared-fields";
 import Users from "@/lib/collections/users";
 import { getEnv } from "@/lib/config/env";
 import { ADMIN_ROUTE } from "@/lib/constants/routes";
+import { ALL_JOBS } from "@/lib/jobs/ingest-jobs";
+import { ALL_WORKFLOWS } from "@/lib/jobs/workflows";
 import { logger } from "@/lib/logger";
 import { schemaDetectionPlugin } from "@/lib/services/schema-detection";
 
 import type { CollectionName } from "./payload-shared-config";
 import {
   ALL_GLOBALS,
-  ALL_JOBS,
-  ALL_WORKFLOWS,
   COLLECTIONS,
   DEFAULT_DB_CONFIG,
   DEFAULT_TYPESCRIPT_CONFIG,
@@ -401,16 +401,3 @@ export const buildConfigWithDefaults = async (options: PayloadConfigOptions = {}
 
   return buildConfigWithProtectedJobStats(config);
 };
-
-/**
- * Creates a test Payload configuration with sensible defaults.
- */
-export const createTestConfig = async (options: Partial<PayloadConfigOptions> = {}) =>
-  buildConfigWithDefaults({
-    environment: "test",
-    disableAdmin: true,
-    disableGraphQL: true,
-    logLevel: "silent",
-    poolConfig: { max: 5 },
-    ...options,
-  });

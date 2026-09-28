@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   DAY_SECONDS,
-  formatDateRange,
+  formatBucketLabel,
   formatDateTime,
   formatTime,
   HOUR_SECONDS,
@@ -70,11 +70,11 @@ describe("formatDateTime", () => {
   });
 });
 
-describe("formatDateRange - sub-minute buckets (seconds)", () => {
+describe("formatBucketLabel - sub-minute buckets (seconds)", () => {
   it("shows full datetime with seconds for 30-second buckets", () => {
     const startDate = new Date(`${NOV_25_2025}T10:30:45Z`);
     const endDate = new Date(`${NOV_25_2025}T10:31:15Z`);
-    const result = formatDateRange(startDate, endDate, 30);
+    const result = formatBucketLabel(startDate, endDate, 30);
 
     // Should show full datetime with seconds
     expect(result).toMatch(/Nov/i);
@@ -87,17 +87,17 @@ describe("formatDateRange - sub-minute buckets (seconds)", () => {
   it("shows full datetime with seconds for 1-second buckets", () => {
     const startDate = new Date(`${NOV_25_2025}T10:30:01Z`);
     const endDate = new Date(`${NOV_25_2025}T10:30:02Z`);
-    const result = formatDateRange(startDate, endDate, 1);
+    const result = formatBucketLabel(startDate, endDate, 1);
 
     expect(result).toMatch(/01/); // seconds
   });
 });
 
-describe("formatDateRange - sub-hour buckets (minutes)", () => {
+describe("formatBucketLabel - sub-hour buckets (minutes)", () => {
   it("shows datetime without seconds for 5-minute buckets", () => {
     const startDate = new Date(`${NOV_25_2025}T10:30:00Z`);
     const endDate = new Date(`${NOV_25_2025}T10:35:00Z`);
-    const result = formatDateRange(startDate, endDate, 5 * MINUTE_SECONDS);
+    const result = formatBucketLabel(startDate, endDate, 5 * MINUTE_SECONDS);
 
     // Should show datetime without seconds
     expect(result).toMatch(/Nov/i);
@@ -110,7 +110,7 @@ describe("formatDateRange - sub-hour buckets (minutes)", () => {
   it("shows datetime for 15-minute buckets", () => {
     const startDate = new Date("2025-11-25T14:15:00Z");
     const endDate = new Date("2025-11-25T14:30:00Z");
-    const result = formatDateRange(startDate, endDate, 15 * MINUTE_SECONDS);
+    const result = formatBucketLabel(startDate, endDate, 15 * MINUTE_SECONDS);
 
     expect(result).toMatch(/Nov/i);
     // Time format is locale/timezone-dependent, just verify it includes minutes
@@ -119,11 +119,11 @@ describe("formatDateRange - sub-hour buckets (minutes)", () => {
   });
 });
 
-describe("formatDateRange - sub-day buckets (hours)", () => {
+describe("formatBucketLabel - sub-day buckets (hours)", () => {
   it("shows date and hour range for same-day hourly buckets", () => {
     const startDate = new Date(`${NOV_25_2025}T10:00:00Z`);
     const endDate = new Date(`${NOV_25_2025}T11:00:00Z`);
-    const result = formatDateRange(startDate, endDate, HOUR_SECONDS);
+    const result = formatBucketLabel(startDate, endDate, HOUR_SECONDS);
 
     // Should show date and hour range
     expect(result).toMatch(/Nov/i);
@@ -136,7 +136,7 @@ describe("formatDateRange - sub-day buckets (hours)", () => {
   it("shows full datetime range for cross-day hourly buckets", () => {
     const startDate = new Date("2025-11-25T23:00:00Z");
     const endDate = new Date("2025-11-26T01:00:00Z");
-    const result = formatDateRange(startDate, endDate, 2 * HOUR_SECONDS);
+    const result = formatBucketLabel(startDate, endDate, 2 * HOUR_SECONDS);
 
     // Should show both dates since they span midnight
     expect(result).toMatch(/25/);
@@ -146,7 +146,7 @@ describe("formatDateRange - sub-day buckets (hours)", () => {
   it("shows date and hour range for 6-hour buckets", () => {
     const startDate = new Date(`${NOV_25_2025}T06:00:00Z`);
     const endDate = new Date(`${NOV_25_2025}T12:00:00Z`);
-    const result = formatDateRange(startDate, endDate, 6 * HOUR_SECONDS);
+    const result = formatBucketLabel(startDate, endDate, 6 * HOUR_SECONDS);
 
     expect(result).toMatch(/Nov/i);
     expect(result).toMatch(/25/);
@@ -155,11 +155,11 @@ describe("formatDateRange - sub-day buckets (hours)", () => {
   });
 });
 
-describe("formatDateRange - daily buckets", () => {
+describe("formatBucketLabel - daily buckets", () => {
   it("shows single date for 1-day buckets", () => {
     const startDate = new Date(`${NOV_25_2025}T00:00:00Z`);
     const endDate = new Date("2025-11-26T00:00:00Z");
-    const result = formatDateRange(startDate, endDate, DAY_SECONDS);
+    const result = formatBucketLabel(startDate, endDate, DAY_SECONDS);
 
     expect(result).toMatch(/Nov/i);
     expect(result).toMatch(/25/);
@@ -169,7 +169,7 @@ describe("formatDateRange - daily buckets", () => {
   it("shows single date when bucket size is null (default)", () => {
     const startDate = new Date(`${NOV_25_2025}T00:00:00Z`);
     const endDate = new Date("2025-11-26T00:00:00Z");
-    const result = formatDateRange(startDate, endDate, null);
+    const result = formatBucketLabel(startDate, endDate, null);
 
     expect(result).toMatch(/Nov/i);
     expect(result).toMatch(/25/);
@@ -179,7 +179,7 @@ describe("formatDateRange - daily buckets", () => {
   it("shows single date when bucket size is undefined", () => {
     const startDate = new Date(`${NOV_25_2025}T00:00:00Z`);
     const endDate = new Date("2025-11-26T00:00:00Z");
-    const result = formatDateRange(startDate, endDate, undefined);
+    const result = formatBucketLabel(startDate, endDate, undefined);
 
     expect(result).toMatch(/Nov/i);
     expect(result).toMatch(/25/);
@@ -187,11 +187,11 @@ describe("formatDateRange - daily buckets", () => {
   });
 });
 
-describe("formatDateRange - weekly/multi-day buckets", () => {
+describe("formatBucketLabel - weekly/multi-day buckets", () => {
   it("shows date range for same-month weekly buckets", () => {
     const startDate = new Date("2024-01-01T00:00:00Z");
     const endDate = new Date("2024-01-07T00:00:00Z");
-    const result = formatDateRange(startDate, endDate, 7 * DAY_SECONDS);
+    const result = formatBucketLabel(startDate, endDate, 7 * DAY_SECONDS);
 
     // Should show compact range like "Jan 1 - 7, 2024"
     expect(result).toMatch(/Jan/i);
@@ -203,7 +203,7 @@ describe("formatDateRange - weekly/multi-day buckets", () => {
   it("shows date range for cross-month weekly buckets", () => {
     const startDate = new Date("2024-01-29T00:00:00Z");
     const endDate = new Date("2024-02-04T00:00:00Z");
-    const result = formatDateRange(startDate, endDate, 7 * DAY_SECONDS);
+    const result = formatBucketLabel(startDate, endDate, 7 * DAY_SECONDS);
 
     // Should show both months
     expect(result).toMatch(/Jan/i);
@@ -214,7 +214,7 @@ describe("formatDateRange - weekly/multi-day buckets", () => {
   it("shows date range for cross-year weekly buckets", () => {
     const startDate = new Date("2023-12-25T00:00:00Z");
     const endDate = new Date("2024-01-01T00:00:00Z");
-    const result = formatDateRange(startDate, endDate, 7 * DAY_SECONDS);
+    const result = formatBucketLabel(startDate, endDate, 7 * DAY_SECONDS);
 
     // Should show both years
     expect(result).toMatch(/Dec/i);
@@ -224,11 +224,11 @@ describe("formatDateRange - weekly/multi-day buckets", () => {
   });
 });
 
-describe("formatDateRange - monthly buckets", () => {
+describe("formatBucketLabel - monthly buckets", () => {
   it("shows month and year for 30-day buckets", () => {
     const startDate = new Date("2025-12-01T00:00:00Z");
     const endDate = new Date("2025-12-31T00:00:00Z");
-    const result = formatDateRange(startDate, endDate, MONTH_SECONDS);
+    const result = formatBucketLabel(startDate, endDate, MONTH_SECONDS);
 
     // Should show "December 2025" or similar
     expect(result).toMatch(/December/i);
@@ -238,18 +238,18 @@ describe("formatDateRange - monthly buckets", () => {
   it("shows month and year for various months", () => {
     const startDate = new Date("2025-06-01T00:00:00Z");
     const endDate = new Date("2025-06-30T00:00:00Z");
-    const result = formatDateRange(startDate, endDate, MONTH_SECONDS);
+    const result = formatBucketLabel(startDate, endDate, MONTH_SECONDS);
 
     expect(result).toMatch(/June/i);
     expect(result).toMatch(/2025/);
   });
 });
 
-describe("formatDateRange - yearly buckets", () => {
+describe("formatBucketLabel - yearly buckets", () => {
   it("shows just the year for 365-day buckets", () => {
     const startDate = new Date("2025-01-01T00:00:00Z");
     const endDate = new Date("2025-12-31T00:00:00Z");
-    const result = formatDateRange(startDate, endDate, YEAR_SECONDS);
+    const result = formatBucketLabel(startDate, endDate, YEAR_SECONDS);
 
     // Should show just "2025"
     expect(result).toBe("2025");
@@ -258,18 +258,18 @@ describe("formatDateRange - yearly buckets", () => {
   it("shows just the year for leap year (366-day) buckets", () => {
     const startDate = new Date("2024-01-01T00:00:00Z");
     const endDate = new Date("2024-12-31T00:00:00Z");
-    const result = formatDateRange(startDate, endDate, 366 * DAY_SECONDS);
+    const result = formatBucketLabel(startDate, endDate, 366 * DAY_SECONDS);
 
     expect(result).toBe("2024");
   });
 });
 
-describe("formatDateRange - edge cases", () => {
+describe("formatBucketLabel - edge cases", () => {
   it("handles bucket size at exact boundary (60 seconds = 1 minute)", () => {
     const startDate = new Date(`${NOV_25_2025}T10:30:00Z`);
     const endDate = new Date(`${NOV_25_2025}T10:31:00Z`);
     // Exactly 60 seconds is NOT sub-minute, so should show datetime without seconds
-    const result = formatDateRange(startDate, endDate, MINUTE_SECONDS);
+    const result = formatBucketLabel(startDate, endDate, MINUTE_SECONDS);
 
     // Should show datetime format without seconds
     expect(result).toMatch(/Nov/i);
@@ -280,7 +280,7 @@ describe("formatDateRange - edge cases", () => {
     const startDate = new Date(`${NOV_25_2025}T10:00:00Z`);
     const endDate = new Date(`${NOV_25_2025}T11:00:00Z`);
     // Exactly 3600 seconds is NOT sub-hour, so should show hour range
-    const result = formatDateRange(startDate, endDate, HOUR_SECONDS);
+    const result = formatBucketLabel(startDate, endDate, HOUR_SECONDS);
 
     expect(result).toMatch(/-/); // Should have separator for range
   });
@@ -288,7 +288,7 @@ describe("formatDateRange - edge cases", () => {
   it("handles midnight crossing correctly", () => {
     const startDate = new Date("2025-11-25T23:00:00Z");
     const endDate = new Date("2025-11-26T00:00:00Z");
-    const result = formatDateRange(startDate, endDate, HOUR_SECONDS);
+    const result = formatBucketLabel(startDate, endDate, HOUR_SECONDS);
 
     // Should handle midnight crossing
     expect(result).toMatch(/Nov/i);
@@ -297,7 +297,7 @@ describe("formatDateRange - edge cases", () => {
   it("handles year boundary correctly", () => {
     const startDate = new Date("2024-12-31T00:00:00Z");
     const endDate = new Date("2025-01-01T00:00:00Z");
-    const result = formatDateRange(startDate, endDate, DAY_SECONDS);
+    const result = formatBucketLabel(startDate, endDate, DAY_SECONDS);
 
     // Should show December 31, 2024
     expect(result).toMatch(/Dec/i);

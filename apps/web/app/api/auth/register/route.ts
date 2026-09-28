@@ -16,7 +16,7 @@ import type { Payload } from "payload";
 import { z } from "zod";
 
 import { apiRoute, requireFeatureEnabled } from "@/lib/api";
-import { TRUST_LEVELS } from "@/lib/constants/quota-constants";
+import { TRUST_LEVELS } from "@/lib/constants/trust-levels";
 import { getEmailContext } from "@/lib/email/context";
 import { EMAIL_CONTEXTS, queueEmail } from "@/lib/email/send";
 import { buildAccountExistsEmailHtml, buildAccountVerificationEmailHtml } from "@/lib/email/templates";

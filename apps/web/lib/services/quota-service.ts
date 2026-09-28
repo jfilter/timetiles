@@ -22,10 +22,10 @@ import {
   normalizeTrustLevel,
   type QuotaKey,
   QUOTAS,
-  TRUST_LEVELS,
   type UserQuotas,
   type UserUsage,
 } from "@/lib/constants/quota-constants";
+import { TRUST_LEVELS } from "@/lib/constants/trust-levels";
 import { drizzleColumns } from "@/lib/database/drizzle-helpers";
 import { createLogger } from "@/lib/logger";
 import { AppError } from "@/lib/types/errors";
