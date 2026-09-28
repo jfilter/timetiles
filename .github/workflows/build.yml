@@ -74,6 +74,17 @@ jobs:
         run: pnpm test
         working-directory: packages/ui
 
+      # Same gap as packages/ui: no other job runs the runner's or the Python SDK's suite.
+      - name: Test scraper runner
+        timeout-minutes: 5
+        run: pnpm test
+        working-directory: apps/timescrape
+
+      - name: Test Python scraper SDK
+        timeout-minutes: 2
+        run: PYTHONPATH=src python3 -m unittest discover -s tests
+        working-directory: packages/python
+
       - name: Build Storybook
         timeout-minutes: 3
         run: pnpm storybook:build
