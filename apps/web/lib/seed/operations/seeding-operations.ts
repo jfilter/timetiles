@@ -533,19 +533,13 @@ export class SeedingOperations {
       return null;
     }
 
-    try {
-      const payload = this.seedManager.payloadInstance;
-      if (!payload) {
-        throw new Error("Payload not initialized");
-      }
-      const result = await payload.find({ collection: collection as keyof Config["collections"], where, limit: 1 });
-
-      return result.docs.length > 0 ? result.docs[0] : null;
-    } catch (error) {
-      // If the query fails, assume the item doesn't exist
-      logger.debug(`Failed to check existing item for ${collection}`, { error });
-      return null;
+    const payload = this.seedManager.payloadInstance;
+    if (!payload) {
+      throw new Error("Payload not initialized");
     }
+    const result = await payload.find({ collection: collection as keyof Config["collections"], where, limit: 1 });
+
+    return result.docs.length > 0 ? result.docs[0] : null;
   }
 
   private getSeedData(

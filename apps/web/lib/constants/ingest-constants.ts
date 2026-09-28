@@ -13,6 +13,17 @@
 import { getAppConfig } from "@/lib/config/app-config";
 import type { IngestFile } from "@/payload-types";
 
+/** Upload MIME types that a file reader can parse (dispatch is by file extension). */
+export const ALLOWED_MIME_TYPES = [
+  "text/csv",
+  "text/plain",
+  "application/json",
+  "application/geo+json",
+  "application/vnd.ms-excel",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "application/vnd.oasis.opendocument.spreadsheet",
+];
+
 /**
  * Constants for ingest processing to avoid string duplication.
  */

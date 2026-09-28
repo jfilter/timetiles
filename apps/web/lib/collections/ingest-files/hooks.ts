@@ -48,17 +48,6 @@ export const enforceUploadRateLimit = async (
   return clientId;
 };
 
-export const ALLOWED_MIME_TYPES = [
-  "text/csv",
-  "text/plain",
-  "application/vnd.ms-excel",
-  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-  "application/vnd.oasis.opendocument.spreadsheet",
-  "application/vnd.google-apps.spreadsheet",
-  "application/json",
-  "application/geo+json",
-];
-
 export const beforeOperationHooks: CollectionBeforeOperationHook[] = [
   ({ operation, req }) => {
     // Only run on create operations

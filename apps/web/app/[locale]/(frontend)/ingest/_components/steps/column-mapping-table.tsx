@@ -18,7 +18,7 @@ import { useTranslations } from "next-intl";
 import { useCallback, useMemo, useState } from "react";
 
 import type { TransformType } from "@/lib/definitions/transform-registry";
-import { buildColumnView, FIELD_MAPPING_STRING_KEYS, findTargetForColumn } from "@/lib/ingest/column-view";
+import { buildColumnView, findTargetForColumn, WIZARD_TARGET_KEYS } from "@/lib/ingest/column-view";
 import type { ConcatenateTransform } from "@/lib/ingest/types/transforms";
 import { createTransform } from "@/lib/ingest/types/transforms";
 import type {
@@ -223,7 +223,7 @@ export const ColumnMappingTable = ({
   // Collect assigned targets
   const assignedTargets = useMemo(() => {
     const set = new Set<string>();
-    for (const key of FIELD_MAPPING_STRING_KEYS) {
+    for (const key of WIZARD_TARGET_KEYS) {
       if (fieldMapping[key]) set.add(key);
     }
     return set;

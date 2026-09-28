@@ -23,6 +23,7 @@ import {
   buildIdStrategy,
   buildWizardProcessingOptions,
   createIngestFileRecord,
+  getOrCreateCatalog,
   translateSchemaMode,
 } from "@/lib/ingest/configure-service";
 import { buildPlanFromWizard, fieldMappingToRoles } from "@/lib/ingest/plan-builder";
@@ -160,6 +161,20 @@ describe("import-configure-service", () => {
         latitudePath: "Lat",
         longitudePath: "Lng",
       });
+    });
+  });
+
+  describe("getOrCreateCatalog", () => {
+    it("denies a foreign catalog without an access-bypassing lookup", async () => {
+      const find = vi.fn().mockResolvedValue({ docs: [] });
+      const payload = { find } as unknown as Payload;
+      const user = { id: 7, role: "user" } as User;
+
+      const result = await getOrCreateCatalog(payload, {} as never, 42, undefined, user);
+
+      expect(result).toBe("forbidden");
+      expect(find).toHaveBeenCalledTimes(1);
+      expect(find.mock.calls[0]?.[0]).not.toHaveProperty("overrideAccess");
     });
   });
 

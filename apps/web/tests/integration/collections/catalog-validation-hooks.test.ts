@@ -10,7 +10,7 @@
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-import { getOrCreateCatalog } from "@/lib/jobs/handlers/dataset-detection/catalog-dataset-helpers";
+import { resolveOrCreateImportCatalog } from "@/lib/jobs/handlers/dataset-detection/catalog-dataset-helpers";
 import { createQuotaService } from "@/lib/services/quota-service";
 import type { User } from "@/payload-types";
 import {
@@ -199,7 +199,7 @@ describe.sequential("Catalog validation hooks", () => {
       const quotaService = createQuotaService(payload);
       const before = (await quotaService.getOrCreateUsageRecord(importer.id)).currentCatalogs ?? 0;
 
-      const catalogId = await getOrCreateCatalog(payload, undefined, importer.id);
+      const catalogId = await resolveOrCreateImportCatalog(payload, undefined, importer.id);
 
       expect((await quotaService.getOrCreateUsageRecord(importer.id)).currentCatalogs).toBe(before + 1);
 
@@ -216,7 +216,7 @@ describe.sequential("Catalog validation hooks", () => {
         user: importer,
       });
 
-      await expect(getOrCreateCatalog(payload, undefined, importer.id)).rejects.toThrow(/Maximum catalogs reached/);
+      await expect(resolveOrCreateImportCatalog(payload, undefined, importer.id)).rejects.toThrow(/Maximum catalogs reached/);
 
       const owned = await payload.find({
         collection: "catalogs",

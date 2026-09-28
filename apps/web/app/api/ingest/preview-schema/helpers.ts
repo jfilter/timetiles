@@ -35,16 +35,6 @@ import type { User } from "@/payload-types";
 // Re-export preview storage for use by upload/url routes
 export { getPreviewDir };
 
-export const ALLOWED_MIME_TYPES = [
-  "text/csv",
-  "text/plain",
-  "application/json",
-  "application/geo+json",
-  "application/vnd.ms-excel",
-  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-  "application/vnd.oasis.opendocument.spreadsheet",
-];
-
 /**
  * Technical ceiling for a preview, independent of any user's quota.
  *

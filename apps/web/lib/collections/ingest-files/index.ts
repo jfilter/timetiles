@@ -20,6 +20,7 @@
 import type { CollectionConfig } from "payload";
 
 import { getEnv } from "@/lib/config/env";
+import { ALLOWED_MIME_TYPES } from "@/lib/constants/ingest-constants";
 
 import { createCommonConfig } from "../shared-fields";
 import { ingestFilesAccess } from "./access";
@@ -28,7 +29,6 @@ import { ingestFileFields } from "./fields";
 import {
   afterChangeHooks,
   afterErrorHooks,
-  ALLOWED_MIME_TYPES,
   beforeChangeHooks,
   beforeOperationHooks,
   beforeValidateHooks,

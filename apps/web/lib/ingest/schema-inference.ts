@@ -132,16 +132,14 @@ export class SchemaInferenceService {
     datasetId: number,
     req?: PayloadRequest
   ): Promise<Dataset | null> {
-    try {
-      return await payload.findByID({
-        collection: COLLECTION_NAMES.DATASETS,
-        id: datasetId,
-        overrideAccess: true,
-        req,
-      });
-    } catch {
-      return null;
-    }
+    // disableErrors yields null only for a missing document; other failures still throw.
+    return payload.findByID({
+      collection: COLLECTION_NAMES.DATASETS,
+      id: datasetId,
+      overrideAccess: true,
+      disableErrors: true,
+      req,
+    });
   }
 
   /** Check if schema regeneration is needed and get current event count */

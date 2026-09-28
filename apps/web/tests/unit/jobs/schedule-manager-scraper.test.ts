@@ -10,6 +10,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { scheduleManagerJob } from "@/lib/jobs/handlers/schedule-manager-job";
+import { logger } from "@/lib/logger";
 
 // Mock dependencies
 vi.mock("@/lib/logger", () => ({
@@ -408,7 +409,7 @@ describe.sequential("scheduleManagerJob — scraper scheduling", () => {
     expect(result.output.scrapersTriggered).toBe(1);
   });
 
-  it("should handle lastRunAt cron calculation returning null", async () => {
+  it("disables a scraper whose cron expression is invalid", async () => {
     const { mockPayload, mockJob, mockReq } = createMockContext();
 
     vi.setSystemTime(new Date("2026-03-15T12:05:00Z"));
@@ -417,7 +418,7 @@ describe.sequential("scheduleManagerJob — scraper scheduling", () => {
       id: 14,
       name: "Bad Cron Scraper",
       enabled: true,
-      schedule: "invalid cron", // invalid
+      schedule: "invalid cron",
       lastRunAt: "2026-03-15T11:00:00Z",
     };
 
@@ -425,8 +426,16 @@ describe.sequential("scheduleManagerJob — scraper scheduling", () => {
 
     const result = await scheduleManagerJob.handler({ job: mockJob, req: mockReq });
 
-    // Should not trigger due to invalid cron (catch returns false)
     expect(result.output.scrapersTriggered).toBe(0);
+    expect(result.output.scraperErrors).toBe(1);
+    expect(mockPayload.jobs.queue).not.toHaveBeenCalled();
+    expect(mockPayload.update).toHaveBeenCalledWith(
+      expect.objectContaining({ collection: "scrapers", id: 14, data: { enabled: false, lastRunStatus: "failed" } })
+    );
+    expect(logger.warn).toHaveBeenCalledWith(
+      "Scraper schedule is invalid or never matches — disabling to avoid per-minute trigger storm",
+      expect.objectContaining({ scraperId: 14 })
+    );
   });
 
   it("should handle errors in the outer try/catch for individual scrapers", async () => {

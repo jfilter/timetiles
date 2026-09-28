@@ -409,7 +409,7 @@ describe.sequential("DatasetDetectionJob Handler", () => {
       await expect(datasetDetectionJob.handler(mockContext)).rejects.toThrow("Ingest file not found");
     });
 
-    // Replaces a former "should throw when catalog not found" test: getOrCreateCatalog
+    // Replaces a former "should throw when catalog not found" test: resolveOrCreateImportCatalog
     // never loads the catalog, it only parses the id, so a "missing catalog" cannot be
     // observed here. The real contract is that the parsed id is used as-is.
     it("uses the given catalog id without looking the catalog up", async () => {

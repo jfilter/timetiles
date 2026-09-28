@@ -28,12 +28,9 @@ const shouldScraperRunNow = (scraper: Scraper, currentTime: Date): boolean => {
 
   // Fall back to calculating from lastRunAt
   if (scraper.lastRunAt) {
-    try {
-      const nextRun = calculateNextCronRun(scraper.schedule, new Date(scraper.lastRunAt));
-      return nextRun != null && currentTime >= nextRun;
-    } catch {
-      return false;
-    }
+    const nextRun = calculateNextCronRun(scraper.schedule, new Date(scraper.lastRunAt));
+    // No next run means an unusable schedule; proceed so the advance step disables it.
+    return nextRun == null || currentTime >= nextRun;
   }
 
   // First run: no previous execution and no pre-calculated nextRunAt.
@@ -48,7 +45,7 @@ const shouldScraperRunNow = (scraper: Scraper, currentTime: Date): boolean => {
  * Mirrors the scheduled-ingest path (handleImportError): without advancing
  * nextRunAt a queue failure leaves the old time in the past and re-triggers on
  * every 1-minute scheduler tick. When the cron never matches again
- * (calculateNextCronRun returns null) the scraper is disabled instead, so an
+ * (calculateNextCronRun returns null, also for an invalid expression) the scraper is disabled instead, so an
  * invalid/never-matching schedule is surfaced rather than producing a
  * per-minute trigger storm.
  *
@@ -63,7 +60,7 @@ const advanceScraperNextRunOrDisable = async (
   const nextRun = calculateNextCronRun(scraper.schedule!, currentTime);
 
   if (!nextRun) {
-    logger.warn("Scraper schedule never matches — disabling to avoid per-minute trigger storm", {
+    logger.warn("Scraper schedule is invalid or never matches — disabling to avoid per-minute trigger storm", {
       scraperId: scraper.id,
       name: scraper.name,
       schedule: scraper.schedule,

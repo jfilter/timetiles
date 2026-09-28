@@ -7,6 +7,7 @@
  * @module
  * @category Import
  */
+import { FIELD_MAPPING_STRING_KEYS } from "@/lib/ingest/field-mapping-utils";
 import { getTransformOutputPaths } from "@/lib/ingest/transform-builders";
 import type {
   ConfidenceLevel,
@@ -30,7 +31,7 @@ export const clearRemovedColumns = (
   const previousColumns = new Set(getMappingColumnNames(headers, previousTransforms));
   const nextColumns = new Set(getMappingColumnNames(headers, nextTransforms));
   const updated = { ...mapping };
-  for (const key of FIELD_MAPPING_STRING_KEYS) {
+  for (const key of WIZARD_TARGET_KEYS) {
     const path = updated[key];
     if (path && previousColumns.has(path) && !nextColumns.has(path)) updated[key] = null;
   }
@@ -54,18 +55,10 @@ export interface ColumnViewRow {
 // Constants
 // ---------------------------------------------------------------------------
 
-/** All FieldMapping keys that hold `string | null` column names (UI-visible subset). */
-export const FIELD_MAPPING_STRING_KEYS: FieldMappingStringField[] = [
-  "titleField",
-  "dateField",
-  "endDateField",
-  "descriptionField",
-  "locationNameField",
-  "locationField",
-  "latitudeField",
-  "longitudeField",
-  "idField",
-];
+/** Keys the wizard column table can assign; it has no target option for a combined coordinate column. */
+export const WIZARD_TARGET_KEYS: readonly FieldMappingStringField[] = FIELD_MAPPING_STRING_KEYS.filter(
+  (key) => key !== "coordinateField"
+);
 
 /** Mapping between FieldMapping keys and SuggestedMappings keys. */
 const FIELD_TO_SUGGESTION_KEY: Partial<Record<FieldMappingStringField, keyof SuggestedMappings["mappings"]>> = {
@@ -86,7 +79,7 @@ const FIELD_TO_SUGGESTION_KEY: Partial<Record<FieldMappingStringField, keyof Sug
 /** Find which target field a source column is currently assigned to. */
 export const findTargetForColumn = (columnName: string, fieldMapping: FieldMapping): FieldMappingStringField | null => {
   if (!columnName) return null;
-  for (const key of FIELD_MAPPING_STRING_KEYS) {
+  for (const key of WIZARD_TARGET_KEYS) {
     if (fieldMapping[key] === columnName) return key;
   }
   return null;

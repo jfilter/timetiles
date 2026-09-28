@@ -28,7 +28,7 @@ import type { JobHandlerContext, TaskCallbackArgs } from "../utils/job-context";
 import {
   buildConfigSnapshot,
   findOrCreateDataset,
-  getOrCreateCatalog,
+  resolveOrCreateImportCatalog,
   validateDatasetAccessForUser,
 } from "./dataset-detection/catalog-dataset-helpers";
 import type { SheetInfo } from "./dataset-detection/parse-files";
@@ -160,7 +160,7 @@ const handleSingleSheet = async (
     // Validate the import-file owner has access to the target dataset's catalog
     await validateDatasetAccessForUser(payload, dataset, userId);
   } else {
-    const resolvedCatalogId = await getOrCreateCatalog(payload, catalogId, userId);
+    const resolvedCatalogId = await resolveOrCreateImportCatalog(payload, catalogId, userId);
     dataset = await findOrCreateDataset(payload, resolvedCatalogId, ingestFile.originalName ?? "Imported Data", userId);
   }
 
@@ -273,7 +273,7 @@ const processSheetWithMapping = async (
       return null;
     }
   } else {
-    const resolvedCatalogId = await getOrCreateCatalog(payload, catalogId, userId);
+    const resolvedCatalogId = await resolveOrCreateImportCatalog(payload, catalogId, userId);
     dataset = await findOrCreateDataset(payload, resolvedCatalogId, sheetName, userId);
   }
 

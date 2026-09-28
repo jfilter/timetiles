@@ -490,36 +490,14 @@ export const getOrCreateCatalog = async (
   user: User
 ): Promise<number | null | "forbidden"> => {
   if (catalogId !== "new") {
-    // Bug 13 fix: verify the user owns this catalog (admins bypass)
+    // Non-admins may only target catalogs they created.
     if (user.role !== "admin") {
       const catalog = await payload.find({
         collection: "catalogs",
         where: { id: { equals: catalogId }, createdBy: { equals: user.id } },
         limit: 1,
       });
-      if (catalog.docs.length === 0) {
-        // Debug: fetch catalog without ownership filter to understand why access was denied
-        const catalogWithoutFilter = await payload.find({
-          collection: "catalogs",
-          where: { id: { equals: catalogId } },
-          limit: 1,
-          overrideAccess: true,
-          depth: 0,
-        });
-        const found = catalogWithoutFilter.docs[0];
-        logger.debug(
-          {
-            catalogId,
-            userId: user.id,
-            userRole: user.role,
-            catalogExists: catalogWithoutFilter.docs.length > 0,
-            catalogCreatedBy: found?.createdBy ?? null,
-            catalogName: found?.name ?? null,
-          },
-          "Catalog access denied — user does not own catalog"
-        );
-        return "forbidden";
-      }
+      if (catalog.docs.length === 0) return "forbidden";
     }
     return catalogId;
   }

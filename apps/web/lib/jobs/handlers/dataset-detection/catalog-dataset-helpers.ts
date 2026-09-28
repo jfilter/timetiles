@@ -81,7 +81,7 @@ export const validateDatasetAccessForUser = async (
 };
 
 /** Get or create a catalog, returning its numeric ID. */
-export const getOrCreateCatalog = async (
+export const resolveOrCreateImportCatalog = async (
   payload: Payload,
   catalogId?: string | number,
   userId?: number

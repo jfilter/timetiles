@@ -11,7 +11,6 @@ import dns from "node:dns";
 
 import { isPrivateIP, normalizeAddressLiteral } from "@timetiles/shared";
 
-import { logger } from "@/lib/logger";
 import { isE2E } from "@/lib/utils/is-e2e";
 
 /** Hostnames that resolve to private/loopback addresses. */
@@ -112,8 +111,8 @@ export const validateExternalHttpUrl = (urlString: string): { url: URL } | { err
  * Returns the resolved addresses on success so callers can pin the fetch to
  * the already-validated IP — this closes the DNS-rebinding TOCTOU window
  * between the validation lookup and the actual connect-time lookup undici
- * would otherwise perform. Returns `null` when the DNS lookup itself fails
- * (non-blocking — the caller's fetch will surface the transport error).
+ * would otherwise perform. Throws when the DNS lookup fails; returns `null`
+ * only when the private-URL bypass is enabled.
  */
 export const resolvePublicHostname = async (
   hostname: string
@@ -123,12 +122,8 @@ export const resolvePublicHostname = async (
   }
 
   // A URL hostname keeps the brackets around an IPv6 literal, and
-  // `dns.lookup("[::1]")` always fails with ENOTFOUND. Because a failed lookup
-  // is deliberately non-blocking below, passing the bracketed form meant every
-  // IPv6-literal URL skipped the resolved-address check and the IP pinning
-  // entirely — the rebinding protection this function exists for did not apply
-  // to any of them. Stripping the brackets makes `lookup` echo the literal
-  // back, which `isPrivateIP` can then actually classify.
+  // `dns.lookup("[::1]")` always fails with ENOTFOUND; without brackets `lookup`
+  // echoes the literal back, which `isPrivateIP` can then classify.
   const lookupHost = hostname.startsWith("[") && hostname.endsWith("]") ? hostname.slice(1, -1) : hostname;
 
   let resolved: Array<{ address: string; family: number }>;
@@ -138,8 +133,8 @@ export const resolvePublicHostname = async (
       | { address: string; family: number };
     resolved = Array.isArray(raw) ? raw : [raw];
   } catch (error) {
-    logger.debug("DNS lookup failed during SSRF check (non-blocking)", { hostname, error });
-    return null;
+    // Without resolved addresses neither the private-IP check nor IP pinning can apply.
+    throw new Error(`DNS lookup failed for "${hostname}": ${error instanceof Error ? error.message : String(error)}`);
   }
 
   for (const entry of resolved) {
@@ -154,8 +149,7 @@ export const resolvePublicHostname = async (
 /**
  * Validates that a hostname resolves only to public IP addresses.
  *
- * DNS lookup failures remain non-blocking so transport-level errors still
- * surface through the caller's normal fetch/clone path. Kept for callers
+ * Throws when the lookup fails or any address is private. Kept for callers
  * that only need the validation side-effect; prefer {@link resolvePublicHostname}
  * when you also want to pin the resolved IP to defeat DNS-rebinding TOCTOU.
  */

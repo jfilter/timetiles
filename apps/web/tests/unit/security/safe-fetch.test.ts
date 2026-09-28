@@ -243,12 +243,13 @@ describe.sequential("safeFetch", () => {
       expect(response.status).toBe(200);
     });
 
-    it("does not block when DNS lookup fails (non-SSRF error)", async () => {
+    it("refuses the fetch when the DNS lookup fails", async () => {
       dnsLookup.mockRejectedValueOnce(new Error("ENOTFOUND"));
-      mockFetch.mockResolvedValueOnce(createResponse(200));
 
-      const response = await safeFetch("https://example.com/data.csv", { dnsCheck: true });
-      expect(response.status).toBe(200);
+      await expect(safeFetch("https://example.com/data.csv", { dnsCheck: true })).rejects.toThrow(
+        'DNS lookup failed for "example.com": ENOTFOUND'
+      );
+      expect(mockFetch).not.toHaveBeenCalled();
     });
 
     it("skips DNS check when not enabled", async () => {

@@ -359,4 +359,11 @@ describe.sequential("validateResolvedPublicHostname", () => {
 
     await expect(validateResolvedPublicHostname("example.com")).resolves.toBeUndefined();
   });
+  it("fails closed when the DNS lookup fails", async () => {
+    mockDnsLookup.mockRejectedValueOnce(new Error("getaddrinfo ENOTFOUND nowhere.example"));
+
+    await expect(validateResolvedPublicHostname("nowhere.example")).rejects.toThrow(
+      'DNS lookup failed for "nowhere.example"'
+    );
+  });
 });

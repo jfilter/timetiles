@@ -15,15 +15,10 @@ import path from "node:path";
 import { v4 as uuidv4 } from "uuid";
 
 import { apiRoute, ValidationError } from "@/lib/api";
+import { ALLOWED_MIME_TYPES } from "@/lib/constants/ingest-constants";
 import { createLogger } from "@/lib/logger";
 
-import {
-  ALLOWED_MIME_TYPES,
-  buildPreviewResult,
-  FILE_EXTENSION_REGEX,
-  getPreviewDir,
-  getPreviewFileSizeLimit,
-} from "../helpers";
+import { buildPreviewResult, FILE_EXTENSION_REGEX, getPreviewDir, getPreviewFileSizeLimit } from "../helpers";
 
 const logger = createLogger("api-preview-schema-upload");
 
