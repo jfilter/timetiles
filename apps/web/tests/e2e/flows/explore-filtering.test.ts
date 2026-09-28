@@ -72,7 +72,6 @@ test.describe("Explore Page - Filtering", () => {
   test("should select all datasets in a catalog via tri-state checkbox", async () => {
     // The catalog tri-state checkbox selects every dataset in the group at once.
     await explorePage.selectAllInCatalog("Environmental Data");
-    await explorePage.waitForApiResponse();
 
     // URL should have datasets param with multiple comma-separated IDs
     const params = await explorePage.getUrlParams();
@@ -109,7 +108,6 @@ test.describe("Explore Page - Filtering", () => {
     await explorePage.toggleDataset("Air Quality Measurements");
     await explorePage.toggleDataset("GDP Growth Rates");
 
-    await explorePage.waitForApiResponse();
     await explorePage.waitForEventsToLoad();
 
     const params = await explorePage.getUrlParams();
@@ -136,7 +134,6 @@ test.describe("Explore Page - Filtering", () => {
       { timeout: 5000 }
     );
 
-    await explorePage.waitForApiResponse();
     await explorePage.waitForEventsToLoad();
 
     await explorePage.assertUrlParam("startDate", YEAR_START);
@@ -149,7 +146,6 @@ test.describe("Explore Page - Filtering", () => {
     await explorePage.setStartDate(YEAR_START);
     await explorePage.setEndDate(YEAR_END);
 
-    await explorePage.waitForApiResponse();
     await explorePage.clearDateFilters();
 
     await explorePage.page.waitForFunction(
@@ -170,7 +166,6 @@ test.describe("Explore Page - Filtering", () => {
     await explorePage.setStartDate(YEAR_START);
     await explorePage.setEndDate(YEAR_END);
 
-    await explorePage.waitForApiResponse();
     await explorePage.waitForEventsToLoad();
 
     const params = await explorePage.getUrlParams();
@@ -182,7 +177,6 @@ test.describe("Explore Page - Filtering", () => {
   test("should update results when changing dataset selection", async () => {
     // Start with one dataset
     await explorePage.toggleDataset("Air Quality Measurements");
-    await explorePage.waitForApiResponse();
     await explorePage.waitForEventsToLoad();
     const initialParams = await explorePage.getUrlParams();
     const initialIds = initialParams.get("datasets")?.split(",") ?? [];
@@ -190,7 +184,6 @@ test.describe("Explore Page - Filtering", () => {
 
     // Deselect it
     await explorePage.toggleDataset("Air Quality Measurements");
-    await explorePage.waitForApiResponse();
 
     // Select a different dataset from a different catalog
     const changedDatasetResponsePromise = explorePage.page.waitForResponse(
@@ -255,7 +248,6 @@ test.describe("Explore Page - Filtering", () => {
     await explorePage.setEndDate(monthEnd);
     const monthResponse = await monthResponsePromise;
 
-    await explorePage.waitForApiResponse();
     await explorePage.waitForEventsToLoad();
 
     await expectEventsWithinDateRange(monthResponse, monthStart, monthEnd);
@@ -265,19 +257,18 @@ test.describe("Explore Page - Filtering", () => {
     await explorePage.toggleDataset("Air Quality Measurements");
     await explorePage.setStartDate(YEAR_START);
 
-    await explorePage.waitForApiResponse();
-
     const urlWithParams = explorePage.page.url();
 
     // Navigate away and back
     await explorePage.page.goto("/");
     await explorePage.page.goto(urlWithParams);
 
-    await explorePage.waitForApiResponse();
-
     // Verify the dataset checkbox is restored to checked state
-    const selected = await explorePage.getSelectedDatasets();
-    expect(selected.some((name) => /Air Quality Measurements/i.test(name))).toBe(true);
+    await expect
+      .poll(async () =>
+        (await explorePage.getSelectedDatasets()).some((name) => /Air Quality Measurements/i.test(name))
+      )
+      .toBe(true);
 
     // Verify date filter is restored via URL
     await explorePage.assertUrlParam("startDate", YEAR_START);

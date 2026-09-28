@@ -42,18 +42,6 @@ export class EmbedPage {
     );
   }
 
-  /** Returns true if the site header (marketing or app) is visible. */
-  async hasHeader(): Promise<boolean> {
-    const header = this.page.locator("header").first();
-    return header.isVisible({ timeout: 2000 }).catch(() => false);
-  }
-
-  /** Returns true if the site footer is visible. */
-  async hasFooter(): Promise<boolean> {
-    const footer = this.page.locator("footer").first();
-    return footer.isVisible({ timeout: 2000 }).catch(() => false);
-  }
-
   /** Assert that the embed body tag has the data-embed attribute. */
   async assertEmbedMode() {
     const body = this.page.locator("body");

@@ -272,7 +272,7 @@ export const EventsList = ({
   }
 
   return (
-    <div className="relative">
+    <div className="relative" data-testid="events-list">
       {isUpdating && (
         <div className="absolute top-0 right-0 z-10">
           <div className="bg-background/80 flex items-center gap-2 rounded-md border px-3 py-1 text-xs backdrop-blur-sm">

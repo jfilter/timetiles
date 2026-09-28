@@ -110,7 +110,8 @@ const deleteApiDoc = async (
   doc: { id: number | string } | undefined
 ) => {
   if (!doc) return;
-  await adminApi.delete(`${path}/${doc.id}`, { headers: authHeaders }).catch(() => undefined);
+  const response = await adminApi.delete(`${path}/${doc.id}`, { headers: authHeaders });
+  expect(response.ok(), `cleanup DELETE ${path}/${doc.id}`).toBe(true);
 };
 
 test.describe("Access Control - User Perspective", () => {

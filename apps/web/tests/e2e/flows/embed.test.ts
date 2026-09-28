@@ -20,8 +20,8 @@ test.describe("Embed Page", () => {
 
   test("should render the map without header or footer", async () => {
     await expect(embedPage.map).toBeVisible();
-    expect(await embedPage.hasHeader()).toBe(false);
-    expect(await embedPage.hasFooter()).toBe(false);
+    await expect(embedPage.page.locator("header").first()).toBeHidden();
+    await expect(embedPage.page.locator("footer").first()).toBeHidden();
   });
 
   test("should have data-embed attribute on body", async () => {

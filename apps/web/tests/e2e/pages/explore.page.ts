@@ -37,7 +37,7 @@ export class ExplorePage {
     this.endDateInput = page.getByRole("button", { name: /End date:/i });
     // Clear dates button format changed - now shows date range like "Feb 2024 → Jan 2026"
     this.clearDatesButton = page.getByRole("button", { name: /→/ });
-    this.eventsList = page.locator(".space-y-2").first();
+    this.eventsList = page.getByTestId("events-list");
     // Events count format changed to "Showing X of Y events" or "Showing all X events"
     this.eventsCount = page
       .locator("p")
@@ -146,30 +146,13 @@ export class ExplorePage {
     await dateInputs.first().waitFor({ state: "visible", timeout: 5000 });
   }
 
-  /**
-   * Open the filter drawer if it's not already open.
-   * The filter drawer contains catalog and dataset selection.
-   * Note: Filter drawer is open by default on page load.
-   */
+  /** Open the filter drawer (catalog and dataset selection) unless it is already open. */
   async openFilterDrawer() {
-    // Check if filter drawer is already open by looking for any checkbox
     const anyCheckbox = this.page.locator('[role="checkbox"]').first();
-    const isAlreadyOpen = await anyCheckbox.isVisible({ timeout: 2000 }).catch(() => false);
-
-    if (isAlreadyOpen) {
-      // Already open, nothing to do
-      return;
-    }
-
-    // Try to find "Show filters" button (visible when drawer is closed)
     const showFiltersButton = this.page.getByRole("button", { name: /Show filters|Filters/i });
-    const showButtonVisible = await showFiltersButton.isVisible({ timeout: 1000 }).catch(() => false);
-
-    if (showButtonVisible) {
-      await showFiltersButton.click();
-      // Wait for the drawer to open (checkboxes should become visible)
-      await anyCheckbox.waitFor({ state: "visible", timeout: 5000 });
-    }
+    await expect(anyCheckbox.or(showFiltersButton).first()).toBeVisible({ timeout: 10000 });
+    if (!(await anyCheckbox.isVisible())) await showFiltersButton.click();
+    await expect(anyCheckbox).toBeVisible({ timeout: 5000 });
   }
 
   /**
@@ -208,12 +191,9 @@ export class ExplorePage {
     const collapsedButtons = this.page.locator("button:has(.lucide-chevron-right)");
     const count = await collapsedButtons.count();
     for (let i = 0; i < count; i++) {
-      // Re-query each iteration since the DOM mutates after each click
-      const button = this.page.locator("button:has(.lucide-chevron-right)").first();
-      const visible = await button.isVisible({ timeout: 500 }).catch(() => false);
-      if (!visible) break;
-      await button.click();
+      await collapsedButtons.first().click();
     }
+    await expect(collapsedButtons).toHaveCount(0);
   }
 
   /**
@@ -233,8 +213,10 @@ export class ExplorePage {
       .filter({ hasText: new RegExp(datasetName, "i") })
       .first();
     await datasetLabel.waitFor({ state: "visible", timeout: 10000 });
+    const datasetsParam = () => new URL(this.page.url()).searchParams.get("datasets");
+    const before = datasetsParam();
     await datasetLabel.click({ timeout: 10000 });
-    await this.waitForApiResponse();
+    await expect.poll(datasetsParam, { timeout: 5000 }).not.toBe(before);
   }
 
   /**
@@ -512,19 +494,6 @@ export class ExplorePage {
       .toBeGreaterThanOrEqual(min);
   }
 
-  async waitForApiResponse() {
-    // Wait for API response with a reasonable timeout
-    // Don't wait forever if no API call is made
-    try {
-      await this.page.waitForResponse(
-        (response) => response.url().includes("/api/v1/events") || response.url().includes("/api/events"),
-        { timeout: 5000 }
-      );
-    } catch {
-      // If no API call within 2s, data is likely cached — continue immediately
-    }
-  }
-
   getUrlParams(): Promise<URLSearchParams> {
     const url = new URL(this.page.url());
     return Promise.resolve(url.searchParams);
@@ -552,37 +521,5 @@ export class ExplorePage {
         expect(params.get(key)).toBe(value);
       }
     }
-  }
-
-  async isPageStable(): Promise<boolean> {
-    if (this.page.isClosed()) {
-      throw new Error("Page is closed");
-    }
-
-    try {
-      // Check if we can access a basic element
-      await this.page.locator("h1").waitFor({ state: "visible", timeout: 1000 });
-      return true;
-    } catch {
-      // Page is not stable yet, but this is expected during checks
-      return false;
-    }
-  }
-
-  async waitForPageStability() {
-    let attempts = 0;
-    const maxAttempts = 10;
-
-    while (attempts < maxAttempts) {
-      if (await this.isPageStable()) {
-        return;
-      }
-
-      // Brief pause between stability checks
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      attempts++;
-    }
-
-    throw new Error("Page did not become stable within timeout");
   }
 }

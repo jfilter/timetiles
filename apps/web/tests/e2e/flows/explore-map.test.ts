@@ -24,7 +24,6 @@ test.describe("Explore Page - Map Interactions", () => {
   test("should filter events by map bounds when panning", async ({ page }) => {
     // Select catalog (auto-selects all datasets)
     await explorePage.selectAllInCatalog("Environmental Data");
-    await explorePage.waitForApiResponse();
     await explorePage.waitForEventsToLoad();
 
     // Pan the map
@@ -45,7 +44,6 @@ test.describe("Explore Page - Map Interactions", () => {
   test("should update markers when events change", async ({ page }) => {
     // Select catalog and let all data load (filter → 300ms debounce → API → render)
     await explorePage.selectAllInCatalog("Environmental Data");
-    await explorePage.waitForApiResponse();
     await explorePage.waitForEventsToLoad();
 
     // Wait for event count text to appear (debounce + query + render pipeline)
@@ -75,7 +73,6 @@ test.describe("Explore Page - Map Interactions", () => {
   test("should handle zoom interactions", async ({ page }) => {
     // Load some events first
     await explorePage.selectAllInCatalog("Environmental Data");
-    await explorePage.waitForApiResponse();
     await explorePage.waitForEventsToLoad();
 
     const zoomParam = () => Number(new URL(page.url()).searchParams.get("zoom"));
@@ -99,7 +96,6 @@ test.describe("Explore Page - Map Interactions", () => {
   test("should handle rendered map feature clicks", async ({ page }) => {
     // Load events
     await explorePage.selectAllInCatalog("Environmental Data");
-    await explorePage.waitForApiResponse();
     await explorePage.waitForEventsToLoad();
 
     const clickedFeature = await explorePage.clickFirstRenderedMapFeature();
@@ -126,15 +122,13 @@ test.describe("Explore Page - Map Interactions", () => {
 
     // Load events
     await explorePage.selectAllInCatalog("Environmental Data");
-    await explorePage.waitForApiResponse();
     await explorePage.waitForEventsToLoad();
 
-    // Pan the map
+    const postPanResponse = page.waitForResponse((response) => response.url().includes("/api/v1/events"), {
+      timeout: 15000,
+    });
     await explorePage.panMap(200, 0);
-
-    // Wait for potential API call - account for 300ms debounce
-    // Wait for API response after bounds change
-    await explorePage.waitForApiResponse();
+    await postPanResponse;
 
     // At least some API requests should have been made
     expect(apiRequests.length).toBeGreaterThan(0);
@@ -147,8 +141,6 @@ test.describe("Explore Page - Map Interactions", () => {
     // Load a catalog that might have many events
     await explorePage.selectAllInCatalog("Environmental Data");
 
-    // Wait for data to load
-    await explorePage.waitForApiResponse();
     await explorePage.waitForEventsToLoad();
 
     // The seeded catalog should produce a real result set, not only a non-crashing map.
@@ -181,15 +173,13 @@ test.describe("Explore Page - Map Interactions", () => {
     // Set up filters that might return no results
     await explorePage.selectAllInCatalog("Environmental Data");
 
-    // Wait for API response and events to load first (timeline appears after data loads)
-    await explorePage.waitForApiResponse();
+    // Wait for events to load first (timeline appears after data loads)
     await explorePage.waitForEventsToLoad();
 
     // Set date range in far future (likely no events)
     await explorePage.setStartDate("2030-01-01");
     await explorePage.setEndDate("2030-12-31");
 
-    await explorePage.waitForApiResponse();
     await explorePage.waitForEventsToLoad();
 
     // Should show "No events found" message
