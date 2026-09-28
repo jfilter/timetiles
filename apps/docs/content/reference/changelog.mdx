@@ -8,6 +8,31 @@ See the [release process](/development/contributing/release-process) for how new
 
 Changes landed on `main` since the last tagged release.
 
+## [0.1.0-alpha.16] - 2026-09-28
+
+**Upgrade note:** the scraper runner no longer defaults its work area to `/tmp/timescrape` and refuses to start without an absolute `SCRAPER_DATA_DIR`. Bootstrap step 13 writes it into the runner's systemd unit. `timetiles update` leaves a runner whose unit predates this in place and names the step to rerun: `sudo deployment/bootstrap/bootstrap.sh --step 13-scraper-setup`.
+
+### Changed
+
+- Cache: the general cache keeps only its filesystem backend; the cleanup job fails, and is retried, when cleanup or statistics fail instead of reporting invented numbers
+- Scrapers: the reported row count skips a record holding one empty field, as the import does
+
+### Fixed
+
+- Scrapers: CSV rows are counted per record, so quoted fields spanning lines or containing literal quotes no longer skew the count
+- Scrapers: the Node and Python SDKs refuse rows without fields instead of writing an empty file
+- Scrapers: runs whose output the watchdog cannot read are killed, and the reason names the path
+- Scrapers: output download and cleanup errors are reported instead of answering 404 or staying silent
+- Scrapers: a clone whose repository size cannot be read fails instead of passing the size limit
+- Scrapers: the run's stderr names the signal that ended podman
+- Scrapers: the runner rejects empty or out-of-range settings at startup, and `init` rejects unknown arguments
+- CLI and bootstrap: the runner is swapped by renames, so an old install that cannot be deleted is still replaced as a whole
+- CLI and bootstrap: `.env` lines with CRLF endings are read without the carriage return
+
+### Security
+
+- Scrapers: repository clones refuse a git host the SSRF check cannot resolve
+
 ## [0.1.0-alpha.15] - 2026-09-28
 
 ### Fixed
