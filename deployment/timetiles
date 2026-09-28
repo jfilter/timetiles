@@ -1696,6 +1696,10 @@ EOF
         # stays available for non-interactive callers such as the test suite.
         ADMIN_PASSWORD="${TIMETILES_ADMIN_PASSWORD:-}"
         if [[ -z "$ADMIN_PASSWORD" ]]; then
+            if [[ ! -t 0 ]]; then
+                echo -e "${RED}No terminal to read the password from; set TIMETILES_ADMIN_PASSWORD.${NC}"
+                exit 1
+            fi
             read -rsp "Password for $ADMIN_EMAIL: " ADMIN_PASSWORD
             echo ""
             read -rsp "Repeat password: " ADMIN_PASSWORD_REPEAT
