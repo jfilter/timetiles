@@ -12,6 +12,8 @@
 import { renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import type * as FieldMappingUtils from "@/lib/ingest/field-mapping-utils";
+
 // --- Mocks (must be hoisted before imports) ---
 
 const mockSetNodes = vi.hoisted(() => vi.fn());
@@ -37,7 +39,8 @@ vi.mock("@/lib/ingest/types/flow-mapping", () => ({
   createTargetNodes: () => [{ id: "tgt-1", type: "target-field", data: {}, position: { x: 0, y: 0 } }],
 }));
 
-vi.mock("@/lib/ingest/field-mapping-utils", () => ({
+vi.mock("@/lib/ingest/field-mapping-utils", async (importOriginal) => ({
+  ...(await importOriginal<typeof FieldMappingUtils>()),
   createEmptyFieldMapping: (sheetIndex: number) => ({ sheetIndex, titleField: null }),
   setMappingField: vi.fn(),
 }));
