@@ -1465,7 +1465,9 @@ EOF
         # The install dir is a symlink into a real working tree under .../-src,
         # set up by the bootstrap.
         REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-        if [ -d "$REPO_ROOT/.git" ]; then
+        if [[ -n "${TIMETILES_UPDATE_PULLED:-}" ]]; then
+            :
+        elif [ -d "$REPO_ROOT/.git" ]; then
             DEPLOY_REF=$(deploy_files_ref)
             echo -e "${YELLOW}Pulling deployment files (${DEPLOY_REF})...${NC}"
             # fetch + reset --hard converges to remote even if a tracked file was
@@ -1492,13 +1494,9 @@ EOF
                     done
             fi
 
-            # The git pull may have rewritten this very script. Re-exec so
-            # the rest of `update` (compose changes, scraper-runner restart,
-            # …) runs with the new code, not the version bash already loaded
-            # into memory. --no-self-update prevents recursion.
-            if [[ "${2:-}" != "--no-self-update" ]]; then
-                exec "$SCRIPT_DIR/timetiles" update --no-self-update
-            fi
+            # The pull may have rewritten this script and the libraries it sourced;
+            # finish `update` in a fresh process that loads the pulled code.
+            TIMETILES_UPDATE_PULLED=1 exec "$SCRIPT_DIR/timetiles" update --no-self-update
         else
             echo -e "${YELLOW}Install dir is not a git working tree —${NC}"
             echo -e "${YELLOW}this update only refreshes Docker images.${NC}"
