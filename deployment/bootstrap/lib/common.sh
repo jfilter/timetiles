@@ -234,6 +234,7 @@ env_get() {
     local file="$1" key="$2" line value
     line=$(grep "^${key}=" "$file") || return
     line="${line##*$'\n'}"
+    line="${line%$'\r'}"
     value="${line#*=}"
     if [[ ${#value} -ge 2 && ( "$value" == \"*\" || "$value" == \'*\' ) ]]; then
         value="${value:1:${#value}-2}"
@@ -296,10 +297,13 @@ install_runner_from_image() {
         print_error "Runner extraction failed — dist/index.js not found"
         return 1
     fi
+    # Renames within one directory do not fail midway the way deleting node_modules can.
+    mkdir "$staging/old" || return 1
     for part in dist node_modules package.json; do
-        { rm -rf "${runner_dir:?}/$part" && mv "$staging/$part" "$runner_dir/$part"; } || return 1
+        if [[ -e "$runner_dir/$part" ]]; then mv "$runner_dir/$part" "$staging/old/$part" || return 1; fi
+        mv "$staging/$part" "$runner_dir/$part" || return 1
     done
-    rm -rf "$staging"
+    rm -rf "$staging" || print_warning "Runner installed; could not remove $staging"
 }
 
 # Get public IPv4 address

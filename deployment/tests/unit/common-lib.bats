@@ -212,6 +212,12 @@ free() { echo "Swap: $SWAP_MB 0 $SWAP_MB"; }
     [ "$(env_get "$BATS_TEST_TMPDIR/env" C)" = '"' ]
 }
 
+@test "env_get strips quotes from a CRLF line" {
+    printf 'A="x y"\r\nB=plain\r\n' > "$BATS_TEST_TMPDIR/env"
+    [ "$(env_get "$BATS_TEST_TMPDIR/env" A)" = "x y" ]
+    [ "$(env_get "$BATS_TEST_TMPDIR/env" B)" = "plain" ]
+}
+
 @test "env_get returns the last assignment and ignores prefixed keys" {
     printf 'KEY=first\nKEY_OTHER=no\nKEY=second\n' > "$BATS_TEST_TMPDIR/env"
     [ "$(env_get "$BATS_TEST_TMPDIR/env" KEY)" = "second" ]

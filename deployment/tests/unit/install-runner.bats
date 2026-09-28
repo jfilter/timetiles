@@ -36,6 +36,7 @@ install() {
 }
 
 teardown() {
+    chmod -R u+w "$TEST_TEMP_DIR" 2>/dev/null || true
     teardown_temp_dir
 }
 
@@ -64,5 +65,17 @@ teardown() {
 
     [ "$status" -eq 0 ]
     [ "$(cat "$RUNNER/dist/index.js")" = "new" ]
+    [ ! -e "$RUNNER/node_modules/old-dep" ]
+}
+
+@test "an old runner that cannot be deleted is still replaced as a whole" {
+    echo pinned > "$RUNNER/node_modules/old-dep/file"
+    chmod 555 "$RUNNER/node_modules/old-dep"
+    install
+
+    [ "$status" -eq 0 ]
+    [ "$(cat "$RUNNER/dist/index.js")" = "new" ]
+    [ "$(cat "$RUNNER/package.json")" = "new" ]
+    [ -d "$RUNNER/node_modules/new-dep" ]
     [ ! -e "$RUNNER/node_modules/old-dep" ]
 }
