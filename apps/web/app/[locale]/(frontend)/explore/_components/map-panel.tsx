@@ -27,6 +27,8 @@ interface MapPanelProps {
   initialBounds?: SimpleBounds | null;
   initialViewState?: MapViewState | null;
   isLoadingBounds: boolean;
+  /** The cluster data does not match the viewport yet */
+  isDataPending: boolean;
   /** Cluster query failed — the map renders its error state instead of an empty world. */
   isError?: boolean;
   showZoomToData: boolean;
@@ -46,6 +48,7 @@ export const MapPanel = ({
   initialBounds,
   initialViewState,
   isLoadingBounds,
+  isDataPending,
   isError,
   showZoomToData,
   onZoomToData,
@@ -64,6 +67,7 @@ export const MapPanel = ({
       initialBounds={initialBounds}
       initialViewState={initialViewState}
       isLoadingBounds={isLoadingBounds}
+      isDataPending={isDataPending}
       isError={isError}
       scope={scope}
     />

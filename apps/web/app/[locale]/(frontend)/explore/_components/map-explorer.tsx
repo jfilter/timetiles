@@ -122,6 +122,7 @@ const MapExplorerContent = ({ chrome, initialViewState }: MapExplorerContentProp
         initialBounds={boundsData?.bounds}
         initialViewState={initialViewState}
         isLoadingBounds={isLoadingInitialBounds}
+        isDataPending={map.isDataPending}
         isError={clustersError}
         showZoomToData={showZoomToData}
         onZoomToData={handleZoomToData}

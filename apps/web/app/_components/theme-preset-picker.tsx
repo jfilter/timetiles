@@ -12,25 +12,13 @@
 import { Palette } from "lucide-react";
 import { useTranslations } from "next-intl";
 
-import { useMounted } from "@/lib/hooks/use-theme";
 import { useThemePreset } from "@/lib/hooks/use-theme-preset";
 
+// The preset store starts at the default on server and client alike, so the full button is
+// hydration-safe and keeps the header actions from shifting when the page becomes interactive.
 export const ThemePresetPicker = () => {
   const t = useTranslations("Common");
   const { preset, setPreset, presets } = useThemePreset();
-  const mounted = useMounted();
-
-  if (!mounted) {
-    return (
-      <button
-        type="button"
-        aria-label={t("toggleTheme")}
-        className="hover:bg-accent/50 flex items-center justify-center rounded p-2"
-      >
-        <Palette className="h-4 w-4" />
-      </button>
-    );
-  }
 
   const cyclePreset = () => {
     const currentIndex = presets.findIndex((p) => p.id === preset);

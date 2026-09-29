@@ -138,7 +138,7 @@ test.describe("Navbar Authentication", () => {
       await expect(signOutItem).toBeVisible();
     });
 
-    test("should sign out user when clicking Sign Out", async ({ page }) => {
+    test("should sign out user when clicking Sign Out", async ({ page, ownUser }) => {
       // Go to home page and login
       await page.goto("/", { timeout: 10000 });
       await page.waitForLoadState("domcontentloaded");
@@ -147,8 +147,8 @@ test.describe("Navbar Authentication", () => {
       await signInButton.click();
       await page.waitForURL(/\/login/);
 
-      await page.locator("#login-email").fill(TEST_EMAILS.admin);
-      await page.locator("#login-password").fill(TEST_CREDENTIALS.seed.admin);
+      await page.locator("#login-email").fill(ownUser.email);
+      await page.locator("#login-password").fill(ownUser.password);
       await page.getByRole("button", { name: /sign in/i }).click();
 
       await page.waitForURL("/", { timeout: 10000 });
@@ -158,7 +158,7 @@ test.describe("Navbar Authentication", () => {
       await page.waitForLoadState("domcontentloaded");
 
       // Open user menu
-      const userMenuButton = page.getByRole("button", { name: /admin user/i });
+      const userMenuButton = page.getByRole("button", { name: ownUser.name });
       await userMenuButton.click();
 
       // Click Sign Out

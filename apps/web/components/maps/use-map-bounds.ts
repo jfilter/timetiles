@@ -37,6 +37,27 @@ interface UseMapBoundsProps {
   setCurrentZoom: (zoom: number) => void;
 }
 
+/** Moves the map to the URL view state or else the data bounds; returns whether it moved. */
+const applyInitialPosition = (
+  map: MapRef,
+  initialViewState: MapViewState | null | undefined,
+  initialBounds: SimpleBounds | null | undefined
+): boolean => {
+  if (initialViewState) {
+    map.flyTo({
+      center: [initialViewState.longitude, initialViewState.latitude],
+      zoom: initialViewState.zoom,
+      animate: false,
+    });
+    return true;
+  }
+  if (initialBounds) {
+    fitMapToBounds(map, initialBounds, { animate: false });
+    return true;
+  }
+  return false;
+};
+
 export const useMapBounds = ({
   initialBounds,
   initialViewState,
@@ -60,16 +81,7 @@ export const useMapBounds = ({
   // Without this effect, the map stays at the hardcoded INITIAL_VIEW_STATE.
   useEffect(() => {
     if (!mapRef.current || hasAppliedBoundsRef.current) return;
-    if (initialViewState) {
-      mapRef.current.flyTo({
-        center: [initialViewState.longitude, initialViewState.latitude],
-        zoom: initialViewState.zoom,
-        animate: false,
-      });
-      hasAppliedBoundsRef.current = true;
-      setIsMapPositioned(true);
-    } else if (initialBounds) {
-      fitMapToBounds(mapRef.current, initialBounds, { animate: false });
+    if (applyInitialPosition(mapRef.current, initialViewState, initialBounds)) {
       hasAppliedBoundsRef.current = true;
       setIsMapPositioned(true);
     }
@@ -77,15 +89,9 @@ export const useMapBounds = ({
 
   const handleLoad = (evt: { target: MapEventTarget }) => {
     const map = evt.target as MapRef;
-    if (initialViewState) {
-      map.flyTo({
-        center: [initialViewState.longitude, initialViewState.latitude],
-        zoom: initialViewState.zoom,
-        animate: false,
-      });
-      hasAppliedBoundsRef.current = true;
-    } else if (initialBounds) {
-      fitMapToBounds(map, initialBounds, { animate: false });
+    // The style often loads after the effect above has positioned the map and the user has begun
+    // moving it; positioning again here would cancel that move.
+    if (!hasAppliedBoundsRef.current && applyInitialPosition(map, initialViewState, initialBounds)) {
       hasAppliedBoundsRef.current = true;
     }
     setIsMapPositioned(true);

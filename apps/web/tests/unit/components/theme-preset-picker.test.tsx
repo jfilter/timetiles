@@ -5,6 +5,7 @@
  */
 import { act, cleanup, fireEvent, render } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
+import { hydrateRoot, type Root } from "react-dom/client";
 import { renderToString } from "react-dom/server";
 import { afterEach, describe, expect, it } from "vitest";
 
@@ -14,6 +15,10 @@ import de from "../../../messages/de.json";
 import en from "../../../messages/en.json";
 
 afterEach(() => {
+  // The preset store is module-wide: a cleared-storage event resets it while a picker is mounted.
+  act(() => {
+    window.dispatchEvent(new StorageEvent("storage", { key: null, storageArea: localStorage }));
+  });
   cleanup();
   localStorage.removeItem("timetiles-theme-preset");
   document.documentElement.classList.remove("theme-modern");
@@ -30,8 +35,26 @@ describe.each([
     </NextIntlClientProvider>
   );
 
-  it("labels the server-rendered placeholder", () => {
+  it("labels the server-rendered button", () => {
     expect(renderToString(picker())).toContain(`aria-label="${messages.Common.toggleTheme}"`);
+  });
+
+  it("keeps the server markup unchanged through hydration", () => {
+    const html = renderToString(picker());
+    const container = document.createElement("div");
+    container.innerHTML = html;
+    document.body.append(container);
+    let root: Root | undefined;
+    act(() => {
+      root = hydrateRoot(container, picker());
+    });
+    const hydratedHtml = container.innerHTML;
+    act(() => {
+      root?.unmount();
+    });
+    container.remove();
+
+    expect(hydratedHtml).toBe(html);
   });
 
   it("localizes the control and cycles the preset", () => {

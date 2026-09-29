@@ -1,5 +1,43 @@
+diff --git a/dist/auth/sessions.js b/dist/auth/sessions.js
+index 820887e76b0c50d9be729da289394a843f564249..838541c022adbcb963ae8742dafbf75209d9ac79 100644
+--- a/dist/auth/sessions.js
++++ b/dist/auth/sessions.js
+@@ -24,20 +24,22 @@ import { v4 as uuid } from 'uuid';
+             createdAt: now,
+             expiresAt
+         };
+-        if (!user.sessions?.length) {
+-            user.sessions = [
+-                session
+-            ];
+-        } else {
+-            user.sessions = removeExpiredSessions(user.sessions);
+-            user.sessions.push(session);
+-        }
+-        // Prevent updatedAt from being updated when only adding a session
+-        user.updatedAt = null;
++        user.sessions = [
++            ...removeExpiredSessions(user.sessions ?? []),
++            session
++        ];
++        // Append atomically: writing back the array read at login start would drop sessions
++        // that overlapping logins of the same user add in the meantime.
+         await payload.db.updateOne({
+             id: user.id,
+             collection: collectionConfig.slug,
+-            data: user,
++            data: {
++                sessions: {
++                    $push: session
++                },
++                // Prevent updatedAt from being updated when only adding a session
++                updatedAt: null
++            },
+             req,
+             returning: false
+         });
 diff --git a/dist/utilities/deepCopyObject.js b/dist/utilities/deepCopyObject.js
-index 9238a31f41794b441317c78ac5da3dcc22877012..e10431da67906a226c98d3483cbe23b31457bc6c 100644
+index 9238a31f41794b441317c78ac5da3dcc22877012..5b0ccc355cfdbe11580c38dc58c1a0c81f2ef6c4 100644
 --- a/dist/utilities/deepCopyObject.js
 +++ b/dist/utilities/deepCopyObject.js
 @@ -109,7 +109,12 @@ Benchmark: https://github.com/AlessioGr/fastest-deep-clone-json/blob/main/test/b

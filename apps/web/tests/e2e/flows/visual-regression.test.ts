@@ -39,7 +39,8 @@ const waitForExploreScreenshotReady = async (page: Page) => {
 };
 
 test.describe("Visual Regression", () => {
-  // Skip the whole suite unless explicitly opted in. See module docstring.
+  // CI runs on Linux, for which no baselines exist, and the darwin explore baselines predate the
+  // current explore layout. The module docstring lists the remaining blockers.
   test.skip(!RUN_VISUAL_REGRESSION, "Opt-in only — set E2E_VISUAL_REGRESSION=true");
 
   // Use a fixed viewport for consistent screenshots

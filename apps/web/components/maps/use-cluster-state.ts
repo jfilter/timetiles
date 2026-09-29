@@ -53,6 +53,8 @@ export const useClusterState = (clusters: ClusterFeature[]) => {
     focusedCluster,
     highlightedCells,
     animatedClusters,
+    // The transition ends on the input array itself, so a differing one is still in flight.
+    isTransitioning: animatedClusters !== clusters,
     geojsonData,
     maxCount,
   };

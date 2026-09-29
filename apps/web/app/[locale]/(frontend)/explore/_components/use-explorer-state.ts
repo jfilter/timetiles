@@ -10,7 +10,7 @@
  */
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from "react";
 
 import { useFilters, useSelectedEvent } from "@/lib/hooks/use-filters";
 import { useViewScope } from "@/lib/hooks/use-view-scope";
@@ -23,6 +23,8 @@ import { useExplorerViewport } from "./use-explorer-viewport";
 export interface UseExplorerStateOptions {
   /** Called on bounds change with center and zoom for URL persistence */
   onMapPositionChange?: (center: { lng: number; lat: number }, zoom: number) => void;
+  /** The map opens at a view from the URL, which the initial fit to the data must not replace */
+  hasInitialViewState?: boolean;
 }
 
 export const useExplorerState = (options?: UseExplorerStateOptions) => {
@@ -90,8 +92,9 @@ export const useExplorerState = (options?: UseExplorerStateOptions) => {
     }
   }, [datasetsKey, setBoundsState]);
 
-  // Fit map to data bounds on initial load or after dataset change
-  useEffect(() => {
+  // Fit map to data bounds on initial load or after dataset change. A layout effect starts the
+  // flight in the commit that hides the loading overlay, so no frame shows the old view unmasked.
+  useLayoutEffect(() => {
     if (boundsState === "initial" && boundsData?.bounds && mapRef.current && !boundsLoading) {
       mapRef.current.fitBounds(boundsData.bounds, { padding: 50, animate: true });
       setBoundsState("bounds-applied");
@@ -99,6 +102,8 @@ export const useExplorerState = (options?: UseExplorerStateOptions) => {
   }, [boundsState, boundsData?.bounds, boundsLoading, mapRef, setBoundsState]);
 
   const isLoadingInitialBounds = boundsLoading && boundsState === "initial";
+  // The clusters lag the viewport by the bounds debounce and the refetch that follows it.
+  const isMapDataPending = isLoadingInitialBounds || queries.clustersFetching || simpleBounds !== debouncedSimpleBounds;
 
   const handleZoomToData = useCallback(() => {
     if (boundsData?.bounds && mapRef.current) {
@@ -124,6 +129,7 @@ export const useExplorerState = (options?: UseExplorerStateOptions) => {
       simpleBounds,
       debouncedSimpleBounds,
       boundsState,
+      isDataPending: isMapDataPending,
       showZoomToData,
       handleBoundsChange: viewport.handleBoundsChange,
       handleZoomToData,

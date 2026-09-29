@@ -78,6 +78,8 @@ interface ClusteredMapProps {
   initialBounds?: SimpleBounds | null;
   initialViewState?: MapViewState | null;
   isLoadingBounds?: boolean;
+  /** The cluster data does not match the viewport yet */
+  isDataPending: boolean;
   isError?: boolean;
   scope?: ViewScope;
   ref?: Ref<ClusteredMapHandle>;
@@ -112,6 +114,7 @@ export const ClusteredMap = ({
   initialBounds,
   initialViewState,
   isLoadingBounds,
+  isDataPending,
   isError,
   scope,
   ref,
@@ -138,6 +141,7 @@ export const ClusteredMap = ({
     focusedCluster,
     highlightedCells,
     animatedClusters,
+    isTransitioning,
     geojsonData,
     maxCount,
   } = useClusterState(clusters);
@@ -208,6 +212,7 @@ export const ClusteredMap = ({
       clusterFilterCells={clusterFilterCells}
       focusedCluster={focusedCluster}
       showLoading={showLoading}
+      isBusy={isDataPending || isTransitioning}
       isError={isError}
       geojsonData={geojsonData}
       h3HexData={h3HexData}

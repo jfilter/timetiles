@@ -25,11 +25,15 @@ export type BoundsState = "initial" | "bounds-applied" | "user-panned";
 interface UseExplorerViewportOptions {
   /** Called on bounds change with center and zoom for URL persistence */
   onMapPositionChange?: (center: { lng: number; lat: number }, zoom: number) => void;
+  /** The map opens at a view from the URL, which the initial fit to the data must not replace */
+  hasInitialViewState?: boolean;
 }
 
 export const useExplorerViewport = (options?: UseExplorerViewportOptions) => {
   const [mapZoom, setMapZoom] = useState(9);
-  const [boundsState, setBoundsState] = useState<BoundsState>("initial");
+  const [boundsState, setBoundsState] = useState<BoundsState>(
+    options?.hasInitialViewState === true ? "bounds-applied" : "initial"
+  );
 
   const mapRef = useRef<ClusteredMapHandle>(null);
 

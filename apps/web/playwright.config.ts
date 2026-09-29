@@ -40,8 +40,8 @@ export default defineConfig({
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: isCI,
 
-  /* Retry flaky tests caused by import pipeline and map rendering timing */
-  retries: isCI ? 2 : 1,
+  /* Tests wait for observable app state, so a failure is a real one and is not retried. */
+  retries: 0,
 
   /* Limit parallel workers to avoid job queue starvation.
    * Payload's job runner has no row-level locking, so only 1 worker process

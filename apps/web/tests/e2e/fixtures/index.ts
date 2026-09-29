@@ -10,12 +10,21 @@
 
 /* eslint-disable react-hooks/rules-of-hooks -- Playwright fixture `use()` is not a React hook */
 
-import { test as base } from "@playwright/test";
+import { expect, test as base } from "@playwright/test";
 import { Client } from "pg";
 
 import { withDatabaseName } from "@/lib/database/url";
 
+import { TEST_CREDENTIALS, TEST_EMAILS } from "../../constants/test-credentials";
 import { getWorktreeBasePort } from "../utils/worktree-id";
+
+/** An admin account created for one test and deleted after it. */
+interface OwnUser {
+  email: string;
+  password: string;
+  /** The display name the header shows for the account */
+  name: string;
+}
 
 /** Run-status values the scrapers collection accepts. */
 type ScraperRunStatus = "success" | "failed" | "timeout" | "running";
@@ -74,10 +83,42 @@ const setScraperRunStatusFixture = async (
 export const test = base.extend<{
   baseURL: string;
   setScraperRunStatus: (scraperId: number, status: ScraperRunStatus) => Promise<void>;
+  ownUser: OwnUser;
 }>({
   // oxlint-disable-next-line no-empty-pattern -- Playwright fixtures require destructured first arg
   setScraperRunStatus: async ({}, use) => {
     await use(setScraperRunStatusFixture);
+  },
+
+  // Payload's logout rewrites the account's whole session list and can drop the session of a
+  // concurrent login, so a test that logs out must not share its account with other tests.
+  ownUser: async ({ playwright, baseURL }, use) => {
+    const admin = await playwright.request.newContext({ baseURL, storageState: "test-results/.auth/admin.json" });
+    const user = {
+      email: TEST_EMAILS.admin.replace("@", `+own-${crypto.randomUUID()}@`),
+      password: `${TEST_CREDENTIALS.basic.strongPassword}-${crypto.randomUUID()}`,
+      name: "Own User",
+    };
+    let userId: number | undefined;
+    try {
+      const created = await admin.post("/api/users", {
+        data: {
+          email: user.email,
+          password: user.password,
+          firstName: "Own",
+          lastName: "User",
+          role: "admin",
+          _verified: true,
+        },
+      });
+      expect(created.status()).toBe(201);
+      userId = ((await created.json()) as { doc: { id: number } }).doc.id;
+      await use(user);
+    } finally {
+      const deleted = userId == null ? null : await admin.delete(`/api/users/${userId}`);
+      await admin.dispose();
+      if (deleted != null) expect(deleted.ok()).toBe(true);
+    }
   },
 
   // Set baseURL from environment or compute from worktree

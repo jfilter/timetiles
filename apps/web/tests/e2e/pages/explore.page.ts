@@ -71,6 +71,16 @@ export class ExplorePage {
     await this.map.waitFor({ state: "visible", timeout: 15000 });
     await expect(this.page.locator(".maplibregl-canvas")).toBeVisible({ timeout: 10000 });
     await expect(this.dataSourcesSection).toBeVisible({ timeout: 10000 });
+    // The map's load handler exposes it. Until then MapLibre's setup can stall the main thread for
+    // seconds, long enough to delay what a test does next past its timeouts.
+    await this.page.waitForFunction(
+      () =>
+        (
+          globalThis as typeof globalThis & { __TIMETILES_E2E_MAP__?: { getCanvas: () => HTMLCanvasElement } }
+        ).__TIMETILES_E2E_MAP__?.getCanvas().isConnected === true,
+      undefined,
+      { timeout: 15000 }
+    );
 
     const loadingText = this.page.getByText(/loading map data/i);
     await loadingText.waitFor({ state: "hidden", timeout: 15000 }).catch(async (err) => {
@@ -411,7 +421,8 @@ export class ExplorePage {
                 point: { x: number; y: number },
                 options: { layers: string[] }
               ) => Array<{ geometry?: { type?: string; coordinates?: unknown }; properties?: Record<string, unknown> }>;
-              isMoving?: () => boolean;
+              isMoving: () => boolean;
+              isSourceLoaded: (id: string) => boolean;
               project: (coordinates: [number, number]) => { x: number; y: number };
             };
           }
@@ -423,7 +434,9 @@ export class ExplorePage {
         const width = canvas.clientWidth;
         const height = canvas.clientHeight;
         if (width <= 0 || height <= 0) return null;
-        if (map.isMoving?.()) return null;
+        // Clusters picked before the view and its data settle are gone by the time the click lands.
+        if (canvas.closest("[aria-busy]")?.getAttribute("aria-busy") !== "false") return null;
+        if (map.isMoving() || !map.isSourceLoaded("clustered-map-source")) return null;
 
         const layers = ["event-locations", "location-count-label", "event-clusters", "cluster-count-label"];
         const columns = 12;
@@ -461,7 +474,7 @@ export class ExplorePage {
     await this.page
       .locator(".maplibregl-canvas")
       .first()
-      .click({ force: true, position: { x: featureData.x, y: featureData.y } });
+      .click({ position: { x: featureData.x, y: featureData.y } });
     return { type: featureData.type, count: featureData.count, eventId: featureData.eventId };
   }
 

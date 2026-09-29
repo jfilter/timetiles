@@ -78,6 +78,8 @@ export interface ClusteredMapRendererProps {
   clusterFilterCells: string[] | null;
   focusedCluster: FocusedCluster | null;
   showLoading: boolean;
+  /** Clusters are loading or moving; exposed as `aria-busy` on the map */
+  isBusy: boolean;
   isError?: boolean;
   geojsonData: GeoJSON.FeatureCollection;
   h3HexData: GeoJSON.FeatureCollection;
@@ -129,6 +131,7 @@ export const ClusteredMapRenderer = ({
   clusterFilterCells,
   focusedCluster,
   showLoading,
+  isBusy,
   isError,
   geojsonData,
   h3HexData,
@@ -158,7 +161,7 @@ export const ClusteredMapRenderer = ({
   filterLabel,
   initialViewState,
 }: ClusteredMapRendererProps) => (
-  <div className="relative h-full w-full">
+  <div className="relative h-full w-full" aria-busy={isBusy}>
     {showLoading && <MapLoadingOverlay message={loadingMessage} />}
     {isError && !showLoading && <MapErrorOverlay title={errorTitle} subtitle={errorSubtitle} />}
     <MapGL

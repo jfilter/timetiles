@@ -30,6 +30,6 @@ export const useExplorerMapPosition = () => {
     mapPosition,
     hasMapPosition,
     initialViewState,
-    explorerOptions: { onMapPositionChange: handleMapPositionChange },
+    explorerOptions: { onMapPositionChange: handleMapPositionChange, hasInitialViewState: initialViewState != null },
   };
 };
