@@ -14,8 +14,8 @@ treated as logged out.
 
 The patch appends the new session with the database adapter's atomic `$push`
 instead, the approach of the open upstream pull request payloadcms/payload#18150.
-Expired sessions are therefore no longer pruned on login, only on token
-refresh; a stale row per login is harmless. Refresh and logout still rewrite the
+The users collection's `afterLogin` hook removes the user's expired sessions
+instead, which cannot drop a session an overlapping login adds. Refresh and logout still rewrite the
 whole array and can race a login of the same account in the same way.
 
 Remove this part only when the unpatched Payload passes:

@@ -299,6 +299,12 @@ export const usersAfterLoginHook: CollectionAfterLoginHook[] = [
       { req }
     );
   },
+  async ({ req, user }) => {
+    // Patched login appends its session without pruning; removing only expired rows cannot
+    // drop a session that an overlapping login adds.
+    const db = await getTransactionAwareDrizzle(req.payload, req);
+    await db.execute(sql`DELETE FROM payload.users_sessions WHERE _parent_id = ${user.id} AND expires_at < now()`);
+  },
 ];
 
 /**

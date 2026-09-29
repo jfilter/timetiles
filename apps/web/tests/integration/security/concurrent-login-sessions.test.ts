@@ -49,4 +49,23 @@ describe.sequential("Concurrent login sessions", () => {
     expect(new Set(issuedSessionIds).size).toBe(8);
     expect(storedSessionIds).toEqual(expect.arrayContaining(issuedSessionIds));
   });
+
+  it("removes the user's expired sessions on login", async () => {
+    const { payload } = testEnv;
+    const password = TEST_CREDENTIALS.basic.strongPassword;
+    const email = `expired-session-${Date.now()}@example.test`;
+    const { users } = await withUsers(testEnv, { target: { email, password, role: "user", _verified: true } });
+    await payload.db.drizzle.execute(
+      sql`INSERT INTO payload.users_sessions (_order, _parent_id, id, created_at, expires_at)
+          VALUES (1, ${users.target.id}, 'expired-session', now() - interval '3 hours', now() - interval '1 hour')`
+    );
+
+    await payload.login({ collection: "users", data: { email, password } });
+
+    const stored = await payload.db.drizzle.execute(
+      sql`SELECT id, expires_at < now() AS expired FROM payload.users_sessions WHERE _parent_id = ${users.target.id}`
+    );
+    expect(stored.rows).toHaveLength(1);
+    expect(stored.rows[0]?.expired).toBe(false);
+  });
 });
