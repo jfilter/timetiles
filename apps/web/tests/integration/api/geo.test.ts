@@ -29,6 +29,8 @@ describe.sequential("/api/v1/events/geo", () => {
   const testEventIds: string[] = [];
   let testEnv: any;
   const uniqueSuffix = Date.now().toString();
+  // Other files share this worker's database, so every query stays on the test dataset.
+  const datasetFilters = () => JSON.stringify({ datasets: [Number(testDatasetId)] });
 
   beforeAll(async () => {
     const { createIntegrationTestEnvironment, withCatalog, withUsers } =
@@ -38,16 +40,14 @@ describe.sequential("/api/v1/events/geo", () => {
 
     const { users } = await withUsers(testEnv, { testUser: { role: "admin" } });
 
-    // Create test catalog
-    // eslint-disable-next-line require-atomic-updates -- Sequential test setup, no race condition
-    testEnv = await withCatalog(testEnv, {
+    const { catalog } = await withCatalog(testEnv, {
       name: "Test Catalog for Clustering",
       slug: `test-clustering-catalog-${uniqueSuffix}`,
       isPublic: true,
       description: "Test catalog for clustering integration tests",
       user: users.testUser,
     });
-    testCatalogId = String(testEnv.catalog.id);
+    testCatalogId = String(catalog.id);
 
     // Create test dataset
     const dataset = await payload.create({
@@ -316,7 +316,7 @@ describe.sequential("/api/v1/events/geo", () => {
           ${bounds.east}::double precision,
           ${bounds.north}::double precision,
           10::integer,
-          '{}'::jsonb
+          ${datasetFilters()}::jsonb
         )
       `
     )) as { rows: Array<Record<string, unknown>> };
@@ -330,7 +330,7 @@ describe.sequential("/api/v1/events/geo", () => {
           ${bounds.east}::double precision,
           ${bounds.north}::double precision,
           11::integer,
-          '{}'::jsonb
+          ${datasetFilters()}::jsonb
         )
       `
     )) as { rows: Array<Record<string, unknown>> };
@@ -358,7 +358,7 @@ describe.sequential("/api/v1/events/geo", () => {
             ${sfBounds.east}::double precision,
             ${sfBounds.north}::double precision,
             ${zoom}::integer,
-            '{}'::jsonb
+            ${datasetFilters()}::jsonb
           )
         `
       )) as { rows: Array<Record<string, unknown>> };
@@ -398,7 +398,7 @@ describe.sequential("/api/v1/events/geo", () => {
           ${bounds.east}::double precision,
           ${bounds.north}::double precision,
           10::integer,
-          '{}'::jsonb
+          ${datasetFilters()}::jsonb
         )
       `
     )) as { rows: Array<Record<string, unknown>> };
@@ -411,7 +411,7 @@ describe.sequential("/api/v1/events/geo", () => {
           ${bounds.east}::double precision,
           ${bounds.north}::double precision,
           10::integer,
-          '{}'::jsonb
+          ${datasetFilters()}::jsonb
         )
       `
     )) as { rows: Array<Record<string, unknown>> };
@@ -420,18 +420,12 @@ describe.sequential("/api/v1/events/geo", () => {
     expect(result1.rows).toHaveLength(result2.rows.length);
 
     // Cluster IDs should match exactly
-    // eslint-disable-next-line sonarjs/no-alphabetical-sort -- Sorting numeric IDs for comparison
-    const ids1 = result1.rows.map((r) => r.cluster_id).sort();
-    // eslint-disable-next-line sonarjs/no-alphabetical-sort -- Sorting numeric IDs for comparison
-    const ids2 = result2.rows.map((r) => r.cluster_id).sort();
-
-    expect(ids1).toEqual(ids2);
+    expect(new Set(result1.rows.map((r) => r.cluster_id))).toEqual(new Set(result2.rows.map((r) => r.cluster_id)));
   });
 
   it("should filter cluster_events by H3 cell via clusterCells in JSONB", async () => {
     // First, get cluster IDs at zoom 10 for SF area (scoped to test dataset)
     const sfBounds = { north: 37.78, south: 37.77, east: -122.41, west: -122.43 };
-    const datasetFilter = JSON.stringify({ datasets: [testDatasetId] });
     const clusterResult = (await testEnv.payload.db.drizzle.execute(
       sql`
         SELECT * FROM cluster_events(
@@ -440,7 +434,7 @@ describe.sequential("/api/v1/events/geo", () => {
           ${sfBounds.east}::double precision,
           ${sfBounds.north}::double precision,
           10::integer,
-          ${datasetFilter}::jsonb
+          ${datasetFilters()}::jsonb
         )
       `
     )) as { rows: Array<{ cluster_id: string; event_count: number }> };
@@ -477,7 +471,7 @@ describe.sequential("/api/v1/events/geo", () => {
           ${sfBounds.east}::double precision,
           ${sfBounds.north}::double precision,
           10::integer,
-          '{}'::jsonb
+          ${datasetFilters()}::jsonb
         )
       `
     )) as { rows: Array<{ cluster_id: string; event_count: number }> };
@@ -491,16 +485,13 @@ describe.sequential("/api/v1/events/geo", () => {
     const result = (await testEnv.payload.db.drizzle.execute(
       sql`
         SELECT * FROM calculate_event_histogram(
-          ${JSON.stringify({ clusterCells: [sfClusterId], h3Resolution })}::jsonb,
+          ${JSON.stringify({ datasets: [Number(testDatasetId)], clusterCells: [sfClusterId], h3Resolution })}::jsonb,
           30::integer, 20::integer, 50::integer
         )
       `
     )) as { rows: Array<{ event_count: number }> };
 
-    // calculate_event_histogram does not support H3 clusterCells filtering —
-    // it only supports catalogId, datasets, bounds, fieldFilters, and date range.
-    // Verify the histogram returns results (all events, not filtered by cell).
     const totalFromHistogram = result.rows.reduce((sum, r) => sum + Number(r.event_count), 0);
-    expect(totalFromHistogram).toBeGreaterThanOrEqual(sfCount);
+    expect(totalFromHistogram).toBe(sfCount);
   });
 });
