@@ -8,6 +8,25 @@ See the [release process](/development/contributing/release-process) for how new
 
 Changes landed on `main` since the last tagged release.
 
+## [0.1.0-alpha.17] - 2026-09-29
+
+### Fixed
+
+- Import: CSV preview, schema detection, row count and import read a file the same way — a leading byte order mark, blank lines before the header, duplicate or padded header names and delimited `.txt` files no longer make them disagree
+- Import: valid UTF-8 files are no longer misread as a single-byte charset, so `Köln` stays `Köln`
+- Import: counting rows of a missing sheet or an unsupported file type fails instead of reporting zero, and duplicates written in place under the `update` strategy are no longer reported as skipped
+- Login: overlapping logins of one account no longer drop each other's session, and expired sessions are removed on login
+- Explore: a zoom or pan made before the map style loads is kept, and a map view from the URL is no longer replaced by the fit to the data
+- Explore: the map reports itself busy until its clusters match the view, and the theme picker no longer shifts the header while the page loads
+- API: `/api/v1/sources/stats` counts events of public datasets whose catalog was deleted in `totalEvents`
+- API: `/api/legal-notices` and dataset schema inference report failures instead of answering with empty notices or "not found"
+- Development: `validate-types` checks Payload's generated files without rewriting them or leaving backups
+
+### Security
+
+- A catalog made public, or a dataset moved to a public catalog, only in a draft no longer makes its events public before the change is published
+- Approving an import job no longer applies field-mapping changes to a dataset the approver cannot edit
+
 ## [0.1.0-alpha.16] - 2026-09-28
 
 **Upgrade note:** the scraper runner no longer defaults its work area to `/tmp/timescrape` and refuses to start without an absolute `SCRAPER_DATA_DIR`. Bootstrap step 13 writes it into the runner's systemd unit. `timetiles update` leaves a runner whose unit predates this in place and names the step to rerun: `sudo deployment/bootstrap/bootstrap.sh --step 13-scraper-setup`.
