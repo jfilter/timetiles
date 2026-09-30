@@ -11,7 +11,7 @@
     "generate:logos": "tsx scripts/generate-logos.ts"
   },
   "devDependencies": {
-    "sharp": "^0.34.5",
+    "sharp": "^0.35.4",
     "tsx": "catalog:"
   }
 }
