@@ -9,7 +9,7 @@
       "@timetiles/assets/*": ["../../packages/assets/*"],
       "@payload-config": ["./payload.config.ts"]
     },
-    "customConditions": ["source"],
+    "customConditions": ["@timetiles/source"],
     "plugins": [{ "name": "next" }],
     "types": ["vitest/globals", "node"]
   },

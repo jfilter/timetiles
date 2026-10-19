@@ -32,7 +32,7 @@ const importedSubpaths = (): Map<string, string> => {
 };
 
 const packageJson = JSON.parse(readFileSync(path.join(uiRoot, "package.json"), "utf-8")) as {
-  exports: Record<string, string | { source: string; import: { default: string } }>;
+  exports: Record<string, string | { "@timetiles/source": string; import: { default: string } }>;
 };
 
 describe("package exports", () => {
@@ -52,11 +52,11 @@ describe("package exports", () => {
 
     const missing = Object.values(packageJson.exports)
       .filter((target) => typeof target === "object")
-      .filter(({ source, import: { default: output } }) => {
+      .filter(({ "@timetiles/source": source, import: { default: output } }) => {
         const key = output.replace(/^\.\/dist\//, "").replace(/\.js$/, "");
         return path.normalize(entries.get(key) ?? "") !== path.normalize(source);
       })
-      .map(({ source }) => source);
+      .map(({ "@timetiles/source": source }) => source);
     expect(missing).toEqual([]);
   });
 });

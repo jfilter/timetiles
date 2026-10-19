@@ -102,10 +102,10 @@ describe.sequential("Media Ownership Bypass Vulnerability", () => {
         id: ownerMedia.id,
         data: {
           alt: "updated description",
-          filename: "../unrelated.png",
+          filename: "unrelated.png",
           mimeType: "image/jpeg",
           filesize: 1,
-          sizes: { thumbnail: { filename: "../unrelated-thumbnail.png" } },
+          sizes: { thumbnail: { filename: "unrelated-thumbnail.png" } },
         },
         user: ownerUser,
         overrideAccess: false,
@@ -115,6 +115,25 @@ describe.sequential("Media Ownership Bypass Vulnerability", () => {
       expect(updated.mimeType).toBe(ownerMedia.mimeType);
       expect(updated.filesize).toBe(ownerMedia.filesize);
       expect(updated.sizes).toEqual(ownerMedia.sizes);
+    });
+
+    it.each([
+      ["filename", { filename: "../unrelated.png" }],
+      ["size filename", { sizes: { thumbnail: { filename: "../unrelated-thumbnail.png" } } }],
+    ])("rejects a path-traversal %s without changing the document", async (_label, storage) => {
+      await expect(
+        payload.update({
+          collection: "media",
+          id: ownerMedia.id,
+          data: { alt: "traversal", ...storage },
+          user: ownerUser,
+          overrideAccess: false,
+        })
+      ).rejects.toThrow(/invalid filename/i);
+      const after = await payload.findByID({ collection: "media", id: ownerMedia.id });
+      expect(after.alt).toBe(ownerMedia.alt);
+      expect(after.filename).toBe(ownerMedia.filename);
+      expect(after.sizes).toEqual(ownerMedia.sizes);
     });
 
     it("still lets an owner replace their uploaded image", async () => {

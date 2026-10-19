@@ -72,11 +72,14 @@ export type CollectionName = keyof typeof COLLECTIONS;
 // All globals (grouped: Content, System)
 export const ALL_GLOBALS = [MainMenu, Footer, Branding, Settings];
 
+// Per-file cap of Payload's multipart parser (REST and admin uploads).
+export const MAX_UPLOAD_FILE_BYTES = 100_000_000;
+
 // Common upload configuration
 export const DEFAULT_UPLOAD_CONFIG = {
-  limits: {
-    fileSize: 100000000, // 100MB
-  },
+  limits: { fileSize: MAX_UPLOAD_FILE_BYTES },
+  // The whole multipart request (file plus form fields); Payload's default is 50 MiB.
+  requestSizeLimit: MAX_UPLOAD_FILE_BYTES + 1024 * 1024,
   abortOnLimit: true,
   uploadTimeout: 600000, // 10 minutes
   useTempFiles: true,

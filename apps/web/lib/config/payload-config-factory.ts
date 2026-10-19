@@ -169,7 +169,6 @@ const configureProduction = (config: Config, serverURL: string) => {
   config.serverURL = serverURL;
   config.cors = [serverURL];
   config.csrf = [serverURL];
-  config.upload = DEFAULT_UPLOAD_CONFIG;
 };
 
 const configureEmail = async (config: Config, env: ReturnType<typeof getEnv>, environment: string) => {
@@ -244,6 +243,39 @@ const configureEmail = async (config: Config, env: ReturnType<typeof getEnv>, en
   });
 };
 
+const createJobsConfig = (environment: string): Config["jobs"] => ({
+  // Native job endpoints have separate access rules; trusted Local API workers bypass them.
+  access: { run: isAdmin, queue: isAdmin, cancel: isAdmin },
+  tasks: ALL_JOBS,
+  workflows: ALL_WORKFLOWS,
+  enableConcurrencyControl: true,
+  jobsCollectionOverrides: ({ defaultJobsCollection }) => ({
+    ...defaultJobsCollection,
+    // Payload leaves this collection at the default "any authenticated user"
+    // for every operation. Job rows carry their task input — including the
+    // rendered password-reset and verification mails — so any logged-in
+    // account could read live tokens out of /api/payload-jobs, and could
+    // queue or delete other users' jobs. The queue itself runs through the
+    // Local API with overrideAccess, so denying writes here costs nothing.
+    access: { read: isAdmin, create: () => false, update: () => false, delete: isAdmin },
+    admin: {
+      ...defaultJobsCollection.admin,
+      hidden: false,
+      defaultColumns: ["taskSlug", "queue", "processing", "hasError", "totalTried", "updatedAt", "meta"],
+    },
+  }),
+  // In development, auto-run jobs within the Next.js process (no separate worker needed)
+  ...(environment === "development"
+    ? {
+        autoRun: [
+          { cron: "*/10 * * * * *", queue: "ingest", limit: 10 },
+          { cron: "* * * * *", queue: "default", limit: 10 },
+          { cron: "* * * * *", queue: "maintenance", limit: 10 },
+        ],
+      }
+    : {}),
+});
+
 /** Payload appends job stats during sanitization, after plugins have run. */
 const buildConfigWithProtectedJobStats = async (config: Config) => {
   const built = await buildConfig(config);
@@ -259,7 +291,6 @@ const buildConfigWithProtectedJobStats = async (config: Config) => {
  * Creates a Payload configuration with the specified options.
  * Simplified factory following Payload's own buildConfigWithDefaults pattern.
  */
-// oxlint-disable-next-line complexity -- Payload config requires many conditional options
 export const buildConfigWithDefaults = async (options: PayloadConfigOptions = {}) => {
   const env = getEnv();
   const {
@@ -302,38 +333,7 @@ export const buildConfigWithDefaults = async (options: PayloadConfigOptions = {}
     debug: environment === "development",
     collections: collections.map((name) => COLLECTIONS[name]).filter(Boolean),
     globals: ALL_GLOBALS,
-    jobs: {
-      // Native job endpoints have separate access rules; trusted Local API workers bypass them.
-      access: { run: isAdmin, queue: isAdmin, cancel: isAdmin },
-      tasks: ALL_JOBS,
-      workflows: ALL_WORKFLOWS,
-      enableConcurrencyControl: true,
-      jobsCollectionOverrides: ({ defaultJobsCollection }) => ({
-        ...defaultJobsCollection,
-        // Payload leaves this collection at the default "any authenticated user"
-        // for every operation. Job rows carry their task input — including the
-        // rendered password-reset and verification mails — so any logged-in
-        // account could read live tokens out of /api/payload-jobs, and could
-        // queue or delete other users' jobs. The queue itself runs through the
-        // Local API with overrideAccess, so denying writes here costs nothing.
-        access: { read: isAdmin, create: () => false, update: () => false, delete: isAdmin },
-        admin: {
-          ...defaultJobsCollection.admin,
-          hidden: false,
-          defaultColumns: ["taskSlug", "queue", "processing", "hasError", "totalTried", "updatedAt", "meta"],
-        },
-      }),
-      // In development, auto-run jobs within the Next.js process (no separate worker needed)
-      ...(environment === "development"
-        ? {
-            autoRun: [
-              { cron: "*/10 * * * * *", queue: "ingest", limit: 10 },
-              { cron: "* * * * *", queue: "default", limit: 10 },
-              { cron: "* * * * *", queue: "maintenance", limit: 10 },
-            ],
-          }
-        : {}),
-    },
+    jobs: createJobsConfig(environment),
     plugins: [
       // Schema detection plugin (always enabled, provides language-aware field detection)
       schemaDetectionPlugin({ extendDatasets: collections?.includes("datasets") ?? false }),
@@ -343,6 +343,7 @@ export const buildConfigWithDefaults = async (options: PayloadConfigOptions = {}
     typescript: DEFAULT_TYPESCRIPT_CONFIG,
     db: createDbAdapter(databaseUrl, environment, poolConfig, runMigrations),
     graphQL: { disable: disableGraphQL },
+    upload: DEFAULT_UPLOAD_CONFIG,
     // Sharp's default export type doesn't match Payload's expected sharp type.
     // This is a known Payload CMS issue — both expect the same runtime value.
     sharp: sharp,

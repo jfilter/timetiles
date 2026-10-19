@@ -77,6 +77,7 @@ import * as migration_20260909_093926 from './20260909_093926';
 import * as migration_20260913_153257 from './20260913_153257';
 import * as migration_20260913_162013 from './20260913_162013';
 import * as migration_20260913_162132_published_events_in_pg_functions from './20260913_162132_published_events_in_pg_functions';
+import * as migration_20261019_213505_payload_3_90 from './20261019_213505_payload_3_90';
 
 export const migrations = [
   {
@@ -473,5 +474,10 @@ export const migrations = [
     up: migration_20260913_162132_published_events_in_pg_functions.up,
     down: migration_20260913_162132_published_events_in_pg_functions.down,
     name: '20260913_162132_published_events_in_pg_functions',
+  },
+  {
+    up: migration_20261019_213505_payload_3_90.up,
+    down: migration_20261019_213505_payload_3_90.down,
+    name: '20261019_213505_payload_3_90'
   },
 ];

@@ -56,8 +56,9 @@ type UsersBeforeChangeArgs = Parameters<CollectionBeforeChangeHook>[0];
 
 /**
  * Block direct manipulation of credential/auth fields through the generic REST
- * collection API. Payload auto-generates `email`, `password`, `enableAPIKey` and
- * `apiKey` for auth collections with NO field-level access guard, so an owner
+ * collection API. Payload auto-generates `email` and `password` for auth collections
+ * with NO field-level access guard, and gates `enableAPIKey`/`apiKey` only on
+ * admin-panel access (which editors have), so an owner
  * PATCH /api/users/:id could take over the account (swap the login email while
  * `_verified` stays true), reset the password without knowing the current one,
  * or plant a known API key as a permanent backdoor — bypassing the

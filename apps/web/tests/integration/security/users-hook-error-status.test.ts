@@ -30,6 +30,8 @@ describe.sequential("Users collection hook errors surface the right REST status 
   let adminToken: string;
   let regularToken: string;
   let regularUserId: number;
+  let editorToken: string;
+  let editorUserId: number;
 
   beforeAll(async () => {
     const env = await createIntegrationTestEnvironment();
@@ -39,8 +41,10 @@ describe.sequential("Users collection hook errors surface the right REST status 
     const { users } = await withUsers(env, {
       admin: { role: "admin", _verified: true },
       regular: { role: "user", _verified: true },
+      editor: { role: "editor", _verified: true },
     });
     regularUserId = users.regular.id;
+    editorUserId = users.editor.id;
 
     const tokenFor = async (email: string): Promise<string> => {
       const login = await payload.login({
@@ -51,6 +55,7 @@ describe.sequential("Users collection hook errors surface the right REST status 
     };
     adminToken = await tokenFor(users.admin.email);
     regularToken = await tokenFor(users.regular.email);
+    editorToken = await tokenFor(users.editor.email);
     expect(adminToken).not.toBe("");
     expect(regularToken).not.toBe("");
   }, 60000);
@@ -96,5 +101,22 @@ describe.sequential("Users collection hook errors surface the right REST status 
 
     const unchanged = await payload.findByID({ collection: "users", id: regularUserId, overrideAccess: true });
     expect(unchanged.email).not.toBe("takeover-attempt@example.com");
+  });
+
+  // Payload gates API-key fields only on admin-panel access, which editors have; the users
+  // hook is what stops them planting a key on their own account.
+  it.each(["editor", "regular user"] as const)("returns 403 when a %s REST-sets their own API key", async (role) => {
+    const [token, id] = role === "editor" ? [editorToken, editorUserId] : [regularToken, regularUserId];
+    const request = new NextRequest(`http://localhost:3000/api/users/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Authorization: `JWT ${token}` },
+      body: JSON.stringify({ enableAPIKey: true, apiKey: `${TEST_CREDENTIALS.apiKey.key}-${id}` }),
+    });
+
+    const response = await restPATCH(request, { params: Promise.resolve({ slug: ["users", String(id)] }) });
+
+    expect(response.status).toBe(403);
+    const unchanged = await payload.findByID({ collection: "users", id, overrideAccess: true });
+    expect(unchanged.hasAPIKey).toBe(false);
   });
 });

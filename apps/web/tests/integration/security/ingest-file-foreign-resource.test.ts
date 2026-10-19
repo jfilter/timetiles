@@ -141,7 +141,7 @@ describe.sequential("Import File Foreign Resource Vulnerability", () => {
         payload.update({
           collection: "ingest-files",
           id: ingestFile.id,
-          data: { filename: "../unrelated.csv", filesize: 1, mimeType: "text/plain" },
+          data: { filename: "unrelated.csv", filesize: 1, mimeType: "text/plain" },
           user: ownerUser,
           overrideAccess: false,
         })
@@ -150,6 +150,23 @@ describe.sequential("Import File Foreign Resource Vulnerability", () => {
       expect(updated.filename).toBe(ingestFile.filename);
       expect(updated.filesize).toBe(ingestFile.filesize);
       expect(updated.mimeType).toBe(ingestFile.mimeType);
+    });
+
+    it("rejects a path-traversal filename without changing the record", async () => {
+      const { ingestFile } = await withIngestFile(testEnv, ownerPrivateCatalog.id, "name\nOriginal\n", {
+        user: ownerUser.id,
+      });
+      await expect(
+        payload.update({
+          collection: "ingest-files",
+          id: ingestFile.id,
+          data: { filename: "../unrelated.csv" },
+          user: ownerUser,
+          overrideAccess: false,
+        })
+      ).rejects.toThrow(/invalid filename/i);
+      const updated = await payload.findByID({ collection: "ingest-files", id: ingestFile.id });
+      expect(updated.filename).toBe(ingestFile.filename);
     });
 
     it.each(["owner", "admin"])("rejects source replacement by %s before touching the stored file", async (role) => {

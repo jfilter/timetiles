@@ -4029,6 +4029,11 @@ export const users = db_schema.table(
     }),
     salt: varchar("salt"),
     hash: varchar("hash"),
+    resetPasswordRequestedAt: timestamp("reset_password_requested_at", {
+      mode: "string",
+      withTimezone: true,
+      precision: 3,
+    }),
     _verified: boolean("_verified"),
     _verificationToken: varchar("_verificationtoken"),
     loginAttempts: numeric("login_attempts", { mode: "number" }).default(0),

@@ -36,21 +36,3 @@ index 820887e76b0c50d9be729da289394a843f564249..838541c022adbcb963ae8742dafbf752
              req,
              returning: false
          });
-diff --git a/dist/utilities/deepCopyObject.js b/dist/utilities/deepCopyObject.js
-index 9238a31f41794b441317c78ac5da3dcc22877012..5b0ccc355cfdbe11580c38dc58c1a0c81f2ef6c4 100644
---- a/dist/utilities/deepCopyObject.js
-+++ b/dist/utilities/deepCopyObject.js
-@@ -109,7 +109,12 @@ Benchmark: https://github.com/AlessioGr/fastest-deep-clone-json/blob/main/test/b
-             if (filterUndefined && v === undefined) {
-                 continue;
-             }
--            ret[k] = typeof v !== 'object' || v === null ? v : deepCopyObjectSimple(v, filterUndefined);
-+            Object.defineProperty(ret, k, {
-+                value: typeof v !== 'object' || v === null ? v : deepCopyObjectSimple(v, filterUndefined),
-+                enumerable: true,
-+                configurable: true,
-+                writable: true
-+            });
-         }
-         return ret;
-     }

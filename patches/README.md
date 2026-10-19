@@ -1,8 +1,6 @@
 # Dependency patches
 
-## payload@3.86.0
-
-The patch changes two Payload files.
+## payload@3.90.2
 
 ### Sessions of overlapping logins
 
@@ -18,31 +16,11 @@ The users collection's `afterLogin` hook removes the user's expired sessions
 instead, which cannot drop a session an overlapping login adds. Refresh and logout still rewrite the
 whole array and can race a login of the same account in the same way.
 
-Remove this part only when the unpatched Payload passes:
+Remove this patch only when the unpatched Payload passes:
 
 ```sh
 make test-ai FILTER=concurrent-login-sessions
 ```
 
-### Prototype-named JSON keys
-
-`deepCopyObjectSimple` copies JSON fields with ordinary property assignment.
-For an own `__proto__` key, that invokes the inherited setter instead of creating
-a data property. Payload's local create and update paths use this helper, so an
-event update can remove a field that the import pipeline stored successfully.
-
-The patch creates enumerable, writable, configurable own data properties while
-preserving the helper's recursive copying and undefined-value handling. It does
-not replace Payload's hooks, validation, transactions, or event versioning.
-
-Remove this part only when the unpatched replacement passes the
-`preserves prototype-named imported values when updating event data` regression:
-
-```sh
-make test-ai FILTER=events-range-filter.test
-```
-
-Run the full test suite when changing this shared Payload helper.
-
-pnpm applies the patch through `package.json` and the lockfile. Reassess both
-parts when upgrading Payload.
+pnpm applies the patch through `package.json` and the lockfile. Reassess it when
+upgrading Payload.

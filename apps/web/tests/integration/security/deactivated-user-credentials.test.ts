@@ -32,6 +32,14 @@ describe.sequential("Deactivated user credential revocation", () => {
     return Number(result.rows[0]?.count ?? 0);
   };
 
+  /** Whether the stored key and its lookup index are both set (Payload never returns them). */
+  const storedKeyColumns = async (userId: number) => {
+    const result = await testEnv.payload.db.drizzle.execute(
+      sql`SELECT api_key IS NOT NULL AS key, api_key_index IS NOT NULL AS index FROM payload.users WHERE id = ${userId}`
+    );
+    return result.rows[0];
+  };
+
   /** A verified, active user carrying one real logged-in session. */
   const createLoggedInUser = async () => {
     const password = TEST_CREDENTIALS.basic.strongPassword;
@@ -81,13 +89,15 @@ describe.sequential("Deactivated user credential revocation", () => {
     });
     const issued = await payload.findByID({ collection: "users", id: user.id, overrideAccess: true });
     expect(issued.enableAPIKey).toBe(true);
-    expect(issued.apiKey).toBeTruthy();
+    expect(issued.hasAPIKey).toBe(true);
+    expect(await storedKeyColumns(user.id)).toEqual({ key: true, index: true });
 
     await payload.update({ collection: "users", id: user.id, data: { isActive: false }, overrideAccess: true });
 
     const revoked = await payload.findByID({ collection: "users", id: user.id, overrideAccess: true });
     expect(revoked.enableAPIKey).toBe(false);
-    expect(revoked.apiKey ?? null).toBeNull();
+    expect(revoked.hasAPIKey).toBe(false);
+    expect(await storedKeyColumns(user.id)).toEqual({ key: false, index: false });
   });
 
   it("leaves an active account's sessions and key alone on an unrelated update", async () => {
@@ -140,7 +150,8 @@ describe.sequential("Deactivated user credential revocation", () => {
       const unchanged = await payload.findByID({ collection: "users", id: user.id, overrideAccess: true });
       expect(unchanged.isActive).toBe(true);
       expect(unchanged.enableAPIKey).toBe(true);
-      expect(unchanged.apiKey).toBeTruthy();
+      expect(unchanged.hasAPIKey).toBe(true);
+      expect(await storedKeyColumns(user.id)).toEqual({ key: true, index: true });
       expect(await countSessions(user.id)).toBe(sessionsBefore);
     } finally {
       await db.execute(sql`DROP TRIGGER IF EXISTS test_fail_key_revocation ON payload.users`);
