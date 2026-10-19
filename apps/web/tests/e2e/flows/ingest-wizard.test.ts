@@ -715,15 +715,11 @@ test.describe("Import Wizard - Browser Navigation", () => {
     await page.goto("/explore", { timeout: 30000, waitUntil: "domcontentloaded" });
     await page.waitForLoadState("domcontentloaded");
 
-    // Navigate back
+    // goBack() can resolve on the explore page's own URL sync (a same-document navigation)
+    // while the real back navigation is still in flight, so wait for the wizard itself.
     await page.goBack();
-    await page.waitForLoadState("domcontentloaded");
-
-    // Should return to import page (note: explore page may redirect with query params)
-    // The back navigation should work without crashing
-    const currentUrl = page.url();
-    // Either we're back on /import OR the browser didn't navigate (acceptable)
-    expect(currentUrl.includes("/ingest") || currentUrl.includes("/explore")).toBe(true);
+    await expect(page).toHaveURL(/\/ingest(\?|$)/);
+    await importPage.waitForWizardLoad();
   });
 
   test("should handle page refresh gracefully", async ({ page }) => {

@@ -113,12 +113,20 @@ test.describe("Explore Page - Basic Functionality", () => {
     const datasetsTrigger = explorePage.dataSourcesSection;
     await expect(datasetsTrigger).toBeVisible();
 
-    // Tab from the start of the document until the Datasets section trigger has focus
+    // The filter panel is the last region in the DOM, so walking backwards from the end
+    // reaches it without crossing every event card. Stop on wrap (body or a revisited element).
     await page.locator("body").focus();
     let reached = false;
-    for (let i = 0; i < 60 && !reached; i++) {
-      await page.keyboard.press("Tab");
+    let wrapped = false;
+    for (let presses = 0; presses < 200 && !reached && !wrapped; presses++) {
+      await page.keyboard.press("Shift+Tab");
       reached = await datasetsTrigger.evaluate((el) => el === document.activeElement);
+      wrapped = await page.evaluate(() => {
+        const active = document.activeElement;
+        if (!active || active === document.body || active.hasAttribute("data-tab-visited")) return true;
+        active.setAttribute("data-tab-visited", "");
+        return false;
+      });
     }
     expect(reached).toBe(true);
     await expect(datasetsTrigger).toBeFocused();
