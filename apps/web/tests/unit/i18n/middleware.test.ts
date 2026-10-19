@@ -8,6 +8,7 @@
  * @category Tests
  */
 
+import { unstable_doesMiddlewareMatch } from "next/experimental/testing/server";
 import { describe, expect, it, vi } from "vitest";
 
 // Mock next-intl/middleware to avoid importing next/server in Node test env
@@ -23,8 +24,16 @@ describe("i18n middleware config", () => {
     expect(Array.isArray(config.matcher)).toBe(true);
   });
 
-  it("matches API routes explicitly", () => {
-    expect(config.matcher).toContain("/api/:path*");
+  // Next clones and truncates the body of every proxied request at 10 MiB, so uploads must bypass it.
+  it.each([
+    ["/api", false],
+    ["/api/ingest/preview-schema/upload", false],
+    ["/api/media/file/logo.png", false],
+    ["/apiary", true],
+    ["/explore", true],
+    ["/de/explore", true],
+  ])("runs the proxy for %s: %s", (pathname, proxied) => {
+    expect(unstable_doesMiddlewareMatch({ config, url: pathname })).toBe(proxied);
   });
 
   it("excludes Payload dashboard from matching", () => {

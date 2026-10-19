@@ -31,12 +31,24 @@ const SECURITY_HEADERS = [
 // applies these headers before the proxy runs; the proxy's headers.set() then
 // overrides a value, but its headers.delete() cannot remove a header added here.
 // The proxy sets frame-ancestors * for /embed and X-Frame-Options DENY +
-// frame-ancestors 'self' for everything else.
+// frame-ancestors 'self' for the other front-end pages.
 const FRAME_HEADERS = [
   { key: "X-Frame-Options", value: "SAMEORIGIN" },
   { key: "Content-Security-Policy", value: "frame-ancestors 'self'" },
 ];
 const NON_EMBED_SOURCE = "/((?!embed(?:/|$))(?![a-z]{2}/embed(?:/|$)).*)";
+// API routes bypass the proxy (see proxy.ts), so their headers are set here.
+const API_FRAME_HEADERS = [{ key: "X-Frame-Options", value: "DENY" }];
+
+// Uploads are served inline from this origin, so a stored SVG (accepted before the media
+// collection went raster-only) is a script vector. `sandbox` blocks scripts, forms and popups;
+// `default-src 'none'` stops the file reaching back to the app. Inline styles keep SVG art intact.
+const UPLOADED_FILE_HEADERS = [
+  {
+    key: "Content-Security-Policy",
+    value: "default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; sandbox; frame-ancestors 'self'",
+  },
+];
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -60,6 +72,9 @@ const nextConfig = {
   headers: async () => [
     { source: "/:path*", headers: SECURITY_HEADERS },
     { source: NON_EMBED_SOURCE, headers: FRAME_HEADERS },
+    { source: "/api/:path*", headers: API_FRAME_HEADERS },
+    // Last, so its CSP overrides the frame-only one above (and any a route handler sets).
+    { source: "/api/:collection/file/:path*", headers: UPLOADED_FILE_HEADERS },
   ],
   redirects: async () => [
     // Redirect Payload dashboard auth routes to main app
