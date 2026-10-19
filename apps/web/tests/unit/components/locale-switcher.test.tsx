@@ -14,6 +14,7 @@ import { describe, expect, it, vi } from "vitest";
 import { usePathname, useRouter } from "@/i18n/navigation";
 
 import { LocaleSwitcher } from "../../../components/locale-switcher";
+import { createMockRouter } from "../../mocks/external/router";
 import { fireEvent, renderWithProviders, screen } from "../../setup/unit/react-render";
 
 describe("LocaleSwitcher", () => {
@@ -42,14 +43,7 @@ describe("LocaleSwitcher", () => {
     const mockReplace = vi.fn();
     vi.mocked(useLocale).mockReturnValue("en");
     vi.mocked(usePathname).mockReturnValue("/explore");
-    vi.mocked(useRouter).mockReturnValue({
-      push: vi.fn(),
-      replace: mockReplace,
-      back: vi.fn(),
-      forward: vi.fn(),
-      refresh: vi.fn(),
-      prefetch: vi.fn(),
-    });
+    vi.mocked(useRouter).mockReturnValue(createMockRouter({ replace: mockReplace }));
 
     const { container } = renderWithProviders(<LocaleSwitcher />);
 
@@ -64,14 +58,7 @@ describe("LocaleSwitcher", () => {
     const mockReplace = vi.fn();
     vi.mocked(useLocale).mockReturnValue("en");
     vi.mocked(usePathname).mockReturnValue("/explore");
-    vi.mocked(useRouter).mockReturnValue({
-      push: vi.fn(),
-      replace: mockReplace,
-      back: vi.fn(),
-      forward: vi.fn(),
-      refresh: vi.fn(),
-      prefetch: vi.fn(),
-    });
+    vi.mocked(useRouter).mockReturnValue(createMockRouter({ replace: mockReplace }));
 
     // Filters, selected event, and map position live in the URL (nuqs);
     // switching language must not wipe them.

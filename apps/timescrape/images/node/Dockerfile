@@ -3,7 +3,7 @@ FROM node:24-slim AS sdk-builder
 
 # Build tool versions must match the packages/scraper importer in pnpm-lock.yaml.
 WORKDIR /build
-RUN npm install --no-save --no-fund --no-audit tsup@8.5.1 typescript@5.9.3 @types/node@26.1.1
+RUN npm install --no-save --no-fund --no-audit tsup@8.5.1 typescript@5.9.3 @types/node@26.6.5
 COPY packages/typescript-config/base.json node_modules/@timetiles/typescript-config/base.json
 COPY packages/scraper packages/scraper
 WORKDIR /build/packages/scraper

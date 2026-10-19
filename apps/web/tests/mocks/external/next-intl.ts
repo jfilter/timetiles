@@ -7,6 +7,7 @@
 import React from "react";
 
 import en from "../../../messages/en.json";
+import { createMockRouter } from "./router";
 
 // Mock @/i18n/navigation (locale-aware navigation primitives)
 vi.mock("@/i18n/navigation", () => ({
@@ -14,14 +15,7 @@ vi.mock("@/i18n/navigation", () => ({
     React.createElement("a", { href, ...props } as React.HTMLAttributes<HTMLAnchorElement>, children as React.ReactNode)
   ),
   redirect: vi.fn(),
-  useRouter: vi.fn(() => ({
-    push: vi.fn(),
-    replace: vi.fn(),
-    back: vi.fn(),
-    forward: vi.fn(),
-    refresh: vi.fn(),
-    prefetch: vi.fn(),
-  })),
+  useRouter: vi.fn(() => createMockRouter()),
   usePathname: vi.fn(() => "/"),
   getPathname: vi.fn(({ href }: { href: string }) => href),
 }));

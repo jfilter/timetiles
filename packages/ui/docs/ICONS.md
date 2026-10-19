@@ -370,12 +370,12 @@ When using icons:
 <Card>
   <CardHeader>
     <div className="flex items-center gap-2">
-      <Database className="h-5 w-5 text-primary" />
+      <Database className="text-primary h-5 w-5" />
       <CardTitle>Climate Events Dataset</CardTitle>
     </div>
   </CardHeader>
   <CardContent>
-    <p className="text-sm text-muted-foreground">1,234 events across 50 locations</p>
+    <p className="text-muted-foreground text-sm">1,234 events across 50 locations</p>
   </CardContent>
 </Card>
 ```
@@ -384,9 +384,9 @@ When using icons:
 
 ```tsx
 <div className="flex flex-col items-center justify-center py-12">
-  <FileText className="h-12 w-12 text-muted-foreground mb-4" />
+  <FileText className="text-muted-foreground mb-4 h-12 w-12" />
   <h3 className="text-lg font-semibold">No datasets yet</h3>
-  <p className="text-sm text-muted-foreground mb-4">Import your first dataset to get started</p>
+  <p className="text-muted-foreground mb-4 text-sm">Import your first dataset to get started</p>
   <Button>
     <Plus className="mr-2 h-4 w-4" />
     Import Dataset

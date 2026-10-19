@@ -41,19 +41,17 @@ const fetchDataExports = async (userId: number): Promise<ExportListResponse> => 
 
   // Transform Payload REST response to match expected format
   return {
-    exports: data.docs.map(
-      (exp): DataExport => ({
-        id: exp.id,
-        status: exp.status,
-        requestedAt: exp.requestedAt,
-        completedAt: exp.completedAt,
-        expiresAt: exp.expiresAt,
-        fileSize: exp.fileSize,
-        downloadCount: exp.downloadCount,
-        summary: (exp.summary as ExportSummary | null | undefined) ?? undefined,
-        errorLog: exp.status === "failed" ? (exp.errorLog ?? undefined) : undefined,
-      })
-    ),
+    exports: data.docs.map((exp): DataExport => ({
+      id: exp.id,
+      status: exp.status,
+      requestedAt: exp.requestedAt,
+      completedAt: exp.completedAt,
+      expiresAt: exp.expiresAt,
+      fileSize: exp.fileSize,
+      downloadCount: exp.downloadCount,
+      summary: (exp.summary as ExportSummary | null | undefined) ?? undefined,
+      errorLog: exp.status === "failed" ? (exp.errorLog ?? undefined) : undefined,
+    })),
     total: data.totalDocs,
   };
 };

@@ -95,13 +95,11 @@ background-size: 40px 40px;
 
 ```css
 /* Mobile (<md): Pair Header with MobileNavDrawer */
-<md: Hide nav items, move primary navigation into MobileNavDrawer
-
-/* Tablet (md-lg): Limited nav */
-md:  Show key nav items, compact spacing
-
-/* Desktop (lg+): Full nav */
-lg:  Full navigation, generous spacing (gap-8)
+<md:
+  Hide nav items,
+  move primary navigation into MobileNavDrawer /* Tablet (md-lg): Limited nav */ md: Show key nav items,
+  compact spacing /* Desktop (lg+): Full nav */ lg: Full navigation,
+  generous spacing (gap-8);
 ```
 
 **MobileNavDrawer** (mobile companion):

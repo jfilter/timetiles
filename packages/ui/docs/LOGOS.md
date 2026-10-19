@@ -159,7 +159,7 @@ export function Hero() {
           height={200}
           className="mx-auto hidden dark:block"
         />
-        <h1 className="font-serif text-5xl mt-8">Visualize Events in Time and Space</h1>
+        <h1 className="mt-8 font-serif text-5xl">Visualize Events in Time and Space</h1>
       </div>
     </section>
   );

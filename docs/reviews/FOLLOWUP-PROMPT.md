@@ -27,7 +27,7 @@ why (pick 2-4 that make sense together):
    migrations for `CONCURRENTLY`).
 
 2. **HIGH-09** — Paginate `/api/v1/data-sources` (currently `limit: 5000,
-depth: 1, pagination: false`). API contract change; check the frontend
+   depth: 1, pagination: false`). API contract change; check the frontend
    consumers in `lib/hooks/` and `components/` first.
 
 3. **HIGH-04 / HIGH-05** — Access-control query optimization.

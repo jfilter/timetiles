@@ -157,7 +157,7 @@ const ListExplorerContent = ({ chrome, initialViewState }: ListExplorerContentPr
 
   // Desktop Layout — all panels visible, everything scrolls together
   return (
-    <div className="flex-1 overflow-x-hidden overflow-y-auto [scrollbar-gutter:stable]">
+    <div className="flex-1 [scrollbar-gutter:stable] overflow-x-hidden overflow-y-auto">
       <div className="flex min-h-full">
         <div className="min-w-0 flex-1">
           {/* Top Section - 2 Column Layout (Map | Chart) */}

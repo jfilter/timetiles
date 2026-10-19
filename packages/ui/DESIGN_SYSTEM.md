@@ -325,14 +325,8 @@ transition-transform duration-300 /* Transforms (scale, translate) */
 
 ```css
 /* Buttons */
-hover:bg-ring       /* Color shift */
-
-/* Cards */
-hover:shadow-lg                  /* Elevation increase */
-
-/* Links */
-hover:text-ring     /* Color change */
-hover:underline                  /* Underline appearance */
+hover: bg-ring /* Color shift */ /* Cards */ hover: shadow-lg /* Elevation increase */ /* Links */ hover: text-ring
+  /* Color change */ hover: underline; /* Underline appearance */
 ```
 
 **Principle**: Animations should be **subtle and purposeful**. Avoid gratuitous motion. Prefer opacity and color transitions over transforms.

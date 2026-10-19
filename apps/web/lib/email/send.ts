@@ -21,7 +21,6 @@ export const EMAIL_JOB_CONCURRENCY_KEY = "email-send" as const;
 export const EMAIL_CONTEXTS = {
   ACCOUNT_VERIFICATION: "account-verification-email",
   ACCOUNT_EXISTS: "account-exists-email",
-  // eslint-disable-next-line sonarjs/no-hardcoded-passwords -- stable context slug, not a credential
   PASSWORD_RESET: "password-reset-email",
   EMAIL_CHANGE_VERIFICATION: "email-change-verification-email",
   EMAIL_CHANGE_OLD_ADDRESS: "email-change-old-address-email",

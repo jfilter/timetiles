@@ -187,7 +187,7 @@ Used for 404, 500, network errors.
 ```tsx
 <div className="flex items-center gap-2">
   <Spinner size="sm" />
-  <span className="text-sm text-muted-foreground">Geocoding 1,234 addresses...</span>
+  <span className="text-muted-foreground text-sm">Geocoding 1,234 addresses...</span>
 </div>
 ```
 
@@ -340,7 +340,7 @@ Used for 404, 500, network errors.
 
 ```tsx
 <div className="relative">
-  <SearchIcon className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+  <SearchIcon className="text-muted-foreground absolute top-3 left-3 h-4 w-4" />
   <Input placeholder="Search datasets..." className="pl-9" value={query} onChange={(e) => setQuery(e.target.value)} />
 </div>
 ```
@@ -413,7 +413,7 @@ Used for 404, 500, network errors.
     </form>
   </CardContent>
   <CardFooter>
-    <Link href="/forgot-password" className="text-sm text-muted-foreground">
+    <Link href="/forgot-password" className="text-muted-foreground text-sm">
       Forgot password?
     </Link>
   </CardFooter>
@@ -452,7 +452,7 @@ return <DashboardContent />;
 
 ```tsx
 <div className="flex items-center justify-between">
-  <p className="text-sm text-muted-foreground">
+  <p className="text-muted-foreground text-sm">
     Showing {start} to {end} of {total} results
   </p>
   <div className="flex gap-2">

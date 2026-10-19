@@ -118,6 +118,8 @@ export const sanitizeCSS = (css: string): string => {
 
   try {
     const root = safeParser(css);
+    // Typed as Document | Root; safe-parse always returns its parser's Root.
+    if (root.type !== "root") return "";
     // postcss-safe-parser stashes unparseable prelude/trailing bytes on
     // root.raws (before/after) and echoes them out on toString(). That
     // means stray HTML such as `</style><script>...` would come back

@@ -174,17 +174,15 @@ export class DataExportService {
   private async fetchCatalogs(userId: number): Promise<CatalogExportData[]> {
     const docs = await findUserDocs(this.payload, "catalogs", userId);
 
-    return docs.map(
-      (c: Catalog): CatalogExportData => ({
-        id: c.id,
-        name: c.name,
-        description: c.description,
-        slug: c.slug,
-        isPublic: c.isPublic ?? false,
-        createdAt: c.createdAt,
-        updatedAt: c.updatedAt,
-      })
-    );
+    return docs.map((c: Catalog): CatalogExportData => ({
+      id: c.id,
+      name: c.name,
+      description: c.description,
+      slug: c.slug,
+      isPublic: c.isPublic ?? false,
+      createdAt: c.createdAt,
+      updatedAt: c.updatedAt,
+    }));
   }
 
   /**
@@ -193,20 +191,18 @@ export class DataExportService {
   private async fetchDatasets(userId: number): Promise<DatasetExportData[]> {
     const docs = await findUserDocs(this.payload, "datasets", userId);
 
-    return docs.map(
-      (d: Dataset): DatasetExportData => ({
-        id: d.id,
-        name: d.name,
-        description: d.description,
-        slug: d.slug,
-        isPublic: d.isPublic ?? false,
-        language: d.language,
-        catalogId: requireRelationId(d.catalog, "dataset.catalog"),
-        schemaConfig: d.schemaConfig,
-        createdAt: d.createdAt,
-        updatedAt: d.updatedAt,
-      })
-    );
+    return docs.map((d: Dataset): DatasetExportData => ({
+      id: d.id,
+      name: d.name,
+      description: d.description,
+      slug: d.slug,
+      isPublic: d.isPublic ?? false,
+      language: d.language,
+      catalogId: requireRelationId(d.catalog, "dataset.catalog"),
+      schemaConfig: d.schemaConfig,
+      createdAt: d.createdAt,
+      updatedAt: d.updatedAt,
+    }));
   }
 
   /**
@@ -348,18 +344,16 @@ export class DataExportService {
       overrideAccess: true,
     });
 
-    return result.docs.map(
-      (s: DatasetSchema): DatasetSchemaExportData => ({
-        id: s.id,
-        datasetId: requireRelationId(s.dataset, "datasetSchema.dataset"),
-        versionNumber: s.versionNumber,
-        schema: s.schema,
-        fieldMetadata: s.fieldMetadata,
-        eventCountAtCreation: s.eventCountAtCreation,
-        createdAt: s.createdAt,
-        updatedAt: s.updatedAt,
-      })
-    );
+    return result.docs.map((s: DatasetSchema): DatasetSchemaExportData => ({
+      id: s.id,
+      datasetId: requireRelationId(s.dataset, "datasetSchema.dataset"),
+      versionNumber: s.versionNumber,
+      schema: s.schema,
+      fieldMetadata: s.fieldMetadata,
+      eventCountAtCreation: s.eventCountAtCreation,
+      createdAt: s.createdAt,
+      updatedAt: s.updatedAt,
+    }));
   }
 
   /**
@@ -374,15 +368,13 @@ export class DataExportService {
       overrideAccess: true,
     });
 
-    return result.docs.map(
-      (a: AuditLog): AuditLogExportData => ({
-        id: a.id,
-        action: a.action,
-        timestamp: a.timestamp,
-        details: a.details,
-        createdAt: a.createdAt,
-      })
-    );
+    return result.docs.map((a: AuditLog): AuditLogExportData => ({
+      id: a.id,
+      action: a.action,
+      timestamp: a.timestamp,
+      details: a.details,
+      createdAt: a.createdAt,
+    }));
   }
 
   /**
@@ -391,19 +383,17 @@ export class DataExportService {
   private async fetchScraperRepos(userId: number): Promise<ScraperRepoExportData[]> {
     const docs = await findUserDocs(this.payload, "scraper-repos", userId);
 
-    return docs.map(
-      (r: ScraperRepo): ScraperRepoExportData => ({
-        id: r.id,
-        name: r.name,
-        sourceType: r.sourceType,
-        gitUrl: r.gitUrl,
-        gitBranch: r.gitBranch,
-        lastSyncAt: r.lastSyncAt,
-        lastSyncStatus: r.lastSyncStatus,
-        createdAt: r.createdAt,
-        updatedAt: r.updatedAt,
-      })
-    );
+    return docs.map((r: ScraperRepo): ScraperRepoExportData => ({
+      id: r.id,
+      name: r.name,
+      sourceType: r.sourceType,
+      gitUrl: r.gitUrl,
+      gitBranch: r.gitBranch,
+      lastSyncAt: r.lastSyncAt,
+      lastSyncStatus: r.lastSyncStatus,
+      createdAt: r.createdAt,
+      updatedAt: r.updatedAt,
+    }));
   }
 
   /**
@@ -418,23 +408,21 @@ export class DataExportService {
       overrideAccess: true,
     });
 
-    return result.docs.map(
-      (s: Scraper): ScraperExportData => ({
-        id: s.id,
-        name: s.name,
-        slug: s.slug,
-        repoId: requireRelationId(s.repo, "scraper.repo"),
-        runtime: s.runtime,
-        entrypoint: s.entrypoint,
-        outputFile: s.outputFile,
-        schedule: s.schedule,
-        enabled: s.enabled,
-        timeoutSecs: s.timeoutSecs,
-        memoryMb: s.memoryMb,
-        createdAt: s.createdAt,
-        updatedAt: s.updatedAt,
-      })
-    );
+    return result.docs.map((s: Scraper): ScraperExportData => ({
+      id: s.id,
+      name: s.name,
+      slug: s.slug,
+      repoId: requireRelationId(s.repo, "scraper.repo"),
+      runtime: s.runtime,
+      entrypoint: s.entrypoint,
+      outputFile: s.outputFile,
+      schedule: s.schedule,
+      enabled: s.enabled,
+      timeoutSecs: s.timeoutSecs,
+      memoryMb: s.memoryMb,
+      createdAt: s.createdAt,
+      updatedAt: s.updatedAt,
+    }));
   }
 
   /**
@@ -449,21 +437,19 @@ export class DataExportService {
       overrideAccess: true,
     });
 
-    return result.docs.map(
-      (r: ScraperRun): ScraperRunExportData => ({
-        id: r.id,
-        scraperId: requireRelationId(r.scraper, "scraperRun.scraper"),
-        status: r.status,
-        triggeredBy: r.triggeredBy,
-        startedAt: r.startedAt,
-        finishedAt: r.finishedAt,
-        durationMs: r.durationMs,
-        exitCode: r.exitCode,
-        outputRows: r.outputRows,
-        outputBytes: r.outputBytes,
-        createdAt: r.createdAt,
-      })
-    );
+    return result.docs.map((r: ScraperRun): ScraperRunExportData => ({
+      id: r.id,
+      scraperId: requireRelationId(r.scraper, "scraperRun.scraper"),
+      status: r.status,
+      triggeredBy: r.triggeredBy,
+      startedAt: r.startedAt,
+      finishedAt: r.finishedAt,
+      durationMs: r.durationMs,
+      exitCode: r.exitCode,
+      outputRows: r.outputRows,
+      outputBytes: r.outputBytes,
+      createdAt: r.createdAt,
+    }));
   }
 
   /**

@@ -200,7 +200,7 @@ const VirtualizedEventsList = ({
   });
 
   return (
-    <div ref={scrollRef} className="max-h-[70vh] overflow-y-auto [scrollbar-gutter:stable]">
+    <div ref={scrollRef} className="max-h-[70vh] [scrollbar-gutter:stable] overflow-y-auto">
       <div className="relative w-full" style={{ height: `${virtualizer.getTotalSize()}px` }}>
         {virtualizer.getVirtualItems().map((item) => {
           const event = events[item.index];

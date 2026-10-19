@@ -10,12 +10,13 @@ jobs:
     runs-on: ubuntu-latest
     # Run inside the official Playwright image: browsers + OS deps are baked in
     # at /ms-playwright (PLAYWRIGHT_BROWSERS_PATH), eliminating the flaky
-    # cdn.playwright.dev browser download. The tag MUST match the playwright
-    # package version (apps/web/package.json). Runs as root by default, so
+    # cdn.playwright.dev browser download. The tag MUST match the @playwright/test
+    # version locked for apps/web in pnpm-lock.yaml, enforced by
+    # apps/web/tests/unit/scripts/playwright-image-pin.test.ts. Runs as root by default, so
     # Chromium requires --no-sandbox (set for CI in playwright.config.ts);
     # --ipc=host avoids Chromium shared-memory crashes.
     container:
-      image: mcr.microsoft.com/playwright:v1.61.1-noble
+      image: mcr.microsoft.com/playwright:v1.63.0-noble
       options: --ipc=host
     services:
       postgres:

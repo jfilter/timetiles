@@ -422,14 +422,8 @@ transition-transform duration-300 /* Transforms (scale, translate) */
 
 ```css
 /* Buttons */
-hover:bg-cartographic-blue       /* Color shift */
-
-/* Cards */
-hover:shadow-lg                  /* Elevation increase */
-
-/* Links */
-hover:text-cartographic-blue     /* Color change */
-hover:underline                  /* Underline appearance */
+hover: bg-cartographic-blue /* Color shift */ /* Cards */ hover: shadow-lg /* Elevation increase */ /* Links */
+  hover: text-cartographic-blue /* Color change */ hover: underline; /* Underline appearance */
 ```
 
 **Principle**: Animations should be **subtle and purposeful**. Avoid gratuitous motion. Prefer opacity and color transitions over transforms.
@@ -869,13 +863,12 @@ background-size: 40px 40px;
 
 ```css
 /* Mobile (<md): Hamburger menu */
-<md: Hide nav items, show hamburger icon, compact actions
-
-/* Tablet (md-lg): Limited nav */
-md:  Show key nav items, compact spacing
-
-/* Desktop (lg+): Full nav */
-lg:  Full navigation, generous spacing (gap-8)
+<md:
+  Hide nav items,
+  show hamburger icon,
+  compact actions /* Tablet (md-lg): Limited nav */ md: Show key nav items,
+  compact spacing /* Desktop (lg+): Full nav */ lg: Full navigation,
+  generous spacing (gap-8);
 ```
 
 **Hamburger Menu** (mobile):

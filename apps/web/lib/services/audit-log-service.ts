@@ -20,14 +20,11 @@ const logger = createLogger("audit-log-service");
 export const AUDIT_ACTIONS = {
   // Account actions
   EMAIL_CHANGED: "account.email_changed",
-  // eslint-disable-next-line sonarjs/no-hardcoded-passwords -- audit action type identifier
   PASSWORD_CHANGED: "account.password_changed",
-  // eslint-disable-next-line sonarjs/no-hardcoded-passwords -- audit action type identifier
   PASSWORD_RESET: "account.password_reset",
   DELETION_SCHEDULED: "account.deletion_scheduled",
   DELETION_CANCELLED: "account.deletion_cancelled",
   DELETION_EXECUTED: "account.deletion_executed",
-  // eslint-disable-next-line sonarjs/no-hardcoded-passwords -- audit action type identifier
   PASSWORD_VERIFY_FAILED: "account.password_verify_failed",
 
   // Admin actions on users
