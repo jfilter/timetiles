@@ -103,6 +103,9 @@ services:
       # responses — sharp resizes per request. tmpfs is ephemeral but
       # the image cache is fully regenerable.
       - /app/apps/web/.next/cache:size=512m,uid=1001,gid=1001
+      # next-intl's plugin loads @swc/core, whose native addon is unpacked on every start into
+      # ~/.cache and must be executable there; /tmp is noexec, so the cache gets its own mount.
+      - /home/nextjs/.cache:exec,mode=0700,size=128m,uid=1001,gid=1001
     environment:
       # Database
       DATABASE_URL: postgresql://${DB_USER:-timetiles_user}:${DB_PASSWORD}@postgres:5432/${DB_NAME:-timetiles}
