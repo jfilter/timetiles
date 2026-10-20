@@ -73,7 +73,7 @@
     "next-intl": "^4.14.9",
     "next-themes": "catalog:",
     "node-geocoder": "^4.4.1",
-    "nodemailer": "^9.0.3",
+    "nodemailer": "^10.1.0",
     "nuqs": "^2.10.1",
     "papaparse": "^5.7.0",
     "payload": "3.90.2",
