@@ -72,12 +72,14 @@ export type CollectionName = keyof typeof COLLECTIONS;
 // All globals (grouped: Content, System)
 export const ALL_GLOBALS = [MainMenu, Footer, Branding, Settings];
 
-// Per-file cap of Payload's multipart parser (REST and admin uploads).
-export const MAX_UPLOAD_FILE_BYTES = 100_000_000;
+// Largest file Payload's multipart parser accepts (REST and admin uploads), in the MiB unit of
+// the maxFileSizeMB quotas so it matches the 100 MB file-size limit the quotas endpoint advertises.
+export const MAX_UPLOAD_FILE_BYTES = 100 * 1024 * 1024;
 
 // Common upload configuration
 export const DEFAULT_UPLOAD_CONFIG = {
-  limits: { fileSize: MAX_UPLOAD_FILE_BYTES },
+  // busboy aborts once a file reaches `fileSize`, so the largest accepted file is one byte below it.
+  limits: { fileSize: MAX_UPLOAD_FILE_BYTES + 1 },
   // The whole multipart request (file plus form fields); Payload's default is 50 MiB.
   requestSizeLimit: MAX_UPLOAD_FILE_BYTES + 1024 * 1024,
   abortOnLimit: true,

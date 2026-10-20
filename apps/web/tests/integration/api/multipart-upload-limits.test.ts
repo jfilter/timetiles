@@ -14,6 +14,7 @@ import { addDataAndFileToRequest, type PayloadRequest } from "payload";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { MAX_UPLOAD_FILE_BYTES } from "@/lib/config/payload-shared-config";
+import { PUBLIC_QUOTAS } from "@/lib/constants/quota-constants";
 
 import { createIntegrationTestEnvironment } from "../../setup/integration/environment";
 
@@ -54,6 +55,13 @@ describe.sequential("Multipart upload limits", () => {
     const file = await parseUpload(60 * MiB);
 
     expect(file?.size).toBe(60 * MiB);
+  }, 60000);
+
+  it("accepts a file at the advertised file-size limit", async () => {
+    const bytes = PUBLIC_QUOTAS.FILE_SIZE_MB.displayCap * MiB;
+    const file = await parseUpload(bytes);
+
+    expect(file?.size).toBe(bytes);
   }, 60000);
 
   it("rejects a file above the per-file cap", async () => {
