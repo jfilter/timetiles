@@ -42,6 +42,11 @@ export default defineConfig({
         "app/**/*.tsx",
         "components/**/*.ts",
         "components/**/*.tsx",
+        // Runtime files outside the folders above; Sonar counts them as sources either way.
+        "i18n/**/*.ts",
+        "next.config.mjs",
+        "payload.config.ts",
+        "proxy.ts",
       ],
       exclude: [
         "lib/**/*.d.ts",
