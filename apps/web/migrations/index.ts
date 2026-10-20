@@ -78,6 +78,7 @@ import * as migration_20260913_153257 from './20260913_153257';
 import * as migration_20260913_162013 from './20260913_162013';
 import * as migration_20260913_162132_published_events_in_pg_functions from './20260913_162132_published_events_in_pg_functions';
 import * as migration_20261019_213505_payload_3_90 from './20261019_213505_payload_3_90';
+import * as migration_20261020_120000_cluster_events_cluster_cells from './20261020_120000_cluster_events_cluster_cells';
 
 export const migrations = [
   {
@@ -478,6 +479,11 @@ export const migrations = [
   {
     up: migration_20261019_213505_payload_3_90.up,
     down: migration_20261019_213505_payload_3_90.down,
-    name: '20261019_213505_payload_3_90'
+    name: '20261019_213505_payload_3_90',
+  },
+  {
+    up: migration_20261020_120000_cluster_events_cluster_cells.up,
+    down: migration_20261020_120000_cluster_events_cluster_cells.down,
+    name: '20261020_120000_cluster_events_cluster_cells',
   },
 ];
