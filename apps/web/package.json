@@ -82,7 +82,7 @@
     "pino-pretty": "^13.2.0",
     "postcss": "^8.5.30",
     "postcss-safe-parser": "^7.1.0",
-    "quicktype-core": "^25.1.0",
+    "quicktype-core": "^26.0.0",
     "react": "catalog:",
     "react-dom": "catalog:",
     "react-map-gl": "^8.1.3",
