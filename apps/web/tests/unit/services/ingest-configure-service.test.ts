@@ -18,6 +18,7 @@ vi.mock("@/lib/logger", () => ({
 vi.mock("@/lib/services/quota-service", () => ({ createQuotaService: vi.fn() }));
 
 import {
+  applySchemaConfigToDatasets,
   buildDatasetMapping,
   buildGeoFieldDetection,
   buildIdStrategy,
@@ -202,6 +203,26 @@ describe("import-configure-service", () => {
         autoGrow: true,
         autoApproveNonBreaking: true,
       });
+    });
+  });
+
+  describe("applySchemaConfigToDatasets", () => {
+    it("updates the datasets one at a time so a caller's transaction never runs concurrent queries", async () => {
+      let inFlight = 0;
+      let maxInFlight = 0;
+      const update = vi.fn(async () => {
+        inFlight++;
+        maxInFlight = Math.max(maxInFlight, inFlight);
+        await new Promise((resolve) => setTimeout(resolve, 5));
+        inFlight--;
+      });
+      const payload = { update } as unknown as Payload;
+      const entries = [1, 2, 3].map((dataset) => ({ sheetIdentifier: String(dataset), dataset, skipIfMissing: false }));
+
+      await applySchemaConfigToDatasets(payload, entries, "strict");
+
+      expect(update).toHaveBeenCalledTimes(3);
+      expect(maxInFlight).toBe(1);
     });
   });
 

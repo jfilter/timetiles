@@ -114,12 +114,11 @@ export const applySchemaConfigToDatasets = async (
   req?: PayloadRequest
 ): Promise<void> => {
   const schemaConfig = translateSchemaMode(schemaMode);
-  await Promise.all(
-    datasetMappingEntries.map(async (entry) => {
-      await payload.update({ collection: "datasets", id: entry.dataset, data: { schemaConfig }, req });
-      logger.info({ datasetId: entry.dataset, schemaMode, schemaConfig }, "Updated dataset schema config for schedule");
-    })
-  );
+  // Sequential: concurrent operations on one transaction would share its single connection.
+  for (const entry of datasetMappingEntries) {
+    await payload.update({ collection: "datasets", id: entry.dataset, data: { schemaConfig }, req });
+    logger.info({ datasetId: entry.dataset, schemaMode, schemaConfig }, "Updated dataset schema config for schedule");
+  }
 };
 
 /**
