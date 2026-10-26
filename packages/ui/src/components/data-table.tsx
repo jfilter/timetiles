@@ -10,14 +10,20 @@
 "use client";
 
 import {
-  type ColumnDef,
+  type ColumnDef as TanStackColumnDef,
+  createPaginatedRowModel,
+  createSortedRowModel,
   flexRender,
-  getCoreRowModel,
-  getPaginationRowModel,
-  getSortedRowModel,
   type Header,
+  type RowData,
+  rowPaginationFeature,
+  rowSortingFeature,
+  sortFn_alphanumeric,
+  sortFn_datetime,
+  sortFn_text,
   type SortingState,
-  useReactTable,
+  tableFeatures,
+  useTable,
 } from "@tanstack/react-table";
 import { cn } from "@timetiles/ui/lib/utils";
 import { ArrowDownIcon, ArrowUpDownIcon, ArrowUpIcon, ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
@@ -27,13 +33,25 @@ import { useUILabels } from "../provider";
 import { Button } from "./button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./table";
 
+/** Registers sorting and pagination plus the sort functions `"auto"` picks from. */
+const features = tableFeatures({
+  rowSortingFeature,
+  rowPaginationFeature,
+  sortedRowModel: createSortedRowModel(),
+  paginatedRowModel: createPaginatedRowModel(),
+  sortFns: { alphanumeric: sortFn_alphanumeric, datetime: sortFn_datetime, text: sortFn_text },
+});
+
+/** Column definition for {@link DataTable}, bound to the features the table registers. */
+type ColumnDef<TData extends RowData, TValue = unknown> = TanStackColumnDef<typeof features, TData, TValue>;
+
 const ARIA_SORT = { asc: "ascending", desc: "descending" } as const;
 
 /** WAI-ARIA sort state for a sortable column header. */
 const ariaSortFor = (direction: false | "asc" | "desc") => (direction ? ARIA_SORT[direction] : "none");
 
-interface DataTableProps<TData, TValue> {
-  readonly columns: ColumnDef<TData, TValue>[];
+interface DataTableProps<TData extends RowData> {
+  readonly columns: ColumnDef<TData>[];
   readonly data: TData[];
   readonly isLoading?: boolean;
   readonly loadingRowCount?: number;
@@ -95,7 +113,11 @@ const SkeletonRow = ({ colCount }: { readonly colCount: number }) => (
   </TableRow>
 );
 
-const HeaderCell = <TData, TValue>({ header }: { readonly header: Header<TData, TValue> }) => {
+const HeaderCell = <TData extends RowData>({
+  header,
+}: {
+  readonly header: Header<typeof features, TData, unknown>;
+}) => {
   if (header.isPlaceholder) return null;
 
   if (header.column.getCanSort()) {
@@ -114,7 +136,7 @@ const HeaderCell = <TData, TValue>({ header }: { readonly header: Header<TData, 
   return <>{flexRender(header.column.columnDef.header, header.getContext())}</>;
 };
 
-const DataTable = <TData, TValue>({
+const DataTable = <TData extends RowData>({
   columns,
   data,
   isLoading = false,
@@ -124,7 +146,7 @@ const DataTable = <TData, TValue>({
   className,
   renderExpandedRow,
   getRowId: getRowIdProp,
-}: DataTableProps<TData, TValue>) => {
+}: DataTableProps<TData>) => {
   const labels = useUILabels();
   const [sorting, setSorting] = useState<SortingState>([]);
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
@@ -159,20 +181,18 @@ const DataTable = <TData, TValue>({
     [toggleRow]
   );
 
-  const table = useReactTable({
+  const table = useTable({
+    features,
     data,
     columns,
     state: { sorting },
     onSortingChange: setSorting,
-    getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    initialState: { pagination: { pageSize } },
+    initialState: { pagination: { pageIndex: 0, pageSize } },
     getRowId: getRowIdProp ? (row) => getRowIdProp(row) : undefined,
   });
 
   const pageCount = table.getPageCount();
-  const { pageIndex } = table.getState().pagination;
+  const { pageIndex } = table.state.pagination;
   const showPagination = !isLoading && data.length > pageSize;
   const totalColSpan = columns.length + (renderExpandedRow ? 1 : 0);
 
@@ -203,7 +223,6 @@ const DataTable = <TData, TValue>({
                 return (
                   <Fragment key={row.id}>
                     <TableRow
-                      data-state={row.getIsSelected() ? "selected" : undefined}
                       className={renderExpandedRow ? "cursor-pointer" : undefined}
                       onClick={renderExpandedRow ? handleRowClick(row.id) : undefined}
                       aria-expanded={renderExpandedRow ? isExpanded : undefined}
@@ -215,7 +234,7 @@ const DataTable = <TData, TValue>({
                           <ChevronRightIcon className={cn("h-4 w-4 transition-transform", isExpanded && "rotate-90")} />
                         </TableCell>
                       )}
-                      {row.getVisibleCells().map((cell) => (
+                      {row.getAllCells().map((cell) => (
                         <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
                       ))}
                     </TableRow>
@@ -264,5 +283,4 @@ const DataTable = <TData, TValue>({
 };
 
 export { DataTable };
-export type { DataTableProps };
-export { type ColumnDef } from "@tanstack/react-table";
+export type { ColumnDef, DataTableProps };

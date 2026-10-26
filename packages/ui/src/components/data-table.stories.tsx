@@ -241,7 +241,7 @@ const DatasetDataTableStory = ({
   pageSize = 10,
   showExpandedRows = false,
 }: DatasetDataTableStoryProps) => (
-  <DataTable<DatasetRow, unknown>
+  <DataTable<DatasetRow>
     columns={datasetColumns}
     data={data}
     isLoading={isLoading}
