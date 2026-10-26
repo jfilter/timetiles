@@ -24,3 +24,22 @@ make test-ai FILTER=concurrent-login-sessions
 
 pnpm applies the patch through `package.json` and the lockfile. Reassess it when
 upgrading Payload.
+
+## nextra-theme-docs@4.6.1
+
+### Layout props under zod 4.4 and later
+
+`<Layout>` takes `children` out of its props and validates the rest against
+`LayoutPropsSchema`, which declares `children` as required. Up to zod 4.3 a
+missing key passed a `z.custom()` check that accepts `undefined`; from zod 4.4
+it fails with "expected nonoptional, received undefined", and every docs page
+fails to prerender.
+
+The patch marks `children` optional in that schema. Remove it only when the
+unpatched theme passes a clean docs build:
+
+```sh
+rm -rf apps/docs/.next && pnpm --filter docs build
+```
+
+Reassess it when upgrading nextra.

@@ -97,7 +97,8 @@
     },
     "patchedDependencies": {
       "node-geocoder@4.4.1": "patches/node-geocoder@4.4.1.patch",
-      "payload@3.90.2": "patches/payload@3.90.2.patch"
+      "payload@3.90.2": "patches/payload@3.90.2.patch",
+      "nextra-theme-docs@4.6.1": "patches/nextra-theme-docs@4.6.1.patch"
     }
   }
 }
