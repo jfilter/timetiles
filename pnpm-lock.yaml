@@ -9,15 +9,54 @@ catalogs:
     '@types/node':
       specifier: ^26.6.4
       version: 26.6.5
+    '@types/react':
+      specifier: ^19.3.0
+      version: 19.3.0
+    '@types/react-dom':
+      specifier: ^19.3.0
+      version: 19.3.0
+    '@vitest/coverage-v8':
+      specifier: 4.1.12
+      version: 4.1.12
+    echarts:
+      specifier: ^6.1.0
+      version: 6.1.0
+    echarts-for-react:
+      specifier: ^3.0.6
+      version: 3.0.6
     eslint:
       specifier: ^9.39.5
       version: 9.39.5
+    franc:
+      specifier: ^6.2.0
+      version: 6.2.0
+    lucide-react:
+      specifier: ^1.59.0
+      version: 1.61.0
+    next:
+      specifier: ^16.4.3
+      version: 16.4.3
+    next-themes:
+      specifier: ^0.4.6
+      version: 0.4.6
+    react:
+      specifier: ^19.3.1
+      version: 19.3.1
+    react-dom:
+      specifier: ^19.3.1
+      version: 19.3.1
     tsx:
       specifier: ^4.23.15
       version: 4.23.15
     typescript:
       specifier: ^5.9.3
       version: 5.9.3
+    vitest:
+      specifier: 4.1.12
+      version: 4.1.12
+    zod:
+      specifier: ^4.6.7
+      version: 4.6.7
 
 overrides:
   pino: ^10.3.1
@@ -351,8 +390,8 @@ importers:
         specifier: ^7.1.0
         version: 7.1.0(postcss@8.5.30)
       quicktype-core:
-        specifier: ^25.1.0
-        version: 25.1.0
+        specifier: ^26.0.0
+        version: 26.0.0
       react:
         specifier: 'catalog:'
         version: 19.3.1
@@ -519,7 +558,7 @@ importers:
         version: 3.8.1(eslint@9.39.5(jiti@2.7.0))
       eslint-plugin-oxlint:
         specifier: ^1.73.0
-        version: 1.73.0(oxlint@1.73.0(oxlint-tsgolint@0.25.0))
+        version: 1.73.0(oxlint@1.73.0)
       eslint-plugin-prefer-arrow-functions:
         specifier: ^3.10.2
         version: 3.10.2(eslint@9.39.5(jiti@2.7.0))(typescript@5.9.3)
@@ -2565,36 +2604,6 @@ packages:
   '@oxfmt/binding-win32-x64-msvc@0.73.0':
     resolution: {integrity: sha512-cGcze2fu+ykIaFtkEvZlkZ3HvnCLk+WISthtq99zWTWn0x13t5L9TxvGdLZMUMvtfYR+ICkiCwKnguVubdcw0w==}
     engines: {node: ^20.19.0 || >=22.12.0}
-    cpu: [x64]
-    os: [win32]
-
-  '@oxlint-tsgolint/darwin-arm64@0.25.0':
-    resolution: {integrity: sha512-87opKlwFP8qS9WHAeETV+kA0fC9Oyj4sg7OxWdI4xQY0WC7zlN6BgG66uE5mvtN5mahkt/gL0i/AVEnX6POq2Q==}
-    cpu: [arm64]
-    os: [darwin]
-
-  '@oxlint-tsgolint/darwin-x64@0.25.0':
-    resolution: {integrity: sha512-HJmuZexsrhqp4WmETn+Soq7Ogt5F0jirv+cYRSniIPe+d/x5beQzLX69xOLhQRE+8FLGETe7FahWMVP8x0dW4g==}
-    cpu: [x64]
-    os: [darwin]
-
-  '@oxlint-tsgolint/linux-arm64@0.25.0':
-    resolution: {integrity: sha512-aNyYsPREvCJi3qjfBA0sQB7DhT3y/W5Ac2JI2D8IJynoTOAhVZj401Si6901oDajlBWyqJqqojudn0VgHB6+7A==}
-    cpu: [arm64]
-    os: [linux]
-
-  '@oxlint-tsgolint/linux-x64@0.25.0':
-    resolution: {integrity: sha512-+60+VjK9Mch3uA5WlTdNHuAm5+WA7wPPjuWdPWlU0F6JJpYpGZXUpO1RPKuFEWsBpNbLcLeJ0LbCJ1doWu58NA==}
-    cpu: [x64]
-    os: [linux]
-
-  '@oxlint-tsgolint/win32-arm64@0.25.0':
-    resolution: {integrity: sha512-r53TO+eHp/t53nnUkQJfrYYXODPAxmtf3RUFQG5XsE2hD21IunliOaAdZXP2UwzCx+r/fbNaEelqTaAHcDr57w==}
-    cpu: [arm64]
-    os: [win32]
-
-  '@oxlint-tsgolint/win32-x64@0.25.0':
-    resolution: {integrity: sha512-vqe66B+gL9HarhyHemdlfC2VWT7eoA+o/ufZ7zT6AGHv64boyDZIJS3U+rpZo+ey4O7wZtiS/vYR2fWqDoFeBw==}
     cpu: [x64]
     os: [win32]
 
@@ -7871,10 +7880,6 @@ packages:
       vite-plus:
         optional: true
 
-  oxlint-tsgolint@0.25.0:
-    resolution: {integrity: sha512-7DBpqyLZCfyoXiivyfzt9Xmju/K1RcN+Y1W7buEwrgRCWWF11v9alypPqWGZBmh2erDkKL/kVyhKUH2Px+t13A==}
-    hasBin: true
-
   oxlint@1.73.0:
     resolution: {integrity: sha512-u91G9TJzU6yqKWNZUYprQB07W7YvntZXaRxQ6CkoytepYhLWUXWsr1M8zUJ34VatNPuUAr3Z8GH+O2A331CluQ==}
     engines: {node: ^20.19.0 || >=22.12.0}
@@ -8252,8 +8257,8 @@ packages:
   quickselect@3.0.0:
     resolution: {integrity: sha512-XdjUArbK4Bm5fLLvlm5KpTFOiOThgfWWI4axAZDWg4E/0mKdZyI9tNEfds27qCi1ze/vwTR16kvmmGhRra3c2g==}
 
-  quicktype-core@25.1.0:
-    resolution: {integrity: sha512-OTU8SWXmu/Hu+udnZJ54Sc3RBDM5wMJArBzy5HeqaGETerUXPl2UhMGi9L2UrHYwwvZdePhWZwBnTGFrIYTpsA==}
+  quicktype-core@26.0.0:
+    resolution: {integrity: sha512-tLSe2RkSj7c7ocTc+QMuQDGgEetGhZvKXLv1vNwpAQX2x8oOGYU9KSgJdIP9Qvy5hm47S2k3ZAX1LQAdS75JaA==}
     engines: {node: '>=20.0.0'}
 
   range-parser@1.2.1:
@@ -11718,24 +11723,6 @@ snapshots:
   '@oxfmt/binding-win32-x64-msvc@0.73.0':
     optional: true
 
-  '@oxlint-tsgolint/darwin-arm64@0.25.0':
-    optional: true
-
-  '@oxlint-tsgolint/darwin-x64@0.25.0':
-    optional: true
-
-  '@oxlint-tsgolint/linux-arm64@0.25.0':
-    optional: true
-
-  '@oxlint-tsgolint/linux-x64@0.25.0':
-    optional: true
-
-  '@oxlint-tsgolint/win32-arm64@0.25.0':
-    optional: true
-
-  '@oxlint-tsgolint/win32-x64@0.25.0':
-    optional: true
-
   '@oxlint/binding-android-arm-eabi@1.73.0':
     optional: true
 
@@ -15184,11 +15171,6 @@ snapshots:
       - remark-lint-file-extension
       - supports-color
 
-  eslint-plugin-oxlint@1.73.0(oxlint@1.73.0(oxlint-tsgolint@0.25.0)):
-    dependencies:
-      jsonc-parser: 3.3.1
-      oxlint: 1.73.0(oxlint-tsgolint@0.25.0)
-
   eslint-plugin-oxlint@1.73.0(oxlint@1.73.0):
     dependencies:
       jsonc-parser: 3.3.1
@@ -17920,16 +17902,6 @@ snapshots:
       '@oxfmt/binding-win32-ia32-msvc': 0.73.0
       '@oxfmt/binding-win32-x64-msvc': 0.73.0
 
-  oxlint-tsgolint@0.25.0:
-    optionalDependencies:
-      '@oxlint-tsgolint/darwin-arm64': 0.25.0
-      '@oxlint-tsgolint/darwin-x64': 0.25.0
-      '@oxlint-tsgolint/linux-arm64': 0.25.0
-      '@oxlint-tsgolint/linux-x64': 0.25.0
-      '@oxlint-tsgolint/win32-arm64': 0.25.0
-      '@oxlint-tsgolint/win32-x64': 0.25.0
-    optional: true
-
   oxlint@1.73.0:
     optionalDependencies:
       '@oxlint/binding-android-arm-eabi': 1.73.0
@@ -17951,29 +17923,6 @@ snapshots:
       '@oxlint/binding-win32-arm64-msvc': 1.73.0
       '@oxlint/binding-win32-ia32-msvc': 1.73.0
       '@oxlint/binding-win32-x64-msvc': 1.73.0
-
-  oxlint@1.73.0(oxlint-tsgolint@0.25.0):
-    optionalDependencies:
-      '@oxlint/binding-android-arm-eabi': 1.73.0
-      '@oxlint/binding-android-arm64': 1.73.0
-      '@oxlint/binding-darwin-arm64': 1.73.0
-      '@oxlint/binding-darwin-x64': 1.73.0
-      '@oxlint/binding-freebsd-x64': 1.73.0
-      '@oxlint/binding-linux-arm-gnueabihf': 1.73.0
-      '@oxlint/binding-linux-arm-musleabihf': 1.73.0
-      '@oxlint/binding-linux-arm64-gnu': 1.73.0
-      '@oxlint/binding-linux-arm64-musl': 1.73.0
-      '@oxlint/binding-linux-ppc64-gnu': 1.73.0
-      '@oxlint/binding-linux-riscv64-gnu': 1.73.0
-      '@oxlint/binding-linux-riscv64-musl': 1.73.0
-      '@oxlint/binding-linux-s390x-gnu': 1.73.0
-      '@oxlint/binding-linux-x64-gnu': 1.73.0
-      '@oxlint/binding-linux-x64-musl': 1.73.0
-      '@oxlint/binding-openharmony-arm64': 1.73.0
-      '@oxlint/binding-win32-arm64-msvc': 1.73.0
-      '@oxlint/binding-win32-ia32-msvc': 1.73.0
-      '@oxlint/binding-win32-x64-msvc': 1.73.0
-      oxlint-tsgolint: 0.25.0
 
   p-limit@2.3.0:
     dependencies:
@@ -18383,7 +18332,7 @@ snapshots:
 
   quickselect@3.0.0: {}
 
-  quicktype-core@25.1.0:
+  quicktype-core@26.0.0:
     dependencies:
       '@glideapps/ts-necessities': 2.2.3
       '@types/readable-stream': 4.0.10
