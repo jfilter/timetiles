@@ -3,12 +3,13 @@
  *
  * Each document is published and then gets an autosaved draft. Editors and
  * owners read the draft; anonymous callers and other users only ever see the
- * published state, and none of them may list version history. Rows that were
+ * published state, get not found when requesting the draft by ID, and none of
+ * them may list version history. Rows that were
  * never published stay hidden from everyone but their owner and editors.
  *
  * @module
  */
-import type { Payload } from "payload";
+import { NotFound, type Payload } from "payload";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import type { User } from "@/payload-types";
@@ -173,9 +174,9 @@ describe("Draft read access", () => {
     await testEnv?.cleanup();
   });
 
-  const readFindByID = async (collection: DraftCollection, user: User | undefined) => {
+  const readFindByID = async (collection: DraftCollection, user: User | undefined, draft = true) => {
     const { id, field } = cases[collection];
-    const doc = await payload.findByID({ collection, id, draft: true, overrideAccess: false, user });
+    const doc = await payload.findByID({ collection, id, draft, overrideAccess: false, user });
     return Reflect.get(doc, field);
   };
 
@@ -205,8 +206,13 @@ describe("Draft read access", () => {
     ["anonymous", () => undefined],
     ["another user", () => otherUser],
   ])("%s", (_label, getUser) => {
-    it.each(ALL_COLLECTIONS)("gets the published %s from findByID with draft", async (collection) => {
-      expect(await readFindByID(collection, getUser())).toBe(cases[collection].published);
+    it.each(ALL_COLLECTIONS)("gets the published %s from findByID", async (collection) => {
+      expect(await readFindByID(collection, getUser(), false)).toBe(cases[collection].published);
+    });
+
+    // Access applies to the latest version, so a denied draft hides the document instead of falling back.
+    it.each(ALL_COLLECTIONS)("gets not found for the %s draft from findByID with draft", async (collection) => {
+      await expect(readFindByID(collection, getUser())).rejects.toThrow(NotFound);
     });
 
     it.each(ALL_COLLECTIONS)("never sees the %s draft in find with draft", async (collection) => {

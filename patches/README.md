@@ -1,6 +1,6 @@
 # Dependency patches
 
-## payload@3.90.2
+## payload@3.92.0
 
 ### Sessions of overlapping logins
 

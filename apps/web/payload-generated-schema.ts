@@ -4688,6 +4688,9 @@ export const pages_blocks_hero_buttons_locales = db_schema.table(
       columns._locale,
       columns._parentID,
     ),
+    index("pages_blocks_hero_buttons_locales_parent_id_idx").on(
+      columns._parentID,
+    ),
     foreignKey({
       columns: [columns["_parentID"]],
       foreignColumns: [pages_blocks_hero_buttons.id],
@@ -4746,6 +4749,7 @@ export const pages_blocks_hero_locales = db_schema.table(
       columns._locale,
       columns._parentID,
     ),
+    index("pages_blocks_hero_locales_parent_id_idx").on(columns._parentID),
     foreignKey({
       columns: [columns["_parentID"]],
       foreignColumns: [pages_blocks_hero.id],
@@ -4788,6 +4792,9 @@ export const pages_blocks_features_features_locales = db_schema.table(
     uniqueIndex(
       "pages_blocks_features_features_locales_locale_parent_id_uniq",
     ).on(columns._locale, columns._parentID),
+    index("pages_blocks_features_features_locales_parent_id_idx").on(
+      columns._parentID,
+    ),
     foreignKey({
       columns: [columns["_parentID"]],
       foreignColumns: [pages_blocks_features_features.id],
@@ -4844,6 +4851,7 @@ export const pages_blocks_features_locales = db_schema.table(
       columns._locale,
       columns._parentID,
     ),
+    index("pages_blocks_features_locales_parent_id_idx").on(columns._parentID),
     foreignKey({
       columns: [columns["_parentID"]],
       foreignColumns: [pages_blocks_features.id],
@@ -4883,6 +4891,9 @@ export const pages_blocks_stats_stats_locales = db_schema.table(
   (columns) => [
     uniqueIndex("pages_blocks_stats_stats_locales_locale_parent_id_unique").on(
       columns._locale,
+      columns._parentID,
+    ),
+    index("pages_blocks_stats_stats_locales_parent_id_idx").on(
       columns._parentID,
     ),
     foreignKey({
@@ -4961,6 +4972,9 @@ export const pages_blocks_details_grid_items_locales = db_schema.table(
     uniqueIndex(
       "pages_blocks_details_grid_items_locales_locale_parent_id_uni",
     ).on(columns._locale, columns._parentID),
+    index("pages_blocks_details_grid_items_locales_parent_id_idx").on(
+      columns._parentID,
+    ),
     foreignKey({
       columns: [columns["_parentID"]],
       foreignColumns: [pages_blocks_details_grid_items.id],
@@ -5017,6 +5031,9 @@ export const pages_blocks_details_grid_locales = db_schema.table(
       columns._locale,
       columns._parentID,
     ),
+    index("pages_blocks_details_grid_locales_parent_id_idx").on(
+      columns._parentID,
+    ),
     foreignKey({
       columns: [columns["_parentID"]],
       foreignColumns: [pages_blocks_details_grid.id],
@@ -5057,6 +5074,9 @@ export const pages_blocks_timeline_items_locales = db_schema.table(
     uniqueIndex(
       "pages_blocks_timeline_items_locales_locale_parent_id_unique",
     ).on(columns._locale, columns._parentID),
+    index("pages_blocks_timeline_items_locales_parent_id_idx").on(
+      columns._parentID,
+    ),
     foreignKey({
       columns: [columns["_parentID"]],
       foreignColumns: [pages_blocks_timeline_items.id],
@@ -5112,6 +5132,7 @@ export const pages_blocks_timeline_locales = db_schema.table(
       columns._locale,
       columns._parentID,
     ),
+    index("pages_blocks_timeline_locales_parent_id_idx").on(columns._parentID),
     foreignKey({
       columns: [columns["_parentID"]],
       foreignColumns: [pages_blocks_timeline.id],
@@ -5155,6 +5176,9 @@ export const pages_blocks_testimonials_items_locales = db_schema.table(
     uniqueIndex(
       "pages_blocks_testimonials_items_locales_locale_parent_id_uni",
     ).on(columns._locale, columns._parentID),
+    index("pages_blocks_testimonials_items_locales_parent_id_idx").on(
+      columns._parentID,
+    ),
     foreignKey({
       columns: [columns["_parentID"]],
       foreignColumns: [pages_blocks_testimonials_items.id],
@@ -5208,6 +5232,9 @@ export const pages_blocks_testimonials_locales = db_schema.table(
   (columns) => [
     uniqueIndex("pages_blocks_testimonials_locales_locale_parent_id_unique").on(
       columns._locale,
+      columns._parentID,
+    ),
+    index("pages_blocks_testimonials_locales_parent_id_idx").on(
       columns._parentID,
     ),
     foreignKey({
@@ -5264,6 +5291,7 @@ export const pages_blocks_rich_text_locales = db_schema.table(
       columns._locale,
       columns._parentID,
     ),
+    index("pages_blocks_rich_text_locales_parent_id_idx").on(columns._parentID),
     foreignKey({
       columns: [columns["_parentID"]],
       foreignColumns: [pages_blocks_rich_text.id],
@@ -5321,6 +5349,7 @@ export const pages_blocks_cta_locales = db_schema.table(
       columns._locale,
       columns._parentID,
     ),
+    index("pages_blocks_cta_locales_parent_id_idx").on(columns._parentID),
     foreignKey({
       columns: [columns["_parentID"]],
       foreignColumns: [pages_blocks_cta.id],
@@ -5376,6 +5405,9 @@ export const pages_blocks_newsletter_form_locales = db_schema.table(
     uniqueIndex(
       "pages_blocks_newsletter_form_locales_locale_parent_id_unique",
     ).on(columns._locale, columns._parentID),
+    index("pages_blocks_newsletter_form_locales_parent_id_idx").on(
+      columns._parentID,
+    ),
     foreignKey({
       columns: [columns["_parentID"]],
       foreignColumns: [pages_blocks_newsletter_form.id],
@@ -5437,6 +5469,9 @@ export const pages_blocks_newsletter_c_t_a_locales = db_schema.table(
     uniqueIndex(
       "pages_blocks_newsletter_c_t_a_locales_locale_parent_id_uniqu",
     ).on(columns._locale, columns._parentID),
+    index("pages_blocks_newsletter_c_t_a_locales_parent_id_idx").on(
+      columns._parentID,
+    ),
     foreignKey({
       columns: [columns["_parentID"]],
       foreignColumns: [pages_blocks_newsletter_c_t_a.id],
@@ -5507,6 +5542,7 @@ export const pages_locales = db_schema.table(
       columns._locale,
       columns._parentID,
     ),
+    index("pages_locales_parent_id_idx").on(columns._parentID),
     foreignKey({
       columns: [columns["_parentID"]],
       foreignColumns: [pages.id],
@@ -5549,6 +5585,9 @@ export const _pages_v_blocks_hero_buttons_locales = db_schema.table(
     uniqueIndex(
       "_pages_v_blocks_hero_buttons_locales_locale_parent_id_unique",
     ).on(columns._locale, columns._parentID),
+    index("_pages_v_blocks_hero_buttons_locales_parent_id_idx").on(
+      columns._parentID,
+    ),
     foreignKey({
       columns: [columns["_parentID"]],
       foreignColumns: [_pages_v_blocks_hero_buttons.id],
@@ -5608,6 +5647,7 @@ export const _pages_v_blocks_hero_locales = db_schema.table(
       columns._locale,
       columns._parentID,
     ),
+    index("_pages_v_blocks_hero_locales_parent_id_idx").on(columns._parentID),
     foreignKey({
       columns: [columns["_parentID"]],
       foreignColumns: [_pages_v_blocks_hero.id],
@@ -5653,6 +5693,9 @@ export const _pages_v_blocks_features_features_locales = db_schema.table(
     uniqueIndex(
       "_pages_v_blocks_features_features_locales_locale_parent_id_u",
     ).on(columns._locale, columns._parentID),
+    index("_pages_v_blocks_features_features_locales_parent_id_idx").on(
+      columns._parentID,
+    ),
     foreignKey({
       columns: [columns["_parentID"]],
       foreignColumns: [_pages_v_blocks_features_features.id],
@@ -5710,6 +5753,9 @@ export const _pages_v_blocks_features_locales = db_schema.table(
       columns._locale,
       columns._parentID,
     ),
+    index("_pages_v_blocks_features_locales_parent_id_idx").on(
+      columns._parentID,
+    ),
     foreignKey({
       columns: [columns["_parentID"]],
       foreignColumns: [_pages_v_blocks_features.id],
@@ -5751,6 +5797,9 @@ export const _pages_v_blocks_stats_stats_locales = db_schema.table(
     uniqueIndex(
       "_pages_v_blocks_stats_stats_locales_locale_parent_id_unique",
     ).on(columns._locale, columns._parentID),
+    index("_pages_v_blocks_stats_stats_locales_parent_id_idx").on(
+      columns._parentID,
+    ),
     foreignKey({
       columns: [columns["_parentID"]],
       foreignColumns: [_pages_v_blocks_stats_stats.id],
@@ -5829,6 +5878,9 @@ export const _pages_v_blocks_details_grid_items_locales = db_schema.table(
     uniqueIndex(
       "_pages_v_blocks_details_grid_items_locales_locale_parent_id_",
     ).on(columns._locale, columns._parentID),
+    index("_pages_v_blocks_details_grid_items_locales_parent_id_idx").on(
+      columns._parentID,
+    ),
     foreignKey({
       columns: [columns["_parentID"]],
       foreignColumns: [_pages_v_blocks_details_grid_items.id],
@@ -5885,6 +5937,9 @@ export const _pages_v_blocks_details_grid_locales = db_schema.table(
     uniqueIndex(
       "_pages_v_blocks_details_grid_locales_locale_parent_id_unique",
     ).on(columns._locale, columns._parentID),
+    index("_pages_v_blocks_details_grid_locales_parent_id_idx").on(
+      columns._parentID,
+    ),
     foreignKey({
       columns: [columns["_parentID"]],
       foreignColumns: [_pages_v_blocks_details_grid.id],
@@ -5926,6 +5981,9 @@ export const _pages_v_blocks_timeline_items_locales = db_schema.table(
     uniqueIndex(
       "_pages_v_blocks_timeline_items_locales_locale_parent_id_uniq",
     ).on(columns._locale, columns._parentID),
+    index("_pages_v_blocks_timeline_items_locales_parent_id_idx").on(
+      columns._parentID,
+    ),
     foreignKey({
       columns: [columns["_parentID"]],
       foreignColumns: [_pages_v_blocks_timeline_items.id],
@@ -5983,6 +6041,9 @@ export const _pages_v_blocks_timeline_locales = db_schema.table(
       columns._locale,
       columns._parentID,
     ),
+    index("_pages_v_blocks_timeline_locales_parent_id_idx").on(
+      columns._parentID,
+    ),
     foreignKey({
       columns: [columns["_parentID"]],
       foreignColumns: [_pages_v_blocks_timeline.id],
@@ -6027,6 +6088,9 @@ export const _pages_v_blocks_testimonials_items_locales = db_schema.table(
     uniqueIndex(
       "_pages_v_blocks_testimonials_items_locales_locale_parent_id_",
     ).on(columns._locale, columns._parentID),
+    index("_pages_v_blocks_testimonials_items_locales_parent_id_idx").on(
+      columns._parentID,
+    ),
     foreignKey({
       columns: [columns["_parentID"]],
       foreignColumns: [_pages_v_blocks_testimonials_items.id],
@@ -6083,6 +6147,9 @@ export const _pages_v_blocks_testimonials_locales = db_schema.table(
     uniqueIndex(
       "_pages_v_blocks_testimonials_locales_locale_parent_id_unique",
     ).on(columns._locale, columns._parentID),
+    index("_pages_v_blocks_testimonials_locales_parent_id_idx").on(
+      columns._parentID,
+    ),
     foreignKey({
       columns: [columns["_parentID"]],
       foreignColumns: [_pages_v_blocks_testimonials.id],
@@ -6136,6 +6203,9 @@ export const _pages_v_blocks_rich_text_locales = db_schema.table(
   (columns) => [
     uniqueIndex("_pages_v_blocks_rich_text_locales_locale_parent_id_unique").on(
       columns._locale,
+      columns._parentID,
+    ),
+    index("_pages_v_blocks_rich_text_locales_parent_id_idx").on(
       columns._parentID,
     ),
     foreignKey({
@@ -6196,6 +6266,7 @@ export const _pages_v_blocks_cta_locales = db_schema.table(
       columns._locale,
       columns._parentID,
     ),
+    index("_pages_v_blocks_cta_locales_parent_id_idx").on(columns._parentID),
     foreignKey({
       columns: [columns["_parentID"]],
       foreignColumns: [_pages_v_blocks_cta.id],
@@ -6254,6 +6325,9 @@ export const _pages_v_blocks_newsletter_form_locales = db_schema.table(
     uniqueIndex(
       "_pages_v_blocks_newsletter_form_locales_locale_parent_id_uni",
     ).on(columns._locale, columns._parentID),
+    index("_pages_v_blocks_newsletter_form_locales_parent_id_idx").on(
+      columns._parentID,
+    ),
     foreignKey({
       columns: [columns["_parentID"]],
       foreignColumns: [_pages_v_blocks_newsletter_form.id],
@@ -6320,6 +6394,9 @@ export const _pages_v_blocks_newsletter_c_t_a_locales = db_schema.table(
     uniqueIndex(
       "_pages_v_blocks_newsletter_c_t_a_locales_locale_parent_id_un",
     ).on(columns._locale, columns._parentID),
+    index("_pages_v_blocks_newsletter_c_t_a_locales_parent_id_idx").on(
+      columns._parentID,
+    ),
     foreignKey({
       columns: [columns["_parentID"]],
       foreignColumns: [_pages_v_blocks_newsletter_c_t_a.id],
@@ -6427,6 +6504,7 @@ export const _pages_v_locales = db_schema.table(
       columns._locale,
       columns._parentID,
     ),
+    index("_pages_v_locales_parent_id_idx").on(columns._parentID),
     foreignKey({
       columns: [columns["_parentID"]],
       foreignColumns: [_pages_v.id],
@@ -7934,6 +8012,7 @@ export const main_menu_nav_items_locales = db_schema.table(
       columns._locale,
       columns._parentID,
     ),
+    index("main_menu_nav_items_locales_parent_id_idx").on(columns._parentID),
     foreignKey({
       columns: [columns["_parentID"]],
       foreignColumns: [main_menu_nav_items.id],
@@ -7993,6 +8072,9 @@ export const _main_menu_v_version_nav_items_locales = db_schema.table(
     uniqueIndex(
       "_main_menu_v_version_nav_items_locales_locale_parent_id_uniq",
     ).on(columns._locale, columns._parentID),
+    index("_main_menu_v_version_nav_items_locales_parent_id_idx").on(
+      columns._parentID,
+    ),
     foreignKey({
       columns: [columns["_parentID"]],
       foreignColumns: [_main_menu_v_version_nav_items.id],
@@ -8101,6 +8183,7 @@ export const footer_columns_links_locales = db_schema.table(
       columns._locale,
       columns._parentID,
     ),
+    index("footer_columns_links_locales_parent_id_idx").on(columns._parentID),
     foreignKey({
       columns: [columns["_parentID"]],
       foreignColumns: [footer_columns_links.id],
@@ -8140,6 +8223,7 @@ export const footer_columns_locales = db_schema.table(
       columns._locale,
       columns._parentID,
     ),
+    index("footer_columns_locales_parent_id_idx").on(columns._parentID),
     foreignKey({
       columns: [columns["_parentID"]],
       foreignColumns: [footer_columns.id],
@@ -8192,6 +8276,7 @@ export const footer_locales = db_schema.table(
       columns._locale,
       columns._parentID,
     ),
+    index("footer_locales_parent_id_idx").on(columns._parentID),
     foreignKey({
       columns: [columns["_parentID"]],
       foreignColumns: [footer.id],
@@ -8255,6 +8340,9 @@ export const _footer_v_version_columns_links_locales = db_schema.table(
     uniqueIndex(
       "_footer_v_version_columns_links_locales_locale_parent_id_uni",
     ).on(columns._locale, columns._parentID),
+    index("_footer_v_version_columns_links_locales_parent_id_idx").on(
+      columns._parentID,
+    ),
     foreignKey({
       columns: [columns["_parentID"]],
       foreignColumns: [_footer_v_version_columns_links.id],
@@ -8293,6 +8381,9 @@ export const _footer_v_version_columns_locales = db_schema.table(
   (columns) => [
     uniqueIndex("_footer_v_version_columns_locales_locale_parent_id_unique").on(
       columns._locale,
+      columns._parentID,
+    ),
+    index("_footer_v_version_columns_locales_parent_id_idx").on(
       columns._parentID,
     ),
     foreignKey({
@@ -8376,6 +8467,7 @@ export const _footer_v_locales = db_schema.table(
       columns._locale,
       columns._parentID,
     ),
+    index("_footer_v_locales_parent_id_idx").on(columns._parentID),
     foreignKey({
       columns: [columns["_parentID"]],
       foreignColumns: [_footer_v.id],
@@ -8440,6 +8532,7 @@ export const branding_locales = db_schema.table(
       columns._locale,
       columns._parentID,
     ),
+    index("branding_locales_parent_id_idx").on(columns._parentID),
     foreignKey({
       columns: [columns["_parentID"]],
       foreignColumns: [branding.id],
@@ -8545,6 +8638,7 @@ export const settings_locales = db_schema.table(
       columns._locale,
       columns._parentID,
     ),
+    index("settings_locales_parent_id_idx").on(columns._parentID),
     foreignKey({
       columns: [columns["_parentID"]],
       foreignColumns: [settings.id],

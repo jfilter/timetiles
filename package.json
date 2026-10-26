@@ -73,7 +73,6 @@
       "uuid@11": "^11.1.1",
       "uuid@13": "^13.0.1",
       "yaml@2": "^2.8.3",
-      "@payloadcms/email-nodemailer>nodemailer": "^10.2.1",
       "@lexical/headless>happy-dom": "^21.0.4",
       "nextra>zod": "^4.6.7",
       "nextra-theme-docs>zod": "^4.6.7"
@@ -95,7 +94,7 @@
     },
     "patchedDependencies": {
       "node-geocoder@4.4.1": "patches/node-geocoder@4.4.1.patch",
-      "payload@3.90.2": "patches/payload@3.90.2.patch",
+      "payload@3.92.0": "patches/payload@3.92.0.patch",
       "nextra-theme-docs@4.6.1": "patches/nextra-theme-docs@4.6.1.patch"
     }
   }
