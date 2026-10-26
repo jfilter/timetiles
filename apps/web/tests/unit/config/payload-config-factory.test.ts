@@ -6,16 +6,35 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { buildConfigMock, createTestAccountMock, createTransportMock, nodemailerAdapterMock, postgresAdapterMock } =
-  vi.hoisted(() => ({
+const {
+  buildConfigMock,
+  createTestAccountMock,
+  createTransportMock,
+  files,
+  nodemailerAdapterMock,
+  postgresAdapterMock,
+  verifyMock,
+} = vi.hoisted(() => {
+  const verifyMock = vi.fn().mockResolvedValue(true);
+  return {
     buildConfigMock: vi.fn((config) => config),
     createTestAccountMock: vi
       .fn()
       .mockResolvedValue({ user: "ethereal-user", pass: "ethereal-pass", web: "https://ethereal.example" }),
-    createTransportMock: vi.fn((options) => ({ transportOptions: options })),
+    createTransportMock: vi.fn((options) => ({ transportOptions: options, verify: verifyMock })),
+    files: new Map<string, string>(),
     nodemailerAdapterMock: vi.fn((options) => options),
     postgresAdapterMock: vi.fn(() => ({ name: "mock-db-adapter" })),
-  }));
+    verifyMock,
+  };
+});
+
+vi.mock("node:fs", async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
+  existsSync: (path: string) => files.has(path),
+  readFileSync: (path: string) => files.get(path),
+  writeFileSync: (path: string, data: string) => files.set(path, data),
+}));
 
 vi.mock("payload", () => ({ buildConfig: buildConfigMock }));
 
@@ -94,7 +113,7 @@ describe("createTestConfig", () => {
     expect(createTestAccountMock).not.toHaveBeenCalled();
     expect(createTransportMock).toHaveBeenCalledWith(smtpOptions);
     expect(nodemailerAdapterMock).toHaveBeenCalledWith(
-      expect.objectContaining({ transport: { transportOptions: smtpOptions } })
+      expect.objectContaining({ transport: expect.objectContaining({ transportOptions: smtpOptions }) })
     );
   });
 
@@ -121,5 +140,72 @@ describe("createTestConfig", () => {
     for (const task of config.jobs?.tasks ?? []) {
       expect(task).not.toHaveProperty("waitUntil");
     }
+  });
+});
+
+describe("ethereal fallback in development", () => {
+  const cacheFile = `${process.cwd()}/.ethereal-credentials.json`;
+  const cached = { user: "cached-user", pass: "cached-pass" };
+
+  const loadDevConfig = async () => {
+    vi.resetModules();
+    const { createTestConfig: freshCreateTestConfig } = await import("@/tests/setup/test-config");
+    return freshCreateTestConfig({ environment: "development" });
+  };
+
+  const expectTransportUser = (user: string) =>
+    expect(nodemailerAdapterMock).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        transport: expect.objectContaining({
+          transportOptions: expect.objectContaining({ auth: expect.objectContaining({ user }) }),
+        }),
+      })
+    );
+
+  beforeEach(() => {
+    files.clear();
+    files.set(cacheFile, JSON.stringify(cached));
+    createTestAccountMock.mockClear();
+    nodemailerAdapterMock.mockClear();
+    verifyMock.mockReset().mockResolvedValue(true);
+  });
+
+  it("reuses cached credentials the server accepts", async () => {
+    await loadDevConfig();
+
+    expect(createTestAccountMock).not.toHaveBeenCalled();
+    expectTransportUser("cached-user");
+  });
+
+  it("replaces cached credentials the server rejects", async () => {
+    verifyMock.mockRejectedValueOnce(Object.assign(new Error("Invalid login: 535"), { code: "EAUTH" }));
+
+    await loadDevConfig();
+
+    expect(createTestAccountMock).toHaveBeenCalledOnce();
+    expectTransportUser("ethereal-user");
+    expect(JSON.parse(files.get(cacheFile) ?? "{}")).toEqual({ user: "ethereal-user", pass: "ethereal-pass" });
+  });
+
+  it("keeps cached credentials when the server is unreachable", async () => {
+    verifyMock.mockRejectedValueOnce(Object.assign(new Error("connect ECONNREFUSED"), { code: "ECONNECTION" }));
+
+    await loadDevConfig();
+
+    expect(createTestAccountMock).not.toHaveBeenCalled();
+    expectTransportUser("cached-user");
+  });
+
+  it("retries account creation after a failed attempt", async () => {
+    files.clear();
+    createTestAccountMock.mockRejectedValueOnce(new Error("getaddrinfo ENOTFOUND api.nodemailer.com"));
+    vi.resetModules();
+    const { createTestConfig: freshCreateTestConfig } = await import("@/tests/setup/test-config");
+
+    await expect(freshCreateTestConfig({ environment: "development" })).rejects.toThrow("ENOTFOUND");
+    await freshCreateTestConfig({ environment: "development" });
+
+    expect(createTestAccountMock).toHaveBeenCalledTimes(2);
+    expectTransportUser("ethereal-user");
   });
 });

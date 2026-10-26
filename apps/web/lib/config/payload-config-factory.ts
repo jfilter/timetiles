@@ -79,37 +79,24 @@ interface EtherealCredentials {
   pass: string;
 }
 
-// Cached credentials in memory (survives hot reloads within same process)
-let cachedEtherealCredentials: EtherealCredentials | null = null;
+// Resolved credentials in memory (survives hot reloads within same process)
+let etherealCredentials: Promise<EtherealCredentials> | null = null;
 
-/**
- * Get or create ethereal.email test account credentials.
- * Caches to file so credentials persist across server restarts.
- */
-const getEtherealCredentials = async (): Promise<EtherealCredentials> => {
-  // Check memory cache first (no race condition - single-threaded init)
-  if (cachedEtherealCredentials) {
-    return cachedEtherealCredentials;
+const readCachedEtherealCredentials = (): EtherealCredentials | null => {
+  if (!existsSync(ETHEREAL_CACHE_FILE)) return null;
+  try {
+    const cached = JSON.parse(readFileSync(ETHEREAL_CACHE_FILE, "utf-8")) as EtherealCredentials;
+    return cached.user && cached.pass ? cached : null;
+  } catch {
+    return null;
   }
+};
 
-  // Check file cache
-  if (existsSync(ETHEREAL_CACHE_FILE)) {
-    try {
-      const cached = JSON.parse(readFileSync(ETHEREAL_CACHE_FILE, "utf-8")) as EtherealCredentials;
-      if (cached.user && cached.pass) {
-        cachedEtherealCredentials = cached;
-        return cached;
-      }
-    } catch {
-      // Invalid cache, will create new account
-    }
-  }
-
-  // Create new ethereal account
+/** Create a new ethereal.email test account and persist it to the cache file. */
+const provisionEtherealCredentials = async (): Promise<EtherealCredentials> => {
   const testAccount = await nodemailer.createTestAccount();
   const credentials: EtherealCredentials = { user: testAccount.user, pass: testAccount.pass };
 
-  // Cache to file
   try {
     writeFileSync(ETHEREAL_CACHE_FILE, JSON.stringify(credentials, null, 2));
   } catch {
@@ -117,10 +104,47 @@ const getEtherealCredentials = async (): Promise<EtherealCredentials> => {
   }
 
   logger.info(`E-mail: NEW ethereal.email (${credentials.user} / ${credentials.pass}) - https://ethereal.email/login`);
-
-  // eslint-disable-next-line require-atomic-updates -- Single-threaded init, no race condition
-  cachedEtherealCredentials = credentials;
   return credentials;
+};
+
+const createEtherealTransport = (credentials: EtherealCredentials) =>
+  nodemailer.createTransport({
+    host: "smtp.ethereal.email",
+    port: 587,
+    requireTLS: true,
+    auth: { user: credentials.user, pass: credentials.pass },
+  });
+
+/** Ethereal deletes idle accounts; the SMTP login then fails with EAUTH (535). */
+const isRejectedLogin = async (transport: ReturnType<typeof createEtherealTransport>): Promise<boolean> => {
+  try {
+    await transport.verify();
+    return false;
+  } catch (error) {
+    return (error as { code?: string }).code === "EAUTH";
+  }
+};
+
+/** Reuse the cached account unless Ethereal rejects it, otherwise create a new one. */
+const resolveEtherealCredentials = async (): Promise<EtherealCredentials> => {
+  const cached = readCachedEtherealCredentials();
+  if (!cached) return provisionEtherealCredentials();
+  if (!(await isRejectedLogin(createEtherealTransport(cached)))) return cached;
+
+  logger.info(`E-mail: cached ethereal.email account ${cached.user} was rejected, creating a new one`);
+  return provisionEtherealCredentials();
+};
+
+/** Get an ethereal.email transport for development; credentials persist in a cache file. */
+const getEtherealTransport = async () => {
+  const pending = (etherealCredentials ??= resolveEtherealCredentials());
+  try {
+    return createEtherealTransport(await pending);
+  } catch (error) {
+    // Let the next config evaluation retry instead of replaying the failure.
+    if (etherealCredentials === pending) etherealCredentials = null;
+    throw error;
+  }
 };
 
 // Helper to get logger configuration
@@ -235,16 +259,10 @@ const configureEmail = async (config: Config, env: ReturnType<typeof getEnv>, en
     return;
   }
 
-  const ethereal = await getEtherealCredentials();
   config.email = nodemailerAdapter({
     defaultFromAddress: env.EMAIL_FROM_ADDRESS,
     defaultFromName: env.EMAIL_FROM_NAME,
-    transport: nodemailer.createTransport({
-      host: "smtp.ethereal.email",
-      port: 587,
-      requireTLS: true,
-      auth: { user: ethereal.user, pass: ethereal.pass },
-    }),
+    transport: await getEtherealTransport(),
   });
 };
 
