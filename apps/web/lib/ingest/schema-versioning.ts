@@ -21,7 +21,8 @@
  *    transaction must be retried as a whole after Payload rolls it back.
  *
  * ⚠️ Payload CMS Deadlock Prevention
- * This service uses nested Payload operations and must receive the `req` parameter.
+ * Callers inside a Payload transaction must pass its `req`. Workflow tasks must not pass the
+ * workflow req: parallel sheets share it, so its transaction state leaks between them.
  * See: apps/docs/content/development/contributing/payload-deadlocks.mdx
  *
  * @module

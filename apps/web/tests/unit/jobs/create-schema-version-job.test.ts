@@ -165,7 +165,6 @@ describe("CreateSchemaVersionJob Handler", () => {
         autoApproved: false,
         approvedBy: 789,
         ingestSources: [],
-        req: mockContext.req,
       });
 
       // Verify stage tracking update at start + schema version update (no stage transition)
@@ -351,7 +350,6 @@ describe("CreateSchemaVersionJob Handler", () => {
         autoApproved: false,
         approvedBy: "user-789", // Should extract ID from object
         ingestSources: [],
-        req: mockContext.req,
       });
     });
   });

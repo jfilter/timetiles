@@ -7,7 +7,7 @@
  * @module
  */
 import { eq, sql } from "@payloadcms/db-postgres/drizzle";
-import type { Payload, PayloadRequest } from "payload";
+import type { Payload } from "payload";
 
 import { COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
 import { readInterpretationPlan } from "@/lib/ingest/interpret";
@@ -171,7 +171,7 @@ export const createSchemaVersionJob = {
           autoApproved: isAutoApproved,
           approvedBy: approvedById,
           ingestSources: [],
-          req: context.req as PayloadRequest | undefined,
+          // No workflow req: parallel sheets share it, and with it Payload's transaction slot.
         });
       }
 
