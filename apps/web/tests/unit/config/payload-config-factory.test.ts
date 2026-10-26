@@ -4,7 +4,7 @@
  * @module
  * @category Tests
  */
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { buildConfigMock, createTestAccountMock, createTransportMock, nodemailerAdapterMock, postgresAdapterMock } =
   vi.hoisted(() => ({
@@ -40,6 +40,8 @@ vi.mock("sharp", () => ({ default: {} }));
 
 vi.mock("@/lib/collections/users", () => ({ default: { slug: "users" } }));
 
+import { resetEnv } from "@/lib/config/env";
+import { TEST_CREDENTIALS } from "@/tests/constants/test-credentials";
 import { createTestConfig } from "@/tests/setup/test-config";
 
 describe("createTestConfig", () => {
@@ -49,6 +51,11 @@ describe("createTestConfig", () => {
     createTransportMock.mockClear();
     nodemailerAdapterMock.mockClear();
     postgresAdapterMock.mockClear();
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    resetEnv();
   });
 
   it("should configure a local json email transport in test mode", async () => {
@@ -65,6 +72,29 @@ describe("createTestConfig", () => {
         skipVerify: true,
         transport: expect.objectContaining({ transportOptions: { jsonTransport: true } }),
       })
+    );
+  });
+
+  it("should build an authenticated SMTP transport when a host is configured", async () => {
+    vi.stubEnv("EMAIL_SMTP_HOST", "smtp.internal.example");
+    vi.stubEnv("EMAIL_SMTP_PORT", "465");
+    vi.stubEnv("EMAIL_SMTP_USER", TEST_CREDENTIALS.basic.username);
+    vi.stubEnv("EMAIL_SMTP_PASS", TEST_CREDENTIALS.basic.password);
+    vi.stubEnv("EMAIL_SMTP_TLS_SERVERNAME", "mail.example.org");
+    resetEnv();
+
+    await createTestConfig({ environment: "development" });
+
+    const smtpOptions = {
+      host: "smtp.internal.example",
+      port: 465,
+      auth: { user: TEST_CREDENTIALS.basic.username, pass: TEST_CREDENTIALS.basic.password },
+      tls: { servername: "mail.example.org" },
+    };
+    expect(createTestAccountMock).not.toHaveBeenCalled();
+    expect(createTransportMock).toHaveBeenCalledWith(smtpOptions);
+    expect(nodemailerAdapterMock).toHaveBeenCalledWith(
+      expect.objectContaining({ transport: { transportOptions: smtpOptions } })
     );
   });
 

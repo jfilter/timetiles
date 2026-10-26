@@ -191,14 +191,14 @@ const configureEmail = async (config: Config, env: ReturnType<typeof getEnv>, en
     config.email = nodemailerAdapter({
       defaultFromAddress: env.EMAIL_FROM_ADDRESS,
       defaultFromName: env.EMAIL_FROM_NAME,
-      transportOptions: {
+      transport: nodemailer.createTransport({
         host: env.EMAIL_SMTP_HOST,
         port: env.EMAIL_SMTP_PORT,
         auth: env.EMAIL_SMTP_USER ? { user: env.EMAIL_SMTP_USER, pass: env.EMAIL_SMTP_PASS } : undefined,
         // When the SMTP host is reached by a private IP but the server cert
         // names a public hostname, override the SNI/cert-validation name.
         ...(env.EMAIL_SMTP_TLS_SERVERNAME ? { tls: { servername: env.EMAIL_SMTP_TLS_SERVERNAME } } : {}),
-      },
+      }),
     });
     return;
   }
@@ -239,7 +239,12 @@ const configureEmail = async (config: Config, env: ReturnType<typeof getEnv>, en
   config.email = nodemailerAdapter({
     defaultFromAddress: env.EMAIL_FROM_ADDRESS,
     defaultFromName: env.EMAIL_FROM_NAME,
-    transportOptions: { host: "smtp.ethereal.email", port: 587, auth: { user: ethereal.user, pass: ethereal.pass } },
+    transport: nodemailer.createTransport({
+      host: "smtp.ethereal.email",
+      port: 587,
+      requireTLS: true,
+      auth: { user: ethereal.user, pass: ethereal.pass },
+    }),
   });
 };
 
