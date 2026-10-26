@@ -113,7 +113,7 @@
     "@types/sanitize-html": "^2.16.2",
     "@vitejs/plugin-react": "^5.2.0",
     "@vitest/coverage-v8": "catalog:",
-    "dotenv": "^17.4.2",
+    "dotenv": "^18.0.7",
     "dotenv-cli": "^11.0.0",
     "echarts": "catalog:",
     "echarts-for-react": "catalog:",
