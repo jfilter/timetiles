@@ -9,54 +9,15 @@ catalogs:
     '@types/node':
       specifier: ^26.6.4
       version: 26.6.5
-    '@types/react':
-      specifier: ^19.3.0
-      version: 19.3.0
-    '@types/react-dom':
-      specifier: ^19.3.0
-      version: 19.3.0
-    '@vitest/coverage-v8':
-      specifier: 4.1.12
-      version: 4.1.12
-    echarts:
-      specifier: ^6.1.0
-      version: 6.1.0
-    echarts-for-react:
-      specifier: ^3.0.6
-      version: 3.0.6
     eslint:
       specifier: ^9.39.5
       version: 9.39.5
-    franc:
-      specifier: ^6.2.0
-      version: 6.2.0
-    lucide-react:
-      specifier: ^1.59.0
-      version: 1.61.0
-    next:
-      specifier: ^16.4.3
-      version: 16.4.3
-    next-themes:
-      specifier: ^0.4.6
-      version: 0.4.6
-    react:
-      specifier: ^19.3.1
-      version: 19.3.1
-    react-dom:
-      specifier: ^19.3.1
-      version: 19.3.1
     tsx:
       specifier: ^4.23.15
       version: 4.23.15
     typescript:
       specifier: ^5.9.3
       version: 5.9.3
-    vitest:
-      specifier: 4.1.12
-      version: 4.1.12
-    zod:
-      specifier: ^4.6.7
-      version: 4.6.7
 
 overrides:
   pino: ^10.3.1
@@ -128,7 +89,7 @@ importers:
         version: 9.39.5(jiti@2.7.0)
       eslint-plugin-oxlint:
         specifier: ^1.73.0
-        version: 1.73.0(oxlint@1.73.0(oxlint-tsgolint@0.25.0))
+        version: 1.73.0(oxlint@1.73.0)
       glob:
         specifier: ^13.0.6
         version: 13.0.6
@@ -143,10 +104,7 @@ importers:
         version: 0.73.0
       oxlint:
         specifier: ~1.73.0
-        version: 1.73.0(oxlint-tsgolint@0.25.0)
-      oxlint-tsgolint:
-        specifier: ^0.25.0
-        version: 0.25.0
+        version: 1.73.0
       tsx:
         specifier: 'catalog:'
         version: 4.23.15
@@ -15231,6 +15189,11 @@ snapshots:
       jsonc-parser: 3.3.1
       oxlint: 1.73.0(oxlint-tsgolint@0.25.0)
 
+  eslint-plugin-oxlint@1.73.0(oxlint@1.73.0):
+    dependencies:
+      jsonc-parser: 3.3.1
+      oxlint: 1.73.0
+
   eslint-plugin-prefer-arrow-functions@3.10.2(eslint@9.39.5(jiti@2.7.0))(typescript@5.9.3):
     dependencies:
       '@typescript-eslint/types': 8.71.2
@@ -17965,6 +17928,29 @@ snapshots:
       '@oxlint-tsgolint/linux-x64': 0.25.0
       '@oxlint-tsgolint/win32-arm64': 0.25.0
       '@oxlint-tsgolint/win32-x64': 0.25.0
+    optional: true
+
+  oxlint@1.73.0:
+    optionalDependencies:
+      '@oxlint/binding-android-arm-eabi': 1.73.0
+      '@oxlint/binding-android-arm64': 1.73.0
+      '@oxlint/binding-darwin-arm64': 1.73.0
+      '@oxlint/binding-darwin-x64': 1.73.0
+      '@oxlint/binding-freebsd-x64': 1.73.0
+      '@oxlint/binding-linux-arm-gnueabihf': 1.73.0
+      '@oxlint/binding-linux-arm-musleabihf': 1.73.0
+      '@oxlint/binding-linux-arm64-gnu': 1.73.0
+      '@oxlint/binding-linux-arm64-musl': 1.73.0
+      '@oxlint/binding-linux-ppc64-gnu': 1.73.0
+      '@oxlint/binding-linux-riscv64-gnu': 1.73.0
+      '@oxlint/binding-linux-riscv64-musl': 1.73.0
+      '@oxlint/binding-linux-s390x-gnu': 1.73.0
+      '@oxlint/binding-linux-x64-gnu': 1.73.0
+      '@oxlint/binding-linux-x64-musl': 1.73.0
+      '@oxlint/binding-openharmony-arm64': 1.73.0
+      '@oxlint/binding-win32-arm64-msvc': 1.73.0
+      '@oxlint/binding-win32-ia32-msvc': 1.73.0
+      '@oxlint/binding-win32-x64-msvc': 1.73.0
 
   oxlint@1.73.0(oxlint-tsgolint@0.25.0):
     optionalDependencies:
