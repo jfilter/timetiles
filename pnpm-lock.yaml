@@ -393,8 +393,8 @@ importers:
         specifier: ^7.1.0
         version: 7.1.0(postcss@8.5.30)
       quicktype-core:
-        specifier: ^25.1.0
-        version: 25.1.0
+        specifier: ^26.0.0
+        version: 26.0.0
       react:
         specifier: 'catalog:'
         version: 19.3.1
@@ -8294,8 +8294,8 @@ packages:
   quickselect@3.0.0:
     resolution: {integrity: sha512-XdjUArbK4Bm5fLLvlm5KpTFOiOThgfWWI4axAZDWg4E/0mKdZyI9tNEfds27qCi1ze/vwTR16kvmmGhRra3c2g==}
 
-  quicktype-core@25.1.0:
-    resolution: {integrity: sha512-OTU8SWXmu/Hu+udnZJ54Sc3RBDM5wMJArBzy5HeqaGETerUXPl2UhMGi9L2UrHYwwvZdePhWZwBnTGFrIYTpsA==}
+  quicktype-core@26.0.0:
+    resolution: {integrity: sha512-tLSe2RkSj7c7ocTc+QMuQDGgEetGhZvKXLv1vNwpAQX2x8oOGYU9KSgJdIP9Qvy5hm47S2k3ZAX1LQAdS75JaA==}
     engines: {node: '>=20.0.0'}
 
   range-parser@1.2.1:
@@ -18397,7 +18397,7 @@ snapshots:
 
   quickselect@3.0.0: {}
 
-  quicktype-core@25.1.0:
+  quicktype-core@26.0.0:
     dependencies:
       '@glideapps/ts-necessities': 2.2.3
       '@types/readable-stream': 4.0.10
