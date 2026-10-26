@@ -259,7 +259,7 @@ export class QuotaService {
   /**
    * Get current usage for a user from the user-usage collection.
    */
-  async getCurrentUsage(userId: UserIdentifier): Promise<UserUsage | null> {
+  async getCurrentUsage(userId: UserIdentifier, req?: Partial<PayloadRequest>): Promise<UserUsage | null> {
     const normalizedUserId = normalizeUserId(userId);
 
     try {
@@ -268,6 +268,7 @@ export class QuotaService {
         where: { user: { equals: normalizedUserId } },
         limit: 1,
         overrideAccess: true,
+        req,
       });
 
       const doc = usageRecord.docs[0];
@@ -332,7 +333,7 @@ export class QuotaService {
     if (context && cacheKey in context) {
       usage = context[cacheKey] as UserUsage | null;
     } else {
-      usage = await this.getCurrentUsage(user.id);
+      usage = await this.getCurrentUsage(user.id, req);
       if (context) {
         context[cacheKey] = usage;
       }
@@ -625,7 +626,7 @@ export class QuotaService {
     if (result.length === 0) {
       // Quota exceeded — no rows updated
       if (throwOnExceeded) {
-        const usage = await this.getCurrentUsage(normalizedUserId);
+        const usage = await this.getCurrentUsage(normalizedUserId, req);
         const current = usage?.[usageField] ?? 0;
         throw new QuotaExceededError(quotaKey, current, limit);
       }

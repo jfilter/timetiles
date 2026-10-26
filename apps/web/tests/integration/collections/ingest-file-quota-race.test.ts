@@ -16,6 +16,7 @@
  *
  * @module
  */
+import { createLocalReq, initTransaction, killTransaction } from "payload";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import { QuotaExceededError } from "@/lib/services/quota-service";
@@ -84,6 +85,30 @@ describe("FILE_UPLOADS_PER_DAY atomic quota", () => {
       overrideAccess: true,
     });
     expect(usage.docs[0]?.fileUploadsToday).toBe(quotaLimit);
+  }, 30000);
+
+  it("rejects over-limit claims inside more concurrent transactions than the pool has connections", async () => {
+    const { createQuotaService } = await import("@/lib/services/quota-service");
+    const quotaService = createQuotaService(testEnv.payload);
+    await quotaService.checkAndIncrementUsage(quotaUser, "FILE_UPLOADS_PER_DAY", 2);
+
+    // Each claim holds a transaction connection; reading the usage for the error must reuse it.
+    const results = await Promise.allSettled(
+      Array.from({ length: 6 }, async () => {
+        const req = await createLocalReq({}, testEnv.payload);
+        await initTransaction(req);
+        try {
+          return await quotaService.checkAndIncrementUsage(quotaUser, "FILE_UPLOADS_PER_DAY", 1, req);
+        } finally {
+          await killTransaction(req);
+        }
+      })
+    );
+
+    for (const r of results) {
+      expect(r.status).toBe("rejected");
+      expect((r as PromiseRejectedResult).reason).toBeInstanceOf(QuotaExceededError);
+    }
   }, 30000);
 
   it("getOrCreateUsageRecord is race-safe when two callers hit an empty user-usage row", async () => {
