@@ -22,6 +22,8 @@ Changes landed on `main` since the last tagged release.
 - Docs: the documentation site builds again with zod 4.4 and later
 - Imports: files with several sheets no longer fail sporadically while creating schema versions in parallel
 - Quotas: concurrent creates at a reached limit answer "limit reached" instead of stalling the database connection pool
+- Scheduled imports: saving a schedule applies its schema configuration to several datasets one after another instead of concurrently on one transaction
+- Development: the e-mail fallback replaces an expired ethereal.email account instead of failing with "Invalid login: 535"
 
 ## [0.1.0-alpha.18] - 2026-10-26
 
