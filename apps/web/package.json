@@ -44,7 +44,7 @@
     "@payloadcms/email-nodemailer": "3.90.2",
     "@payloadcms/next": "3.90.2",
     "@payloadcms/richtext-lexical": "3.90.2",
-    "@payloadcms/translations": "3.90.2",
+    "@payloadcms/translations": "3.91.0",
     "@payloadcms/ui": "3.90.2",
     "@tanstack/react-query": "^5.104.4",
     "@tanstack/react-query-devtools": "^5.104.4",
