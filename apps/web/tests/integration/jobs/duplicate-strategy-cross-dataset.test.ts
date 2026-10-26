@@ -30,7 +30,7 @@ import {
   withUsers,
 } from "../../setup/integration/environment";
 
-describe.sequential("processEventBatch — cross-dataset update guard", () => {
+describe("processEventBatch — cross-dataset update guard", () => {
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>["payload"];
   // oxlint-disable-next-line @typescript-eslint/no-explicit-any

@@ -11,7 +11,7 @@ vi.mock("@/lib/logger", () => ({
   createLogger: () => ({ debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() }),
 }));
 
-describe.sequential("SystemUserService", () => {
+describe("SystemUserService", () => {
   const mockPayload = { find: vi.fn(), create: vi.fn() } as any;
 
   beforeEach(() => {

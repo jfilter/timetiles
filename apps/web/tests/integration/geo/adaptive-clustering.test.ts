@@ -76,7 +76,7 @@ const createEventsInGrid = async (payload: Payload, datasetId: number, prefix: s
   }
 };
 
-describe.sequential("Adaptive cluster radius", () => {
+describe("Adaptive cluster radius", () => {
   let testEnv: TestEnvironment;
   let payload: Payload;
   let smallDatasetId: number;

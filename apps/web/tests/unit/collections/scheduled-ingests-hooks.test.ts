@@ -41,7 +41,7 @@ if (!afterChangeHook || !afterDeleteHook || !afterErrorHook) {
   throw new Error("scheduled ingest quota hooks are not configured");
 }
 
-describe.sequential("scheduled-ingests quota hooks", () => {
+describe("scheduled-ingests quota hooks", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     quotaMocks.mockCheckQuota.mockResolvedValue({ allowed: true, remaining: 1, limit: 1 });

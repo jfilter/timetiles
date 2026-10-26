@@ -26,7 +26,7 @@ import {
   withUsers,
 } from "@/tests/setup/integration/environment";
 
-describe.sequential("FILE_UPLOADS_PER_DAY atomic quota", () => {
+describe("FILE_UPLOADS_PER_DAY atomic quota", () => {
   const collectionsToReset = ["user-usage"];
 
   let testEnv: TestEnvironment;

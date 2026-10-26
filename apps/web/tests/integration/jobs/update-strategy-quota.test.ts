@@ -35,7 +35,7 @@ import {
   withUsers,
 } from "@/tests/setup/integration/environment";
 
-describe.sequential("TOTAL_EVENTS quota — update strategy", () => {
+describe("TOTAL_EVENTS quota — update strategy", () => {
   let testEnv: TestEnvironment;
   let payload: TestEnvironment["payload"];
   let cleanup: () => Promise<void>;

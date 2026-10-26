@@ -29,7 +29,7 @@ import {
   withUsers,
 } from "../../setup/integration/environment";
 
-describe.sequential("Combined Transformations Integration", () => {
+describe("Combined Transformations Integration", () => {
   const collectionsToReset = [
     "events",
     "ingest-files",

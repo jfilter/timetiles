@@ -19,7 +19,7 @@ import {
   withUsers,
 } from "@/tests/setup/integration/environment";
 
-describe.sequential("Pipeline field immutability", () => {
+describe("Pipeline field immutability", () => {
   let testEnv: TestEnvironment;
   let payload: TestEnvironment["payload"];
   let cleanup: () => Promise<void>;

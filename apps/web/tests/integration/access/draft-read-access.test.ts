@@ -57,7 +57,7 @@ const PNG_BUFFER = Buffer.from(
   "base64"
 );
 
-describe.sequential("Draft read access", () => {
+describe("Draft read access", () => {
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: Payload;
   let owner: User;

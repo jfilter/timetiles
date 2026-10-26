@@ -72,7 +72,7 @@ interface PackageListResponse {
   packages: { slug: string; source: { auth?: Record<string, unknown> } }[];
 }
 
-describe.sequential("Data package API security", () => {
+describe("Data package API security", () => {
   let payload: any;
   let cleanup: () => Promise<void>;
   let testEnv: any;

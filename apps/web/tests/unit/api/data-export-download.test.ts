@@ -52,7 +52,7 @@ const createRequest = () =>
 // oxlint-disable-next-line promise/prefer-await-to-then
 const routeParams = { params: Promise.resolve({ id: String(EXPORT_ID) }) };
 
-describe.sequential("GET /api/data-exports/[id]/download", () => {
+describe("GET /api/data-exports/[id]/download", () => {
   let mockPayload: ReturnType<typeof createMockPayload>;
 
   const setup = (exportRecord: Record<string, unknown> | null) => {

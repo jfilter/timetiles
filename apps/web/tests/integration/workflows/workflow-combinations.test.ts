@@ -116,7 +116,7 @@ const mockGeocodingSuccess = () => {
   } as unknown as geocodingModule.GeocodingService);
 };
 
-describe.sequential("Workflow Combinations (Integration)", () => {
+describe("Workflow Combinations (Integration)", () => {
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: any;
   let testUser: any;

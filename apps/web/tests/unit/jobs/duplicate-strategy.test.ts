@@ -295,7 +295,7 @@ const getBulkInsertedEvents = (callIndex = 0): unknown[] => {
   return call[1];
 };
 
-describe.sequential("processEventBatch", () => {
+describe("processEventBatch", () => {
   let mockPayload: any;
   let baseCtx: ProcessBatchContext;
 

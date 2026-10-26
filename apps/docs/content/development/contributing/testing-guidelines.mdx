@@ -61,7 +61,7 @@ import {
   IMPORT_PIPELINE_COLLECTIONS_TO_RESET,
 } from "@/tests/setup/integration/environment";
 
-describe.sequential("Import workflow", () => {
+describe("Import workflow", () => {
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
 
   beforeAll(async () => {

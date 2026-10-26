@@ -44,7 +44,7 @@ const euPlan: DatasetInterpretationPlan = {
   ambiguityResolution: "strict",
 };
 
-describe.sequential("/api/v1/events - numeric range filtering", () => {
+describe("/api/v1/events - numeric range filtering", () => {
   let payload: Payload;
   let usDatasetId: number;
   let euDatasetId: number;

@@ -60,7 +60,7 @@ const createRequest = () =>
 // oxlint-disable-next-line promise/prefer-await-to-then
 const createParams = (id: string) => ({ params: Promise.resolve({ id }) });
 
-describe.sequential("POST /api/scrapers/[id]/run", () => {
+describe("POST /api/scrapers/[id]/run", () => {
   let mockPayload: ReturnType<typeof createMockPayload>;
 
   beforeEach(() => {

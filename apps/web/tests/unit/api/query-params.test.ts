@@ -24,7 +24,7 @@ import { z } from "zod";
 import { apiRoute } from "@/lib/api/handler";
 import { DatasetsParamSchema } from "@/lib/schemas/common";
 
-describe.sequential("apiRoute query parsing", () => {
+describe("apiRoute query parsing", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.mockGetPayload.mockResolvedValue({ auth: vi.fn().mockResolvedValue({ user: null }) });

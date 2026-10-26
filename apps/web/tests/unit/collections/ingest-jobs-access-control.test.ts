@@ -39,7 +39,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ingestJobsAccess } from "@/lib/collections/ingest-jobs/access-control";
 import type * as SharedFields from "@/lib/collections/shared-fields";
 
-describe.sequential("ingestJobsAccess", () => {
+describe("ingestJobsAccess", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.isPrivileged.mockReturnValue(false);

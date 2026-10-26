@@ -18,7 +18,7 @@ import {
   withUsers,
 } from "@/tests/setup/integration/environment";
 
-describe.sequential("Visibility and ownership sync cascade", () => {
+describe("Visibility and ownership sync cascade", () => {
   let testEnv: TestEnvironment;
   let payload: TestEnvironment["payload"];
   let cleanup: () => Promise<void>;

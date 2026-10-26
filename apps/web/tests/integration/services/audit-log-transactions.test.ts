@@ -10,7 +10,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { AUDIT_ACTIONS, auditFieldChanges } from "@/lib/services/audit-log-service";
 import { createIntegrationTestEnvironment, withUsers } from "@/tests/setup/integration/environment";
 
-describe.sequential("Audit log transaction failures", () => {
+describe("Audit log transaction failures", () => {
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
 
   beforeAll(async () => {

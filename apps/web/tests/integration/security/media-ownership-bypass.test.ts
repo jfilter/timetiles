@@ -39,7 +39,7 @@ const createMediaForUser = (payload: any, user: User, alt: string): Promise<Medi
   });
 };
 
-describe.sequential("Media Ownership Bypass Vulnerability", () => {
+describe("Media Ownership Bypass Vulnerability", () => {
   let payload: any;
   let cleanup: () => Promise<void>;
   let testEnv: any;

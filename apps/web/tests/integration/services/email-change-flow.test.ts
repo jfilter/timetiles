@@ -25,7 +25,7 @@ interface HiddenUserFields {
   pendingEmail?: string | null;
 }
 
-describe.sequential("staged email change", () => {
+describe("staged email change", () => {
   let testEnv: TestEnvironment;
   let payload: Payload;
   let makeUser: (name: string, email: string) => Promise<{ id: number }>;

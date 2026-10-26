@@ -94,5 +94,4 @@ See [Integration Testing Patterns](/development/contributing/testing-guidelines)
 
 - Query pending jobs **before** running (`completedAt: { exists: false }`)
 - Verify **side effects** after successful runs (completed job records are deleted). Final failures remain in `payload-jobs` and can be inspected.
-- Use `describe.sequential()` for tests that interact with the job queue
 - Use a bounded drain loop with `payload.jobs.run({ allQueues: true })` to process chained workflow tasks in tests

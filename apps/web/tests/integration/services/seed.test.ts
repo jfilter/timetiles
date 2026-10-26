@@ -18,7 +18,7 @@ import type { Config } from "@/payload-types";
 import { getCollectionConfig } from "../../../lib/seed/seed.config";
 import { createIntegrationTestEnvironment } from "../../setup/integration/environment";
 
-describe.sequential("Database-backed Seed Operations", () => {
+describe("Database-backed Seed Operations", () => {
   const seedCollections = ["users", "catalogs", "datasets", "dataset-schemas", "events", "pages"];
 
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
@@ -41,7 +41,7 @@ describe.sequential("Database-backed Seed Operations", () => {
     await testEnv.seedManager.truncate(seedCollections);
   });
 
-  describe.sequential("Seeding Operations", () => {
+  describe("Seeding Operations", () => {
     it("should seed all collections in correct order", async () => {
       // Don't truncate here - the beforeEach already does it
       // Use test environment for simpler data without file uploads
@@ -87,7 +87,7 @@ describe.sequential("Database-backed Seed Operations", () => {
     });
   });
 
-  describe.sequential("Truncation Operations", () => {
+  describe("Truncation Operations", () => {
     it("fails on a locked table and recovers after the lock is released", async () => {
       const client = createDatabaseClient({ connectionString: getDatabaseUrl(true) });
       await client.connect();
@@ -123,7 +123,7 @@ describe.sequential("Database-backed Seed Operations", () => {
     }, 90000); // 90 second timeout (increases when running full suite)
   });
 
-  describe.sequential("Error Handling", () => {
+  describe("Error Handling", () => {
     it("should handle missing relationships gracefully", async () => {
       await testEnv.seedManager.truncate(seedCollections);
 
@@ -160,7 +160,7 @@ describe.sequential("Database-backed Seed Operations", () => {
     });
   });
 
-  describe.sequential("Configuration-Driven Seeding", () => {
+  describe("Configuration-Driven Seeding", () => {
     it("should seed using configuration for development preset", async () => {
       await testEnv.seedManager.seedWithConfig({
         preset: "development",

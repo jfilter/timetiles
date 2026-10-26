@@ -28,7 +28,7 @@ import {
   withUsers,
 } from "../../setup/integration/environment";
 
-describe.sequential("Job Queueing Tests", () => {
+describe("Job Queueing Tests", () => {
   const collectionsToReset = [...IMPORT_PIPELINE_COLLECTIONS_TO_RESET];
 
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;

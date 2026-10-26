@@ -32,7 +32,7 @@ const runLint = (args: string[]) => {
   return runEslint(eslint.bin, [...eslint.args, ...args], WORKSPACE_ROOT);
 };
 
-describe.sequential("root ESLint invocation", () => {
+describe("root ESLint invocation", () => {
   it("ignores temporary export artifacts", () => {
     const result = runLint(["--print-config", "apps/web/.exports-test/fixture.ts"]);
     expect(result.stdout.trim()).toBe("undefined");

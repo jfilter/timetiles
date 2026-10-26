@@ -35,7 +35,7 @@ const createSelectBuilder = (result: unknown) => {
   return builder;
 };
 
-describe.sequential("GET /api/catalogs/with-datasets", () => {
+describe("GET /api/catalogs/with-datasets", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.mockGetPayload.mockResolvedValue({

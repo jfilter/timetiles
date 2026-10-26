@@ -34,7 +34,7 @@ const readImported = async (filePath: string): Promise<Record<string, unknown>[]
   return rows;
 };
 
-describe.sequential("CSV reader parity", () => {
+describe("CSV reader parity", () => {
   beforeEach(() => {
     tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "csv-parity-"));
   });

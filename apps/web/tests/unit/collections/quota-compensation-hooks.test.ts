@@ -46,7 +46,7 @@ const createReq = (id: string | number = "user-1") =>
 const createTransactionalReq = (id: string | number) =>
   ({ user: { id, role: "user", trustLevel: "1" }, payload: {}, context: {}, transactionID: "tx-1" }) as never;
 
-describe.sequential("quota compensation hooks", () => {
+describe("quota compensation hooks", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     quotaMocks.checkAndIncrementUsage.mockResolvedValue(true);

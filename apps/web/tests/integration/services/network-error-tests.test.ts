@@ -59,7 +59,7 @@ const expectHandlerToThrow = async (handlerArgs: Parameters<typeof urlFetchJob.h
   return caughtError instanceof Error ? caughtError.message : String(caughtError);
 };
 
-describe.sequential("Network Error Handling Tests", () => {
+describe("Network Error Handling Tests", () => {
   const collectionsToReset = ["scheduled-ingests", "ingest-files", "payload-jobs", "user-usage"];
 
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;

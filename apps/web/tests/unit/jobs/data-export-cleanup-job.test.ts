@@ -21,7 +21,7 @@ vi.mock("@/lib/logger", () => ({
 import { dataExportCleanupJob } from "@/lib/jobs/handlers/data-export-cleanup-job";
 import { logError } from "@/lib/logger";
 
-describe.sequential("dataExportCleanupJob", () => {
+describe("dataExportCleanupJob", () => {
   let mockPayload: any;
   let mockUnlink: any;
 

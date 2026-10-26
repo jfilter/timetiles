@@ -86,7 +86,7 @@ const setupDefaults = () => {
   mocks.mockDrizzleExecute.mockResolvedValue({ rows: [] });
 };
 
-describe.sequential("GET /api/v1/events/cluster-summary", () => {
+describe("GET /api/v1/events/cluster-summary", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     setupDefaults();

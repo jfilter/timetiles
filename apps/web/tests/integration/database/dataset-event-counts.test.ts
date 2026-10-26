@@ -16,7 +16,7 @@ import {
   withUsers,
 } from "@/tests/setup/integration/environment";
 
-describe.sequential("fetchDatasetEventCounts", () => {
+describe("fetchDatasetEventCounts", () => {
   let env: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
 
   beforeAll(async () => {

@@ -33,7 +33,7 @@ import {
   withUsers,
 } from "../../setup/integration/environment";
 
-describe.sequential("Multi-Language Import Tests", () => {
+describe("Multi-Language Import Tests", () => {
   const collectionsToReset = [
     "events",
     "ingest-files",

@@ -90,7 +90,7 @@ beforeEach(() => {
   } as any);
 });
 
-describe.sequential("Health Route", () => {
+describe("Health Route", () => {
   it("returns 200 with ok status", async () => {
     mocks.mockRunLivenessCheck.mockResolvedValue({ status: "ok", database: "connected" });
 
@@ -120,7 +120,7 @@ describe.sequential("Health Route", () => {
   });
 });
 
-describe.sequential("Quotas Route", () => {
+describe("Quotas Route", () => {
   it("returns 401 when not authenticated", async () => {
     mockPayload.auth.mockResolvedValue({ user: null });
 

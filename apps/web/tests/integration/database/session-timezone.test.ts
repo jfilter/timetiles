@@ -22,7 +22,7 @@ import type { TestEnvironment } from "../../setup/integration/environment";
  *  duplicate key instead of the assertion that actually broke. */
 const RUN_ID = randomUUID().slice(0, 8);
 
-describe.sequential("database session time zone", () => {
+describe("database session time zone", () => {
   let payload: Payload;
   let datasetId: number;
   let testEnv: TestEnvironment;

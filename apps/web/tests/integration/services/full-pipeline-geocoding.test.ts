@@ -56,7 +56,7 @@ const mockGeocodeResult = (address: string, lat: number, lng: number) => [
   },
 ];
 
-describe.sequential("Full Pipeline with Geocoding", () => {
+describe("Full Pipeline with Geocoding", () => {
   const collectionsToReset = [...IMPORT_PIPELINE_COLLECTIONS_TO_RESET, "location-cache", "geocoding-providers"];
 
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;

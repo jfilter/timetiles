@@ -25,7 +25,7 @@ const CASES: Array<{ label: string; fields: Field[] }> = [
   { label: "scrapers", fields: scraperFields },
 ];
 
-describe.sequential("webhookUrl field", () => {
+describe("webhookUrl field", () => {
   const previousUrl = process.env.NEXT_PUBLIC_PAYLOAD_URL;
 
   beforeEach(() => {

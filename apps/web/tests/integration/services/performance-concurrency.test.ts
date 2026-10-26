@@ -41,7 +41,7 @@ interface UrlFetchSuccessOutput {
 
 type _UrlFetchOutput = UrlFetchSuccessOutput;
 
-describe.sequential("Performance and Concurrency Tests", () => {
+describe("Performance and Concurrency Tests", () => {
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: any;
   let cleanup: () => Promise<void>;

@@ -13,7 +13,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { GET } from "../../../app/api/legal-notices/route";
 
-describe.sequential("/api/legal-notices", () => {
+describe("/api/legal-notices", () => {
   let payload: Payload;
   let testEnv: any;
 

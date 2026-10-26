@@ -29,7 +29,7 @@ const BOUNDS = { west: SPOT.lng - 0.5, south: SPOT.lat - 0.5, east: SPOT.lng + 0
 
 const occurrences = (haystack: string, needle: string): number => haystack.split(needle).length - 1;
 
-describe.sequential("event SQL function access clauses", () => {
+describe("event SQL function access clauses", () => {
   let testEnv: TestEnvironment;
   let payload: Payload;
 

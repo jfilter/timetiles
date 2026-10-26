@@ -14,7 +14,7 @@ import type { User } from "@/payload-types";
 import type { TestEnvironment } from "@/tests/setup/integration/environment";
 import { createIntegrationTestEnvironment, withUsers } from "@/tests/setup/integration/environment";
 
-describe.sequential("denyPendingDeletion Access Control", () => {
+describe("denyPendingDeletion Access Control", () => {
   let testEnv: TestEnvironment;
   let normalUser: User;
   let pendingDeletionUser: User;

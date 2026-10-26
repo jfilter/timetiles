@@ -44,7 +44,7 @@ vi.mock("@/lib/security/url-validation", async () => {
   return { ...actual, validateResolvedPublicHostname: mocks.validateResolvedPublicHostname };
 });
 
-describe.sequential("scraperRepoSyncJob", () => {
+describe("scraperRepoSyncJob", () => {
   let mockPayload: any;
 
   const createMockContext = (input: { scraperRepoId: number }) => ({

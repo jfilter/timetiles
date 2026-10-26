@@ -35,7 +35,7 @@ vi.mock("@/lib/utils/date", () => ({ parseDateInput: vi.fn((input: string) => ne
 import { cleanupStuckScrapersJob } from "@/lib/jobs/handlers/cleanup-stuck-scrapers-job";
 import type * as PayloadJobQueries from "@/lib/services/payload-job-queries";
 
-describe.sequential("cleanupStuckScrapersJob", () => {
+describe("cleanupStuckScrapersJob", () => {
   let mockPayload: {
     find: ReturnType<typeof vi.fn>;
     update: ReturnType<typeof vi.fn>;

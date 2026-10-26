@@ -271,7 +271,7 @@ describe("import-configure-service", () => {
 
   // sequential because the spies/payload stub are reassigned in beforeEach;
   // the global vitest config runs tests concurrently within a describe.
-  describe.sequential("createIngestFileRecord", () => {
+  describe("createIngestFileRecord", () => {
     let tmpDir: string;
     let tmpFilePath: string;
     let mockPayload: Payload;

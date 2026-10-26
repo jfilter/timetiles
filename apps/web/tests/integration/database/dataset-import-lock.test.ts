@@ -15,7 +15,7 @@ import { createLogger } from "@/lib/logger";
 
 import { createIntegrationTestEnvironment } from "../../setup/integration/environment";
 
-describe.sequential("dataset import lease (real advisory locks)", () => {
+describe("dataset import lease (real advisory locks)", () => {
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>["payload"];
   const log = createLogger("dataset-lease-test");

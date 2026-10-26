@@ -24,7 +24,7 @@ import {
   withUsers,
 } from "../../setup/integration/environment";
 
-describe.sequential("Webhook Trigger API Integration", () => {
+describe("Webhook Trigger API Integration", () => {
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: Payload;
   let cleanup: () => Promise<void>;

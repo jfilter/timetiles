@@ -41,7 +41,7 @@ const runJobsUntilSchemaComplete = async (
   );
 };
 
-describe.sequential("Schema Detection - Edge Cases", () => {
+describe("Schema Detection - Edge Cases", () => {
   const collectionsToReset = [...IMPORT_PIPELINE_COLLECTIONS_TO_RESET];
 
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;

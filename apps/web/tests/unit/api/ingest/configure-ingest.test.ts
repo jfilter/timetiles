@@ -180,7 +180,7 @@ const setupPreviewMetadata = (meta: Record<string, unknown> | null) => {
 
 // --- Tests ---
 
-describe.sequential("POST /api/ingest/configure", () => {
+describe("POST /api/ingest/configure", () => {
   beforeEach(() => {
     vi.clearAllMocks();
 

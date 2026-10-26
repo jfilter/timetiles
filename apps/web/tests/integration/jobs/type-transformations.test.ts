@@ -49,7 +49,7 @@ const mockStreamBatch = (rows: Record<string, unknown>[]) => ({
   },
 });
 
-describe.sequential("Expression Transforms Integration", () => {
+describe("Expression Transforms Integration", () => {
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: Payload;
   let cleanup: () => Promise<void>;

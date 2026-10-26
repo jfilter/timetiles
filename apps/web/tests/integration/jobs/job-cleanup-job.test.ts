@@ -11,7 +11,7 @@ import { getTransactionAwareDrizzle } from "@/lib/database/drizzle-transaction";
 import { jobCleanupJob } from "@/lib/jobs/handlers/job-cleanup-job";
 import { createIntegrationTestEnvironment } from "@/tests/setup/integration/environment";
 
-describe.sequential("Job cleanup retries", () => {
+describe("Job cleanup retries", () => {
   let env: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
 
   beforeAll(async () => {

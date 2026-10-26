@@ -21,7 +21,7 @@ import {
  */
 const createPayloadMock = () => ({ find: vi.fn() });
 
-describe.sequential("site-resolver", () => {
+describe("site-resolver", () => {
   beforeEach(() => {
     clearSiteCache();
   });

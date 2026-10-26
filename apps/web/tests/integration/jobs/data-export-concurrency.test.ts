@@ -7,7 +7,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { createIntegrationTestEnvironment } from "@/tests/setup/integration/environment";
 
-describe.sequential("Data export job concurrency", () => {
+describe("Data export job concurrency", () => {
   let env: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
 
   beforeAll(async () => {

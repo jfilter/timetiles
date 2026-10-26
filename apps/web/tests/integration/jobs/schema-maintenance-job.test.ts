@@ -20,7 +20,7 @@ import {
 
 const generateUniqueId = (datasetId: number) => `${datasetId}:test:${randomUUID()}`;
 
-describe.sequential("Schema Maintenance Job", () => {
+describe("Schema Maintenance Job", () => {
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>["payload"];
   let testCatalogId: number;

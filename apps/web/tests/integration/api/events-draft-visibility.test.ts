@@ -25,7 +25,7 @@ type RouteHandler = (request: NextRequest, context: { params: Promise<Record<str
 const PUBLISHED_COUNT = 3;
 const DRAFT_COUNT = 2;
 
-describe.sequential("Draft events on SQL-backed event endpoints", () => {
+describe("Draft events on SQL-backed event endpoints", () => {
   let payload: Payload;
   let testEnv: TestEnvironment;
   let datasetId: number;

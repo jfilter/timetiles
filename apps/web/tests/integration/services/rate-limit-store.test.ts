@@ -19,7 +19,7 @@ import { sleep } from "@/lib/utils/sleep";
 
 import { createIntegrationTestEnvironment } from "../../setup/integration/environment";
 
-describe.sequential("RateLimitStore backends", () => {
+describe("RateLimitStore backends", () => {
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>["payload"];
 
@@ -28,7 +28,7 @@ describe.sequential("RateLimitStore backends", () => {
   };
 
   const runStoreContractTests = (name: string, createStore: () => RateLimitStore | Promise<RateLimitStore>): void => {
-    describe.sequential(name, () => {
+    describe(name, () => {
       let store: RateLimitStore;
 
       beforeEach(async () => {
@@ -137,7 +137,7 @@ describe.sequential("RateLimitStore backends", () => {
   runStoreContractTests("MemoryRateLimitStore", () => new MemoryRateLimitStore());
   runStoreContractTests("PgRateLimitStore", () => new PgRateLimitStore(payload));
 
-  describe.sequential("PgRateLimitStore concurrency", () => {
+  describe("PgRateLimitStore concurrency", () => {
     let store: PgRateLimitStore;
 
     beforeEach(async () => {
@@ -175,7 +175,7 @@ describe.sequential("RateLimitStore backends", () => {
     });
   });
 
-  describe.sequential("RateLimitService with pg backend", () => {
+  describe("RateLimitService with pg backend", () => {
     let service: RateLimitService;
 
     beforeEach(async () => {

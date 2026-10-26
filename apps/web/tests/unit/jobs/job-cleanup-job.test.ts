@@ -32,7 +32,7 @@ vi.mock("@/lib/logger", () => ({
 import { jobCleanupJob } from "@/lib/jobs/handlers/job-cleanup-job";
 import { logError } from "@/lib/logger";
 
-describe.sequential("jobCleanupJob", () => {
+describe("jobCleanupJob", () => {
   let mockPayload: any;
 
   const createContext = () => ({ job: { id: "cleanup-job-1" }, req: { payload: mockPayload } });

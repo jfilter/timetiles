@@ -69,7 +69,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { afterChangeHooks, beforeChangeHooks, ingestJobAfterDeleteHook } from "@/lib/collections/ingest-jobs/hooks";
 
-describe.sequential("ingestJobAfterDeleteHook", () => {
+describe("ingestJobAfterDeleteHook", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.getIngestFilePath.mockImplementation((filename: string) => `/mock/ingest-files/${filename}`);
@@ -125,7 +125,7 @@ describe.sequential("ingestJobAfterDeleteHook", () => {
   });
 });
 
-describe.sequential("beforeChangeHooks", () => {
+describe("beforeChangeHooks", () => {
   const hook = beforeChangeHooks[0]!;
 
   beforeEach(() => {
@@ -334,7 +334,7 @@ describe.sequential("beforeChangeHooks", () => {
   });
 });
 
-describe.sequential("afterChangeHooks", () => {
+describe("afterChangeHooks", () => {
   const hook = afterChangeHooks[0]!;
 
   beforeEach(() => {

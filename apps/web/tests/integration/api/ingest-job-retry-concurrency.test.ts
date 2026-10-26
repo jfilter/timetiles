@@ -31,7 +31,7 @@ import {
   withUsers,
 } from "@/tests/setup/integration/environment";
 
-describe.sequential("Ingest job recovery — concurrency and rollback", () => {
+describe("Ingest job recovery — concurrency and rollback", () => {
   let payload: any;
   let cleanup: () => Promise<void>;
   let testEnv: any;

@@ -69,7 +69,7 @@ const createStartDateOrderJob = () => ({
 });
 
 // These tests share the approval mock and query dropdown portals in the document.
-describe.sequential("ReviewPanel", () => {
+describe("ReviewPanel", () => {
   it("shows the full row error count and rate rather than the retained detail count", () => {
     const job = {
       ...createJob(),

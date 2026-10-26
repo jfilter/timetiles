@@ -27,7 +27,7 @@ import {
   withUsers,
 } from "../../setup/integration/environment";
 
-describe.sequential("Schema Drift Guard - Concurrent Review Detection", () => {
+describe("Schema Drift Guard - Concurrent Review Detection", () => {
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>["payload"];
   let testUser: any;

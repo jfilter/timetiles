@@ -16,7 +16,7 @@ import { GET as getStats } from "@/app/api/v1/events/stats/route";
 
 import type { TestEnvironment } from "../../setup/integration/environment";
 
-describe.sequential("/api/v1/events stats - deeply nested field filtering", () => {
+describe("/api/v1/events stats - deeply nested field filtering", () => {
   let payload: Payload;
   let berlinDatasetId: number;
   let parisDatasetId: number;

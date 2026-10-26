@@ -35,7 +35,7 @@ const flushUrlUpdates = async () => {
 };
 
 // Keep tests sequential: they share the timezone setting and Testing Library cleanup.
-describe.sequential("useFilters.setBucketRangeFilter timezone handling", () => {
+describe("useFilters.setBucketRangeFilter timezone handling", () => {
   beforeAll(() => {
     // Negative-offset zone so a small-hours-UTC instant falls on the previous
     // local calendar day — exactly where the local-day bug manifested.

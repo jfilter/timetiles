@@ -19,7 +19,7 @@ const readLoggerWithEnv = async (env: Record<string, string>) => {
   return (await import("../src/lib/logger.js")).logger;
 };
 
-describe.sequential("timescrape logger", () => {
+describe("timescrape logger", () => {
   beforeEach(() => {
     tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "timescrape-logger-"));
   });

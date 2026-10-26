@@ -31,7 +31,7 @@ interface HistogramBucket {
   count: number;
 }
 
-describe.sequential("/api/v1/events/temporal", () => {
+describe("/api/v1/events/temporal", () => {
   let payload: Payload;
   let testDatasetId: string;
   let testCatalogId: number;

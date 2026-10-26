@@ -26,7 +26,7 @@ vi.mock("@/lib/services/feature-flag-service", () => ({
   getFeatureFlagService: vi.fn().mockReturnValue({ isEnabled: vi.fn().mockResolvedValue(true) }),
 }));
 
-describe.sequential("scheduleManagerJob", () => {
+describe("scheduleManagerJob", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.useFakeTimers();

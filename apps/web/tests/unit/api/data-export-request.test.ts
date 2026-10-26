@@ -58,7 +58,7 @@ const createRequest = () =>
 // oxlint-disable-next-line promise/prefer-await-to-then
 const emptyParams = { params: Promise.resolve({}) };
 
-describe.sequential("POST /api/data-exports/request", () => {
+describe("POST /api/data-exports/request", () => {
   let mockPayload: ReturnType<typeof createMockPayload>;
 
   beforeEach(() => {

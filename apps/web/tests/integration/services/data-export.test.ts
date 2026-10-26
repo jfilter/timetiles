@@ -23,7 +23,7 @@ import { createDataExportService } from "@/lib/export/service";
 import { extractRelationId } from "@/lib/utils/relation-id";
 import { createIntegrationTestEnvironment, withUsers } from "@/tests/setup/integration/environment";
 
-describe.sequential("Data Export Service", () => {
+describe("Data Export Service", () => {
   let payload: any;
   let cleanup: () => Promise<void>;
   let truncate: () => Promise<void>;

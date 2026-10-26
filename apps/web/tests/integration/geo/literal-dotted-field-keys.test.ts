@@ -35,7 +35,7 @@ const BOUNDS = { west: SPOT.lng - 0.5, south: SPOT.lat - 0.5, east: SPOT.lng + 0
 
 const occurrences = (haystack: string, needle: string): number => haystack.split(needle).length - 1;
 
-describe.sequential("literal dotted field keys across the read paths", () => {
+describe("literal dotted field keys across the read paths", () => {
   let testEnv: TestEnvironment;
   let payload: Payload;
   let datasetId: number;

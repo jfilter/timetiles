@@ -19,7 +19,7 @@ vi.mock("@/lib/logger", () => ({
 import { auditLogIpCleanupJob } from "@/lib/jobs/handlers/audit-log-ip-cleanup-job";
 import { logError } from "@/lib/logger";
 
-describe.sequential("auditLogIpCleanupJob", () => {
+describe("auditLogIpCleanupJob", () => {
   let mockPayload: any;
 
   const createContext = () => ({ job: { id: "ip-cleanup-job-1" }, req: { payload: mockPayload } });

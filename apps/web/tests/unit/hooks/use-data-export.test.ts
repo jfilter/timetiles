@@ -24,7 +24,7 @@ const record = (id: number, status: DataExport["status"]): DataExport => ({
   requestedAt: "2026-09-07T12:00:00.000Z",
 });
 
-describe.sequential("useLatestExportQuery", () => {
+describe("useLatestExportQuery", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     useAuthState.mockReturnValue({ userId: 1, isLoading: false });

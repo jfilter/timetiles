@@ -9,7 +9,7 @@ import { PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
 import { ProgressTrackingService } from "@/lib/ingest/progress-tracking";
 import type { IngestJob } from "@/payload-types";
 
-describe.sequential("ProgressTrackingService", () => {
+describe("ProgressTrackingService", () => {
   let mockPayload: any;
 
   beforeEach(() => {

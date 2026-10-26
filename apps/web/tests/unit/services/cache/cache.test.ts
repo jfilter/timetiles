@@ -17,7 +17,7 @@ import { FileSystemCacheStorage } from "@/lib/services/cache/storage/file-system
 import { TEST_SECRETS } from "@/tests/constants/test-credentials";
 import { mockLogger } from "@/tests/mocks/services/logger";
 
-describe.sequential("Cache", () => {
+describe("Cache", () => {
   const secretKey = `https://example.com/?token=${TEST_SECRETS.payloadSecret}`;
   let tempDir: string;
   let storage: FileSystemCacheStorage;

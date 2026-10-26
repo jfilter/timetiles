@@ -23,7 +23,7 @@ const createContext = (payload: ReturnType<typeof createPayloadMock>) =>
     req: { payload },
   }) as never;
 
-describe.sequential("sendEmailJob", () => {
+describe("sendEmailJob", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });

@@ -25,7 +25,7 @@ import { resetUrlFetchCache } from "@/lib/services/cache/url-fetch-cache";
 import { TEST_CREDENTIALS } from "@/tests/constants/test-credentials";
 import { createIntegrationTestEnvironment } from "@/tests/setup/integration/environment";
 
-describe.sequential("HTTP Cache Integration", () => {
+describe("HTTP Cache Integration", () => {
   let urlFetchCache: ReturnType<typeof getUrlFetchCache>;
   let cacheDir: string;
   let testServer: any;

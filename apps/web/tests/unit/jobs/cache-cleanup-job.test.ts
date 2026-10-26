@@ -32,7 +32,7 @@ vi.mock("@/lib/services/geocoding/geocoding-service", () => ({
 
 vi.mock("@/lib/services/cache", () => ({ getUrlFetchCache: () => ({ cleanup: mockCleanup, getStats: mockGetStats }) }));
 
-describe.sequential("cacheCleanupJob", () => {
+describe("cacheCleanupJob", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockCleanup.mockResolvedValue(5);

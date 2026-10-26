@@ -40,7 +40,7 @@ type MockPayload = {
 /** Empty result for hasActivePayloadJob checks (no active Payload job found). */
 const NO_ACTIVE_JOBS = { docs: [], totalDocs: 0 };
 
-describe.sequential("Cleanup Stuck scheduled ingests Job", () => {
+describe("Cleanup Stuck scheduled ingests Job", () => {
   let mockPayload: MockPayload;
   let mockJob: { id: string; input?: Record<string, unknown> };
   let mockReq: { payload: BasePayload };

@@ -34,7 +34,7 @@ vi.mock("@/lib/ingest/create-ingest-file", () => ({
   createIngestFile: vi.fn().mockResolvedValue({ ingestFileId: 42 }),
 }));
 
-describe.sequential("scraperExecutionJob", () => {
+describe("scraperExecutionJob", () => {
   let mockPayload: any;
   let mockQuotaService: any;
   const originalFetch = globalThis.fetch;

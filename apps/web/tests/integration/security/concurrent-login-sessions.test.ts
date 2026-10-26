@@ -16,7 +16,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { TEST_CREDENTIALS } from "@/tests/constants/test-credentials";
 import { createIntegrationTestEnvironment, withUsers } from "@/tests/setup/integration/environment";
 
-describe.sequential("Concurrent login sessions", () => {
+describe("Concurrent login sessions", () => {
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
 
   beforeAll(async () => {

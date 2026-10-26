@@ -31,7 +31,7 @@ import {
   withUsers,
 } from "../../setup/integration/environment";
 
-describe.sequential("update-strategy snapshot rollback", () => {
+describe("update-strategy snapshot rollback", () => {
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>["payload"];
   // oxlint-disable-next-line @typescript-eslint/no-explicit-any

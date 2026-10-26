@@ -20,7 +20,7 @@ import {
   withUsers,
 } from "@/tests/setup/integration/environment";
 
-describe.sequential("Dataset Catalog Reassignment Vulnerability", () => {
+describe("Dataset Catalog Reassignment Vulnerability", () => {
   let payload: any;
   let cleanup: () => Promise<void>;
   let testEnv: any;

@@ -125,7 +125,7 @@ const createFileFormData = (filename: string, content: string, mimeType: string)
 
 // --- Tests ---
 
-describe.sequential("POST /api/ingest/preview-schema/upload", () => {
+describe("POST /api/ingest/preview-schema/upload", () => {
   beforeEach(() => {
     for (const fn of Object.values(mocks)) {
       fn.mockReset();
@@ -300,7 +300,7 @@ describe.sequential("POST /api/ingest/preview-schema/upload", () => {
   });
 });
 
-describe.sequential("POST /api/ingest/preview-schema/url", () => {
+describe("POST /api/ingest/preview-schema/url", () => {
   beforeEach(() => {
     for (const fn of Object.values(mocks)) {
       fn.mockReset();

@@ -46,7 +46,7 @@ const { POST: retryPost } = await import("@/app/api/ingest-jobs/[id]/retry/route
 const { POST: resetPost } = await import("@/app/api/ingest-jobs/[id]/reset/route");
 const { commitTransaction, killTransaction } = await import("payload");
 
-describe.sequential("ingest-job recovery routes", () => {
+describe("ingest-job recovery routes", () => {
   let payload: {
     jobs: { queue: ReturnType<typeof vi.fn> };
     update: ReturnType<typeof vi.fn>;

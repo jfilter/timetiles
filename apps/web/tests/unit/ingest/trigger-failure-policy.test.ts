@@ -42,7 +42,7 @@ const createPayload = (queueError?: Error) => ({
   },
 });
 
-describe.sequential("claimAndQueueScheduledIngest failure policies", () => {
+describe("claimAndQueueScheduledIngest failure policies", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });

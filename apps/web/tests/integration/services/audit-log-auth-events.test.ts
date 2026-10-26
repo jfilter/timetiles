@@ -30,7 +30,7 @@ import { resetRateLimitService } from "@/lib/services/rate-limit-service";
 import { TEST_CREDENTIALS } from "../../constants/test-credentials";
 import { createIntegrationTestEnvironment } from "../../setup/integration/environment";
 
-describe.sequential("Audit log — authentication events", () => {
+describe("Audit log — authentication events", () => {
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>["payload"];
   let ipCounter = 1;

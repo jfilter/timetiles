@@ -60,7 +60,7 @@ vi.mock("@/lib/constants/ingest-constants", () => ({
   BATCH_SIZES: { DUPLICATE_ANALYSIS: 5000, SCHEMA_DETECTION: 10000, EVENT_CREATION: 1000, DATABASE_CHUNK: 1000 },
 }));
 
-describe.sequential("CreateSchemaVersionJob Handler", () => {
+describe("CreateSchemaVersionJob Handler", () => {
   let mockPayload: any;
   let mockContext: JobHandlerContext;
   // Captures the `.set(...)` args of the atomic jsonb fieldMetadata merge

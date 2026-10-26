@@ -42,7 +42,7 @@ const withTransaction = async <T>(payload: any, fn: (req: PayloadRequest) => Pro
   }
 };
 
-describe.sequential("SchemaVersioningService — concurrent creation", () => {
+describe("SchemaVersioningService — concurrent creation", () => {
   const collectionsToReset = ["dataset-schemas"];
 
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;

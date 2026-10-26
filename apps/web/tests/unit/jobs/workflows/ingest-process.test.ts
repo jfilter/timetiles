@@ -27,7 +27,7 @@ const createMockTasks = () => ({
   "scraper-execution": vi.fn(),
 });
 
-describe.sequential("ingestProcessWorkflow", () => {
+describe("ingestProcessWorkflow", () => {
   let tasks: ReturnType<typeof createMockTasks>;
   let mockJob: any;
 

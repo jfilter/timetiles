@@ -16,7 +16,7 @@ import {
   withUsers,
 } from "@/tests/setup/integration/environment";
 
-describe.sequential("Event quota and denormalization hooks", () => {
+describe("Event quota and denormalization hooks", () => {
   let testEnv: TestEnvironment;
   let payload: TestEnvironment["payload"];
   let cleanup: () => Promise<void>;

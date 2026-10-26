@@ -17,7 +17,7 @@ import { GET } from "../../../app/api/v1/events/route";
 import { GET as temporalClustersGET } from "../../../app/api/v1/events/temporal-clusters/route";
 import type { TestEnvironment } from "../../setup/integration/environment";
 
-describe.sequential("/api/v1/events - field filter logic", () => {
+describe("/api/v1/events - field filter logic", () => {
   let payload: Payload;
   let testDatasetId: number;
   let tagDatasetId: number;

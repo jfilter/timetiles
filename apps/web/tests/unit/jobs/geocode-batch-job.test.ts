@@ -117,7 +117,7 @@ const mockStreamBatches = (rows: Record<string, unknown>[]) => {
   });
 };
 
-describe.sequential("GeocodeBatchJob Handler", () => {
+describe("GeocodeBatchJob Handler", () => {
   let mockPayload: ReturnType<typeof createMockPayload>;
   let mockContext: JobHandlerContext;
 

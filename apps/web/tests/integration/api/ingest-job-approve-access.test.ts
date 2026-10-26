@@ -26,7 +26,7 @@ import {
   withUsers,
 } from "@/tests/setup/integration/environment";
 
-describe.sequential("Ingest job approval — dataset plan access", () => {
+describe("Ingest job approval — dataset plan access", () => {
   let testEnv: TestEnvironment;
   let payload: TestEnvironment["payload"];
   let owner: User;

@@ -33,7 +33,7 @@ import { mockLogger } from "@/tests/mocks/services/logger";
 
 const routeContext = { params: Promise.resolve({}) };
 
-describe.sequential("handleError", () => {
+describe("handleError", () => {
   beforeEach(() => {
     vi.resetAllMocks();
   });
@@ -133,7 +133,7 @@ describe.sequential("handleError", () => {
   });
 });
 
-describe.sequential("apiRoute integration: error context is forwarded to handleError", () => {
+describe("apiRoute integration: error context is forwarded to handleError", () => {
   beforeEach(() => {
     vi.resetAllMocks();
     mocks.mockGetPayload.mockResolvedValue(mocks.mockPayload);
@@ -198,7 +198,7 @@ describe.sequential("apiRoute integration: error context is forwarded to handleE
   });
 });
 
-describe.sequential("apiRoute body parsing", () => {
+describe("apiRoute body parsing", () => {
   beforeEach(() => {
     vi.resetAllMocks();
     mocks.mockGetPayload.mockResolvedValue(mocks.mockPayload);

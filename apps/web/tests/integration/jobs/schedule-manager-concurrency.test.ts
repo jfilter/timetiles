@@ -16,7 +16,7 @@ import {
   withUsers,
 } from "../../setup/integration/environment";
 
-describe.sequential("Schedule Manager Concurrency Updates", () => {
+describe("Schedule Manager Concurrency Updates", () => {
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: any;
   let cleanup: () => Promise<void>;

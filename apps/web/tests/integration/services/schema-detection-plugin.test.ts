@@ -29,7 +29,7 @@ import {
   withUsers,
 } from "../../setup/integration/environment";
 
-describe.sequential("Schema Detection Plugin Integration", () => {
+describe("Schema Detection Plugin Integration", () => {
   // Do NOT include "schema-detectors" — those records are seeded once by the plugin's
   // onInit and should persist across tests. Truncating them would break subsequent tests
   // because onInit only runs once during Payload initialization.

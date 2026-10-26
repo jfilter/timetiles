@@ -16,7 +16,7 @@ import {
   withUsers,
 } from "../../setup/integration/environment";
 
-describe.sequential("Analyze Duplicates Pipeline", () => {
+describe("Analyze Duplicates Pipeline", () => {
   const collectionsToReset = [...IMPORT_PIPELINE_COLLECTIONS_TO_RESET];
 
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;

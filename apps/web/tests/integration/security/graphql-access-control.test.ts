@@ -36,7 +36,7 @@ interface GraphQLResponse {
   errors?: { message: string }[];
 }
 
-describe.sequential("GraphQL endpoint access control", () => {
+describe("GraphQL endpoint access control", () => {
   let payload: any;
   let cleanup: () => Promise<void>;
   let testEnv: any;

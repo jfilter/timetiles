@@ -13,7 +13,7 @@ import {
   withUsers,
 } from "@/tests/setup/integration/environment";
 
-describe.sequential("User custom quota validation", () => {
+describe("User custom quota validation", () => {
   let testEnv: TestEnvironment;
   let owner: User;
   let admin: User;

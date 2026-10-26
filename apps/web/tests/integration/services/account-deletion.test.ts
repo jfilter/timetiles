@@ -27,7 +27,7 @@ import { extractRelationId } from "@/lib/utils/relation-id";
 import type { User } from "@/payload-types";
 import { createIntegrationTestEnvironment, withUsers } from "@/tests/setup/integration/environment";
 
-describe.sequential("Account Deletion Service", () => {
+describe("Account Deletion Service", () => {
   let payload: any;
   let cleanup: () => Promise<void>;
   let truncate: () => Promise<void>;

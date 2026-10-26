@@ -22,7 +22,7 @@ import {
   withUsers,
 } from "../../setup/integration/environment";
 
-describe.sequential("Import Transforms - Integration", () => {
+describe("Import Transforms - Integration", () => {
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: any;
   let testUser: any;

@@ -29,7 +29,7 @@ const FORBIDDEN = /Forbidden|not allowed|not found|permission/i;
  * Edge case tests for access control.
  * Refactored to avoid triggering job processing hooks.
  */
-describe.sequential("Access Control Edge Cases", () => {
+describe("Access Control Edge Cases", () => {
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: any;
   let cleanup: () => Promise<void>;

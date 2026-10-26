@@ -34,7 +34,7 @@ import { createIntegrationTestEnvironment } from "../../setup/integration/enviro
 const mockGoogleGeocode = vi.fn();
 const mockNominatimGeocode = vi.fn();
 
-describe.sequential("GeocodingService", () => {
+describe("GeocodingService", () => {
   const collectionsToReset = ["location-cache", "geocoding-providers"];
 
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
@@ -75,7 +75,7 @@ describe.sequential("GeocodingService", () => {
     vi.clearAllMocks();
   });
 
-  describe.sequential("initialization", () => {
+  describe("initialization", () => {
     it("should successfully initialize with Google geocoder when provider exists in database", async () => {
       // Create Google provider in database
       await payload.create({
@@ -225,7 +225,7 @@ describe.sequential("GeocodingService", () => {
     return providerNames;
   };
 
-  describe.sequential("geocode", () => {
+  describe("geocode", () => {
     const mockAddress = "123 Main St, San Francisco, CA";
 
     it("should successfully geocode with Google provider", async () => {
@@ -455,7 +455,7 @@ describe.sequential("GeocodingService", () => {
     });
   });
 
-  describe.sequential("batchGeocode", () => {
+  describe("batchGeocode", () => {
     const addresses = ["123 Main St, San Francisco, CA", "456 Oak Ave, New York, NY", "789 Pine Rd, Austin, TX"];
 
     it("should process multiple addresses in batches", async () => {
@@ -592,7 +592,7 @@ describe.sequential("GeocodingService", () => {
     });
   });
 
-  describe.sequential("confidence calculation", () => {
+  describe("confidence calculation", () => {
     it("should calculate higher confidence for Google results with place ID", async () => {
       const uniqueAddress = `123 Main St, San Francisco, CA ${testCounter}`;
       const resultWithPlaceId = {
@@ -642,7 +642,7 @@ describe.sequential("GeocodingService", () => {
     });
   });
 
-  describe.sequential("cache management", () => {
+  describe("cache management", () => {
     it("should normalize addresses for better cache matching", async () => {
       const baseAddress = `123 Cache Normalize St, San Francisco, CA ${testCounter}-${Date.now()}-${Math.random()}`;
       const address1 = baseAddress;
@@ -812,7 +812,7 @@ describe.sequential("GeocodingService", () => {
     );
   });
 
-  describe.sequential("error handling", () => {
+  describe("error handling", () => {
     it("should handle network errors gracefully", async () => {
       // Create service instance for this test
       await ensureServiceCreated();

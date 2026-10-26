@@ -19,7 +19,7 @@ import { createIntegrationTestEnvironment } from "../../setup/integration/enviro
 // Window expiry reads Date.now(); fake only Date so I/O timers stay real.
 const advanceClock = (ms: number) => vi.setSystemTime(Date.now() + ms);
 
-describe.sequential("RateLimitService", () => {
+describe("RateLimitService", () => {
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: any;
   let rateLimitService: RateLimitService;
@@ -75,7 +75,7 @@ describe.sequential("RateLimitService", () => {
     }
   );
 
-  describe.sequential("checkRateLimit", () => {
+  describe("checkRateLimit", () => {
     const testIdentifier = "test-client-123";
     const limit = 5;
     const windowMs = 60 * 1000; // 1 minute
@@ -167,7 +167,7 @@ describe.sequential("RateLimitService", () => {
     });
   });
 
-  describe.sequential("getRateLimitStatus", () => {
+  describe("getRateLimitStatus", () => {
     const testIdentifier = "status-test-client";
     const limit = 3;
     const windowMs = 60 * 1000;
@@ -208,7 +208,7 @@ describe.sequential("RateLimitService", () => {
     });
   });
 
-  describe.sequential("resetRateLimit", () => {
+  describe("resetRateLimit", () => {
     const testIdentifier = "reset-test-client";
     const limit = 3;
     const windowMs = 60 * 1000;
@@ -253,7 +253,7 @@ describe.sequential("RateLimitService", () => {
     });
   });
 
-  describe.sequential("blockIdentifier", () => {
+  describe("blockIdentifier", () => {
     const testIdentifier = "block-test-client";
     const limit = 5;
     const windowMs = 60 * 1000;
@@ -302,7 +302,7 @@ describe.sequential("RateLimitService", () => {
     });
   });
 
-  describe.sequential("getRateLimitHeaders", () => {
+  describe("getRateLimitHeaders", () => {
     const testIdentifier = "headers-test-client";
     const limit = 5;
 
@@ -339,7 +339,7 @@ describe.sequential("RateLimitService", () => {
     });
   });
 
-  describe.sequential("cleanup", () => {
+  describe("cleanup", () => {
     it("should remove expired entries", async () => {
       vi.useFakeTimers({ toFake: ["Date"] });
       const shortWindow = 50;
@@ -362,7 +362,7 @@ describe.sequential("RateLimitService", () => {
     });
   });
 
-  describe.sequential("getStatistics", () => {
+  describe("getStatistics", () => {
     it("should return correct statistics", async () => {
       const client1 = "stats-client-1";
       const client2 = "stats-client-2";
@@ -394,7 +394,7 @@ describe.sequential("RateLimitService", () => {
   });
 });
 
-describe.sequential("getRateLimitService", () => {
+describe("getRateLimitService", () => {
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: any;
 
@@ -420,7 +420,7 @@ describe.sequential("getRateLimitService", () => {
   });
 });
 
-describe.sequential("getClientIdentifier", () => {
+describe("getClientIdentifier", () => {
   it("should extract IP from x-forwarded-for header", () => {
     const request = new Request("http://localhost", {
       headers: {
@@ -472,7 +472,7 @@ describe.sequential("getClientIdentifier", () => {
   });
 });
 
-describe.sequential("Multi-window rate limiting", () => {
+describe("Multi-window rate limiting", () => {
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: any;
   let rateLimitService: RateLimitService;
@@ -587,7 +587,7 @@ describe.sequential("Multi-window rate limiting", () => {
   });
 });
 
-describe.sequential("RATE_LIMITS constants", () => {
+describe("RATE_LIMITS constants", () => {
   it("should have correct multi-window configurations", () => {
     // FILE_UPLOAD
     expect(RATE_LIMITS.FILE_UPLOAD.windows).toHaveLength(3);

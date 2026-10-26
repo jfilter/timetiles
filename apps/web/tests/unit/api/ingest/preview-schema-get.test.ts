@@ -98,7 +98,7 @@ const mockMetadata = (overrides?: Record<string, unknown>) =>
 
 // --- Tests ---
 
-describe.sequential("GET /api/ingest/preview-schema", () => {
+describe("GET /api/ingest/preview-schema", () => {
   beforeEach(() => {
     for (const fn of Object.values(mocks)) {
       fn.mockReset();

@@ -40,7 +40,7 @@ const callHandler = (doc: HandlerDoc | undefined, filename: string, prefix?: str
     { doc, params: { collection: "ingest-files", filename, prefix } }
   );
 
-describe.sequential("ingestFileDownloadHandler", () => {
+describe("ingestFileDownloadHandler", () => {
   beforeEach(async () => {
     vi.clearAllMocks();
     tmpDir = await fsPromises.mkdtemp(path.join(os.tmpdir(), "ingest-dl-"));

@@ -24,7 +24,7 @@ import {
   withUsers,
 } from "@/tests/setup/integration/environment";
 
-describe.sequential("Data Sources Metadata Leak Vulnerability", () => {
+describe("Data Sources Metadata Leak Vulnerability", () => {
   let payload: any;
   let cleanup: () => Promise<void>;
   let testEnv: any;

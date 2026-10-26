@@ -62,7 +62,7 @@ const readImported = async (filePath: string): Promise<Record<string, unknown>[]
   return rows;
 };
 
-describe.sequential("Excel reader parity", () => {
+describe("Excel reader parity", () => {
   beforeEach(() => {
     tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "excel-parity-"));
   });

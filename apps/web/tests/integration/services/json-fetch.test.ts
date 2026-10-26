@@ -29,7 +29,7 @@ import { fetchPaginated } from "@/lib/ingest/url-fetch/paginated-fetch";
 import { resetUrlFetchCache } from "@/lib/services/cache/url-fetch-cache";
 import { TestServer } from "@/tests/setup/integration/http-server";
 
-describe.sequential("JSON fetch integration", () => {
+describe("JSON fetch integration", () => {
   let server: TestServer;
   let cacheDir: string;
 

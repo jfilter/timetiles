@@ -22,7 +22,7 @@ vi.mock("@/lib/services/feature-flag-service", () => ({
   getFeatureFlagService: vi.fn().mockReturnValue({ isEnabled: vi.fn().mockResolvedValue(true) }),
 }));
 
-describe.sequential("scheduleManagerJob timezone support", () => {
+describe("scheduleManagerJob timezone support", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.useFakeTimers();

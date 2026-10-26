@@ -10,7 +10,7 @@ import { describe, expect, it } from "vitest";
 
 import { hashEmail, hashIpAddress, hashOpaqueValue } from "@/lib/security/hash";
 
-describe.sequential("hashEmail", () => {
+describe("hashEmail", () => {
   it("produces a consistent SHA-256 hex digest", () => {
     const hash = hashEmail("test@example.com");
 
@@ -52,7 +52,7 @@ describe.sequential("hashEmail", () => {
   });
 });
 
-describe.sequential("hashIpAddress", () => {
+describe("hashIpAddress", () => {
   it("produces a consistent SHA-256 hex digest", () => {
     const hash = hashIpAddress("192.168.1.1");
 
@@ -79,7 +79,7 @@ describe.sequential("hashIpAddress", () => {
   });
 });
 
-describe.sequential("hashOpaqueValue", () => {
+describe("hashOpaqueValue", () => {
   it("produces a consistent SHA-256 hex digest", () => {
     const hash = hashOpaqueValue("secret-token");
 

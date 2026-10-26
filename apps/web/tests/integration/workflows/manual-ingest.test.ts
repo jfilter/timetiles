@@ -95,7 +95,7 @@ const runUntilSettled = async (payload: any, ingestFileId: string | number, maxI
   return { settled: false, iterations: maxIterations, ingestFile };
 };
 
-describe.sequential("Manual Ingest Workflow (Integration)", () => {
+describe("Manual Ingest Workflow (Integration)", () => {
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: any;
   let testUser: any;

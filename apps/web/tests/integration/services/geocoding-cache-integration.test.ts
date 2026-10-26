@@ -48,7 +48,7 @@ const generateMockGeocodingResult = (address: string) => {
   };
 };
 
-describe.sequential("Geocoding Cache Integration", () => {
+describe("Geocoding Cache Integration", () => {
   const collectionsToReset = [
     "events",
     "ingest-files",

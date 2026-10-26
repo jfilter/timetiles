@@ -39,7 +39,7 @@ const createAllSuccessBatchGeocode = () =>
     return { results, summary: { total: addresses.length, successful: addresses.length, failed: 0, cached: 0 } };
   });
 
-describe.sequential("Geocode Batch Job - Progress Reporting", () => {
+describe("Geocode Batch Job - Progress Reporting", () => {
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: any;
   let testCatalogId: string;

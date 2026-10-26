@@ -15,7 +15,7 @@ vi.mock("@/lib/logger", () => ({
 import { hashEmail, hashIpAddress } from "@/lib/security/hash";
 import { AUDIT_ACTIONS, auditFieldChanges, auditLog } from "@/lib/services/audit-log-service";
 
-describe.sequential("AUDIT_ACTIONS", () => {
+describe("AUDIT_ACTIONS", () => {
   it("maps every action to its stored identifier", () => {
     expect(AUDIT_ACTIONS).toEqual({
       EMAIL_CHANGED: "account.email_changed",
@@ -50,7 +50,7 @@ describe.sequential("AUDIT_ACTIONS", () => {
   });
 });
 
-describe.sequential("auditLog", () => {
+describe("auditLog", () => {
   let mockPayload: any;
 
   beforeEach(() => {
@@ -205,7 +205,7 @@ describe.sequential("auditLog", () => {
   });
 });
 
-describe.sequential("auditFieldChanges", () => {
+describe("auditFieldChanges", () => {
   let mockPayload: any;
 
   beforeEach(() => {

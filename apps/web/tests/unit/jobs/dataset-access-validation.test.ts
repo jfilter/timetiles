@@ -29,7 +29,7 @@ const createPayload = (role: string) => ({
   ),
 });
 
-describe.sequential("validateDatasetAccessForUser", () => {
+describe("validateDatasetAccessForUser", () => {
   it("rejects a plain user targeting a foreign private catalog", async () => {
     const payload = createPayload("user");
 

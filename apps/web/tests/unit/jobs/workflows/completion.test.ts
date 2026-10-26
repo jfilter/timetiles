@@ -7,7 +7,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { updateIngestFileStatus, updateIngestFileStatusForJob } from "@/lib/jobs/workflows/completion";
 
-describe.sequential("workflow completion helpers", () => {
+describe("workflow completion helpers", () => {
   it("marks ingest files as completed and stores processed counts for terminal jobs", async () => {
     const payload = {
       findByID: vi

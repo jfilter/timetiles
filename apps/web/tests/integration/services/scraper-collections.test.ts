@@ -23,7 +23,7 @@ import type { User } from "@/payload-types";
 
 import { createIntegrationTestEnvironment, withUsers } from "../../setup/integration/environment";
 
-describe.sequential("Scraper Collections Access Control", () => {
+describe("Scraper Collections Access Control", () => {
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>["payload"];
 

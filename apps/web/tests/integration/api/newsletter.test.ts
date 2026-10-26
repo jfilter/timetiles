@@ -17,7 +17,7 @@ import { POST } from "../../../app/api/newsletter/subscribe/route";
 import { resetRateLimitService } from "../../../lib/services/rate-limit-service";
 import { TestServer } from "../../setup/integration/http-server";
 
-describe.sequential("/api/newsletter/subscribe", () => {
+describe("/api/newsletter/subscribe", () => {
   let payload: Payload;
   let testEnv: any;
   let mockServer: TestServer;

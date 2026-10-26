@@ -80,7 +80,7 @@ describe("requireDefaultSite", () => {
   });
 });
 
-describe.sequential("apiRoute with site: 'default'", () => {
+describe("apiRoute with site: 'default'", () => {
   let mockPayload: ReturnType<typeof createMockPayload>;
   let testRoute: ReturnType<typeof apiRoute>;
 

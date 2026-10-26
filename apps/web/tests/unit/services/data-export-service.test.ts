@@ -25,7 +25,7 @@ import { createDataExportService } from "@/lib/export/service";
 const createRecords = <T extends Record<string, unknown>>(count: number, factory: (index: number) => T): T[] =>
   Array.from({ length: count }, (_value, index) => factory(index));
 
-describe.sequential("DataExportService", () => {
+describe("DataExportService", () => {
   beforeEach(() => {
     vi.clearAllMocks();
 

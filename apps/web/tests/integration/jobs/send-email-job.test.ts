@@ -11,7 +11,7 @@ import { EMAIL_CONTEXTS, queueEmail } from "@/lib/email/send";
 import { EMAIL_RETRY_DELAY_MS } from "@/lib/jobs/handlers/send-email-job";
 import { createIntegrationTestEnvironment } from "@/tests/setup/integration/environment";
 
-describe.sequential("Send Email Job", () => {
+describe("Send Email Job", () => {
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: any;
 

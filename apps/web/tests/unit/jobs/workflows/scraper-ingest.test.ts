@@ -36,7 +36,7 @@ const createMockTasks = () => ({
   "url-fetch": vi.fn(),
 });
 
-describe.sequential("scraperIngestWorkflow", () => {
+describe("scraperIngestWorkflow", () => {
   let tasks: ReturnType<typeof createMockTasks>;
   let mockJob: any;
 

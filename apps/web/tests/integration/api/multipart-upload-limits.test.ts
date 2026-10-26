@@ -20,7 +20,7 @@ import { createIntegrationTestEnvironment } from "../../setup/integration/enviro
 
 const MiB = 1024 * 1024;
 
-describe.sequential("Multipart upload limits", () => {
+describe("Multipart upload limits", () => {
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
 
   beforeAll(async () => {

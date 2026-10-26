@@ -31,7 +31,7 @@ vi.mock("@/lib/services/webhook-registry", () => ({
   claimScraperRunning: (...args: unknown[]) => mockClaimScraperRunning(...args),
 }));
 
-describe.sequential("scheduleManagerJob — scraper scheduling", () => {
+describe("scheduleManagerJob — scraper scheduling", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.useFakeTimers();

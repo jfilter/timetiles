@@ -20,7 +20,7 @@ import {
   withUsers,
 } from "../../setup/integration/environment";
 
-describe.sequential("Cleanup Stuck Imports Job Integration", () => {
+describe("Cleanup Stuck Imports Job Integration", () => {
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: Payload;
   let cleanup: () => Promise<void>;
@@ -57,7 +57,7 @@ describe.sequential("Cleanup Stuck Imports Job Integration", () => {
     }
   });
 
-  describe.sequential("Payload final failure reconciliation", () => {
+  describe("Payload final failure reconciliation", () => {
     const createRunningSchedule = async () => {
       const { scheduledIngest } = await withScheduledIngest(testEnv, testCatalog.id, "https://example.com/data.csv", {
         user: testUser,
@@ -179,7 +179,7 @@ describe.sequential("Cleanup Stuck Imports Job Integration", () => {
     });
   });
 
-  describe.sequential("Finding Stuck Imports", () => {
+  describe("Finding Stuck Imports", () => {
     it("should find and reset imports stuck for more than 4 hours", async () => {
       const fiveHoursAgo = new Date(Date.now() - 5 * 60 * 60 * 1000);
 
@@ -295,7 +295,7 @@ describe.sequential("Cleanup Stuck Imports Job Integration", () => {
     }, 60000); // 60 second timeout for creating and processing 105 imports
   });
 
-  describe.sequential("Orphaned Workflow Job Cleanup", () => {
+  describe("Orphaned Workflow Job Cleanup", () => {
     it("only cancels old queued jobs for the requested resource and preserves terminal job state", async () => {
       const now = new Date();
       const old = new Date(now.getTime() - 5 * 60 * 60 * 1000).toISOString();
@@ -480,7 +480,7 @@ describe.sequential("Cleanup Stuck Imports Job Integration", () => {
     });
   });
 
-  describe.sequential("Error Handling", () => {
+  describe("Error Handling", () => {
     it("should continue processing when individual update fails", async () => {
       const sixHoursAgo = new Date(Date.now() - 6 * 60 * 60 * 1000);
 
@@ -546,7 +546,7 @@ describe.sequential("Cleanup Stuck Imports Job Integration", () => {
     });
   });
 
-  describe.sequential("Job Scheduling", () => {
+  describe("Job Scheduling", () => {
     it("should have correct job configuration", () => {
       expect(cleanupStuckScheduledIngestsJob.slug).toBe("cleanup-stuck-scheduled-ingests");
       expect(cleanupStuckScheduledIngestsJob.handler).toBeDefined();
@@ -596,7 +596,7 @@ describe.sequential("Cleanup Stuck Imports Job Integration", () => {
     });
   });
 
-  describe.sequential("Integration with Webhook Flow", () => {
+  describe("Integration with Webhook Flow", () => {
     it("should allow webhook trigger after cleanup", async () => {
       const eightHoursAgo = new Date(Date.now() - 8 * 60 * 60 * 1000);
 
@@ -680,7 +680,7 @@ describe.sequential("Cleanup Stuck Imports Job Integration", () => {
     });
   });
 
-  describe.sequential("Performance and Efficiency", () => {
+  describe("Performance and Efficiency", () => {
     it("should efficiently query stuck imports", async () => {
       const tenHoursAgo = new Date(Date.now() - 10 * 60 * 60 * 1000);
       const oneHourAgo = new Date(Date.now() - 1 * 60 * 60 * 1000);

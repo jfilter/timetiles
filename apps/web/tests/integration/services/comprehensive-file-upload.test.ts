@@ -32,7 +32,7 @@ import {
   withUsers,
 } from "../../setup/integration/environment";
 
-describe.sequential("Comprehensive File Upload Tests", () => {
+describe("Comprehensive File Upload Tests", () => {
   const collectionsToReset = [
     "events",
     "ingest-files",

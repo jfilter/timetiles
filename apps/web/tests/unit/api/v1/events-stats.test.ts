@@ -72,13 +72,13 @@ const setupDefaults = () => {
   mocks.mockPayloadFind.mockResolvedValue({ docs: [] });
 };
 
-describe.sequential("GET /api/v1/events/stats", () => {
+describe("GET /api/v1/events/stats", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     setupDefaults();
   });
 
-  describe.sequential("Parameter Validation", () => {
+  describe("Parameter Validation", () => {
     it("should return 422 when groupBy parameter is missing", async () => {
       const req = createRequest("");
 
@@ -112,7 +112,7 @@ describe.sequential("GET /api/v1/events/stats", () => {
     });
   });
 
-  describe.sequential("Access Control", () => {
+  describe("Access Control", () => {
     it("should return empty result when the requested catalog is inaccessible", async () => {
       mocks.mockCanAccessCatalog.mockResolvedValue(false);
 
@@ -128,7 +128,7 @@ describe.sequential("GET /api/v1/events/stats", () => {
     });
   });
 
-  describe.sequential("Catalog Aggregation", () => {
+  describe("Catalog Aggregation", () => {
     it("should return aggregated items grouped by catalog", async () => {
       mocks.mockDrizzleSelect.mockImplementation(() =>
         createSelectBuilder([
@@ -151,7 +151,7 @@ describe.sequential("GET /api/v1/events/stats", () => {
     });
   });
 
-  describe.sequential("Dataset Aggregation", () => {
+  describe("Dataset Aggregation", () => {
     it("should return aggregated items grouped by dataset", async () => {
       mocks.mockDrizzleSelect.mockImplementation(() =>
         createSelectBuilder([
@@ -203,7 +203,7 @@ describe.sequential("GET /api/v1/events/stats", () => {
     });
   });
 
-  describe.sequential("Error Handling", () => {
+  describe("Error Handling", () => {
     it("should return 500 when an unexpected error occurs", async () => {
       mocks.mockGetPayload.mockRejectedValue(new Error("Database connection failed"));
 
@@ -224,7 +224,7 @@ describe.sequential("GET /api/v1/events/stats", () => {
  * never runs. These feed the filters the route produced into the REAL builder, so a
  * fail-open regression in the canonical filters is visible here.
  */
-describe.sequential("GET /api/v1/events/stats row scoping (real SQL builder)", () => {
+describe("GET /api/v1/events/stats row scoping (real SQL builder)", () => {
   /** Flatten a Drizzle SQL fragment into a readable string (chunks + params). */
   const renderSql = (fragment: unknown): string => {
     const chunks = (fragment as { queryChunks?: unknown[] }).queryChunks ?? [];

@@ -20,7 +20,7 @@ import type { User } from "@/payload-types";
 import { TEST_CREDENTIALS } from "@/tests/constants/test-credentials";
 import { createIntegrationTestEnvironment, withUsers } from "@/tests/setup/integration/environment";
 
-describe.sequential("Geocoding test endpoint authorization", () => {
+describe("Geocoding test endpoint authorization", () => {
   let payload: any;
   let cleanup: () => Promise<void>;
 

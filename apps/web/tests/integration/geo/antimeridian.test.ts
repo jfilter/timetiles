@@ -16,7 +16,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import type { TestEnvironment } from "../../setup/integration/environment";
 
-describe.sequential("Anti-meridian longitude filtering", () => {
+describe("Anti-meridian longitude filtering", () => {
   let testEnv: TestEnvironment;
   let payload: Payload;
   let testDatasetId: number;

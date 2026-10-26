@@ -24,7 +24,7 @@ import {
   withUsers,
 } from "@/tests/setup/integration/environment";
 
-describe.sequential("FILE_UPLOADS_PER_DAY after a failed create", () => {
+describe("FILE_UPLOADS_PER_DAY after a failed create", () => {
   let testEnv: TestEnvironment;
   let user: User;
 

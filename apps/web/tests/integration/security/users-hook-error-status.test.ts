@@ -24,7 +24,7 @@ import { PATCH as restPATCH, POST as restPOST } from "@/app/(payload)/api/[...sl
 import { TEST_CREDENTIALS } from "@/tests/constants/test-credentials";
 import { createIntegrationTestEnvironment, withUsers } from "@/tests/setup/integration/environment";
 
-describe.sequential("Users collection hook errors surface the right REST status (issue #168)", () => {
+describe("Users collection hook errors surface the right REST status (issue #168)", () => {
   let payload: any;
   let cleanup: () => Promise<void>;
   let adminToken: string;

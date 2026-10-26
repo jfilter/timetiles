@@ -58,7 +58,7 @@ const mockGeocodeResult = (address: string, lat: number, lng: number) => [
   },
 ];
 
-describe.sequential("All Transform Types Pipeline", () => {
+describe("All Transform Types Pipeline", () => {
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: any;
   let approverUser: any;

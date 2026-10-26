@@ -11,7 +11,7 @@ import { getEnv, resetEnv } from "@/lib/config/env";
 import { executeDatabaseQuery } from "@/lib/database/operations";
 import { createIntegrationTestEnvironment } from "@/tests/setup/integration/environment";
 
-describe.sequential("Database query execution", () => {
+describe("Database query execution", () => {
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let connectionString: string;
 

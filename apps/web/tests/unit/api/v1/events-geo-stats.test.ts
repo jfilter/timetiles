@@ -44,7 +44,7 @@ const createRequest = (queryString: string, user: unknown = null) => {
   return { user, url, headers: new Headers(), nextUrl: new URL(url) } as unknown as AuthenticatedRequest;
 };
 
-describe.sequential("GET /api/v1/events/geo/stats", () => {
+describe("GET /api/v1/events/geo/stats", () => {
   beforeEach(() => {
     vi.clearAllMocks();
 

@@ -16,7 +16,7 @@ import { extractRelationId } from "@/lib/utils/relation-id";
 import type { Site, User, View } from "@/payload-types";
 import { createIntegrationTestEnvironment, withUsers } from "@/tests/setup/integration/environment";
 
-describe.sequential("Views Collection", () => {
+describe("Views Collection", () => {
   const collectionsToReset = ["views", "sites"];
 
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;

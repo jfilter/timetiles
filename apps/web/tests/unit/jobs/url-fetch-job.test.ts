@@ -98,7 +98,7 @@ const createMockResponse = (
   };
 };
 
-describe.sequential("urlFetchJob", () => {
+describe("urlFetchJob", () => {
   let mockPayload: any;
   let mockJob: any;
   let mockReq: any;

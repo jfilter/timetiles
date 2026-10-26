@@ -21,7 +21,7 @@ import {
   withUsers,
 } from "../../setup/integration/environment";
 
-describe.sequential("Import Files Collection", () => {
+describe("Import Files Collection", () => {
   const collectionsToReset = [
     "ingest-files",
     "ingest-jobs",

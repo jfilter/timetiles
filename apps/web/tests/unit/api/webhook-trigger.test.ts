@@ -79,7 +79,7 @@ const createContext = (token: string) => ({
   params: Promise.resolve({ token }),
 });
 
-describe.sequential("POST /api/webhooks/trigger/[token]", () => {
+describe("POST /api/webhooks/trigger/[token]", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockRateLimitService.checkConfiguredRateLimit.mockReturnValue({ allowed: true });

@@ -41,7 +41,7 @@ const createSuccessBatchGeocode = () =>
     return { results, summary: { total: addresses.length, successful: addresses.length, failed: 0, cached: 0 } };
   });
 
-describe.sequential("Tag Field Detection", () => {
+describe("Tag Field Detection", () => {
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: any;
   let testCatalogId: string;

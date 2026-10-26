@@ -36,7 +36,7 @@ interface UrlFetchSuccessOutput {
   skippedReason?: string;
 }
 
-describe.sequential("scheduled ingests Integration", () => {
+describe("scheduled ingests Integration", () => {
   const collectionsToReset = ["scheduled-ingests", "ingest-files", "user-usage", "payload-jobs"];
 
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;

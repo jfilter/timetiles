@@ -7,7 +7,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { SchemaVersioningService } from "@/lib/ingest/schema-versioning";
 import type { Dataset, DatasetSchema } from "@/payload-types";
 
-describe.sequential("SchemaVersioningService", () => {
+describe("SchemaVersioningService", () => {
   let mockPayload: {
     find: ReturnType<typeof vi.fn>;
     create: ReturnType<typeof vi.fn>;

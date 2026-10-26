@@ -85,7 +85,7 @@ const defaultSettings: GeocodingSettings = {
  * Tests run sequentially because they share the mocked ProviderRateLimiter
  * and rely on deterministic mock call ordering.
  */
-describe.sequential("GeocodingOperations", () => {
+describe("GeocodingOperations", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockRateLimiter.isAvailable.mockReturnValue(true);

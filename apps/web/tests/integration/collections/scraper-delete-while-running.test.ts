@@ -19,7 +19,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { User } from "@/payload-types";
 import { createIntegrationTestEnvironment, withUsers } from "@/tests/setup/integration/environment";
 
-describe.sequential("Deleting a scraper while a run is in flight", () => {
+describe("Deleting a scraper while a run is in flight", () => {
   let payload: any;
   let cleanup: () => Promise<void>;
   let testEnv: any;

@@ -30,7 +30,7 @@ const flattenBatches = async (gen: AsyncIterable<Record<string, unknown>[]>): Pr
   return batches.flat();
 };
 
-describe.sequential("File Readers", () => {
+describe("File Readers", () => {
   let tempDir: string;
 
   beforeEach(() => {

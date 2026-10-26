@@ -41,7 +41,7 @@ const runHook = (
     req: { user, payload: createPayload(catalogOwner, isPublic), context: {} },
   } as unknown as HookArgs);
 
-describe.sequential("scrapers validateTargetDatasetAccess", () => {
+describe("scrapers validateTargetDatasetAccess", () => {
   it("rejects a dataset in someone else's catalog", async () => {
     await expect(runHook({ id: OWNER_ID, role: "user" }, STRANGER_ID)).rejects.toThrow(/permission/i);
   });

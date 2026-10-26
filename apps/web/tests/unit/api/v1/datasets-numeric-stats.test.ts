@@ -80,7 +80,7 @@ const createRequest = (queryString = "") => {
 const callRoute = (queryString = "") =>
   GET(createRequest(queryString), { params: Promise.resolve({ id: String(DATASET_ID) }) });
 
-describe.sequential("GET /api/v1/datasets/[id]/numeric-stats", () => {
+describe("GET /api/v1/datasets/[id]/numeric-stats", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.mockExecute.mockResolvedValue({ rows: [{ min: 1, max: 100, is_integer: true }] });

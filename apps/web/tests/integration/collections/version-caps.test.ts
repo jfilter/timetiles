@@ -19,7 +19,7 @@ import {
   withUsers,
 } from "../../setup/integration/environment";
 
-describe.sequential("Version caps", () => {
+describe("Version caps", () => {
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: Payload;
   let datasetId: number;

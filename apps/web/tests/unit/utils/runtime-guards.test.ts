@@ -67,7 +67,7 @@ afterEach(async () => {
 // Sequential: tests share `openServers` and an afterEach that closes all of
 // them, so concurrent execution would let one test's teardown close another
 // test's listener mid-probe (making an occupied port look free).
-describe.sequential("runtime guards", () => {
+describe("runtime guards", () => {
   it("rejects worker spawn failures", async () => {
     const child = spawn(process.execPath, [], { cwd: "/nonexistent-timetiles-worker-directory", stdio: "pipe" });
     await expect(waitForWorker(child)).rejects.toMatchObject({ code: "ENOENT" });

@@ -23,7 +23,7 @@ import {
   withIngestFile,
 } from "@/tests/setup/integration/environment";
 
-describe.sequential("Ingest file cleanup retries", () => {
+describe("Ingest file cleanup retries", () => {
   let env: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
 
   beforeAll(async () => {

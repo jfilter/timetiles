@@ -16,7 +16,7 @@ import { TRUST_LEVELS } from "../../../lib/constants/trust-levels.js";
 import { TEST_CREDENTIALS } from "../../constants/test-credentials.js";
 import { createIntegrationTestEnvironment } from "../../setup/integration/environment.js";
 
-describe.sequential("Authentication Flow", () => {
+describe("Authentication Flow", () => {
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
 
   beforeAll(async () => {

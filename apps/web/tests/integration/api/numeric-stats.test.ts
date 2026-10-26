@@ -45,7 +45,7 @@ interface NumericStatsResponse {
   fields: Array<{ path: string; label: string; min: number; max: number; isInteger: boolean }>;
 }
 
-describe.sequential("/api/v1/datasets/[id]/numeric-stats", () => {
+describe("/api/v1/datasets/[id]/numeric-stats", () => {
   let payload: Payload;
   let usDatasetId: number;
   let euDatasetId: number;

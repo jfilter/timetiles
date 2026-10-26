@@ -25,7 +25,7 @@ import {
 /** Generate a unique ID for events */
 const generateUniqueId = (datasetId: number) => `${datasetId}:test:${randomUUID()}`;
 
-describe.sequential("Schema Inference Service", () => {
+describe("Schema Inference Service", () => {
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>["payload"];
   let testCatalogId: number;

@@ -23,7 +23,7 @@ import {
   withUsers,
 } from "../../setup/integration/environment";
 
-describe.sequential("Dataset Detection Job", () => {
+describe("Dataset Detection Job", () => {
   const collectionsToReset = [...IMPORT_PIPELINE_COLLECTIONS_TO_RESET];
 
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;

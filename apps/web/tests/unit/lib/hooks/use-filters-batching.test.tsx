@@ -51,7 +51,7 @@ const setNuqsState = (state: Record<string, unknown>): void => {
 };
 
 // Keep tests sequential because they share the nuqs stub's module-level state.
-describe.sequential("useFilters setters within one tick", () => {
+describe("useFilters setters within one tick", () => {
   beforeEach(() => {
     setNuqsState({});
   });

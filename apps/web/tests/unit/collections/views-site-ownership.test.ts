@@ -50,7 +50,7 @@ const runHook = (args: {
 
 // Sequential: the suite asserts call counts on a shared module mock, and this
 // project runs tests concurrently within a file by default (vitest.config.ts).
-describe.sequential("views beforeChange — target site ownership", () => {
+describe("views beforeChange — target site ownership", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });

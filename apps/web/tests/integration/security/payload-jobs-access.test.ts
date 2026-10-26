@@ -11,7 +11,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from
 import type { PayloadJobsStat, User } from "@/payload-types";
 import { createIntegrationTestEnvironment, withUsers } from "@/tests/setup/integration/environment";
 
-describe.sequential("Native Payload job access", () => {
+describe("Native Payload job access", () => {
   let env: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: Payload;
   let users: Record<string, User>;

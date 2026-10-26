@@ -17,7 +17,7 @@ import { getTransactionAwareDrizzle } from "@/lib/database/drizzle-transaction";
 import { updateExportStatus } from "@/lib/export/update-export-status";
 import { createIntegrationTestEnvironment, withUsers } from "@/tests/setup/integration/environment";
 
-describe.sequential("Data export cleanup retries", () => {
+describe("Data export cleanup retries", () => {
   let env: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
 
   beforeAll(async () => {

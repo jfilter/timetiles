@@ -138,7 +138,7 @@ const startTestServer = async (): Promise<void> => {
   });
 };
 
-describe.sequential("Webhook Import Service Integration", () => {
+describe("Webhook Import Service Integration", () => {
   const collectionsToReset = ["scheduled-ingests", "ingest-files", "user-usage", "payload-jobs"];
 
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;

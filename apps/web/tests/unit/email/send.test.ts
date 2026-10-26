@@ -19,7 +19,7 @@ import { maskEmail } from "@/lib/security/masking";
 
 const createPayloadMock = () => ({ jobs: { queue: vi.fn().mockResolvedValue({ id: "email-job-1" }) } });
 
-describe.sequential("queueEmail", () => {
+describe("queueEmail", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.resetModules();

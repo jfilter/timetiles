@@ -71,7 +71,7 @@ vi.mock("@/lib/ingest/progress-tracking", () => ({
   },
 }));
 
-describe.sequential("DatasetDetectionJob Handler", () => {
+describe("DatasetDetectionJob Handler", () => {
   let mockPayload: any;
   let mockContext: JobHandlerContext;
 

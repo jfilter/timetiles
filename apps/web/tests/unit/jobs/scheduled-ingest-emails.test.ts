@@ -70,7 +70,7 @@ describe("buildScheduledIngestAdminUrl", () => {
   });
 });
 
-describe.sequential("sendScheduledIngestConfigInvalidEmail", () => {
+describe("sendScheduledIngestConfigInvalidEmail", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -113,7 +113,7 @@ describe.sequential("sendScheduledIngestConfigInvalidEmail", () => {
   });
 });
 
-describe.sequential("sendScheduledIngestRetriesExhaustedEmail", () => {
+describe("sendScheduledIngestRetriesExhaustedEmail", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });

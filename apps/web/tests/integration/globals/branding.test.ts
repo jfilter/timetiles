@@ -18,7 +18,7 @@ import { buildFaviconIcons } from "@/lib/metadata/favicon-icons";
 
 import { createIntegrationTestEnvironment, withUsers } from "../../setup/integration/environment";
 
-describe.sequential("Branding Global", () => {
+describe("Branding Global", () => {
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>["payload"];
 
@@ -100,7 +100,7 @@ describe.sequential("Branding Global", () => {
   });
 });
 
-describe.sequential("Branding Favicon Generation", () => {
+describe("Branding Favicon Generation", () => {
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>["payload"];
   const outputDir = faviconDir();

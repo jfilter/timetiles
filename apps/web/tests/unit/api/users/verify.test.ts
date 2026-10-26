@@ -37,7 +37,7 @@ beforeEach(() => {
   mockPayload.verifyEmail.mockReset().mockResolvedValue(true);
 });
 
-describe.sequential("POST /api/users/verify/[token]", () => {
+describe("POST /api/users/verify/[token]", () => {
   it("verifies successfully when token is valid and not expired", async () => {
     const futureExpiry = new Date(Date.now() + 60 * 60 * 1000).toISOString();
     mockPayload.find.mockResolvedValue({ docs: [{ id: 1, _verificationTokenExpiresAt: futureExpiry }] });

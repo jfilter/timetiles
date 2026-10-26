@@ -11,7 +11,7 @@ import { getFeatureFlagService, resetFeatureFlagService } from "@/lib/services/f
 
 import { createIntegrationTestEnvironment, withUsers } from "../../setup/integration/environment";
 
-describe.sequential("Feature Flag Service", () => {
+describe("Feature Flag Service", () => {
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>["payload"];
 

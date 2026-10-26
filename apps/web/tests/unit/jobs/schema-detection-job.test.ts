@@ -102,7 +102,7 @@ const mockAsyncGenerator = (batches: Record<string, unknown>[][]) => ({
   },
 });
 
-describe.sequential("SchemaDetectionJob Handler", () => {
+describe("SchemaDetectionJob Handler", () => {
   let mockPayload: any;
   let mockContext: JobHandlerContext;
   let mockSchemaBuilderInstance: any;

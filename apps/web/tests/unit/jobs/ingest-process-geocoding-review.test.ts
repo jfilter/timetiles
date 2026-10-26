@@ -34,7 +34,7 @@ const createMockTasks = () => ({
   "scraper-execution": vi.fn(),
 });
 
-describe.sequential("ingest-process: geocoding review bypass", () => {
+describe("ingest-process: geocoding review bypass", () => {
   let tasks: ReturnType<typeof createMockTasks>;
   let mockJob: any;
 

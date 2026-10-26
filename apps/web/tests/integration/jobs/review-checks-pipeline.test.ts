@@ -57,7 +57,7 @@ const approveAndResume = async (
   await runJobsUntilIngestJobStage(payload, ingestFileId, waitFor);
 };
 
-describe.sequential("Review Checks Pipeline", () => {
+describe("Review Checks Pipeline", () => {
   const collectionsToReset = [...IMPORT_PIPELINE_COLLECTIONS_TO_RESET];
 
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;

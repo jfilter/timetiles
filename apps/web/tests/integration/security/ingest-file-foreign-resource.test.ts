@@ -25,7 +25,7 @@ import {
   withUsers,
 } from "@/tests/setup/integration/environment";
 
-describe.sequential("Import File Foreign Resource Vulnerability", () => {
+describe("Import File Foreign Resource Vulnerability", () => {
   let payload: any;
   let cleanup: () => Promise<void>;
   let testEnv: any;

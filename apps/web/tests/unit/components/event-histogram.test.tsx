@@ -71,7 +71,7 @@ vi.mock("echarts-for-react", () => ({
 const mockUseHistogramQuery = useHistogramQuery as any;
 const mockUseTemporalClustersQuery = useTemporalClustersQuery as any;
 
-describe.sequential("EventHistogram", () => {
+describe("EventHistogram", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockUseTemporalClustersQuery.mockReturnValue({

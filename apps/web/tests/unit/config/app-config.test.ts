@@ -14,7 +14,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { getAppConfig, resetAppConfig } from "@/lib/config/app-config";
 import { resetEnv } from "@/lib/config/env";
 
-describe.sequential("getAppConfig", () => {
+describe("getAppConfig", () => {
   let existsSyncSpy: ReturnType<typeof vi.spyOn>;
   let readFileSyncSpy: ReturnType<typeof vi.spyOn>;
 

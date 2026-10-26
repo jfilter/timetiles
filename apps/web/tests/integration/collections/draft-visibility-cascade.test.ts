@@ -18,7 +18,7 @@ import {
   withUsers,
 } from "@/tests/setup/integration/environment";
 
-describe.sequential("Draft saves and the visibility cascade", () => {
+describe("Draft saves and the visibility cascade", () => {
   let testEnv: TestEnvironment;
   let payload: TestEnvironment["payload"];
   let cleanup: () => Promise<void>;

@@ -29,7 +29,7 @@ const WORLD_BOUNDS = { north: 90, south: -90, east: 180, west: -180 };
  *  duplicate key instead of the assertion that actually broke. */
 const RUN_ID = randomUUID().slice(0, 8);
 
-describe.sequential("privileged access parity across event endpoints", () => {
+describe("privileged access parity across event endpoints", () => {
   let payload: Payload;
   let privateDatasetId: number;
   let adminToken: string;

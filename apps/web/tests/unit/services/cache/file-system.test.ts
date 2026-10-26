@@ -19,7 +19,7 @@ import { FileSystemCacheStorage } from "@/lib/services/cache/storage/file-system
 import { TEST_SECRETS } from "@/tests/constants/test-credentials";
 import { mockLogger } from "@/tests/mocks/services/logger";
 
-describe.sequential("FileSystemCacheStorage", () => {
+describe("FileSystemCacheStorage", () => {
   let storage: FileSystemCacheStorage;
   let tempDir: string;
 

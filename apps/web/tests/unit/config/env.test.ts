@@ -13,7 +13,7 @@ import { ZodError } from "zod";
 import { getEnv, resetEnv } from "@/lib/config/env";
 import { TEST_SECRETS } from "@/tests/constants/test-credentials";
 
-describe.sequential("getEnv", () => {
+describe("getEnv", () => {
   afterEach(() => {
     vi.unstubAllEnvs();
     resetEnv();

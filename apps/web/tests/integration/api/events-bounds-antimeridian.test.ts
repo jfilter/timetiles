@@ -16,7 +16,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { GET } from "../../../app/api/v1/events/bounds/route";
 import type { TestEnvironment } from "../../setup/integration/environment";
 
-describe.sequential("/api/v1/events/bounds - antimeridian", () => {
+describe("/api/v1/events/bounds - antimeridian", () => {
   let payload: Payload;
   let testEnv: TestEnvironment;
   let datasetId: number;

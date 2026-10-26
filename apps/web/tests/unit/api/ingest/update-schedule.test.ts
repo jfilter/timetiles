@@ -134,7 +134,7 @@ const createRequest = (body: Record<string, unknown>) => {
   } as unknown as AuthenticatedRequest;
 };
 
-describe.sequential("PATCH /api/ingest/update-schedule", () => {
+describe("PATCH /api/ingest/update-schedule", () => {
   beforeEach(() => {
     vi.clearAllMocks();
 

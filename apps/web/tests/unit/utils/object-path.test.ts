@@ -15,7 +15,7 @@ import {
   setByPathOrKey,
 } from "@/lib/utils/object-path";
 
-describe.sequential("object-path", () => {
+describe("object-path", () => {
   describe("getByPath", () => {
     it("walks nested objects and returns undefined for missing segments", () => {
       expect(getByPath({ user: { email: "a@b.c" } }, "user.email")).toBe("a@b.c");

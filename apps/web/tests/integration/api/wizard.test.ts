@@ -27,7 +27,7 @@ import {
   withUsers,
 } from "../../setup/integration/environment";
 
-describe.sequential("Import Wizard API Endpoints", () => {
+describe("Import Wizard API Endpoints", () => {
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: any;
   let testUser: any;

@@ -25,7 +25,7 @@ const createRequest = (queryString = "") => {
   return { user: null, url, headers: new Headers(), nextUrl: new URL(url) } as unknown as AuthenticatedRequest;
 };
 
-describe.sequential("GET /api/v1/data-sources", () => {
+describe("GET /api/v1/data-sources", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.mockGetPayload.mockResolvedValue({

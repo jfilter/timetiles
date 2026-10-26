@@ -158,7 +158,7 @@ beforeEach(() => {
   mockLogger.logger.info.mockReset();
 });
 
-describe.sequential("POST /api/users/change-email", () => {
+describe("POST /api/users/change-email", () => {
   it("should return 401 when not authenticated", async () => {
     mockPayload.auth.mockResolvedValueOnce({ user: null });
 
@@ -316,7 +316,7 @@ describe.sequential("POST /api/users/change-email", () => {
   });
 });
 
-describe.sequential("POST /api/users/change-password", () => {
+describe("POST /api/users/change-password", () => {
   it("should return 422 when missing passwords", async () => {
     const req = createJsonRequest("http://localhost/api/users/change-password", {
       currentPassword: "",
@@ -401,7 +401,7 @@ describe.sequential("POST /api/users/change-password", () => {
   });
 });
 
-describe.sequential("POST /api/users/schedule-deletion", () => {
+describe("POST /api/users/schedule-deletion", () => {
   it("should return 422 when missing password", async () => {
     const req = createJsonRequest("http://localhost/api/users/schedule-deletion", { password: "" });
 
@@ -465,7 +465,7 @@ describe.sequential("POST /api/users/schedule-deletion", () => {
   });
 });
 
-describe.sequential("POST /api/users/cancel-deletion", () => {
+describe("POST /api/users/cancel-deletion", () => {
   it("should return 401 when not authenticated", async () => {
     mockPayload.auth.mockResolvedValueOnce({ user: null });
 
@@ -537,7 +537,7 @@ describe.sequential("POST /api/users/cancel-deletion", () => {
   });
 });
 
-describe.sequential("GET /api/account/deletion-summary", () => {
+describe("GET /api/account/deletion-summary", () => {
   it("should return summary with deletion status", async () => {
     const mockSummary = {
       catalogs: { total: 3, public: 1, private: 2 },
@@ -579,7 +579,7 @@ describe.sequential("GET /api/account/deletion-summary", () => {
   });
 });
 
-describe.sequential("GET /api/data-exports/:id/download", () => {
+describe("GET /api/data-exports/:id/download", () => {
   it("should return 422 for non-decimal export ids", async () => {
     const req = createGetRequest("http://localhost/api/data-exports/1e2/download");
 

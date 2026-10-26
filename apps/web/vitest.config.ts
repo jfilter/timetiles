@@ -30,6 +30,7 @@ export default defineConfig({
     execArgv: ["--no-warnings"], // Suppress Node.js warnings
     maxWorkers,
     fileParallelism: true,
+    // Tests within a file share DB and mock state, so they never run concurrently.
     sequence: { concurrent: false },
     coverage: {
       provider: "v8",

@@ -35,7 +35,7 @@ const mockDnsLookup = dns.promises.lookup as unknown as ReturnType<typeof vi.fn>
 const createResponse = (status: number, headers?: Record<string, string>): Response =>
   new Response(null, { status, headers: headers ? new Headers(headers) : undefined });
 
-describe.sequential("safeFetch", () => {
+describe("safeFetch", () => {
   let originalFetch: typeof global.fetch;
   let mockFetch: ReturnType<typeof vi.fn>;
 

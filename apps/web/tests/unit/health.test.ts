@@ -72,7 +72,7 @@ const stubHealthEnv = (
   resetEnv();
 };
 
-describe.sequential("health", () => {
+describe("health", () => {
   beforeEach(() => {
     // The probe is memoised on purpose; without this each test would inherit
     // the previous test's verdict instead of exercising its own fixture.

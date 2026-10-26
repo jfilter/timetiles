@@ -37,7 +37,7 @@ const flushUrlUpdates = async () => {
 };
 
 // Keep tests sequential so Testing Library cleanup cannot unmount a sibling's hook.
-describe.sequential("useSelectedEvent", () => {
+describe("useSelectedEvent", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });

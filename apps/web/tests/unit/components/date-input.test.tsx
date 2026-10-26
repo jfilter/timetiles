@@ -20,7 +20,7 @@ const renderInput = (value = "2024-06-15") => {
   return { onCommit, input: screen.getByLabelText<HTMLInputElement>("Start date") };
 };
 
-describe.sequential("DateInput", () => {
+describe("DateInput", () => {
   it("commits a complete date immediately, without waiting for blur", () => {
     const { onCommit, input } = renderInput();
 

@@ -22,7 +22,7 @@ interface MapClusterFeature {
 // cluster_events returns H3 cell indexes as 15 lowercase hex digits.
 const H3_CELL_ID = /^8[0-9a-f]{14}$/;
 
-describe.sequential("/api/v1/events/geo", () => {
+describe("/api/v1/events/geo", () => {
   let payload: Payload;
   let testCatalogId: string;
   let testDatasetId: string;

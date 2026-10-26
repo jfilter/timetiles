@@ -28,7 +28,7 @@ import {
   withUsers,
 } from "../../setup/integration/environment";
 
-describe.sequential("bulkInsertEvents — atomicity", () => {
+describe("bulkInsertEvents — atomicity", () => {
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>["payload"];
   // oxlint-disable-next-line @typescript-eslint/no-explicit-any

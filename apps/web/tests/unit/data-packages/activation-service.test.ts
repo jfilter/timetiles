@@ -117,7 +117,7 @@ describe("buildActivationKey", () => {
   });
 });
 
-describe.sequential("deactivateDataPackage", () => {
+describe("deactivateDataPackage", () => {
   const OWNER_ID = 7;
   const owner = { id: OWNER_ID, role: "user" } as User;
 

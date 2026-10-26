@@ -17,7 +17,7 @@ import {
   withUsers,
 } from "../../setup/integration/environment";
 
-describe.sequential("/api/v1/sources/stats", () => {
+describe("/api/v1/sources/stats", () => {
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let orphanDatasetId: number;
 

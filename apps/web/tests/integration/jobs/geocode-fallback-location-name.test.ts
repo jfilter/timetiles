@@ -59,7 +59,7 @@ const createVenueGeocodeBatchGeocode = () =>
     return { results, summary: { total: addresses.length, successful, failed, cached: 0 } };
   });
 
-describe.sequential("Geocode Fallback to Location Name", () => {
+describe("Geocode Fallback to Location Name", () => {
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: any;
   let testCatalogId: string;

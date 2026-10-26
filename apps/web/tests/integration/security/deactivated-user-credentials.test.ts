@@ -22,7 +22,7 @@ import { createAccountDeletionService } from "@/lib/account/deletion-service";
 import { TEST_CREDENTIALS } from "@/tests/constants/test-credentials";
 import { createIntegrationTestEnvironment, withUsers } from "@/tests/setup/integration/environment";
 
-describe.sequential("Deactivated user credential revocation", () => {
+describe("Deactivated user credential revocation", () => {
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
 
   const countSessions = async (userId: number): Promise<number> => {

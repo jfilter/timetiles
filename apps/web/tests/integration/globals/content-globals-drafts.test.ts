@@ -12,7 +12,7 @@ import type { User } from "@/payload-types";
 
 import { createIntegrationTestEnvironment, withUsers } from "../../setup/integration/environment";
 
-describe.sequential("Content global drafts", () => {
+describe("Content global drafts", () => {
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>["payload"];
   let regularUser: User;

@@ -13,7 +13,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { type FeatureFlags, getFeatureFlagService, resetFeatureFlagService } from "@/lib/services/feature-flag-service";
 
-describe.sequential("getFeatureFlagService", () => {
+describe("getFeatureFlagService", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     resetFeatureFlagService();

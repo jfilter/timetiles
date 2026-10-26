@@ -80,7 +80,7 @@ describe("transformEvent", () => {
   });
 });
 
-describe.sequential("GET /api/v1/events", () => {
+describe("GET /api/v1/events", () => {
   beforeEach(() => {
     vi.clearAllMocks();
 

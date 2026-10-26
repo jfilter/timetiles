@@ -60,7 +60,7 @@ const backdateData = (previewId: string, ext = ".csv"): void => {
   fs.utimesSync(path.join(testDir, `${previewId}${ext}`), past, past);
 };
 
-describe.sequential("sweepExpiredPreviews", () => {
+describe("sweepExpiredPreviews", () => {
   beforeEach(() => {
     // Each test gets its own isolated temp directory to avoid collisions with
     // other tests (the default preview dir is shared across many tests that
@@ -252,7 +252,7 @@ describe.sequential("sweepExpiredPreviews", () => {
   });
 });
 
-describe.sequential("previewCleanupJob", () => {
+describe("previewCleanupJob", () => {
   it("is scheduled on the maintenance queue every 6 hours", () => {
     expect(previewCleanupJob.slug).toBe("preview-cleanup");
     expect(previewCleanupJob.schedule[0]?.cron).toBe("0 */6 * * *");

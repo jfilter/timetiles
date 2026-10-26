@@ -27,7 +27,7 @@ const BOUNDS = { west: -132, south: -41.5, east: -130.5, north: -40.8 };
 
 const occurrences = (haystack: string, needle: string): number => haystack.split(needle).length - 1;
 
-describe.sequential("event SQL functions and the clusterCells filter", () => {
+describe("event SQL functions and the clusterCells filter", () => {
   let testEnv: TestEnvironment;
   let payload: Payload;
   let cellA = "";

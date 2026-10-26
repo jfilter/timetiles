@@ -56,7 +56,7 @@ const collectQueryScalars = (value: unknown): unknown[] => {
   return value == null ? [] : [value];
 };
 
-describe.sequential("GET /api/v1/events/geo", () => {
+describe("GET /api/v1/events/geo", () => {
   beforeEach(() => {
     vi.clearAllMocks();
 

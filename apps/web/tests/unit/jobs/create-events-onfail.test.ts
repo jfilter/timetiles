@@ -49,7 +49,7 @@ vi.mock("@/lib/database/dataset-import-lock", () => ({
   acquireDatasetImportLease: vi.fn(() => Promise.resolve({ release: vi.fn() })),
 }));
 
-describe.sequential("create-events-batch onFail isolation", () => {
+describe("create-events-batch onFail isolation", () => {
   let mockPayload: { update: ReturnType<typeof vi.fn>; findByID: ReturnType<typeof vi.fn>; db: any };
 
   /**

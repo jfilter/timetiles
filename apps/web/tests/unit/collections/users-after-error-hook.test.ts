@@ -39,7 +39,7 @@ const restArgs = (error: Error, email = "victim@example.test") =>
   }) as unknown as Parameters<typeof hook>[0];
 
 // Keep tests sequential because they share the module-level audit mock.
-describe.sequential("usersAfterErrorHook", () => {
+describe("usersAfterErrorHook", () => {
   beforeEach(() => {
     // Explicit: the shared vi.hoisted mock is module-level, so relying on a global
     // clear leaks call history between tests here.

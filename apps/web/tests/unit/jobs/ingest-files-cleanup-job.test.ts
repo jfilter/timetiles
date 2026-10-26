@@ -50,7 +50,7 @@ const HOUR = 60 * 60 * 1000;
 const now = Date.now();
 const dirent = (name: string, isFile = true) => ({ name, isFile: () => isFile });
 
-describe.sequential("ingestFilesCleanupJob", () => {
+describe("ingestFilesCleanupJob", () => {
   let mockPayload: any;
   let mockUnlink: any;
   let mockReaddir: any;

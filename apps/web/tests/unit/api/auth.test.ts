@@ -82,7 +82,7 @@ beforeEach(() => {
   mockPayload.jobs.queue.mockReset().mockResolvedValue({ id: "email-job-1" });
 });
 
-describe.sequential("POST /api/auth/register", () => {
+describe("POST /api/auth/register", () => {
   it("creates a user with direct verification email disabled and queues verification instead", async () => {
     const req = createJsonRequest(
       "http://localhost/api/auth/register",
@@ -184,7 +184,7 @@ describe.sequential("POST /api/auth/register", () => {
   });
 });
 
-describe.sequential("POST /api/auth/forgot-password", () => {
+describe("POST /api/auth/forgot-password", () => {
   it("suppresses Payload's direct email and queues the reset email instead", async () => {
     mockPayload.find.mockResolvedValueOnce({
       docs: [{ id: 1, email: "reset@example.com", firstName: "Ada", locale: "en" }],

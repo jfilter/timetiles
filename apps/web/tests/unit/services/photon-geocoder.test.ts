@@ -40,7 +40,7 @@ const photonFeature = (overrides: Record<string, unknown> = {}) => {
 };
 
 // Keep tests sequential because they share the mockFetch global.
-describe.sequential("Photon Geocoder", () => {
+describe("Photon Geocoder", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });

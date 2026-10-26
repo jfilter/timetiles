@@ -51,7 +51,7 @@ const runHook = (user: { id: number; role: string } | null, catalogOwner: number
     req: { user, payload: createPayload(catalogOwner), context: {} },
   } as never);
 
-describe.sequential("scheduled-ingests dataset ownership gate", () => {
+describe("scheduled-ingests dataset ownership gate", () => {
   it("rejects a dataset in someone else's catalog", async () => {
     await expect(runHook({ id: OWNER_ID, role: "user" }, STRANGER_ID, { dataset: 7 })).rejects.toThrow(/permission/i);
   });

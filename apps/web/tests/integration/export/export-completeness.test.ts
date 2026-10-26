@@ -20,7 +20,7 @@ import type { ExportSummary } from "@/lib/export/types";
 
 import { createIntegrationTestEnvironment, withIngestFile, withUsers } from "../../setup/integration/environment";
 
-describe.sequential("GDPR Export Completeness", () => {
+describe("GDPR Export Completeness", () => {
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>["payload"];
   let exportService: DataExportService;

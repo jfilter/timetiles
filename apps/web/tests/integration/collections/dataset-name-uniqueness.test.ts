@@ -16,7 +16,7 @@ import {
   withUsers,
 } from "@/tests/setup/integration/environment";
 
-describe.sequential("Dataset name uniqueness per catalog", () => {
+describe("Dataset name uniqueness per catalog", () => {
   let payload: any;
   let cleanup: () => Promise<void>;
   let testEnv: any;

@@ -40,7 +40,7 @@ const createRequest = (user: unknown) =>
 
 const createContext = (id: string) => ({ params: { id } as unknown as Promise<{ id: string }> });
 
-describe.sequential("POST /api/v1/datasets/[id]/schema/infer", () => {
+describe("POST /api/v1/datasets/[id]/schema/infer", () => {
   beforeEach(() => {
     vi.clearAllMocks();
 

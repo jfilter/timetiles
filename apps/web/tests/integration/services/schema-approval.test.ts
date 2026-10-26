@@ -12,7 +12,7 @@ import {
   withUsers,
 } from "../../setup/integration/environment";
 
-describe.sequential("Schema Approval Workflow", () => {
+describe("Schema Approval Workflow", () => {
   const collectionsToReset = [
     "ingest-files",
     "ingest-jobs",

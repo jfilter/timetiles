@@ -29,7 +29,7 @@ vi.mock("node:fs", () => ({
   },
 }));
 
-describe.sequential("AI test runner exit status", () => {
+describe("AI test runner exit status", () => {
   const originalArgv = process.argv;
 
   beforeEach(() => {

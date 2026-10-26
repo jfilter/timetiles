@@ -22,7 +22,7 @@ import {
   withUsers,
 } from "../../setup/integration/environment";
 
-describe.sequential("Config Suggestions - Integration", () => {
+describe("Config Suggestions - Integration", () => {
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: any;
   let testUser: any;

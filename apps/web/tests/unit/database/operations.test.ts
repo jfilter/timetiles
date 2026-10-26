@@ -89,7 +89,7 @@ const failingClientAt = (failIdx: number, message: string): (() => MockClient) =
 
 // ─── Tests ───────────────────────────────────────────────────────────
 
-describe.sequential("database operations", () => {
+describe("database operations", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     pgState.allClients.length = 0;

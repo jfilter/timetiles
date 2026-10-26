@@ -51,7 +51,7 @@ const createMockPayload = () => ({
 
 const createRequest = () => new NextRequest("http://localhost/api/scheduled-ingests/1/trigger", { method: "POST" });
 
-describe.sequential("POST /api/scheduled-ingests/[id]/trigger", () => {
+describe("POST /api/scheduled-ingests/[id]/trigger", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     // With isolate: false, ensure the module-level getPayload binding is configured

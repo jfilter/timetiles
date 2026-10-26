@@ -123,7 +123,7 @@ const createDrizzleMock = () => {
   return mock;
 };
 
-describe.sequential("AnalyzeDuplicatesJob Handler", () => {
+describe("AnalyzeDuplicatesJob Handler", () => {
   let mockPayload: any;
   let mockContext: JobHandlerContext;
   let drizzleMock: ReturnType<typeof createDrizzleMock>;

@@ -77,7 +77,7 @@ const createPartialSuccessBatchGeocode = () =>
     return { results, summary: { total: addresses.length, successful, failed, cached: 0 } };
   });
 
-describe.sequential("Geocode Batch Job - Failure Handling", () => {
+describe("Geocode Batch Job - Failure Handling", () => {
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: any;
   let testCatalogId: string;

@@ -34,7 +34,7 @@ const createPayloadMock = (): MockPayload => ({
   jobs: { queue: vi.fn().mockResolvedValue({ id: "email-job-1" }) },
 });
 
-describe.sequential("email helpers", () => {
+describe("email helpers", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.resetModules();

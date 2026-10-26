@@ -68,7 +68,7 @@ vi.mock("@/lib/ingest/progress-tracking", () => ({
 
 vi.mock("@/lib/types/schema-detection", () => ({ getSchemaBuilderState: mocks.getSchemaBuilderState }));
 
-describe.sequential("ValidateSchemaJob Handler", () => {
+describe("ValidateSchemaJob Handler", () => {
   let mockPayload: any;
   let mockContext: JobHandlerContext;
   let mockSchemaBuilderInstance: any;

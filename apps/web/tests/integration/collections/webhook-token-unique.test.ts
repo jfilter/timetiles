@@ -16,7 +16,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { Catalog, User } from "@/payload-types";
 import { createIntegrationTestEnvironment, withCatalog, withUsers } from "@/tests/setup/integration/environment";
 
-describe.sequential("Webhook token DB unique constraint", () => {
+describe("Webhook token DB unique constraint", () => {
   let payload: any;
   let cleanup: () => Promise<void>;
   let testEnv: any;

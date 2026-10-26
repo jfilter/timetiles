@@ -61,7 +61,7 @@ const createWorkflowArgs = (
   req,
 });
 
-describe.sequential("scheduledIngestWorkflow", () => {
+describe("scheduledIngestWorkflow", () => {
   let tasks: ReturnType<typeof createMockTasks>;
   let mockJob: any;
   let mockReq: any;

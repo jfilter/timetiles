@@ -33,7 +33,7 @@ vi.stubGlobal("fetch", mockFetch);
 const mockPayload = { find: vi.fn() } as any;
 
 // Keep tests sequential because they share the mockFetch global.
-describe.sequential("ProviderManager - createStatusCheckingFetch", () => {
+describe("ProviderManager - createStatusCheckingFetch", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });

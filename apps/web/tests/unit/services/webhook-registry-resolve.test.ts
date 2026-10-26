@@ -32,7 +32,7 @@ beforeEach(() => {
   mockPayload = createMockPayload();
 });
 
-describe.sequential("resolveWebhookToken", () => {
+describe("resolveWebhookToken", () => {
   it("returns scheduled-ingest target when token found in scheduled-ingests", async () => {
     mockPayload.find.mockResolvedValueOnce({
       docs: [{ id: 1, name: "My Import", webhookEnabled: true, webhookToken: "tok-abc" }],
@@ -182,7 +182,7 @@ describe.sequential("resolveWebhookToken", () => {
   });
 });
 
-describe.sequential("claimScraperRunning", () => {
+describe("claimScraperRunning", () => {
   it("returns true when claim succeeds (rows returned)", async () => {
     mockPayload.db.drizzle.update.mockImplementationOnce(() => createUpdateBuilder([{ id: 5 }]));
 

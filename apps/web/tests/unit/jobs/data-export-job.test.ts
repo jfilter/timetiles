@@ -48,7 +48,7 @@ import { logError } from "@/lib/logger";
 
 vi.mock("@/lib/export/unlink-export-file", () => ({ unlinkExportFile: vi.fn().mockResolvedValue("deleted") }));
 
-describe.sequential("dataExportJob", () => {
+describe("dataExportJob", () => {
   let mockPayload: any;
 
   const createContext = (input?: { exportId?: number }) => ({

@@ -19,7 +19,7 @@ import {
   shouldReviewNoTimestamp,
 } from "@/lib/jobs/workflows/review-checks";
 
-describe.sequential("review-checks", () => {
+describe("review-checks", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });

@@ -55,7 +55,7 @@ const withPrivateUrlBypass = async <T>(enabled: boolean, fn: () => Promise<T>): 
   }
 };
 
-describe.sequential("Security Validation Tests", () => {
+describe("Security Validation Tests", () => {
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: any;
   let cleanup: () => Promise<void>;

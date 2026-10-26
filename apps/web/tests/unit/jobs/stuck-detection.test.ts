@@ -38,7 +38,7 @@ const expectPayloadJobsQueryUsesKnownFields = (query: unknown): void => {
   }
 };
 
-describe.sequential("stuck-detection utilities", () => {
+describe("stuck-detection utilities", () => {
   describe("isResourceStuck", () => {
     const now = new Date("2026-03-24T12:00:00Z");
 

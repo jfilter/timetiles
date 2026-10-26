@@ -22,7 +22,7 @@ import {
   withUsers,
 } from "@/tests/setup/integration/environment";
 
-describe.sequential("Import Job Creation Authorization Vulnerability", () => {
+describe("Import Job Creation Authorization Vulnerability", () => {
   let payload: any;
   let cleanup: () => Promise<void>;
   let testEnv: any;

@@ -27,7 +27,7 @@ const makeSheet = (index: number, ingestJobId: number | string = `job-${index}`)
   rowCount: 100,
 });
 
-describe.sequential("processSheets", () => {
+describe("processSheets", () => {
   let tasks: ReturnType<typeof createMockTasks>;
   let mockReq: any;
 

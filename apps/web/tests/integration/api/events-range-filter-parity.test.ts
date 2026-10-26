@@ -57,7 +57,7 @@ const WORLD_BOUNDS = { north: 90, south: -90, east: 180, west: -180 };
 
 type RangeFilters = Record<string, { min?: number; max?: number }>;
 
-describe.sequential("numeric range filter — list/map/temporal parity", () => {
+describe("numeric range filter — list/map/temporal parity", () => {
   let payload: Payload;
   let usDatasetId: number;
   let euDatasetId: number;

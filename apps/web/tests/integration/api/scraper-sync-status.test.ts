@@ -13,7 +13,7 @@ import { TEST_CREDENTIALS } from "@/tests/constants/test-credentials";
 
 import { createIntegrationTestEnvironment, withUsers } from "../../setup/integration/environment";
 
-describe.sequential("Scraper sync status", () => {
+describe("Scraper sync status", () => {
   let env: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let owner: User;
   let ownerToken: string;

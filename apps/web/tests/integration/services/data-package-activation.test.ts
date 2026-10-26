@@ -423,7 +423,7 @@ const buildUcdpManifest = (sourceUrl: string): DataPackageManifest => ({
   reviewChecks: { skipGeocodingCheck: true },
 });
 
-describe.sequential("Data Package Activation", () => {
+describe("Data Package Activation", () => {
   type IngestFileId = number | string | undefined;
   const collectionsToReset = [...IMPORT_PIPELINE_COLLECTIONS_TO_RESET, "catalogs", "scheduled-ingests"];
 
