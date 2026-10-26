@@ -8,6 +8,22 @@ See the [release process](/development/contributing/release-process) for how new
 
 Changes landed on `main` since the last tagged release.
 
+## [0.1.0-alpha.18] - 2026-10-26
+
+### Changed
+
+- Payload CMS 3.90.2 and Next.js 16.4.3
+
+### Fixed
+
+- Explore: focusing on a cluster cell shows the clusters inside that cell instead of the whole viewport
+- Import: large uploads arrive whole, and multipart uploads are capped at 100 MiB to match the file-size quota
+- Deployment: the web container gets an executable cache mount for the SWC native addon, which the `noexec` `/tmp` could not load
+
+### Security
+
+- Upgraded dependencies with known vulnerabilities: Next.js, nodemailer, undici, zod, DOMPurify, happy-dom, esbuild, simple-git and brace-expansion
+
 ## [0.1.0-alpha.17] - 2026-09-29
 
 ### Fixed
