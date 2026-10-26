@@ -8,6 +8,21 @@ See the [release process](/development/contributing/release-process) for how new
 
 Changes landed on `main` since the last tagged release.
 
+## [0.1.0-alpha.19] - 2026-10-26
+
+### Changed
+
+- Payload CMS 3.92.0, with a migration that indexes the localized content tables
+- API: requesting a document's draft by ID (`?draft=true`) without access to that draft answers "not found" instead of returning the published version
+- `@timetiles/ui`: `DataTable` builds on TanStack Table 9, and `DataTable` and `DataTableProps` take the row type as their only type parameter
+- Minor and patch updates of the remaining dependencies, including MapLibre GL 6.16
+
+### Fixed
+
+- Docs: the documentation site builds again with zod 4.4 and later
+- Imports: files with several sheets no longer fail sporadically while creating schema versions in parallel
+- Quotas: concurrent creates at a reached limit answer "limit reached" instead of stalling the database connection pool
+
 ## [0.1.0-alpha.18] - 2026-10-26
 
 ### Changed
