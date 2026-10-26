@@ -35,11 +35,10 @@ describe("GET /maplibre/[file]", () => {
     expect(response.status).toBe(404);
   });
 
-  it("serves the worker import next to the worker URL", () => {
+  it("serves every relative worker import next to the worker URL", () => {
     const workerSource = readFileSync(path.join(distDir, "maplibre-gl-worker.mjs"), "utf8");
     const imported = [...workerSource.matchAll(/from\s*["'](\.\/[^"']+)["']/g)].map((match) => match[1]);
 
-    expect(imported.length).toBeGreaterThan(0);
     for (const specifier of imported) {
       const resolved = new URL(specifier!, `http://localhost${MAPLIBRE_WORKER_URL}`).pathname;
       expect(MAPLIBRE_WORKER_FILES.map((file) => `/maplibre/${file}`)).toContain(resolved);

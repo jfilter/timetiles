@@ -1,8 +1,8 @@
 /**
- * Serves the MapLibre web worker and the shared chunk it imports.
+ * Serves the MapLibre web worker.
  *
  * Bundling rewrites MapLibre's `import.meta.url`, so its derived worker URL is empty; the
- * worker and its relative `./maplibre-gl-shared.mjs` import are served side by side here.
+ * worker is served here under its dist name instead.
  *
  * @module
  * @category API
