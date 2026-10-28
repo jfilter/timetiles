@@ -14,6 +14,7 @@ import type { NumberFormat } from "@/lib/utils/number-parsing";
 import type { CanonicalBounds, CanonicalEventFilters, RangeFilter } from "./canonical-event-filters";
 import { isValidFieldKey } from "./field-validation";
 import { jsonTextAtPathOrKey, jsonValueAtPathOrKey } from "./json-field-sql";
+import { hasArrayIndexSegment } from "./tag-json-path";
 
 type SqlFragment = ReturnType<typeof sql>;
 
@@ -160,9 +161,6 @@ const buildBoundsConditions = (bounds: CanonicalBounds): SqlFragment[] => {
 /** `a.b` + leaf → `{"a":{"b":leaf}}`. */
 const nestUnderPath = (fieldKey: string, leaf: unknown): unknown =>
   fieldKey.split(".").reduceRight<unknown>((inner, segment) => ({ [segment]: inner }), leaf);
-
-/** `#>` indexes into arrays on a numeric segment, which containment cannot express. */
-const hasArrayIndexSegment = (fieldKey: string): boolean => fieldKey.split(".").some((s) => /^-?\d+$/.test(s));
 
 /**
  * "The array at `fieldKey` contains `value`", literal key first, written as whole-document

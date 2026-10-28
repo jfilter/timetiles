@@ -13,7 +13,9 @@ import { NextRequest } from "next/server";
 import type { Payload } from "payload";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
+import { GET as geoGET } from "../../../app/api/v1/events/geo/route";
 import { GET } from "../../../app/api/v1/events/route";
+import { GET as temporalGET } from "../../../app/api/v1/events/temporal/route";
 import { GET as temporalClustersGET } from "../../../app/api/v1/events/temporal-clusters/route";
 import type { TestEnvironment } from "../../setup/integration/environment";
 
@@ -144,6 +146,7 @@ describe("/api/v1/events - field filter logic", () => {
       { "meta.labels": ["a"], meta: { labels: ["b"] } },
       { "meta.labels": ["c"] },
       { rows: [["x"], ["y"]] },
+      { meta: { labels: [String.raw`say "hi" \ there`] } },
     ];
     for (const [i, data] of nestedTagEvents.entries()) {
       await payload.create({
@@ -459,10 +462,25 @@ describe("/api/v1/events - field filter logic", () => {
         ),
         { params: Promise.resolve({}) }
       );
+      const histogramResponse = await temporalGET(
+        new NextRequest(`http://localhost:3000/api/v1/events/temporal?datasets=${nestedTagDatasetId}&ff=${ff}`),
+        { params: Promise.resolve({}) }
+      );
+      const worldBounds = encodeURIComponent(JSON.stringify({ north: 85, south: -85, east: 180, west: -180 }));
+      const geoResponse = await geoGET(
+        new NextRequest(
+          `http://localhost:3000/api/v1/events/geo?datasets=${nestedTagDatasetId}&ff=${ff}&zoom=2&bounds=${worldBounds}`
+        ),
+        { params: Promise.resolve({}) }
+      );
       const list = await listResponse.json();
       const temporal = await temporalResponse.json();
-      // The list (TypeScript SQL) and the timeline (PL/pgSQL) must agree.
+      const histogram = (await histogramResponse.json()) as { metadata: { total: number } };
+      const geo = (await geoResponse.json()) as { features: Array<{ properties: { count: number } }> };
+      // The list (TypeScript SQL), the timeline, the histogram and the map (PL/pgSQL) must agree.
       expect(temporal.metadata.total).toBe(list.events.length);
+      expect(histogram.metadata.total).toBe(list.events.length);
+      expect(geo.features.reduce((sum, feature) => sum + Number(feature.properties.count), 0)).toBe(list.events.length);
       return list.events.length;
     };
 
@@ -473,6 +491,10 @@ describe("/api/v1/events - field filter logic", () => {
     it("prefers a literal top-level key over the nested path", async () => {
       expect(await countEvents({ "meta.labels": ["a"] })).toBe(2);
       expect(await countEvents({ "meta.labels": ["c"] })).toBe(1);
+    });
+
+    it("matches a value with quotes and backslashes", async () => {
+      expect(await countEvents({ "meta.labels": [String.raw`say "hi" \ there`] })).toBe(1);
     });
 
     it("indexes into an array on a numeric segment", async () => {

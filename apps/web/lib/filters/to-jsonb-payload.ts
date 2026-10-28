@@ -9,6 +9,7 @@
  * @category Filters
  */
 import type { CanonicalEventFilters } from "./canonical-event-filters";
+import { buildTagJsonPath } from "./tag-json-path";
 
 /**
  * Convert canonical filters to a JSONB payload for the `cluster_events` PG function.
@@ -33,6 +34,7 @@ export const toClusteringJsonb = (filters: CanonicalEventFilters): string =>
     numberFormats:
       filters.numberFormats && Object.keys(filters.numberFormats).length > 0 ? filters.numberFormats : undefined,
     tagFields: filters.tagFields?.size ? [...filters.tagFields] : undefined,
+    tagPath: buildTagJsonPath(filters.fieldFilters, filters.tagFields),
     clusterCells: filters.clusterCells?.length ? filters.clusterCells : undefined,
     h3Resolution: filters.h3Resolution,
   });
@@ -68,6 +70,7 @@ export const toHistogramJsonb = (filters: CanonicalEventFilters): string =>
     numberFormats:
       filters.numberFormats && Object.keys(filters.numberFormats).length > 0 ? filters.numberFormats : undefined,
     tagFields: filters.tagFields?.size ? [...filters.tagFields] : undefined,
+    tagPath: buildTagJsonPath(filters.fieldFilters, filters.tagFields),
     clusterCells: filters.clusterCells?.length ? filters.clusterCells : undefined,
     h3Resolution: filters.h3Resolution,
   });
