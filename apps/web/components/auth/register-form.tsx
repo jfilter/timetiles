@@ -44,9 +44,9 @@ export const RegisterForm = ({ onSuccess, onError, className }: Readonly<Registe
   const tCommon = useTranslations("Common");
   const { isEnabled: registrationEnabled, isLoading: flagsLoading } = useFeatureEnabled("enableRegistration");
   const { data: legalNotices } = useLegalNotices();
-  const [email, handleEmailChange] = useInputState();
-  const [password, handlePasswordChange] = useInputState();
-  const [confirmPassword, handleConfirmPasswordChange] = useInputState();
+  const [email, emailInput] = useInputState();
+  const [password, passwordInput] = useInputState();
+  const [confirmPassword, confirmPasswordInput] = useInputState();
   const { status, error, isPending, mutate } = useMutation({
     mutationFn: async (input: { email: string; password: string; confirmPassword: string }) => {
       validatePasswords(input.password, input.confirmPassword, {
@@ -122,8 +122,7 @@ export const RegisterForm = ({ onSuccess, onError, className }: Readonly<Registe
         id="register-email"
         label={t("emailLabel")}
         type="email"
-        value={email}
-        onChange={handleEmailChange}
+        {...emailInput}
         placeholder={t("registerEmailPlaceholder")}
         disabled={isPending}
         required
@@ -134,8 +133,7 @@ export const RegisterForm = ({ onSuccess, onError, className }: Readonly<Registe
         id="register-password"
         label={t("passwordLabel")}
         type="password"
-        value={password}
-        onChange={handlePasswordChange}
+        {...passwordInput}
         placeholder={t("registerPasswordPlaceholder", { length: PASSWORD_MIN_LENGTH })}
         disabled={isPending}
         required
@@ -148,8 +146,7 @@ export const RegisterForm = ({ onSuccess, onError, className }: Readonly<Registe
         id="register-confirm-password"
         label={t("confirmPasswordLabel")}
         type="password"
-        value={confirmPassword}
-        onChange={handleConfirmPasswordChange}
+        {...confirmPasswordInput}
         placeholder={t("confirmPasswordPlaceholder")}
         disabled={isPending}
         required

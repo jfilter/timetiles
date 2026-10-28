@@ -32,7 +32,7 @@ export interface ForgotPasswordFormProps {
 
 export const ForgotPasswordForm = ({ onSuccess, onError, className }: Readonly<ForgotPasswordFormProps>) => {
   const t = useTranslations("Auth");
-  const [email, handleEmailChange] = useInputState();
+  const [email, emailInput] = useInputState();
   const { status, error, isPending, mutate } = useMutation({
     mutationFn: forgotPasswordRequest,
     onSuccess: () => onSuccess?.(),
@@ -65,8 +65,7 @@ export const ForgotPasswordForm = ({ onSuccess, onError, className }: Readonly<F
         id="forgot-email"
         label={t("emailLabel")}
         type="email"
-        value={email}
-        onChange={handleEmailChange}
+        {...emailInput}
         placeholder={t("emailPlaceholder")}
         disabled={isPending}
         required

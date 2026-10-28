@@ -35,8 +35,8 @@ export interface ResetPasswordFormProps {
 
 export const ResetPasswordForm = ({ token, onSuccess, onError, className }: Readonly<ResetPasswordFormProps>) => {
   const t = useTranslations("Auth");
-  const [password, handlePasswordChange] = useInputState();
-  const [confirmPassword, handleConfirmPasswordChange] = useInputState();
+  const [password, passwordInput] = useInputState();
+  const [confirmPassword, confirmPasswordInput] = useInputState();
   const { status, error, isPending, mutate } = useMutation({
     mutationFn: async (input: { token: string; password: string; confirmPassword: string }) => {
       validatePasswords(input.password, input.confirmPassword, {
@@ -68,8 +68,7 @@ export const ResetPasswordForm = ({ token, onSuccess, onError, className }: Read
         id="reset-password"
         label={t("newPasswordLabel")}
         type="password"
-        value={password}
-        onChange={handlePasswordChange}
+        {...passwordInput}
         placeholder={t("newPasswordPlaceholder", { length: PASSWORD_MIN_LENGTH })}
         disabled={isPending}
         required
@@ -82,8 +81,7 @@ export const ResetPasswordForm = ({ token, onSuccess, onError, className }: Read
         id="reset-confirm-password"
         label={t("confirmPasswordLabel")}
         type="password"
-        value={confirmPassword}
-        onChange={handleConfirmPasswordChange}
+        {...confirmPasswordInput}
         placeholder={t("confirmPasswordPlaceholder")}
         disabled={isPending}
         required

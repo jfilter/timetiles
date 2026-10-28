@@ -33,8 +33,8 @@ export interface LoginFormProps {
 export const LoginForm = ({ onSuccess, onError, className }: Readonly<LoginFormProps>) => {
   const t = useTranslations("Auth");
   const tCommon = useTranslations("Common");
-  const [email, handleEmailChange] = useInputState();
-  const [password, handlePasswordChange] = useInputState();
+  const [email, emailInput] = useInputState();
+  const [password, passwordInput] = useInputState();
   const { error, isPending, mutate } = useMutation({
     mutationFn: loginRequest,
     onSuccess: () => onSuccess?.(),
@@ -55,8 +55,7 @@ export const LoginForm = ({ onSuccess, onError, className }: Readonly<LoginFormP
         id="login-email"
         label={t("emailLabel")}
         type="email"
-        value={email}
-        onChange={handleEmailChange}
+        {...emailInput}
         placeholder={t("emailPlaceholder")}
         disabled={isPending}
         required
@@ -67,8 +66,7 @@ export const LoginForm = ({ onSuccess, onError, className }: Readonly<LoginFormP
         id="login-password"
         label={t("passwordLabel")}
         type="password"
-        value={password}
-        onChange={handlePasswordChange}
+        {...passwordInput}
         placeholder={t("passwordPlaceholder")}
         disabled={isPending}
         required

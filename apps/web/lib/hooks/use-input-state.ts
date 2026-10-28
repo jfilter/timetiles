@@ -8,10 +8,12 @@
  */
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
 
 /**
- * Returns a [value, onChange, setValue] tuple for a text input field.
+ * Returns a [value, inputProps, setValue] tuple for a text input field. Spread `inputProps` onto
+ * the input: besides value and onChange, its ref adopts a value autofilled or typed before
+ * hydration, which sits in the DOM without ever reaching state.
  *
  * @param initialValue - Initial field value (default: "")
  * @param onValueChange - Optional callback fired on every change (e.g., mutation `reset` to clear error/success state)
@@ -19,11 +21,12 @@ import { useState } from "react";
  * @example
  * ```tsx
  * // Basic usage (auth forms)
- * const [email, onEmailChange] = useInputState();
+ * const [email, emailInput] = useInputState();
+ * <Input type="email" {...emailInput} />
  *
  * // With reset callback (account forms)
  * const { reset } = useMutation({ ... });
- * const [email, onEmailChange, setEmail] = useInputState("", reset);
+ * const [email, emailInput, setEmail] = useInputState("", reset);
  * ```
  */
 export const useInputState = (initialValue = "", onValueChange?: () => void) => {
@@ -32,5 +35,8 @@ export const useInputState = (initialValue = "", onValueChange?: () => void) => 
     setValue(e.target.value);
     onValueChange?.();
   };
-  return [value, onChange, setValue] as const;
+  const ref = useCallback((input: HTMLInputElement | null) => {
+    if (input?.value) setValue(input.value);
+  }, []);
+  return [value, { value, onChange, ref }, setValue] as const;
 };

@@ -36,9 +36,9 @@ export const ChangePasswordForm = () => {
       setConfirmPassword("");
     },
   });
-  const [currentPassword, onCurrentPasswordChange, setCurrentPassword] = useInputState("", reset);
-  const [newPassword, onNewPasswordChange, setNewPassword] = useInputState("", reset);
-  const [confirmPassword, onConfirmPasswordChange, setConfirmPassword] = useInputState("", reset);
+  const [currentPassword, currentPasswordInput, setCurrentPassword] = useInputState("", reset);
+  const [newPassword, newPasswordInput, setNewPassword] = useInputState("", reset);
+  const [confirmPassword, confirmPasswordInput, setConfirmPassword] = useInputState("", reset);
 
   const handleSubmit = (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -67,8 +67,7 @@ export const ChangePasswordForm = () => {
             <Input
               id="current-password"
               type="password"
-              value={currentPassword}
-              onChange={onCurrentPasswordChange}
+              {...currentPasswordInput}
               placeholder={t("currentPasswordPlaceholder")}
               disabled={isPending}
             />
@@ -79,8 +78,7 @@ export const ChangePasswordForm = () => {
             <Input
               id="new-password"
               type="password"
-              value={newPassword}
-              onChange={onNewPasswordChange}
+              {...newPasswordInput}
               placeholder={t("newPasswordPlaceholder")}
               disabled={isPending}
             />
@@ -92,8 +90,7 @@ export const ChangePasswordForm = () => {
             <Input
               id="confirm-password"
               type="password"
-              value={confirmPassword}
-              onChange={onConfirmPasswordChange}
+              {...confirmPasswordInput}
               placeholder={t("confirmPasswordPlaceholder")}
               disabled={isPending}
             />

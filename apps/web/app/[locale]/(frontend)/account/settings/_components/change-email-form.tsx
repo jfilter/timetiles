@@ -39,8 +39,8 @@ export const ChangeEmailForm = ({ currentEmail, onSuccess }: ChangeEmailFormProp
       onSuccess?.();
     },
   });
-  const [newEmail, onNewEmailChange, setNewEmail] = useInputState("", reset);
-  const [password, onPasswordChange, setPassword] = useInputState("", reset);
+  const [newEmail, newEmailInput, setNewEmail] = useInputState("", reset);
+  const [password, passwordInput, setPassword] = useInputState("", reset);
 
   const handleSubmit = (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -74,8 +74,7 @@ export const ChangeEmailForm = ({ currentEmail, onSuccess }: ChangeEmailFormProp
             <Input
               id="new-email"
               type="email"
-              value={newEmail}
-              onChange={onNewEmailChange}
+              {...newEmailInput}
               placeholder={t("newEmailPlaceholder")}
               disabled={isPending}
             />
@@ -86,8 +85,7 @@ export const ChangeEmailForm = ({ currentEmail, onSuccess }: ChangeEmailFormProp
             <Input
               id="email-password"
               type="password"
-              value={password}
-              onChange={onPasswordChange}
+              {...passwordInput}
               placeholder={t("emailPasswordPlaceholder")}
               disabled={isPending}
             />

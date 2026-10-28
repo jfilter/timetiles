@@ -15,6 +15,7 @@ interface AuthFormFieldProps {
   type: string;
   value: string;
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  ref?: React.Ref<HTMLInputElement>;
   placeholder?: string;
   disabled?: boolean;
   required?: boolean;
