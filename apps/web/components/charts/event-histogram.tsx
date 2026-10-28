@@ -133,12 +133,11 @@ export const EventHistogram = ({
 
   const histogram = histogramQuery.data?.histogram ?? EMPTY_ARRAY;
 
+  const clusterItems = clustersQuery.data?.items;
   const groupedData = useMemo<TimeHistogramSeries[] | undefined>(
     () =>
-      isGrouped && clustersQuery.data?.items
-        ? buildGroupedSeries(clustersQuery.data.items, maxGroups, otherLabel, noValueLabel)
-        : undefined,
-    [isGrouped, clustersQuery.data?.items, maxGroups, otherLabel, noValueLabel]
+      isGrouped && clusterItems ? buildGroupedSeries(clusterItems, maxGroups, otherLabel, noValueLabel) : undefined,
+    [isGrouped, clusterItems, maxGroups, otherLabel, noValueLabel]
   );
 
   // Pick loading/error state from the active query (grouped vs ungrouped)

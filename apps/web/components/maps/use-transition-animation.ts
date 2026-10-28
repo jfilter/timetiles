@@ -97,16 +97,12 @@ export const useTransitionAnimation = (
 
   const animate = useCallback(
     (startTime: number, target: ClusterFeature[], origins: Map<string, FeaturePosition>) => {
-      const elapsed = performance.now() - startTime;
-      const progress = Math.min(elapsed / TRANSITION_DURATION, 1);
-
-      setAnimated(interpolateFeatures(target, origins, progress, withTransitionScale));
-
-      if (progress < 1) {
-        animationRef.current = requestAnimationFrame(() => animate(startTime, target, origins));
-      } else {
-        animationRef.current = null;
-      }
+      const step = () => {
+        const progress = Math.min((performance.now() - startTime) / TRANSITION_DURATION, 1);
+        setAnimated(interpolateFeatures(target, origins, progress, withTransitionScale));
+        animationRef.current = progress < 1 ? requestAnimationFrame(step) : null;
+      };
+      step();
     },
     [withTransitionScale]
   );

@@ -46,11 +46,10 @@ export const PendingDeletionBanner = ({ deletionScheduledAt }: PendingDeletionBa
   // Compute the time-derived display only after mount; SSR and the first client
   // render show neutral values, then the real local values fill in.
   const mounted = useMounted();
+  const [now] = useState(Date.now);
   const deletionDate = new Date(deletionScheduledAt);
   const formattedDate = mounted ? deletionDate.toLocaleDateString(locale) : "";
-  const daysRemaining = mounted
-    ? Math.max(0, Math.ceil((deletionDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
-    : 0;
+  const daysRemaining = mounted ? Math.max(0, Math.ceil((deletionDate.getTime() - now) / (1000 * 60 * 60 * 24))) : 0;
 
   const remaining = daysRemaining > 0 ? t("daysRemaining", { count: daysRemaining }) : "";
 

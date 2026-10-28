@@ -11,7 +11,7 @@
 
 import type { MapMouseEvent } from "maplibre-gl";
 import { useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useEffectEvent, useMemo, useState } from "react";
 import type { MapRef } from "react-map-gl/maplibre";
 
 import { useH3HoverChildrenQuery } from "@/lib/hooks/use-events-queries";
@@ -119,12 +119,9 @@ export const useH3Hover = ({ algorithm, currentZoom, mapRef, isMapLoaded, scope 
     setHoverTarget((prev) => (prev === null ? prev : null));
   }, []);
 
-  // Hold latest hover handlers in refs so the mousemove listener below can
-  // read them without tearing down and re-attaching on every zoom change.
-  const handleH3HoverRef = useRef(handleH3Hover);
-  const handleH3HoverLeaveRef = useRef(handleH3HoverLeave);
-  handleH3HoverRef.current = handleH3Hover;
-  handleH3HoverLeaveRef.current = handleH3HoverLeave;
+  // Effect events read the latest handlers without re-attaching the mousemove listener on every zoom change.
+  const onHover = useEffectEvent(handleH3Hover);
+  const onHoverLeave = useEffectEvent(handleH3HoverLeave);
 
   // Native mousemove handler to detect cluster hover across features
   // (react-map-gl's onMouseEnter only fires once per layer entry, not per feature)
@@ -138,14 +135,14 @@ export const useH3Hover = ({ algorithm, currentZoom, mapRef, isMapLoaded, scope 
       // missing layer makes MapLibre emit an ErrorEvent on every mousemove, so
       // bail out (and clear any stale hover) when the layer is absent.
       if (!map.getLayer("event-clusters")) {
-        handleH3HoverLeaveRef.current();
+        onHoverLeave();
         return;
       }
       const features = map.queryRenderedFeatures(e.point, { layers: ["event-clusters"] });
       if (features.length > 0 && features[0]?.properties?.type === "event-cluster") {
-        handleH3HoverRef.current({ features });
+        onHover({ features });
       } else {
-        handleH3HoverLeaveRef.current();
+        onHoverLeave();
       }
     };
     map.on("mousemove", onMove);

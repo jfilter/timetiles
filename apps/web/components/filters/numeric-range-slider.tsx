@@ -171,7 +171,7 @@ export const NumericRangeSlider = ({
   // Capture the pointer on the handle (same pattern as use-time-range-slider):
   // without it the drag dies as soon as the cursor leaves the 24px track, since
   // move events stop reaching the track and onPointerLeave ends the drag.
-  const handlePointerDown = (handle: "min" | "max") => (e: React.PointerEvent) => {
+  const handlePointerDown = (handle: "min" | "max", e: React.PointerEvent) => {
     e.preventDefault();
     draggingRef.current = handle;
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
@@ -236,7 +236,7 @@ export const NumericRangeSlider = ({
           type="button"
           className="bg-background dark:bg-foreground border-secondary focus-visible:ring-ring absolute top-1/2 z-10 h-4 w-4 -translate-x-1/2 -translate-y-1/2 cursor-grab rounded-full border-2 shadow-sm transition-transform hover:scale-110 focus-visible:ring-2 focus-visible:outline-none active:scale-110 active:cursor-grabbing"
           style={{ left: `${lowPosition * 100}%` }}
-          onPointerDown={handlePointerDown("min")}
+          onPointerDown={(e) => handlePointerDown("min", e)}
           onKeyDown={handleKeyDown("min")}
           role="slider"
           aria-label={t("rangeMinSlider", { label })}
@@ -250,7 +250,7 @@ export const NumericRangeSlider = ({
           type="button"
           className="bg-background dark:bg-foreground border-secondary focus-visible:ring-ring absolute top-1/2 z-10 h-4 w-4 -translate-x-1/2 -translate-y-1/2 cursor-grab rounded-full border-2 shadow-sm transition-transform hover:scale-110 focus-visible:ring-2 focus-visible:outline-none active:scale-110 active:cursor-grabbing"
           style={{ left: `${highPosition * 100}%` }}
-          onPointerDown={handlePointerDown("max")}
+          onPointerDown={(e) => handlePointerDown("max", e)}
           onKeyDown={handleKeyDown("max")}
           role="slider"
           aria-label={t("rangeMaxSlider", { label })}

@@ -12,7 +12,7 @@
 "use client";
 
 import { useLocale, useTranslations } from "next-intl";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import type { FilterState } from "@/lib/hooks/use-filters";
 import { useTimeRangeSlider } from "@/lib/hooks/use-time-range-slider";
@@ -52,13 +52,14 @@ export const DateInput = ({
   label: string;
 }) => {
   const [draft, setDraft] = useState<string | null>(null);
+  const [draftBase, setDraftBase] = useState(value);
 
   // Drop a half-typed draft when the filter changes underneath us — back button, a reset, any
-  // other writer of the URL params. Otherwise the field kept showing the stale draft and the
-  // next blur committed it back over the change that just happened.
-  useEffect(() => {
+  // other writer of the URL params — so a blur cannot commit it back over that change.
+  if (draftBase !== value) {
+    setDraftBase(value);
     setDraft(null);
-  }, [value]);
+  }
 
   return (
     <input

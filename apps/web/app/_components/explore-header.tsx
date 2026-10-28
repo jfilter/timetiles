@@ -101,17 +101,16 @@ const ExploreDesktopHeader = ({ catalogs, datasets, currentView }: ExploreNaviga
   // Delay showing the filter icon until the filter drawer closing animation completes.
   // Must stay in sync with the CSS `duration-500` on the filter area div below.
   const FILTER_DRAWER_ANIMATION_MS = 500;
-  const [showFilterIcon, setShowFilterIcon] = useState(!isFilterDrawerOpen);
+  const [closeSettled, setCloseSettled] = useState(!isFilterDrawerOpen);
+  const showFilterIcon = !isFilterDrawerOpen && closeSettled;
 
   useEffect(() => {
-    if (isFilterDrawerOpen) {
-      setShowFilterIcon(false);
-    } else {
-      const timer = setTimeout(() => {
-        setShowFilterIcon(true);
-      }, FILTER_DRAWER_ANIMATION_MS);
-      return () => clearTimeout(timer);
-    }
+    if (isFilterDrawerOpen) return;
+    const timer = setTimeout(() => setCloseSettled(true), FILTER_DRAWER_ANIMATION_MS);
+    return () => {
+      clearTimeout(timer);
+      setCloseSettled(false);
+    };
   }, [isFilterDrawerOpen]);
 
   const { title } = buildDynamicTitle(filters, catalogs, datasets, tExplore);

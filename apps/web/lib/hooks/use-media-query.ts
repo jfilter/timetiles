@@ -9,7 +9,9 @@
  */
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useSyncExternalStore } from "react";
+
+const getServerSnapshot = () => null;
 
 /**
  * Subscribe to a CSS media query.
@@ -18,16 +20,14 @@ import { useEffect, useState } from "react";
  * @returns `null` on the server / before hydration, then `boolean`
  */
 export const useMediaQuery = (query: string): boolean | null => {
-  const [matches, setMatches] = useState<boolean | null>(null);
+  const subscribe = useCallback(
+    (onChange: () => void) => {
+      const mql = window.matchMedia(query);
+      mql.addEventListener("change", onChange);
+      return () => mql.removeEventListener("change", onChange);
+    },
+    [query]
+  );
 
-  useEffect(() => {
-    const mql = window.matchMedia(query);
-    setMatches(mql.matches);
-
-    const handler = (e: MediaQueryListEvent) => setMatches(e.matches);
-    mql.addEventListener("change", handler);
-    return () => mql.removeEventListener("change", handler);
-  }, [query]);
-
-  return matches;
+  return useSyncExternalStore(subscribe, () => window.matchMedia(query).matches, getServerSnapshot);
 };

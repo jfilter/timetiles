@@ -74,4 +74,19 @@ describe("DateInput", () => {
 
     expect(input.value).toBe("2023-01-01");
   });
+
+  it("keeps a dropped draft dropped when the filter later returns to its old value", () => {
+    const onCommit = vi.fn();
+    const props = { onCommit, min: "2020-01-01", max: "2030-12-31", label: "Start date" };
+    const { rerender } = render(<DateInput value="2024-06-15" {...props} />);
+    const input = screen.getByLabelText<HTMLInputElement>("Start date");
+
+    fireEvent.change(input, { target: { value: "" } });
+    rerender(<DateInput value="2023-01-01" {...props} />);
+    rerender(<DateInput value="2024-06-15" {...props} />);
+    fireEvent.blur(input);
+
+    expect(input.value).toBe("2024-06-15");
+    expect(onCommit).not.toHaveBeenCalled();
+  });
 });

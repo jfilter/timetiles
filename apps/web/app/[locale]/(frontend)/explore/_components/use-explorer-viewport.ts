@@ -37,10 +37,6 @@ export const useExplorerViewport = (options?: UseExplorerViewportOptions) => {
 
   const mapRef = useRef<ClusteredMapHandle>(null);
 
-  // Stable ref for onMapPositionChange to avoid re-creating handleBoundsChange
-  const onMapPositionChangeRef = useRef(options?.onMapPositionChange);
-  onMapPositionChangeRef.current = options?.onMapPositionChange;
-
   // Zustand store
   const mapBounds = useUIStore((state) => state.ui.mapBounds);
   const setMapBounds = useUIStore((state) => state.setMapBounds);
@@ -81,8 +77,8 @@ export const useExplorerViewport = (options?: UseExplorerViewportOptions) => {
       }
 
       // Notify caller about position change for URL persistence
-      if (center && zoom != undefined && onMapPositionChangeRef.current) {
-        onMapPositionChangeRef.current(center, zoom);
+      if (center && zoom != undefined) {
+        options?.onMapPositionChange?.(center, zoom);
       }
 
       if (boundsState === "initial") {

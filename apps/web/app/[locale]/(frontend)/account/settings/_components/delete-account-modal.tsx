@@ -21,7 +21,7 @@ import {
 } from "@timetiles/ui";
 import { AlertTriangle, Check, Loader2, RefreshCw, Trash2 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import type { CannotDeleteReasonCode } from "@/lib/account/deletion-types";
 import { useDeletionSummaryQuery, useScheduleDeletionMutation } from "@/lib/hooks/use-account-mutations";
@@ -33,8 +33,9 @@ interface DeleteAccountModalProps {
 
 type Step = "summary" | "confirm";
 
+/** Mounted only while the dialog is open, so closing it by any path discards the flow's state. */
 // oxlint-disable-next-line complexity -- multi-step modal with inherent branching
-export const DeleteAccountModal = ({ open, onOpenChange }: DeleteAccountModalProps) => {
+const DeleteAccountFlow = ({ onClose }: { onClose: () => void }) => {
   const t = useTranslations("Account");
   const tCommon = useTranslations("Common");
   const locale = useLocale();
@@ -50,7 +51,7 @@ export const DeleteAccountModal = ({ open, onOpenChange }: DeleteAccountModalPro
     isFetching: isSummaryFetching,
     refetch: refetchSummary,
     error: summaryError,
-  } = useDeletionSummaryQuery({ enabled: open && step === "summary" });
+  } = useDeletionSummaryQuery({ enabled: step === "summary" });
 
   // Derive summary and error from query data
   const summary = summaryData?.canDelete ? summaryData.summary : null;
@@ -88,19 +89,6 @@ export const DeleteAccountModal = ({ open, onOpenChange }: DeleteAccountModalPro
   };
   const summaryDisplayError = getSummaryDisplayError();
 
-  // Reset state when modal closes
-  useEffect(() => {
-    if (!open) {
-      setStep("summary");
-      setPassword("");
-      scheduleDeletionMutation.reset();
-    }
-  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps -- only reset on open change
-
-  const handleClose = () => {
-    onOpenChange(false);
-  };
-
   const handleSetStepConfirm = () => {
     setStep("confirm");
   };
@@ -121,176 +109,182 @@ export const DeleteAccountModal = ({ open, onOpenChange }: DeleteAccountModalPro
   const error = step === "summary" ? summaryDisplayError : scheduleDeletionMutation.error?.message;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            {step === "success" ? (
-              <>
-                <Check className="h-5 w-5 text-green-600" />
-                {t("deletionScheduled")}
-              </>
-            ) : (
-              <>
-                <AlertTriangle className="text-destructive h-5 w-5" />
-                {t("deleteYourAccount")}
-              </>
-            )}
-          </DialogTitle>
-          <DialogDescription>
-            {step === "summary" && t("deletionSummaryDescription")}
-            {step === "confirm" && t("confirmDeletionDescription")}
-            {step === "success" && t("deletionScheduledDescription")}
-          </DialogDescription>
-        </DialogHeader>
+    <>
+      <DialogHeader>
+        <DialogTitle className="flex items-center gap-2">
+          {step === "success" ? (
+            <>
+              <Check className="h-5 w-5 text-green-600" />
+              {t("deletionScheduled")}
+            </>
+          ) : (
+            <>
+              <AlertTriangle className="text-destructive h-5 w-5" />
+              {t("deleteYourAccount")}
+            </>
+          )}
+        </DialogTitle>
+        <DialogDescription>
+          {step === "summary" && t("deletionSummaryDescription")}
+          {step === "confirm" && t("confirmDeletionDescription")}
+          {step === "success" && t("deletionScheduledDescription")}
+        </DialogDescription>
+      </DialogHeader>
 
-        {step === "summary" && (
-          <div className="space-y-4">
-            {loading && (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-8 w-8 animate-spin" />
-              </div>
-            )}
+      {step === "summary" && (
+        <div className="space-y-4">
+          {loading && (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-8 w-8 animate-spin" />
+            </div>
+          )}
 
-            {error && <div className="bg-destructive/10 text-destructive rounded-md p-4">{error}</div>}
+          {error && <div className="bg-destructive/10 text-destructive rounded-md p-4">{error}</div>}
 
-            {summaryError && (
-              <Button variant="outline" disabled={isSummaryFetching} onClick={() => void refetchSummary()}>
-                {tCommon("tryAgain")}
-              </Button>
-            )}
+          {summaryError && (
+            <Button variant="outline" disabled={isSummaryFetching} onClick={() => void refetchSummary()}>
+              {tCommon("tryAgain")}
+            </Button>
+          )}
 
-            {summary && !loading && (
-              <>
-                <div className="bg-muted rounded-md p-4">
-                  <h4 className="mb-2 font-medium">{t("dataSummary")}</h4>
-                  <div className="text-muted-foreground space-y-1 text-sm">
-                    <p>
-                      {t("catalogsCount", {
-                        total: summary.catalogs.public + summary.catalogs.private,
-                        public: summary.catalogs.public,
-                        private: summary.catalogs.private,
-                      })}
-                    </p>
-                    <p>
-                      {t("datasetsCount", {
-                        total: summary.datasets.public + summary.datasets.private,
-                        public: summary.datasets.public,
-                        private: summary.datasets.private,
-                      })}
-                    </p>
-                    <p>
-                      {t("eventsCount", { total: summary.events.inPublicDatasets + summary.events.inPrivateDatasets })}
-                    </p>
-                    <p>{t("scheduledImportsCount", { count: summary.scheduledIngests })}</p>
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  <div className="flex items-start gap-3">
-                    <RefreshCw className="mt-0.5 h-5 w-5 text-green-600" />
-                    <div>
-                      <h5 className="font-medium">{t("publicDataTransfer")}</h5>
-                      <p className="text-muted-foreground text-sm">
-                        {t("publicDataTransferDescription", {
-                          catalogs: summary.catalogs.public,
-                          datasets: summary.datasets.public,
-                        })}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start gap-3">
-                    <Trash2 className="text-destructive mt-0.5 h-5 w-5" />
-                    <div>
-                      <h5 className="font-medium">{t("privateDataDelete")}</h5>
-                      <p className="text-muted-foreground text-sm">
-                        {t("privateDataDeleteDescription", {
-                          catalogs: summary.catalogs.private,
-                          datasets: summary.datasets.private,
-                          events: summary.events.inPrivateDatasets,
-                        })}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="rounded-md bg-amber-50 p-4 text-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
-                  <p className="text-sm">
-                    <strong>{t("gracePeriod", { days: gracePeriodDays })}</strong>
-                    {t("gracePeriodDescription", { days: gracePeriodDays })}
+          {summary && !loading && (
+            <>
+              <div className="bg-muted rounded-md p-4">
+                <h4 className="mb-2 font-medium">{t("dataSummary")}</h4>
+                <div className="text-muted-foreground space-y-1 text-sm">
+                  <p>
+                    {t("catalogsCount", {
+                      total: summary.catalogs.public + summary.catalogs.private,
+                      public: summary.catalogs.public,
+                      private: summary.catalogs.private,
+                    })}
                   </p>
+                  <p>
+                    {t("datasetsCount", {
+                      total: summary.datasets.public + summary.datasets.private,
+                      public: summary.datasets.public,
+                      private: summary.datasets.private,
+                    })}
+                  </p>
+                  <p>
+                    {t("eventsCount", { total: summary.events.inPublicDatasets + summary.events.inPrivateDatasets })}
+                  </p>
+                  <p>{t("scheduledImportsCount", { count: summary.scheduledIngests })}</p>
                 </div>
-              </>
-            )}
+              </div>
 
-            <DialogFooter className="pt-4">
-              <Button variant="outline" onClick={handleClose}>
-                {tCommon("cancel")}
-              </Button>
-              <Button variant="destructive" onClick={handleSetStepConfirm} disabled={loading || !summary || !!error}>
-                {tCommon("continue")}
-              </Button>
-            </DialogFooter>
+              <div className="space-y-3">
+                <div className="flex items-start gap-3">
+                  <RefreshCw className="mt-0.5 h-5 w-5 text-green-600" />
+                  <div>
+                    <h5 className="font-medium">{t("publicDataTransfer")}</h5>
+                    <p className="text-muted-foreground text-sm">
+                      {t("publicDataTransferDescription", {
+                        catalogs: summary.catalogs.public,
+                        datasets: summary.datasets.public,
+                      })}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3">
+                  <Trash2 className="text-destructive mt-0.5 h-5 w-5" />
+                  <div>
+                    <h5 className="font-medium">{t("privateDataDelete")}</h5>
+                    <p className="text-muted-foreground text-sm">
+                      {t("privateDataDeleteDescription", {
+                        catalogs: summary.catalogs.private,
+                        datasets: summary.datasets.private,
+                        events: summary.events.inPrivateDatasets,
+                      })}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-md bg-amber-50 p-4 text-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
+                <p className="text-sm">
+                  <strong>{t("gracePeriod", { days: gracePeriodDays })}</strong>
+                  {t("gracePeriodDescription", { days: gracePeriodDays })}
+                </p>
+              </div>
+            </>
+          )}
+
+          <DialogFooter className="pt-4">
+            <Button variant="outline" onClick={onClose}>
+              {tCommon("cancel")}
+            </Button>
+            <Button variant="destructive" onClick={handleSetStepConfirm} disabled={loading || !summary || !!error}>
+              {tCommon("continue")}
+            </Button>
+          </DialogFooter>
+        </div>
+      )}
+
+      {step === "confirm" && (
+        <div className="space-y-4">
+          {error && <div className="bg-destructive/10 text-destructive rounded-md p-4">{error}</div>}
+
+          <div className="space-y-2">
+            <Label htmlFor="password">{tCommon("password")}</Label>
+            <Input
+              id="password"
+              type="password"
+              value={password}
+              onChange={handlePasswordChange}
+              placeholder={t("enterPassword")}
+              disabled={loading}
+            />
           </div>
-        )}
 
-        {step === "confirm" && (
-          <div className="space-y-4">
-            {error && <div className="bg-destructive/10 text-destructive rounded-md p-4">{error}</div>}
-
-            <div className="space-y-2">
-              <Label htmlFor="password">{tCommon("password")}</Label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={handlePasswordChange}
-                placeholder={t("enterPassword")}
-                disabled={loading}
-              />
-            </div>
-
-            <div className="bg-destructive/10 rounded-md p-4">
-              <p className="text-destructive text-sm">{t("deleteConfirmation")}</p>
-              <ul className="text-destructive mt-2 list-inside list-disc text-sm">
-                <li>{t("deletePoint1", { days: gracePeriodDays })}</li>
-                <li>{t("deletePoint2")}</li>
-                <li>{t("deletePoint3")}</li>
-              </ul>
-            </div>
-
-            <DialogFooter className="pt-4">
-              <Button variant="outline" onClick={handleSetStepSummary} disabled={loading}>
-                {tCommon("back")}
-              </Button>
-              <Button variant="destructive" onClick={handleScheduleDeletion} disabled={loading || !password}>
-                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {t("deleteMyAccount")}
-              </Button>
-            </DialogFooter>
+          <div className="bg-destructive/10 rounded-md p-4">
+            <p className="text-destructive text-sm">{t("deleteConfirmation")}</p>
+            <ul className="text-destructive mt-2 list-inside list-disc text-sm">
+              <li>{t("deletePoint1", { days: gracePeriodDays })}</li>
+              <li>{t("deletePoint2")}</li>
+              <li>{t("deletePoint3")}</li>
+            </ul>
           </div>
-        )}
 
-        {scheduleDeletionMutation.isSuccess && (
-          <div className="space-y-4">
-            <p className="text-muted-foreground">
-              {t.rich("deletionScheduledFor", {
-                date: new Date(scheduleDeletionMutation.data.deletionScheduledAt).toLocaleDateString(locale),
-                strong: (chunks) => <strong>{chunks}</strong>,
-              })}
-            </p>
+          <DialogFooter className="pt-4">
+            <Button variant="outline" onClick={handleSetStepSummary} disabled={loading}>
+              {tCommon("back")}
+            </Button>
+            <Button variant="destructive" onClick={handleScheduleDeletion} disabled={loading || !password}>
+              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {t("deleteMyAccount")}
+            </Button>
+          </DialogFooter>
+        </div>
+      )}
 
-            <div className="bg-muted rounded-md p-4">
-              <p className="text-sm">{t("deletionCancelInfo")}</p>
-            </div>
+      {scheduleDeletionMutation.isSuccess && (
+        <div className="space-y-4">
+          <p className="text-muted-foreground">
+            {t.rich("deletionScheduledFor", {
+              date: new Date(scheduleDeletionMutation.data.deletionScheduledAt).toLocaleDateString(locale),
+              strong: (chunks) => <strong>{chunks}</strong>,
+            })}
+          </p>
 
-            <DialogFooter className="pt-4">
-              <Button onClick={handleClose}>{tCommon("close")}</Button>
-            </DialogFooter>
+          <div className="bg-muted rounded-md p-4">
+            <p className="text-sm">{t("deletionCancelInfo")}</p>
           </div>
-        )}
-      </DialogContent>
-    </Dialog>
+
+          <DialogFooter className="pt-4">
+            <Button onClick={onClose}>{tCommon("close")}</Button>
+          </DialogFooter>
+        </div>
+      )}
+    </>
   );
 };
+
+export const DeleteAccountModal = ({ open, onOpenChange }: DeleteAccountModalProps) => (
+  <Dialog open={open} onOpenChange={onOpenChange}>
+    <DialogContent>
+      <DeleteAccountFlow onClose={() => onOpenChange(false)} />
+    </DialogContent>
+  </Dialog>
+);

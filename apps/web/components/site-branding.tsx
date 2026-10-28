@@ -97,10 +97,11 @@ export const SiteBranding = () => {
     return `${scope} { ${sanitized} }`;
   }, [colors, typography, brandingStyle, scope]);
 
+  const customCSS = customCode?.customCSS;
   const sanitizedCSS = useMemo(() => {
-    if (!customCode?.customCSS) return null;
-    return hasSite ? `${scope} { ${sanitizeCSS(customCode.customCSS)} }` : sanitizeCSS(customCode.customCSS);
-  }, [customCode?.customCSS, hasSite, scope]);
+    if (!customCSS) return null;
+    return hasSite ? `${scope} { ${sanitizeCSS(customCSS)} }` : sanitizeCSS(customCSS);
+  }, [customCSS, hasSite, scope]);
 
   const combinedCSS = [brandingCSS, sanitizedCSS].filter(Boolean).join("\n");
 

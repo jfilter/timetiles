@@ -105,12 +105,13 @@ export const useExplorerState = (options?: UseExplorerStateOptions) => {
   // The clusters lag the viewport by the bounds debounce and the refetch that follows it.
   const isMapDataPending = isLoadingInitialBounds || queries.clustersFetching || simpleBounds !== debouncedSimpleBounds;
 
+  const dataBounds = boundsData?.bounds;
   const handleZoomToData = useCallback(() => {
-    if (boundsData?.bounds && mapRef.current) {
-      mapRef.current.fitBounds(boundsData.bounds, { padding: 50, animate: true });
+    if (dataBounds && mapRef.current) {
+      mapRef.current.fitBounds(dataBounds, { padding: 50, animate: true });
       setBoundsState("bounds-applied");
     }
-  }, [boundsData?.bounds, mapRef, setBoundsState]);
+  }, [dataBounds, mapRef, setBoundsState]);
 
   // Shared zoom-to-data logic
   const dataBoundsOutsideViewport = isDataBoundsOutsideViewport(boundsData?.bounds, mapBounds);
