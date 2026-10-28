@@ -14,9 +14,10 @@
  */
 import { z } from "zod";
 
-import { apiRoute, ForbiddenError, safeFindByID, ValidationError } from "@/lib/api";
+import { apiRoute, ConflictError, ForbiddenError, safeFindByID, ValidationError } from "@/lib/api";
 import { COLLECTION_NAMES, PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
 import { REVIEW_REASONS } from "@/lib/constants/review-reasons";
+import { checkJobQuota, quotaApprovalBlockedMessage } from "@/lib/ingest/import-quota";
 import { readInterpretationPlan } from "@/lib/ingest/interpret";
 import { legacyDayMonthToDateOrder, toCoordinateOrder } from "@/lib/ingest/plan-builder";
 import type {
@@ -258,11 +259,15 @@ export const POST = apiRoute({
       throw new ValidationError(`Import job is not awaiting review. Current stage: ${ingestJob.stage}`);
     }
 
-    // Admin-only gate for quota-exceeded
-    if (ingestJob.reviewReason === REVIEW_REASONS.QUOTA_EXCEEDED && user.role !== "admin") {
-      throw new ForbiddenError(
-        "Only admins can approve quota-exceeded imports. Please contact us to increase your limit."
-      );
+    // Admin-only gate for quota-exceeded, checked before any override is written
+    if (ingestJob.reviewReason === REVIEW_REASONS.QUOTA_EXCEEDED) {
+      if (user.role !== "admin") {
+        throw new ForbiddenError(
+          "Only admins can approve quota-exceeded imports. Please contact us to increase your limit."
+        );
+      }
+      const quotaCheck = await checkJobQuota(payload, ingestJob);
+      if (!quotaCheck.allowed) throw new ConflictError(quotaApprovalBlockedMessage(quotaCheck.reason));
     }
 
     // FILE_TOO_LARGE has no valid resume: duplicate analysis was aborted

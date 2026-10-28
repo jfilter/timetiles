@@ -31,6 +31,7 @@ describe("Ingest job approval — dataset plan access", () => {
   let payload: TestEnvironment["payload"];
   let owner: User;
   let contributor: User;
+  let admin: User;
 
   beforeAll(async () => {
     testEnv = await createIntegrationTestEnvironment();
@@ -38,9 +39,11 @@ describe("Ingest job approval — dataset plan access", () => {
     const { users } = await withUsers(testEnv, {
       owner: { role: "user", _verified: true, trustLevel: "5" },
       contributor: { role: "user", _verified: true, trustLevel: "5" },
+      admin: { role: "admin", _verified: true },
     });
     owner = users.owner;
     contributor = users.contributor;
+    admin = users.admin;
   }, 60000);
 
   afterAll(async () => {
@@ -114,5 +117,58 @@ describe("Ingest job approval — dataset plan access", () => {
 
     expect(response.status).toBe(200);
     expect(await readTimestampRole(dataset.id)).toBe("when");
+  });
+
+  describe("quota-exceeded review", () => {
+    const setupQuotaReviewJob = async (maxEventsPerImport: number) => {
+      const { users } = await withUsers(testEnv, {
+        quotaOwner: {
+          role: "user",
+          _verified: true,
+          trustLevel: "5",
+          customQuotas: { maxEventsPerImport, maxTotalEvents: 1000 },
+        },
+      });
+      const { catalog } = await withCatalog(testEnv, { name: `Quota ${crypto.randomUUID()}`, user: users.quotaOwner });
+      const { dataset } = await withDataset(testEnv, catalog.id, { name: "Quota dataset" });
+      const { ingestFile } = await withIngestFile(testEnv, catalog.id, "name,when\nA,2024-01-01", {
+        user: users.quotaOwner.id,
+        status: "processing",
+      });
+      return payload.create({
+        collection: "ingest-jobs",
+        data: {
+          ingestFile: ingestFile.id,
+          dataset: dataset.id,
+          stage: PROCESSING_STAGE.NEEDS_REVIEW,
+          reviewReason: REVIEW_REASONS.QUOTA_EXCEEDED,
+          duplicates: { summary: { totalRows: 50, uniqueRows: 50, internalDuplicates: 0, externalDuplicates: 0 } },
+        },
+        overrideAccess: true,
+      });
+    };
+
+    it("rejects the approval with the reason while the owner's limit still blocks the import", async () => {
+      const job = await setupQuotaReviewJob(10);
+
+      const response = await approveAs(admin, job.id, {});
+
+      expect(response.status).toBe(409);
+      expect((await response.json()).error).toBe(
+        "Raise the user's event limit before approving this import. This import would create 50 events, exceeding your limit of 10 events per import."
+      );
+      const unchangedJob = await payload.findByID({ collection: "ingest-jobs", id: job.id, overrideAccess: true });
+      expect(unchangedJob.schemaValidation?.approved).not.toBe(true);
+    });
+
+    it("approves once the owner's limit allows the import", async () => {
+      const job = await setupQuotaReviewJob(100);
+
+      const response = await approveAs(admin, job.id, {});
+
+      expect(response.status).toBe(200);
+      const approvedJob = await payload.findByID({ collection: "ingest-jobs", id: job.id, overrideAccess: true });
+      expect(approvedJob.schemaValidation?.approved).toBe(true);
+    });
   });
 });

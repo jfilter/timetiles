@@ -3,11 +3,12 @@
  *
  * @module
  */
-import type {
-  CollectionAfterChangeHook,
-  CollectionAfterDeleteHook,
-  CollectionBeforeChangeHook,
-  PayloadRequest,
+import {
+  APIError,
+  type CollectionAfterChangeHook,
+  type CollectionAfterDeleteHook,
+  type CollectionBeforeChangeHook,
+  type PayloadRequest,
 } from "payload";
 
 import { validateCatalogOwnership } from "@/lib/collections/catalog-ownership";
@@ -16,7 +17,7 @@ import { validateRelationOwnership } from "@/lib/collections/shared-hooks";
 import { COLLECTION_NAMES, PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
 import { getResumePointForReason, PER_SHEET_REVIEW_CHECKS_KEY, REVIEW_REASONS } from "@/lib/constants/review-reasons";
 import { cleanupSidecarFiles } from "@/lib/ingest/file-readers";
-import { checkImportQuota, getNewEventCountForQuota, getUniqueRowsForQuota } from "@/lib/ingest/import-quota";
+import { checkJobQuota, quotaApprovalBlockedMessage } from "@/lib/ingest/import-quota";
 import { updateIngestFileStatusForJob } from "@/lib/ingest/ingest-file-status";
 import { getIngestFilePath } from "@/lib/ingest/upload-path";
 import { logger } from "@/lib/logger";
@@ -293,23 +294,8 @@ const trackIngestJobQuota = async (req: PayloadRequest, doc: IngestJob): Promise
  * the limit still blocks the import would only fail the job later. Require the raised limit first.
  */
 const assertQuotaAllowsApproval = async (req: PayloadRequest, doc: IngestJob): Promise<void> => {
-  const ingestFile = await req.payload.findByID({
-    collection: COLLECTION_NAMES.INGEST_FILES,
-    id: requireRelationId(doc.ingestFile, "ingestJob.ingestFile"),
-    depth: 0,
-    req,
-  });
-  if (!ingestFile.user) return;
-  const user = await req.payload.findByID({
-    collection: COLLECTION_NAMES.USERS,
-    id: requireRelationId(ingestFile.user, "ingestFile.user"),
-    depth: 0,
-    req,
-  });
-  const check = await checkImportQuota(req.payload, user, getUniqueRowsForQuota(doc), getNewEventCountForQuota(doc));
-  if (!check.allowed) {
-    throw new Error(`Raise the user's event limit before approving this import. ${check.reason}`);
-  }
+  const check = await checkJobQuota(req.payload, doc, req);
+  if (!check.allowed) throw new APIError(quotaApprovalBlockedMessage(check.reason), 409);
 };
 
 export const afterChangeHooks: CollectionAfterChangeHook[] = [

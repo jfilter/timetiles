@@ -7,10 +7,12 @@
  * @module
  * @category Ingest
  */
-import type { Payload } from "payload";
+import type { Payload, PayloadRequest } from "payload";
 
+import { COLLECTION_NAMES } from "@/lib/constants/ingest-constants";
 import { createQuotaService } from "@/lib/services/quota-service";
 import { isRecord } from "@/lib/utils/is-record";
+import { requireRelationId } from "@/lib/utils/relation-id";
 import type { IngestJob, User } from "@/payload-types";
 
 /** Valid `duplicateStrategy` values for external duplicate handling. */
@@ -81,7 +83,8 @@ export type ImportQuotaCheck =
 
 /**
  * Check an import against the user's EVENTS_PER_IMPORT limit (`uniqueRows`, every row written)
- * and TOTAL_EVENTS limit (`newEventCount`, only newly created events). Does not charge usage.
+ * and TOTAL_EVENTS limit (`newEventCount`, only newly created events). Does not charge usage, and
+ * skips TOTAL_EVENTS for an import that creates nothing, as event creation does.
  */
 export const checkImportQuota = async (
   payload: Payload,
@@ -102,6 +105,8 @@ export const checkImportQuota = async (
     };
   }
 
+  if (newEventCount <= 0) return { allowed: true };
+
   const totalCheck = await quotaService.checkQuota(user, "TOTAL_EVENTS", newEventCount);
   if (!totalCheck.allowed) {
     return {
@@ -115,3 +120,29 @@ export const checkImportQuota = async (
 
   return { allowed: true };
 };
+
+/** {@link checkImportQuota} for a job, against the owner of its ingest file; files without one pass. */
+export const checkJobQuota = async (
+  payload: Payload,
+  job: IngestJob,
+  req?: PayloadRequest
+): Promise<ImportQuotaCheck> => {
+  const ingestFile = await payload.findByID({
+    collection: COLLECTION_NAMES.INGEST_FILES,
+    id: requireRelationId(job.ingestFile, "ingestJob.ingestFile"),
+    depth: 0,
+    req,
+  });
+  if (!ingestFile.user) return { allowed: true };
+  const user = await payload.findByID({
+    collection: COLLECTION_NAMES.USERS,
+    id: requireRelationId(ingestFile.user, "ingestFile.user"),
+    depth: 0,
+    req,
+  });
+  return checkImportQuota(payload, user, getUniqueRowsForQuota(job), getNewEventCountForQuota(job));
+};
+
+/** Message for approving a quota review the owner's limit still blocks. */
+export const quotaApprovalBlockedMessage = (reason: string): string =>
+  `Raise the user's event limit before approving this import. ${reason}`;
