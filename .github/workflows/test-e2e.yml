@@ -3,10 +3,25 @@ name: E2E Tests
 on:
   workflow_call:
   workflow_dispatch:
+    inputs:
+      all_browsers:
+        description: Run Firefox and WebKit as well as Chromium
+        type: boolean
+        default: false
+  # Weekly Firefox/WebKit run; pushes stay on Chromium. The suite targets the desktop layout,
+  # so the mobile projects are not in the matrix.
+  schedule:
+    - cron: "0 3 * * 1"
 
 jobs:
   e2e:
-    name: E2E Tests
+    # One job per browser project: each gets its own server and database, so per-user and
+    # per-IP rate-limit budgets stay those of a single-project run.
+    strategy:
+      fail-fast: false
+      matrix:
+        project: ${{ fromJSON((github.event_name == 'schedule' || inputs.all_browsers) && '["chromium","firefox","webkit"]' || '["chromium"]') }}
+    name: ${{ matrix.project == 'chromium' && 'E2E Tests' || format('E2E Tests ({0})', matrix.project) }}
     runs-on: ubuntu-latest
     # Run inside the official Playwright image: browsers + OS deps are baked in
     # at /ms-playwright (PLAYWRIGHT_BROWSERS_PATH), eliminating the flaky
@@ -48,6 +63,7 @@ jobs:
       NODE_ENV: test
       PAYLOAD_CONFIG_PATH: ./payload.config.ts
       CI: true
+      TEST_ALL_BROWSERS: ${{ (github.event_name == 'schedule' || inputs.all_browsers) && '1' || '' }}
 
     steps:
       - uses: actions/checkout@v7
@@ -65,14 +81,14 @@ jobs:
 
       - name: Run E2E tests (parallel workers)
         timeout-minutes: 20
-        run: pnpm test:e2e
+        run: pnpm test:e2e --project="${{ matrix.project }}"
         working-directory: apps/web
 
       - name: Upload E2E test results
         if: failure()
         uses: actions/upload-artifact@v7
         with:
-          name: playwright-results
+          name: playwright-results-${{ matrix.project }}
           path: apps/web/test-results
           retention-days: 7
 
@@ -80,6 +96,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: playwright-report
+          name: playwright-report-${{ matrix.project }}
           path: apps/web/playwright-report
           retention-days: 7
