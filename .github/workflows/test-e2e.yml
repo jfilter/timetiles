@@ -5,11 +5,10 @@ on:
   workflow_dispatch:
     inputs:
       all_browsers:
-        description: Run Firefox and WebKit as well as Chromium
+        description: Run Firefox, WebKit and the mobile viewports as well as Chromium
         type: boolean
         default: false
-  # Weekly Firefox/WebKit run; pushes stay on Chromium. The suite targets the desktop layout,
-  # so the mobile projects are not in the matrix.
+  # Weekly run of the other browsers and the mobile viewports; pushes stay on Chromium.
   schedule:
     - cron: "0 3 * * 1"
 
@@ -20,7 +19,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        project: ${{ fromJSON((github.event_name == 'schedule' || inputs.all_browsers) && '["chromium","firefox","webkit"]' || '["chromium"]') }}
+        project: ${{ fromJSON((github.event_name == 'schedule' || inputs.all_browsers) && '["chromium","firefox","webkit","mobile-chrome","mobile-safari"]' || '["chromium"]') }}
     name: ${{ matrix.project == 'chromium' && 'E2E Tests' || format('E2E Tests ({0})', matrix.project) }}
     runs-on: ubuntu-latest
     # Run inside the official Playwright image: browsers + OS deps are baked in

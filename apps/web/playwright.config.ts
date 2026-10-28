@@ -115,7 +115,7 @@ export default defineConfig({
           },
           /* Test against mobile viewports. */
           {
-            name: "Mobile Chrome",
+            name: "mobile-chrome",
             use: {
               ...devices["Pixel 5"],
               storageState: "test-results/.auth/admin.json",
@@ -124,7 +124,7 @@ export default defineConfig({
             dependencies: ["setup"],
           },
           {
-            name: "Mobile Safari",
+            name: "mobile-safari",
             use: { ...devices["iPhone 12"], storageState: "test-results/.auth/admin.json" },
             dependencies: ["setup"],
           },
