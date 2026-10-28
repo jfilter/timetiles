@@ -17,6 +17,7 @@
 import type { Payload } from "payload";
 
 import { COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
+import { getUniqueRowsForQuota } from "@/lib/ingest/import-quota";
 import { ProgressTrackingService } from "@/lib/ingest/progress-tracking";
 import { createJobLogger, logError, logPerformance } from "@/lib/logger";
 import { ProgressiveSchemaBuilder } from "@/lib/services/schema-builder";
@@ -26,13 +27,7 @@ import { normalizeJobId } from "@/lib/utils/event-params";
 
 import type { ValidateSchemaJobInput } from "../types/job-inputs";
 import type { JobHandlerContext } from "../utils/job-context";
-import {
-  cleanupSidecarsForJob,
-  createStandardOnFail,
-  getUniqueRowsForQuota,
-  loadJobResources,
-  setJobStage,
-} from "../utils/resource-loading";
+import { cleanupSidecarsForJob, createStandardOnFail, loadJobResources, setJobStage } from "../utils/resource-loading";
 import type { ProcessingOptions } from "./validate-schema/schema-evaluation";
 import {
   determineRequiresApproval,

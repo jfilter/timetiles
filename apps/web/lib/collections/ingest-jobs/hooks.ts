@@ -16,6 +16,7 @@ import { validateRelationOwnership } from "@/lib/collections/shared-hooks";
 import { COLLECTION_NAMES, PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
 import { getResumePointForReason, PER_SHEET_REVIEW_CHECKS_KEY, REVIEW_REASONS } from "@/lib/constants/review-reasons";
 import { cleanupSidecarFiles } from "@/lib/ingest/file-readers";
+import { checkImportQuota, getNewEventCountForQuota, getUniqueRowsForQuota } from "@/lib/ingest/import-quota";
 import { updateIngestFileStatusForJob } from "@/lib/ingest/ingest-file-status";
 import { getIngestFilePath } from "@/lib/ingest/upload-path";
 import { logger } from "@/lib/logger";
@@ -287,6 +288,30 @@ const trackIngestJobQuota = async (req: PayloadRequest, doc: IngestJob): Promise
   logger.info("Ingest job creation tracked for quota", { userId, ingestJobId: doc.id });
 };
 
+/**
+ * Event creation re-checks the owner's quota without any approval bypass, so approving while
+ * the limit still blocks the import would only fail the job later. Require the raised limit first.
+ */
+const assertQuotaAllowsApproval = async (req: PayloadRequest, doc: IngestJob): Promise<void> => {
+  const ingestFile = await req.payload.findByID({
+    collection: COLLECTION_NAMES.INGEST_FILES,
+    id: requireRelationId(doc.ingestFile, "ingestJob.ingestFile"),
+    depth: 0,
+    req,
+  });
+  if (!ingestFile.user) return;
+  const user = await req.payload.findByID({
+    collection: COLLECTION_NAMES.USERS,
+    id: requireRelationId(ingestFile.user, "ingestFile.user"),
+    depth: 0,
+    req,
+  });
+  const check = await checkImportQuota(req.payload, user, getUniqueRowsForQuota(doc), getNewEventCountForQuota(doc));
+  if (!check.allowed) {
+    throw new Error(`Raise the user's event limit before approving this import. ${check.reason}`);
+  }
+};
+
 export const afterChangeHooks: CollectionAfterChangeHook[] = [
   async ({ doc, previousDoc, req, operation }) => {
     if (operation === "update" && previousDoc) {
@@ -301,8 +326,11 @@ export const afterChangeHooks: CollectionAfterChangeHook[] = [
     // Queue ingest-process workflow when NEEDS_REVIEW is approved
     if (isSchemaApproval(operation, previousDoc ?? doc, doc, previousDoc)) {
       // Quota exceeded requires admin approval
-      if (doc.reviewReason === REVIEW_REASONS.QUOTA_EXCEEDED && req.user?.role !== "admin") {
-        throw new Error("Only admins can approve quota-exceeded imports. Please contact us to increase your limit.");
+      if (doc.reviewReason === REVIEW_REASONS.QUOTA_EXCEEDED) {
+        if (req.user?.role !== "admin") {
+          throw new Error("Only admins can approve quota-exceeded imports. Please contact us to increase your limit.");
+        }
+        await assertQuotaAllowsApproval(req, doc);
       }
 
       // FILE_TOO_LARGE aborts duplicate analysis mid-stream, so the job has no

@@ -22,6 +22,7 @@ import {
 } from "@/lib/constants/ingest-constants";
 import { REVIEW_REASONS } from "@/lib/constants/review-reasons";
 import { getFileRowCount, streamBatchesFromFile } from "@/lib/ingest/file-readers";
+import { getNewEventCountForQuota } from "@/lib/ingest/import-quota";
 import { interpretRow, planFromOps, readInterpretationPlan } from "@/lib/ingest/interpret";
 import { ProgressTrackingService } from "@/lib/ingest/progress-tracking";
 import { getIngestFilePath } from "@/lib/ingest/upload-path";
@@ -37,7 +38,6 @@ import {
   cleanupSidecarsForJob,
   createStandardOnFail,
   getDuplicateRatesForReview,
-  getNewEventCountForQuota,
   loadIngestJob,
   loadJobResources,
 } from "../utils/resource-loading";

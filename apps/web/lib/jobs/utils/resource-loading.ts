@@ -13,6 +13,7 @@ import type { Payload } from "payload";
 
 import { COLLECTION_NAMES, PROCESSING_STAGE, type ProcessingStage } from "@/lib/constants/ingest-constants";
 import { cleanupSidecarFiles } from "@/lib/ingest/file-readers";
+import { readDuplicateStrategy } from "@/lib/ingest/import-quota";
 import { getIngestFilePath } from "@/lib/ingest/upload-path";
 import { logError } from "@/lib/logger";
 import { isRecord } from "@/lib/utils/is-record";
@@ -274,23 +275,6 @@ const isDuplicateEntry = (d: unknown): d is { rowNumber: number; existingEventId
 const parseDuplicateArray = (arr: unknown): Array<{ rowNumber: number; existingEventId?: string | number }> =>
   Array.isArray(arr) ? arr.filter(isDuplicateEntry) : [];
 
-/** Valid `duplicateStrategy` values for external duplicate handling. */
-type DuplicateStrategy = "skip" | "update";
-
-/**
- * Read the configured duplicate strategy from a job's `configSnapshot`.
- *
- * Defaults to `"skip"` — the pipeline's conservative behaviour when the
- * field is missing, null, or of an unexpected type. Private to this module:
- * stages should ask for what they want (e.g. {@link getEventCreationDuplicates}),
- * not for the strategy directly.
- */
-export const readDuplicateStrategy = (job: Pick<IngestJob, "configSnapshot">): DuplicateStrategy => {
-  const snapshot = readConfigSnapshot(job);
-  const value = snapshot?.idStrategy?.duplicateStrategy;
-  return value === "update" ? "update" : "skip";
-};
-
 /**
  * Schema detection: skip internal duplicates only.
  *
@@ -368,53 +352,4 @@ export const getDuplicateRatesForReview = (job: IngestJob): { internalUniqueRows
   const internalDuplicates = summary?.internalDuplicates ?? 0;
   const internalUniqueRows = Math.max(0, totalRows - internalDuplicates);
   return { internalUniqueRows, totalRows };
-};
-
-/**
- * UI + progress display: per-type duplicate counts.
- *
- * Reads from `job.duplicates.summary` as persisted by analyze-duplicates-job.
- * All fields default to `0` when the summary is absent so callers can rely
- * on stable shapes without optional chaining.
- */
-export const getDuplicateSummary = (
-  job: IngestJob
-): { totalRows: number; uniqueRows: number; internalCount: number; externalCount: number } => {
-  const summary = job.duplicates?.summary;
-  return {
-    totalRows: summary?.totalRows ?? 0,
-    uniqueRows: summary?.uniqueRows ?? 0,
-    internalCount: summary?.internalDuplicates ?? 0,
-    externalCount: summary?.externalDuplicates ?? 0,
-  };
-};
-
-/**
- * Quota + progress gates: post-dedup, strategy-adjusted event count.
- *
- * Reads `job.duplicates.summary.uniqueRows` as written by
- * analyze-duplicates-job, which already applies the duplicate strategy when
- * computing this number. Use this for any "how many events will we actually
- * create?" decision.
- */
-export const getUniqueRowsForQuota = (job: IngestJob): number => {
-  return job.duplicates?.summary?.uniqueRows ?? 0;
-};
-
-/**
- * Lifetime TOTAL_EVENTS quota: the number of events this import will NEWLY
- * CREATE (never updates of existing events).
- *
- * Under the `"update"` strategy, {@link getUniqueRowsForQuota} includes external
- * duplicates — they are written as in-place updates and must count toward
- * progress and the per-import gate. But updates do NOT create new events, so
- * charging them against the lifetime counter would inflate usage on every
- * scheduled re-import. Subtract the to-be-updated externals so only genuinely
- * new events are counted. Under `"skip"`/`"disabled"`, `uniqueRows` already
- * excludes externals, so no adjustment is needed.
- */
-export const getNewEventCountForQuota = (job: IngestJob): number => {
-  const { uniqueRows, externalCount } = getDuplicateSummary(job);
-  const willUpdateExternals = readDuplicateStrategy(job) === "update";
-  return Math.max(0, willUpdateExternals ? uniqueRows - externalCount : uniqueRows);
 };

@@ -10,6 +10,7 @@ import { eq, sql } from "@payloadcms/db-postgres/drizzle";
 import type { Payload } from "payload";
 
 import { COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
+import { getUniqueRowsForQuota } from "@/lib/ingest/import-quota";
 import { readInterpretationPlan } from "@/lib/ingest/interpret";
 import { planToSchemaFieldMappings } from "@/lib/ingest/plan-builder";
 import { ProgressTrackingService } from "@/lib/ingest/progress-tracking";
@@ -23,13 +24,7 @@ import { datasets } from "@/payload-generated-schema";
 import type { CreateSchemaVersionJobInput } from "../types/job-inputs";
 import { buildFieldTypes } from "../utils/event-creation-helpers";
 import type { JobHandlerContext } from "../utils/job-context";
-import {
-  createStandardOnFail,
-  getUniqueRowsForQuota,
-  loadDataset,
-  loadIngestJob,
-  setJobStage,
-} from "../utils/resource-loading";
+import { createStandardOnFail, loadDataset, loadIngestJob, setJobStage } from "../utils/resource-loading";
 
 // Helper to check if schema version creation should be skipped
 const shouldSkipSchemaVersionCreation = (job: {

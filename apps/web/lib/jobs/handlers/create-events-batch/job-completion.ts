@@ -12,6 +12,12 @@ import type { Payload } from "payload";
 
 import { COLLECTION_NAMES } from "@/lib/constants/ingest-constants";
 import { normalizeIngestErrorMessage } from "@/lib/ingest/error-message";
+import {
+  getDuplicateSummary,
+  getNewEventCountForQuota,
+  getUniqueRowsForQuota,
+  readDuplicateStrategy,
+} from "@/lib/ingest/import-quota";
 import { getIngestGeocodingResults } from "@/lib/ingest/types/geocoding";
 import { createJobLogger, logger } from "@/lib/logger";
 import { createQuotaService } from "@/lib/services/quota-service";
@@ -19,12 +25,6 @@ import { requireRelationId } from "@/lib/utils/relation-id";
 import { _events_v, events as eventsTable } from "@/payload-generated-schema";
 import type { IngestFile, IngestJob, User } from "@/payload-types";
 
-import {
-  getDuplicateSummary,
-  getNewEventCountForQuota,
-  getUniqueRowsForQuota,
-  readDuplicateStrategy,
-} from "../../utils/resource-loading";
 import { EventSnapshotStore } from "./event-snapshots";
 
 /** Maximum number of individual errors stored on an import job. */

@@ -12,6 +12,7 @@ import { commitTransaction, initTransaction, killTransaction, type Payload, type
 
 import { getTransactionAwareDrizzle } from "@/lib/database/drizzle-transaction";
 import { normalizeIngestErrorMessage } from "@/lib/ingest/error-message";
+import { readDuplicateStrategy } from "@/lib/ingest/import-quota";
 import { interpretRow, planFromOps, readInterpretationPlan } from "@/lib/ingest/interpret";
 import type { FlatPlanFieldMappings } from "@/lib/ingest/plan-builder";
 import { planToFieldMappings } from "@/lib/ingest/plan-builder";
@@ -28,7 +29,7 @@ import type { Dataset, Event, IngestJob } from "@/payload-types";
 import type { BulkEventData } from "../../utils/bulk-event-insert";
 import { bulkInsertEvents } from "../../utils/bulk-event-insert";
 import { createEventData, EventPayloadTooLargeError } from "../../utils/event-creation-helpers";
-import { getEventCreationDuplicates, readDuplicateStrategy } from "../../utils/resource-loading";
+import { getEventCreationDuplicates } from "../../utils/resource-loading";
 import type { EventSnapshotStore } from "./event-snapshots";
 
 type TransformationChange = { path: string; oldValue: unknown; newValue: unknown };

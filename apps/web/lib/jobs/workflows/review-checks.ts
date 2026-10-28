@@ -19,9 +19,9 @@ import { z } from "zod";
 import { getAppConfig } from "@/lib/config/app-config";
 import { COLLECTION_NAMES, PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
 import { PER_SHEET_REVIEW_CHECKS_KEY } from "@/lib/constants/review-reasons";
+import { checkImportQuota, type ImportQuotaCheck } from "@/lib/ingest/import-quota";
 import type { AmbiguityResolution } from "@/lib/ingest/types/interpretation";
 import { logger } from "@/lib/logger";
-import { createQuotaService } from "@/lib/services/quota-service";
 import { isRecord } from "@/lib/utils/is-record";
 import { extractRelationId } from "@/lib/utils/relation-id";
 
@@ -145,7 +145,7 @@ export const checkQuotaForSheet = async (
   ingestJobId: string | number,
   uniqueRows: number,
   newEventCount: number
-): Promise<{ allowed: boolean; current?: number; limit?: number; estimatedNew?: number; reason?: string }> => {
+): Promise<ImportQuotaCheck> => {
   // Load the ingest job to get the user
   const ingestJob = await payload.findByID({ collection: COLLECTION_NAMES.INGEST_JOBS, id: ingestJobId });
   if (!ingestJob) return { allowed: true }; // Can't check, let it proceed
@@ -164,34 +164,7 @@ export const checkQuotaForSheet = async (
 
   // Quota phase 1 of 3: approximate gate before user sees the review screen.
   // See also: phase 2 (re-check) and phase 3 (increment) in create-events-batch/job-completion.ts.
-  const quotaService = createQuotaService(payload);
-
-  // Check per-import quota
-  const perImportCheck = await quotaService.checkQuota(user, "EVENTS_PER_IMPORT", uniqueRows);
-  if (!perImportCheck.allowed) {
-    return {
-      allowed: false,
-      current: perImportCheck.current ?? 0,
-      limit: perImportCheck.limit ?? 0,
-      estimatedNew: uniqueRows,
-      reason: `This import would create ${uniqueRows} events, exceeding your limit of ${perImportCheck.limit} events per import.`,
-    };
-  }
-
-  // Check total (lifetime) events quota against NEWLY created events only —
-  // updates of existing events do not increase the total.
-  const totalCheck = await quotaService.checkQuota(user, "TOTAL_EVENTS", newEventCount);
-  if (!totalCheck.allowed) {
-    return {
-      allowed: false,
-      current: totalCheck.current ?? 0,
-      limit: totalCheck.limit ?? 0,
-      estimatedNew: newEventCount,
-      reason: `Creating ${newEventCount} events would exceed your total events limit (${totalCheck.current}/${totalCheck.limit}).`,
-    };
-  }
-
-  return { allowed: true };
+  return checkImportQuota(payload, user, uniqueRows, newEventCount);
 };
 
 /**

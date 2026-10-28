@@ -20,6 +20,7 @@ import { BATCH_SIZES, COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/li
 import { REVIEW_REASONS } from "@/lib/constants/review-reasons";
 import { acquireDatasetImportLease, type DatasetImportLease } from "@/lib/database/dataset-import-lock";
 import { cleanupSidecarFiles, streamBatchesFromFile } from "@/lib/ingest/file-readers";
+import { readDuplicateStrategy } from "@/lib/ingest/import-quota";
 import { ProgressTrackingService } from "@/lib/ingest/progress-tracking";
 import { getIngestFilePath } from "@/lib/ingest/upload-path";
 import { createJobLogger, logError, logPerformance } from "@/lib/logger";
@@ -33,7 +34,6 @@ import {
   createStandardOnFail,
   loadIngestJob,
   loadJobResources,
-  readDuplicateStrategy,
   setJobStage,
 } from "../utils/resource-loading";
 import { parseReviewChecksConfig, setNeedsReview, shouldReviewHighRowErrors } from "../workflows/review-checks";

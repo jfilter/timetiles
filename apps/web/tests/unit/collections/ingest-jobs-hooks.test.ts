@@ -33,7 +33,7 @@ vi.mock("@/lib/services/audit-log-service", () => ({
 vi.mock("@/lib/services/quota-service", () => ({ createQuotaService: mocks.createQuotaService }));
 
 vi.mock("@/lib/constants/ingest-constants", () => ({
-  COLLECTION_NAMES: { INGEST_FILES: "ingest-files", INGEST_JOBS: "ingest-jobs" },
+  COLLECTION_NAMES: { INGEST_FILES: "ingest-files", INGEST_JOBS: "ingest-jobs", USERS: "users" },
   PROCESSING_STAGE: { COMPLETED: "completed", FAILED: "failed", NEEDS_REVIEW: "needs-review" },
 }));
 
@@ -52,6 +52,7 @@ vi.mock("@/lib/constants/review-reasons", () => ({
   getResumePointForReason: mocks.getResumePointForReason,
   PER_SHEET_REVIEW_CHECKS_KEY: "perSheet",
   REVIEW_REASONS: {
+    SCHEMA_DRIFT: "schema-drift",
     HIGH_DUPLICATE_RATE: "high-duplicates",
     HIGH_EMPTY_ROW_RATE: "high-empty-rows",
     NO_TIMESTAMP_DETECTED: "no-timestamp",
@@ -358,6 +359,59 @@ describe("afterChangeHooks", () => {
         hook({ doc, previousDoc, req, operation: "update", collection: {} as never, context: {} as never } as any)
       ).rejects.toThrow("Only admins can approve quota-exceeded imports");
     });
+
+    const setupAdminApproval = (checkQuota: ReturnType<typeof vi.fn>) => {
+      mocks.getResumePointForReason.mockReturnValue("create-schema-version");
+      mocks.createQuotaService.mockReturnValue({ checkQuota });
+      const owner = { id: 7, role: "user" };
+      const mockFindByID = vi.fn(({ collection }: { collection: string }) =>
+        Promise.resolve(collection === "users" ? owner : { id: 10, user: 7, processingOptions: {} })
+      );
+      const mockQueue = vi.fn().mockResolvedValue({});
+      const doc = {
+        id: 1,
+        stage: "needs-review",
+        reviewReason: "quota-exceeded",
+        ingestFile: 10,
+        duplicates: { summary: { uniqueRows: 500, externalDuplicates: 0 } },
+        schemaValidation: { approved: true },
+      };
+      const previousDoc = { id: 1, stage: "needs-review", schemaValidation: { approved: false } };
+      const req = {
+        user: { id: 2, role: "admin" },
+        payload: { findByID: mockFindByID, update: vi.fn().mockResolvedValue({}), jobs: { queue: mockQueue } },
+      };
+      const run = () =>
+        hook({ doc, previousDoc, req, operation: "update", collection: {} as never, context: {} as never } as any);
+      return { owner, mockQueue, run };
+    };
+
+    it("should reject admin approval while the owner's limit still blocks the import", async () => {
+      const checkQuota = vi.fn().mockResolvedValue({ allowed: false, current: 0, limit: 100 });
+      const { owner, mockQueue, run } = setupAdminApproval(checkQuota);
+
+      await expect(run()).rejects.toThrow(
+        "Raise the user's event limit before approving this import. This import would create 500 events, exceeding your limit of 100 events per import."
+      );
+      expect(checkQuota).toHaveBeenCalledWith(owner, "EVENTS_PER_IMPORT", 500);
+      expect(mockQueue).not.toHaveBeenCalled();
+    });
+
+    it("should queue the workflow once the owner's limit allows the import", async () => {
+      const checkQuota = vi.fn().mockResolvedValue({ allowed: true, current: 0, limit: 1000 });
+      const { owner, mockQueue, run } = setupAdminApproval(checkQuota);
+
+      await run();
+
+      expect(checkQuota).toHaveBeenCalledWith(owner, "EVENTS_PER_IMPORT", 500);
+      expect(checkQuota).toHaveBeenCalledWith(owner, "TOTAL_EVENTS", 500);
+      expect(mockQueue).toHaveBeenCalledWith(
+        expect.objectContaining({
+          workflow: "ingest-process",
+          input: { ingestJobId: "1", resumeFrom: "create-schema-version" },
+        })
+      );
+    });
   });
 
   describe("schema approval - high-row-errors", () => {
@@ -463,7 +517,7 @@ describe("afterChangeHooks", () => {
       const doc = {
         id: 1,
         stage: "needs-review",
-        reviewReason: "quota-exceeded",
+        reviewReason: "schema-drift",
         ingestFile: { id: 10 },
         schemaValidation: { approved: true },
       };
