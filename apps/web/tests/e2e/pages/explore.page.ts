@@ -9,6 +9,8 @@
  */
 import { expect, type Locator, type Page } from "@playwright/test";
 
+import { type ExplorerSurface, isMobileLayout, showExplorerSurface } from "./responsive-layout";
+
 export class ExplorePage {
   readonly page: Page;
   readonly map: Locator;
@@ -52,14 +54,17 @@ export class ExplorePage {
    * Navigate to the explore page.
    *
    * @param options.globalView when true, navigates with lat/lng/zoom URL
-   *   params that initialize the map at a global view (lat=0, lng=0, zoom=2).
+   *   params that initialize the map at a global view (lat=0, lng=0, zoom 1, or 0 on the narrow
+   *   mobile map, where zoom 1 ends at about ±69° and drops the US seed events).
    *   Use this for tests that rely on the map-bounded temporal histogram
    *   having data — the seed events are scattered globally, not in the
    *   hardcoded default view (Berlin at zoom 12).
    */
   async goto(options?: { globalView?: boolean }) {
-    const path = options?.globalView ? "/explore?lat=0&lng=0&zoom=1" : "/explore";
+    const globalZoom = isMobileLayout(this.page) ? 0 : 1;
+    const path = options?.globalView ? `/explore?lat=0&lng=0&zoom=${globalZoom}` : "/explore";
     await this.page.goto(path, { timeout: 30000, waitUntil: "domcontentloaded" });
+    await this.show("map");
     await this.map.waitFor({ state: "visible", timeout: 15000 });
     await this.dataSourcesSection.waitFor({ state: "visible", timeout: 10000 });
 
@@ -67,12 +72,20 @@ export class ExplorePage {
     await this.page.waitForSelector('[role="checkbox"]', { timeout: 15000 });
   }
 
-  async waitForMapLoad() {
-    await this.map.waitFor({ state: "visible", timeout: 15000 });
-    await expect(this.page.locator(".maplibregl-canvas")).toBeVisible({ timeout: 10000 });
-    await expect(this.dataSourcesSection).toBeVisible({ timeout: 10000 });
-    // The map's load handler exposes it. Until then MapLibre's setup can stall the main thread for
-    // seconds, long enough to delay what a test does next past its timeouts.
+  /**
+   * Bring a surface into view; only the mobile layout hides any. The mobile map tab mounts a new
+   * map, so showing the map also waits until that instance has loaded.
+   */
+  async show(surface: ExplorerSurface) {
+    await showExplorerSurface(this.page, surface);
+    if (surface === "map" && isMobileLayout(this.page)) await this.waitForMapInstance();
+  }
+
+  /**
+   * Wait for the mounted map's load handler, which exposes it. Until then MapLibre's setup can
+   * stall the main thread for seconds, long enough to delay what a test does next past its timeouts.
+   */
+  private async waitForMapInstance() {
     await this.page.waitForFunction(
       () =>
         (
@@ -81,6 +94,36 @@ export class ExplorePage {
       undefined,
       { timeout: 15000 }
     );
+  }
+
+  /** Wait until the map has stopped moving and its clusters match the reported viewport. */
+  async waitForMapSettled() {
+    await this.show("map");
+    await this.page.waitForFunction(
+      () => {
+        const map = (
+          globalThis as typeof globalThis & {
+            __TIMETILES_E2E_MAP__?: {
+              getCanvas: () => HTMLCanvasElement;
+              loaded: () => boolean;
+              isMoving: () => boolean;
+            };
+          }
+        ).__TIMETILES_E2E_MAP__;
+        if (!map?.loaded() || map.isMoving()) return false;
+        return map.getCanvas().closest("[aria-busy]")?.getAttribute("aria-busy") === "false";
+      },
+      undefined,
+      { timeout: 15000 }
+    );
+  }
+
+  async waitForMapLoad() {
+    await this.show("map");
+    await this.map.waitFor({ state: "visible", timeout: 15000 });
+    await expect(this.page.locator(".maplibregl-canvas")).toBeVisible({ timeout: 10000 });
+    await expect(this.dataSourcesSection).toBeVisible({ timeout: 10000 });
+    await this.waitForMapInstance();
 
     const loadingText = this.page.getByText(/loading map data/i);
     await loadingText.waitFor({ state: "hidden", timeout: 15000 }).catch(async (err) => {
@@ -96,6 +139,7 @@ export class ExplorePage {
    * - The actual slider UI with date range button when data is available
    */
   async waitForTimelineReady() {
+    await this.show("filters");
     // Wait for either the "Loading timeline..." label to disappear (if present)
     // or the final timeline UI to render. Skipping the `/api/v1/events/temporal`
     // waitForResponse — the timeline UI is the user-visible contract; the
@@ -133,6 +177,7 @@ export class ExplorePage {
    * In edit mode, two date input fields are visible.
    */
   async enterDateEditMode() {
+    await this.show("filters");
     const dateInputs = this.page.locator('input[type="date"]');
     // The date range button shows format like "Jan 2024 → Dec 2025"
     const dateRangeButton = this.page
@@ -158,6 +203,10 @@ export class ExplorePage {
 
   /** Open the filter drawer (catalog and dataset selection) unless it is already open. */
   async openFilterDrawer() {
+    if (isMobileLayout(this.page)) {
+      await this.show("filters");
+      return;
+    }
     const anyCheckbox = this.page.locator('[role="checkbox"]').first();
     const showFiltersButton = this.page.getByRole("button", { name: /Show filters|Filters/i });
     await expect(anyCheckbox.or(showFiltersButton).first()).toBeVisible({ timeout: 10000 });
@@ -273,6 +322,7 @@ export class ExplorePage {
    * Get currently-selected dataset names (checkboxes in checked state).
    */
   async getSelectedDatasets(): Promise<string[]> {
+    await this.show("filters");
     return this.page.locator("label").evaluateAll((labels) =>
       labels
         .filter((label) => {
@@ -335,6 +385,7 @@ export class ExplorePage {
   }
 
   async clearDateFilters() {
+    await this.show("filters");
     await this.page.getByRole("button", { name: /Clear date filters/i }).click({ timeout: 5000 });
     await this.page.waitForFunction(
       () => {
@@ -347,19 +398,23 @@ export class ExplorePage {
   }
 
   async panMap(deltaX: number, deltaY: number) {
+    await this.show("map");
     const mapBox = await this.map.boundingBox();
     if (!mapBox) throw new Error("Map not found");
 
-    const centerX = mapBox.x + mapBox.width / 2;
-    const centerY = mapBox.y + mapBox.height / 2;
+    // Drag across the center so both ends stay on the map: a mouseup outside the viewport is
+    // never delivered, which leaves the drag open on the narrow mobile map.
+    const startX = mapBox.x + (mapBox.width - deltaX) / 2;
+    const startY = mapBox.y + (mapBox.height - deltaY) / 2;
 
-    await this.page.mouse.move(centerX, centerY);
+    await this.page.mouse.move(startX, startY);
     await this.page.mouse.down();
-    await this.page.mouse.move(centerX + deltaX, centerY + deltaY);
+    await this.page.mouse.move(startX + deltaX, startY + deltaY);
     await this.page.mouse.up();
   }
 
   async zoomIn() {
+    await this.show("map");
     const mapBox = await this.map.boundingBox();
     if (!mapBox) throw new Error("Map not found");
 
@@ -370,6 +425,7 @@ export class ExplorePage {
   }
 
   async zoomOut() {
+    await this.show("map");
     const mapBox = await this.map.boundingBox();
     if (!mapBox) throw new Error("Map not found");
 
@@ -382,6 +438,7 @@ export class ExplorePage {
   }
 
   async getEventCount(): Promise<number> {
+    await this.show("list");
     // Wait for the events count element to be visible with the expected pattern
     await this.eventsCount.waitFor({ state: "visible", timeout: 5000 });
     const text = await this.eventsCount.textContent({ timeout: 3000 });
@@ -402,15 +459,18 @@ export class ExplorePage {
   }
 
   async getEventTitles(): Promise<string[]> {
+    await this.show("list");
     return this.eventsList.locator("h3").allTextContents();
   }
 
   async clickMapMarker(markerIndex: number) {
+    await this.show("map");
     const markers = this.page.locator(".maplibregl-marker");
     await markers.nth(markerIndex).click();
   }
 
   async clickFirstRenderedMapFeature(): Promise<{ type: string; count: number; eventId: number | null }> {
+    await this.show("map");
     const feature = await this.page.waitForFunction(
       () => {
         const map = (

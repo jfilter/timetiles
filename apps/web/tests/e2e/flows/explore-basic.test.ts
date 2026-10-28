@@ -28,6 +28,7 @@ test.describe("Explore Page - Basic Functionality", () => {
     await expect(explorePage.datasetCheckboxes.first()).toBeVisible();
 
     // Should show events count (now a paragraph with "Showing X events...")
+    await explorePage.show("list");
     await expect(explorePage.eventsCount).toBeVisible();
   });
 
@@ -52,10 +53,12 @@ test.describe("Explore Page - Basic Functionality", () => {
       timeout: 30000,
       waitUntil: "domcontentloaded",
     });
+    await explorePage.show("map");
     await explorePage.map.waitFor({ state: "visible", timeout: 15000 });
     await explorePage.waitForEventsToLoad();
 
     // The empty-state copy must actually render...
+    await explorePage.show("list");
     await expect(explorePage.noEventsMessage).toBeVisible({ timeout: 15000 });
     // ...and no event cards may be left on screen.
     await expect(page.getByTestId("event-card")).toHaveCount(0);
@@ -76,20 +79,22 @@ test.describe("Explore Page - Basic Functionality", () => {
   });
 
   test("should have responsive layout", async ({ page }) => {
-    // Desktop view - side by side
-    await page.setViewportSize({ width: 1200, height: 800 });
+    const viewTabs = page.getByRole("tablist", { name: "View options" });
+    const mapWidth = async () => (await explorePage.map.boundingBox())?.width ?? 0;
 
-    const mapBox = await explorePage.map.boundingBox();
-    const pageWidth = await page.evaluate(() => window.innerWidth);
+    // Desktop view - side by side; the layout follows a media query, so wait for it to switch
+    await page.setViewportSize({ width: 1200, height: 800 });
+    await expect(viewTabs).toBeHidden();
 
     // Map should take roughly 40% of width (adjusted based on actual layout)
-    expect(mapBox!.width).toBeGreaterThanOrEqual(pageWidth * 0.35);
-    expect(mapBox!.width).toBeLessThan(pageWidth * 0.6);
+    await expect.poll(mapWidth).toBeGreaterThanOrEqual(1200 * 0.35);
+    expect(await mapWidth()).toBeLessThan(1200 * 0.6);
 
-    // Mobile view - layout may change (map could be in a tab/drawer)
+    // Mobile view - map, chart and list become tabs and the map spans the viewport
     await page.setViewportSize({ width: 375, height: 667 });
-    // Just verify the page doesn't crash on mobile
-    await page.waitForLoadState("domcontentloaded");
+    await expect(viewTabs).toBeVisible();
+    await explorePage.show("map");
+    await expect.poll(mapWidth).toBeGreaterThanOrEqual(375 * 0.9);
   });
 
   test("should persist state in URL", async ({ page }) => {

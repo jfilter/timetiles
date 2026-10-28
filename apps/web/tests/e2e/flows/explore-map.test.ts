@@ -47,9 +47,11 @@ test.describe("Explore Page - Map Interactions", () => {
     await explorePage.waitForEventsToLoad();
 
     // Wait for event count text to appear (debounce + query + render pipeline)
+    await explorePage.show("list");
     await expect(explorePage.eventsCount).toBeVisible({ timeout: 30000 });
 
     // Verify the map canvas is rendering (WebGL active) and clusters are on the map
+    await explorePage.show("map");
     const mapState = await page.evaluate(() => {
       const canvas = document.querySelector<HTMLCanvasElement>(".maplibregl-canvas");
       // Check for MapLibre map instance via the container's internal reference
@@ -148,6 +150,7 @@ test.describe("Explore Page - Map Interactions", () => {
     expect(eventCount).toBeGreaterThan(0);
 
     // Map should still be visible and interactive after loading events
+    await explorePage.show("map");
     await expect(explorePage.map).toBeVisible();
 
     // Verify we can still interact with the map
@@ -166,6 +169,7 @@ test.describe("Explore Page - Map Interactions", () => {
     await explorePage.zoomIn();
 
     // Verify the events list is still accessible
+    await explorePage.show("list");
     await expect(explorePage.eventsList).toBeVisible();
   });
 
@@ -183,6 +187,7 @@ test.describe("Explore Page - Map Interactions", () => {
     await explorePage.waitForEventsToLoad();
 
     // Should show "No events found" message
+    await explorePage.show("list");
     await expect(explorePage.noEventsMessage).toBeVisible();
 
     // Event count should be 0
@@ -190,6 +195,7 @@ test.describe("Explore Page - Map Interactions", () => {
     expect(count).toBe(0);
 
     // Map should still be functional
+    await explorePage.show("map");
     await expect(explorePage.map).toBeVisible();
     await explorePage.panMap(50, 50);
   });

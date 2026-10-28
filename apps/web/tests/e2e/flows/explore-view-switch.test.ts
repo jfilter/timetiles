@@ -7,8 +7,21 @@
  * @module
  * @category E2E Tests
  */
+import type { Page } from "@playwright/test";
+
 import { expect, test } from "../fixtures";
 import { ExplorePage } from "../pages/explore.page";
+import { isMobileLayout, showExplorerSurface } from "../pages/responsive-layout";
+
+/** Switch views: the header toggle on desktop, the view tabs on mobile, where both routes render the same tabs. */
+const switchView = async (page: Page, view: "map" | "list") => {
+  if (isMobileLayout(page)) return showExplorerSurface(page, view);
+  await page
+    .locator("button")
+    .filter({ hasText: view === "list" ? /^List$/ : /^Map$/ })
+    .click();
+  await expect(page).toHaveURL(view === "list" ? /\/explore\/list/ : /\/explore\?/, { timeout: 15000 });
+};
 
 test.describe("Explore View Switch - Map Position Persistence", () => {
   test("list view preserves URL zoom parameter", async ({ page }) => {
@@ -29,14 +42,9 @@ test.describe("Explore View Switch - Map Position Persistence", () => {
     });
     await new ExplorePage(page).waitForMapLoad();
 
-    // Click "List" view toggle
-    await page
-      .locator("button")
-      .filter({ hasText: /^List$/ })
-      .click();
-    await page.waitForURL("**/explore/list**", { timeout: 15000 });
+    await switchView(page, "list");
 
-    // URL params should be carried over by ViewToggle
+    // URL params must survive the view switch
     const url = new URL(page.url());
     expect(url.searchParams.has("lat")).toBe(true);
     expect(url.searchParams.has("zoom")).toBe(true);
@@ -50,11 +58,7 @@ test.describe("Explore View Switch - Map Position Persistence", () => {
     });
     await new ExplorePage(page).waitForMapLoad();
 
-    // Click "Map" view toggle
-    await page.locator("button").filter({ hasText: /^Map$/ }).click();
-
-    // Should navigate to /explore (not /explore/list)
-    await expect(page).toHaveURL(/\/explore\?/, { timeout: 15000 });
+    await switchView(page, "map");
 
     const url = new URL(page.url());
     expect(url.searchParams.has("lat")).toBe(true);

@@ -12,6 +12,7 @@
  */
 import { TEST_CREDENTIALS, TEST_EMAILS } from "../../constants/test-credentials";
 import { expect, test } from "../fixtures";
+import { headerSignInLink, openAccountMenu } from "../pages/responsive-layout";
 
 test.describe("Navbar Authentication", () => {
   // Auth tests need unauthenticated state to test login/logout flows
@@ -26,7 +27,7 @@ test.describe("Navbar Authentication", () => {
       await page.waitForLoadState("domcontentloaded");
 
       // Should see Sign In button in navbar
-      const signInButton = page.getByRole("link", { name: /sign in/i });
+      const signInButton = await headerSignInLink(page);
       await expect(signInButton).toBeVisible({ timeout: 5000 });
     });
 
@@ -36,7 +37,7 @@ test.describe("Navbar Authentication", () => {
       await page.waitForLoadState("domcontentloaded");
 
       // Click Sign In button
-      const signInButton = page.getByRole("link", { name: /sign in/i });
+      const signInButton = await headerSignInLink(page);
       await expect(signInButton).toBeVisible({ timeout: 10000 });
       await signInButton.click();
 
@@ -61,7 +62,7 @@ test.describe("Navbar Authentication", () => {
       await page.waitForLoadState("domcontentloaded");
 
       // Click Sign In button
-      const signInButton = page.getByRole("link", { name: /sign in/i });
+      const signInButton = await headerSignInLink(page);
       await expect(signInButton).toBeVisible({ timeout: 10000 });
       await signInButton.click();
 
@@ -94,13 +95,10 @@ test.describe("Navbar Authentication", () => {
       await page.goto("/", { timeout: 10000 });
       await page.waitForLoadState("domcontentloaded");
 
-      // Should NOT see Sign In button anymore
-      const signInAfterLogin = page.getByRole("link", { name: /sign in/i });
-      await expect(signInAfterLogin).not.toBeVisible({ timeout: 5000 });
-
-      // Should see user menu button with user name
-      const userMenuButton = page.getByRole("button", { name: /admin user/i });
-      await expect(userMenuButton).toBeVisible({ timeout: 5000 });
+      // The account menu replaces the Sign In link
+      const accountEntry = await openAccountMenu(page, /admin user/i);
+      await expect(accountEntry(/sign out/i)).toBeVisible({ timeout: 5000 });
+      await expect(page.getByRole("link", { name: /sign in/i })).not.toBeVisible();
     });
 
     test("should show user dropdown menu when clicking user avatar", async ({ page }) => {
@@ -109,7 +107,7 @@ test.describe("Navbar Authentication", () => {
       await page.waitForLoadState("domcontentloaded");
 
       // Login first
-      const signInButton = page.getByRole("link", { name: /sign in/i });
+      const signInButton = await headerSignInLink(page);
       await signInButton.click();
       await page.waitForURL(/\/login/);
 
@@ -123,15 +121,13 @@ test.describe("Navbar Authentication", () => {
       await page.reload();
       await page.waitForLoadState("domcontentloaded");
 
-      // Click on user menu button
-      const userMenuButton = page.getByRole("button", { name: /admin user/i });
-      await expect(userMenuButton).toBeVisible({ timeout: 5000 });
-      await userMenuButton.click();
+      // Open the account menu
+      const accountEntry = await openAccountMenu(page, /admin user/i);
 
-      // Should see dropdown menu items
-      const importDataItem = page.getByRole("menuitem", { name: /import data/i });
-      const dashboardItem = page.getByRole("menuitem", { name: /dashboard/i });
-      const signOutItem = page.getByRole("menuitem", { name: /sign out/i });
+      // Should see the account entries
+      const importDataItem = accountEntry(/import data/i);
+      const dashboardItem = accountEntry(/dashboard/i);
+      const signOutItem = accountEntry(/sign out/i);
 
       await expect(importDataItem).toBeVisible();
       await expect(dashboardItem).toBeVisible();
@@ -143,7 +139,7 @@ test.describe("Navbar Authentication", () => {
       await page.goto("/", { timeout: 10000 });
       await page.waitForLoadState("domcontentloaded");
 
-      const signInButton = page.getByRole("link", { name: /sign in/i });
+      const signInButton = await headerSignInLink(page);
       await signInButton.click();
       await page.waitForURL(/\/login/);
 
@@ -157,20 +153,16 @@ test.describe("Navbar Authentication", () => {
       await page.reload();
       await page.waitForLoadState("domcontentloaded");
 
-      // Open user menu
-      const userMenuButton = page.getByRole("button", { name: ownUser.name });
-      await userMenuButton.click();
-
-      // Click Sign Out
-      const signOutItem = page.getByRole("menuitem", { name: /sign out/i });
-      await signOutItem.click();
+      // Click Sign Out in the account menu
+      const accountEntry = await openAccountMenu(page, ownUser.name);
+      await accountEntry(/sign out/i).click();
 
       // Wait for logout navigation — the sign out handler navigates to "/"
       await page.waitForURL("/", { timeout: 10000 });
       await page.waitForLoadState("domcontentloaded");
 
       // Should see Sign In button again
-      const signInButtonAfterLogout = page.getByRole("link", { name: /sign in/i });
+      const signInButtonAfterLogout = await headerSignInLink(page);
       await expect(signInButtonAfterLogout).toBeVisible({ timeout: 5000 });
     });
   });
@@ -198,6 +190,33 @@ test.describe("Navbar Authentication", () => {
 
       // Should still be on login page
       expect(page.url()).toContain("/login");
+    });
+
+    test("should submit credentials entered before the page hydrated", async ({ page }) => {
+      // Autofill and fast typing can fill the form while the scripts are still loading.
+      let releaseScripts = () => {};
+      const scriptsHeld = new Promise<void>((resolve) => {
+        releaseScripts = resolve;
+      });
+      await page.route("**/_next/static/chunks/**/*.js", async (route) => {
+        await scriptsHeld;
+        await route.continue();
+      });
+
+      await page.goto("/login", { timeout: 10000, waitUntil: "commit" });
+      await page.locator("#login-email").fill(TEST_EMAILS.admin);
+      await page.locator("#login-password").fill(TEST_CREDENTIALS.security.wrong);
+
+      releaseScripts();
+      await page.waitForFunction(() => {
+        const input = document.querySelector("#login-email");
+        return input != null && Object.keys(input).some((key) => key.startsWith("__reactProps"));
+      });
+      await page.getByRole("button", { name: /sign in/i }).click();
+
+      const errorMessage = page.locator("form:has(#login-email)").getByRole("alert");
+      await expect(errorMessage).toBeVisible({ timeout: 5000 });
+      await expect(errorMessage).not.toBeEmpty();
     });
 
     test("should require email and password fields", async ({ page }) => {

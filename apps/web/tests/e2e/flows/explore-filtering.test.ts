@@ -88,6 +88,7 @@ test.describe("Explore Page - Filtering", () => {
     ).toBeVisible();
 
     // Events count is rendered (may be 0 if map bounds filter all out)
+    await explorePage.show("list");
     await expect(explorePage.eventsCount).toBeVisible();
   });
 
@@ -95,6 +96,7 @@ test.describe("Explore Page - Filtering", () => {
     // Groups are expanded by default — click the dataset checkbox directly.
     await explorePage.toggleDataset("Air Quality Measurements");
 
+    await explorePage.show("list");
     await expect(explorePage.eventsCount).toBeVisible();
 
     const params = await explorePage.getUrlParams();

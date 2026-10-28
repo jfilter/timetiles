@@ -9,6 +9,8 @@
  */
 import { expect, type Locator, type Page } from "@playwright/test";
 
+import { showExplorerSurface } from "./responsive-layout";
+
 export class EmbedPage {
   readonly page: Page;
   readonly map: Locator;
@@ -26,11 +28,13 @@ export class EmbedPage {
   async goto(viewSlug?: string) {
     const path = viewSlug ? `/embed/${viewSlug}` : "/embed";
     await this.page.goto(path, { timeout: 30000, waitUntil: "domcontentloaded" });
+    await showExplorerSurface(this.page, "map");
     await this.map.waitFor({ state: "visible", timeout: 15000 });
   }
 
   /** Wait for the map canvas to be fully rendered. */
   async waitForMapLoad() {
+    await showExplorerSurface(this.page, "map");
     await this.map.waitFor({ state: "visible", timeout: 15000 });
     await this.page.waitForFunction(
       () => {

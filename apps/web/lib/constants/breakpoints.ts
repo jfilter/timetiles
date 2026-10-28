@@ -8,5 +8,8 @@
  * @category Constants
  */
 
+/** Width in px where Tailwind's `md` breakpoint starts. */
+export const BREAKPOINT_MD_PX = 768;
+
 /** Tailwind `md` breakpoint — tablet and above. */
-export const BREAKPOINT_MD = "(min-width: 768px)";
+export const BREAKPOINT_MD = `(min-width: ${BREAKPOINT_MD_PX}px)`;

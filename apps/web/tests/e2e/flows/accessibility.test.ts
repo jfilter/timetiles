@@ -12,6 +12,7 @@ import AxeBuilder from "@axe-core/playwright";
 import type { Page } from "@playwright/test";
 
 import { expect, test } from "../fixtures";
+import { showExplorerSurface } from "../pages/responsive-layout";
 
 interface PageConfig {
   /** Human-readable name for test titles */
@@ -68,6 +69,7 @@ const pages: PageConfig[] = [
     path: "/explore",
     requiresAuth: true,
     waitFor: async (page) => {
+      await showExplorerSurface(page, "map");
       await page.getByRole("region", { name: "Map" }).first().waitFor({ state: "visible", timeout: 15_000 });
       // Seeded data must be rendered so the scan covers the populated page.
       await page.locator('button:has-text("datasets")').first().waitFor({ state: "visible", timeout: 15_000 });

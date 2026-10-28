@@ -12,6 +12,7 @@ import type { APIRequestContext } from "@playwright/test";
 import { TEST_EMAILS } from "../../constants/test-credentials";
 import { expect, test } from "../fixtures";
 import { ExplorePage } from "../pages/explore.page";
+import { headerSignInLink } from "../pages/responsive-layout";
 
 type ApiDoc = { id: number | string; name?: string; isPublic?: boolean; data?: { title?: string } };
 
@@ -189,7 +190,7 @@ test.describe("Access Control - User Perspective", () => {
       await page.goto("/", { timeout: 10000 });
 
       // The anonymous header renders a sign-in link where signed-in users get the dashboard link.
-      await expect(page.locator('a[href$="/login"]').first()).toBeVisible();
+      await expect(await headerSignInLink(page)).toBeVisible();
       await expect(page.locator('a[href="/dashboard"]')).toHaveCount(0);
     });
   });
@@ -471,6 +472,7 @@ test.describe("Access Control - User Perspective", () => {
       await explorePage.waitForEventsToLoad();
 
       // Should show "No events found" message
+      await explorePage.show("list");
       await expect(explorePage.noEventsMessage).toBeVisible();
     });
   });
