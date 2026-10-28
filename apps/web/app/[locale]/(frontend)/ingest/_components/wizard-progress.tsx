@@ -61,14 +61,14 @@ export const WizardHeader = () => {
           {canGoBack && (
             <Button variant="ghost" size="sm" onClick={prevStep} className="gap-1.5">
               <ArrowLeft className="h-4 w-4" />
-              <span className="hidden sm:inline">{t("back")}</span>
+              <span className="sr-only sm:not-sr-only">{t("back")}</span>
             </Button>
           )}
         </div>
 
         {/* Step indicator */}
         <div className="text-muted-foreground text-center text-sm font-medium">
-          {editMode && <span className="text-primary mr-2 hidden sm:inline">{t("editMode")}</span>}
+          {editMode && <span className="text-primary mr-2">{t("editMode")}</span>}
           <span>{t("stepOfTotal", { current: currentIndex + 1, total: totalSteps })}</span>
           <span className="text-foreground ml-2 hidden sm:inline">{currentLabel}</span>
         </div>
