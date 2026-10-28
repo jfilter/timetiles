@@ -16,7 +16,7 @@ import { scheduledIngestKeys } from "@/lib/hooks/use-scheduled-ingest-mutations"
 import type { IngestTransform } from "@/lib/ingest/types/transforms";
 import type { FieldMapping, SheetMapping, UrlAuthConfig } from "@/lib/ingest/types/wizard";
 
-import type { CatalogSelection, JsonApiConfig, ScheduleConfig } from "./wizard-store";
+import type { CatalogSelection, JsonApiConfig, ScheduleConfig } from "./wizard-state";
 import { useWizardStore } from "./wizard-store";
 
 export interface UpdateScheduleParams {

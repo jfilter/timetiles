@@ -16,7 +16,8 @@ import { useTranslations } from "next-intl";
 
 import { useRouter } from "@/i18n/navigation";
 
-import { useWizardStore, WIZARD_STEPS } from "./wizard-store";
+import { WIZARD_STEPS } from "./wizard-state";
+import { useWizardStore } from "./wizard-store";
 
 export const WizardHeader = () => {
   const t = useTranslations("Ingest");

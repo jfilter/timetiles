@@ -13,7 +13,8 @@ vi.mock("@/lib/hooks/use-preview-validation-query", () => ({
 vi.mock("@/lib/hooks/use-auth-queries", () => ({ useAuthState: () => ({ isAuthenticated: true }) }));
 
 import { useWizardEffects } from "@/app/[locale]/(frontend)/ingest/_components/use-wizard-effects";
-import { initialState, useWizardStore } from "@/app/[locale]/(frontend)/ingest/_components/wizard-store";
+import { initialState } from "@/app/[locale]/(frontend)/ingest/_components/wizard-state";
+import { useWizardStore } from "@/app/[locale]/(frontend)/ingest/_components/wizard-store";
 
 const auth = { isAuthenticated: true, isEmailVerified: true, userId: 1 };
 

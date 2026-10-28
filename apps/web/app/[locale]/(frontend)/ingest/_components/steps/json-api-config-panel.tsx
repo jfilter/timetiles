@@ -23,7 +23,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ChevronDownIcon, GlobeIcon, Loader2Icon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
-import type { JsonApiConfig } from "../wizard-store";
+import type { JsonApiConfig } from "../wizard-state";
 
 interface ConfigChangeHandler {
   config: JsonApiConfig;

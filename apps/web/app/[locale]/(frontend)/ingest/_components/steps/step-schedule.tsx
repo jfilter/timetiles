@@ -22,7 +22,8 @@ import { formatDateShort } from "@/lib/utils/date";
 
 import { AuthConfigFields } from "../auth-config-fields";
 import { useWizardCanProceed } from "../use-wizard-effects";
-import { type ScheduleConfig, useWizardScheduleStepState } from "../wizard-store";
+import type { ScheduleConfig } from "../wizard-state";
+import { useWizardScheduleStepState } from "../wizard-store";
 
 export interface StepScheduleProps {
   className?: string;
@@ -68,9 +69,10 @@ export const StepSchedule = ({ className }: Readonly<StepScheduleProps>) => {
 
   // formatDateShort with the viewer's locale, not a bare toLocaleDateString(): that reads the
   // runtime's locale, which differs between the SSR pass and the browser and mismatches on hydration.
+  const fileName = file?.name;
   const defaultScheduleName = useMemo(
-    () => (file?.name ? `${humanizeFileName(file.name)} - ${formatDateShort(new Date(), locale)}` : ""),
-    [file?.name, locale]
+    () => (fileName ? `${humanizeFileName(fileName)} - ${formatDateShort(new Date(), locale)}` : ""),
+    [fileName, locale]
   );
 
   const activeConfig = useMemo(

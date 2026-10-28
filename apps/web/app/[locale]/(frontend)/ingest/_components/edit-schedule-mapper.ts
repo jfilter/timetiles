@@ -9,7 +9,7 @@ import type { UrlAuthConfig } from "@/lib/ingest/types/wizard";
 import { extractRelationId } from "@/lib/utils/relation-id";
 import type { ScheduledIngest } from "@/payload-types";
 
-import type { EditScheduleData, JsonApiConfig, ScheduleConfig } from "./wizard-store";
+import type { EditScheduleData, JsonApiConfig, ScheduleConfig } from "./wizard-state";
 
 // Credentials are decrypted by Payload afterRead hooks and returned to the owner.
 // They are held in Zustand memory (never persisted to localStorage) and sent back

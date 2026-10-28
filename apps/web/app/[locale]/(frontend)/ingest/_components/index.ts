@@ -6,4 +6,5 @@
  */
 export { IngestWizard, type IngestWizardProps } from "./ingest-wizard";
 export { WizardLayoutClient } from "./wizard-layout-client";
-export { useWizardStore, type WizardState, type WizardStep } from "./wizard-store";
+export type { WizardState, WizardStep } from "./wizard-state";
+export { useWizardStore } from "./wizard-store";

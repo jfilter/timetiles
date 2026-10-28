@@ -6,11 +6,8 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import {
-  type EditScheduleData,
-  initialState,
-  useWizardStore,
-} from "@/app/[locale]/(frontend)/ingest/_components/wizard-store";
+import { type EditScheduleData, initialState } from "@/app/[locale]/(frontend)/ingest/_components/wizard-state";
+import { useWizardStore } from "@/app/[locale]/(frontend)/ingest/_components/wizard-store";
 
 const editData: EditScheduleData = {
   sourceUrl: "https://example.com/data.csv",

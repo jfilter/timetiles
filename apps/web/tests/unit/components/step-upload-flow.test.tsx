@@ -9,11 +9,8 @@
  */
 /* eslint-disable @typescript-eslint/require-await -- act(async () => ...) is the standard React 19 pattern for flushing state updates */
 import { StepUpload } from "@/app/[locale]/(frontend)/ingest/_components/steps/step-upload";
-import {
-  initialState,
-  useWizardStore,
-  type WizardState,
-} from "@/app/[locale]/(frontend)/ingest/_components/wizard-store";
+import { initialState, type WizardState } from "@/app/[locale]/(frontend)/ingest/_components/wizard-state";
+import { useWizardStore } from "@/app/[locale]/(frontend)/ingest/_components/wizard-store";
 
 import { act, fireEvent, renderWithProviders, screen, waitFor } from "../../setup/unit/react-render";
 

@@ -9,7 +9,7 @@
  */
 import { isFieldMappingComplete } from "@/lib/ingest/types/wizard";
 
-import { type WizardState, type WizardStep } from "./wizard-store";
+import { type WizardState, type WizardStep } from "./wizard-state";
 
 /**
  * Determine whether the user can proceed from the current wizard step.
