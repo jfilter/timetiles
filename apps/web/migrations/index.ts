@@ -80,6 +80,7 @@ import * as migration_20260913_162132_published_events_in_pg_functions from './2
 import * as migration_20261019_213505_payload_3_90 from './20261019_213505_payload_3_90';
 import * as migration_20261020_120000_cluster_events_cluster_cells from './20261020_120000_cluster_events_cluster_cells';
 import * as migration_20261026_173346_payload_3_92 from './20261026_173346_payload_3_92';
+import * as migration_20261028_192009_drop_duplicate_events_gin_index from './20261028_192009_drop_duplicate_events_gin_index';
 import * as migration_20261028_200000_pg_functions_tag_path_prefilter from './20261028_200000_pg_functions_tag_path_prefilter';
 
 export const migrations = [
@@ -492,6 +493,11 @@ export const migrations = [
     up: migration_20261026_173346_payload_3_92.up,
     down: migration_20261026_173346_payload_3_92.down,
     name: '20261026_173346_payload_3_92',
+  },
+  {
+    up: migration_20261028_192009_drop_duplicate_events_gin_index.up,
+    down: migration_20261028_192009_drop_duplicate_events_gin_index.down,
+    name: '20261028_192009_drop_duplicate_events_gin_index',
   },
   {
     up: migration_20261028_200000_pg_functions_tag_path_prefilter.up,
