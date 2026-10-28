@@ -10,7 +10,6 @@
 import eslintReact from "@eslint-react/eslint-plugin";
 import jsxA11y from "eslint-plugin-jsx-a11y";
 import react from "eslint-plugin-react";
-import reactCompiler from "eslint-plugin-react-compiler";
 import reactHooks from "eslint-plugin-react-hooks";
 
 import baseConfig from "./base.js";
@@ -22,19 +21,11 @@ export default [
   ...baseConfig,
   {
     files: ["**/*.ts", "**/*.tsx"],
-    plugins: {
-      react: react,
-      "react-hooks": reactHooks,
-      "@eslint-react": eslintReact,
-      "react-compiler": reactCompiler,
-      "jsx-a11y": jsxA11y,
-    },
+    plugins: { react: react, "react-hooks": reactHooks, "@eslint-react": eslintReact, "jsx-a11y": jsxA11y },
     settings: { react: { version: "detect" } },
     rules: {
-      // React Compiler rules
-      "react-compiler/react-compiler": "error",
-
-      // React Hooks rules
+      // React Hooks rules, including the React Compiler diagnostics
+      ...reactHooks.configs["recommended-latest"].rules,
       "react-hooks/rules-of-hooks": "error",
       "react-hooks/exhaustive-deps": "error",
 
