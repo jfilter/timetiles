@@ -107,11 +107,12 @@ export default defineConfig({
           environment: "node",
           include: [
             "tests/integration/services/data-package-activation.test.ts",
-            // Mocks @/lib/middleware/rate-limit — under isolate:false (the "integration"
+            // These mock @/lib/middleware/rate-limit — under isolate:false (the "integration"
             // project below) an earlier file in the same worker can already have cached
             // the real module, so the mock silently doesn't apply and the real per-user
-            // burst limit (1/min) 429s the second concurrent call. Needs its own registry.
+            // burst limit (1/min) 429s the second call. Each needs its own registry.
             "tests/integration/api/ingest-job-retry-concurrency.test.ts",
+            "tests/integration/api/ingest-job-approve-access.test.ts",
           ],
           isolate: true,
           // Global setup runs ONCE before all workers (creates template database)
@@ -135,6 +136,7 @@ export default defineConfig({
           exclude: [
             "tests/integration/services/data-package-activation.test.ts",
             "tests/integration/api/ingest-job-retry-concurrency.test.ts",
+            "tests/integration/api/ingest-job-approve-access.test.ts",
           ],
           isolate: false,
           // Global setup runs ONCE before all workers (creates template database)
