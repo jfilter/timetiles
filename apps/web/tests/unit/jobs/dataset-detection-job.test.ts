@@ -507,9 +507,8 @@ describe("DatasetDetectionJob Handler", () => {
   });
 
   describe("Edge Cases", () => {
-    // A header-only CSV is valid input: production only rejects when there are neither
-    // headers nor rows. The fixture must go through createReadStream (the streaming path).
-    it("should accept a header-only CSV and report zero rows", async () => {
+    // A parsed source with a header but no rows is a successful run with nothing to import.
+    it("should complete a header-only CSV without creating jobs", async () => {
       const mockIngestFile = {
         id: 123,
         filename: "empty.csv",
@@ -520,20 +519,80 @@ describe("DatasetDetectionJob Handler", () => {
 
       mockPayload.findByID.mockResolvedValueOnce(mockIngestFile);
       mocks.fs.createReadStream.mockImplementation(() => createMockReadStream("header1,header2\n"));
-      mockPayload.create.mockResolvedValue({ id: "test-id" });
 
       const result = await datasetDetectionJob.handler(mockContext);
 
-      expect(result.output.sheetsDetected).toBe(1);
-      expect(result.output.sheets[0]).toEqual(expect.objectContaining({ rowCount: 0 }));
+      expect(result.output).toEqual({ sheetsDetected: 1, ingestJobsCreated: 0, sheets: [], noRecords: true });
+      expect(mockPayload.create).not.toHaveBeenCalled();
       expect(mockPayload.update).toHaveBeenCalledWith({
         collection: "ingest-files",
         id: "ingest-file-123",
         data: expect.objectContaining({
-          status: "processing",
+          status: "completed",
+          datasetsCount: 0,
           sheetMetadata: [expect.objectContaining({ rowCount: 0, headers: ["header1", "header2"] })],
         }),
       });
+    });
+
+    it("should complete a real workbook whose sheets have only a header", async () => {
+      const XLSX = await import("xlsx");
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([["title", "date"]]), "Events");
+      const buffer = XLSX.write(workbook, { type: "buffer", bookType: "xlsx" }) as Buffer;
+      mocks.fs.readFileSync.mockReturnValue(buffer);
+      mocks.fs.readSync.mockImplementationOnce((_fd: number, target: Buffer) =>
+        buffer.copy(target, 0, 0, target.length)
+      );
+
+      mockPayload.findByID.mockResolvedValueOnce({ id: 123, filename: "empty.xlsx", catalog: 456 });
+
+      const result = await datasetDetectionJob.handler(mockContext);
+
+      expect(result.output).toEqual(expect.objectContaining({ ingestJobsCreated: 0, noRecords: true }));
+      expect(mockPayload.create).not.toHaveBeenCalled();
+    });
+
+    it("should not treat a text file posing as a workbook as empty", async () => {
+      // xlsx reads plain text as a one-cell sheet: header, no rows — indistinguishable without the signature.
+      mocks.fs.readFileSync.mockReturnValue(Buffer.from("This is not a valid Excel file"));
+      mockPayload.findByID.mockResolvedValueOnce({ id: 123, filename: "corrupt.xlsx", catalog: 456 });
+      mockPayload.find.mockResolvedValue({ docs: [] });
+      mockPayload.create.mockResolvedValue({ id: "test-id" });
+
+      const result = await datasetDetectionJob.handler(mockContext);
+
+      expect(result.output.noRecords).toBeUndefined();
+      expect(mockPayload.create).toHaveBeenCalledWith(expect.objectContaining({ collection: "ingest-jobs" }));
+    });
+
+    it("should skip a header-only sheet next to one with rows", async () => {
+      const XLSX = await import("xlsx");
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([["title", "date"]]), "Empty");
+      XLSX.utils.book_append_sheet(
+        workbook,
+        XLSX.utils.aoa_to_sheet([
+          ["title", "date"],
+          ["Event 1", "2024-01-01"],
+        ]),
+        "Data"
+      );
+      const buffer = XLSX.write(workbook, { type: "buffer", bookType: "xlsx" }) as Buffer;
+      mocks.fs.readFileSync.mockReturnValue(buffer);
+      mocks.fs.readSync.mockImplementationOnce((_fd: number, target: Buffer) =>
+        buffer.copy(target, 0, 0, target.length)
+      );
+      mockPayload.findByID.mockResolvedValueOnce({ id: 123, filename: "mixed.xlsx", catalog: 456 });
+      mockPayload.find.mockResolvedValue({ docs: [] });
+      mockPayload.create.mockResolvedValue({ id: "test-id" });
+
+      await datasetDetectionJob.handler(mockContext);
+
+      type CreateArgs = { collection: string; data: { sheetIndex?: number } };
+      const creates = (mockPayload.create.mock.calls as Array<[CreateArgs]>).map(([args]) => args);
+      const jobSheets = creates.filter((c) => c.collection === "ingest-jobs").map((c) => c.data.sheetIndex);
+      expect(jobSheets).toEqual([1]);
     });
 
     it("should handle Excel file with empty sheets", async () => {

@@ -5938,6 +5938,7 @@ export interface TaskDatasetDetection {
       | boolean
       | null;
     reason?: string | null;
+    noRecords?: boolean | null;
   };
 }
 /**

@@ -26,6 +26,8 @@ export interface DatasetDetectionOutput {
   ingestJobsCreated?: number;
   sheets?: SheetInfo[];
   reason?: string;
+  /** The source parsed, but no sheet has a data row: a successful run with nothing to import. */
+  noRecords?: boolean;
 }
 
 /** Output from `analyze-duplicates` task. */

@@ -472,9 +472,9 @@ describe("Workflow Combinations (Integration)", () => {
     expect(file.datasetsProcessed).toBe(1);
   }, 60000);
 
-  // ── 7. Headers-only CSV (no data rows) produces no events ──
+  // ── 7. Headers-only CSV (no data rows) completes with nothing to import ──
 
-  it("should produce no events when CSV has headers but no data rows", async () => {
+  it("should complete a CSV with headers but no data rows without creating jobs", async () => {
     const headersOnly = `title,date,location`;
 
     const ingestFile = await createIngestFileForWorkflow(payload, testCatalogId, headersOnly, testUser, {
@@ -485,26 +485,10 @@ describe("Workflow Combinations (Integration)", () => {
     const result = await runUntilSettled(payload, ingestFile.id, 40);
 
     expect(result.settled).toBe(true);
-
-    // IngestJob should reach a terminal state (failed for empty file, or completed with 0 events)
+    expect(result.ingestFile.status).toBe("completed");
+    expect(result.ingestFile.datasetsCount).toBe(0);
     const jobs = await payload.find({ collection: "ingest-jobs", where: { ingestFile: { equals: ingestFile.id } } });
-    if (jobs.docs.length > 0) {
-      expect([PROCESSING_STAGE.COMPLETED, PROCESSING_STAGE.FAILED]).toContain(jobs.docs[0].stage);
-
-      // No events should be created from a headers-only file (scoped to dataset)
-      const datasetId = typeof jobs.docs[0].dataset === "object" ? jobs.docs[0].dataset.id : jobs.docs[0].dataset;
-      const events = await payload.find({ collection: "events", where: { dataset: { equals: datasetId } }, limit: 10 });
-      expect(events.docs).toHaveLength(0);
-    } else {
-      // The no-job branch used to be silent, which made every assertion above
-      // optional: a workflow that stopped before creating a job passed exactly
-      // like one that ran correctly. No job is only defensible if the file
-      // itself failed — a file reported "completed" with nothing behind it is
-      // the workflow having quietly done nothing.
-      expect(result.ingestFile.status).toBe("failed");
-    }
-    // File should reach a terminal state
-    expect(["completed", "failed"]).toContain(result.ingestFile.status);
+    expect(jobs.docs).toHaveLength(0);
   });
 
   // ── 8. Total geocoding failure prevents event creation ──

@@ -13,7 +13,7 @@ import path from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { processCSVFile } from "@/lib/jobs/handlers/dataset-detection/parse-files";
+import { hasWorkbookSignature, processCSVFile } from "@/lib/jobs/handlers/dataset-detection/parse-files";
 
 describe("dataset detection parse-files", () => {
   let tempDir: string;
@@ -75,5 +75,22 @@ describe("dataset detection parse-files", () => {
     const filePath = path.join(tempDir, "empty.csv");
     fs.writeFileSync(filePath, content, "utf-8");
     await expect(processCSVFile(filePath)).rejects.toThrow("No data rows found in file");
+  });
+
+  it.each(["xlsx", "ods", "biff8"] as const)("should recognise a real %s workbook", async (bookType) => {
+    const XLSX = await import("xlsx");
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([["title"]]), "Sheet1");
+    const filePath = path.join(tempDir, `book.${bookType}`);
+    fs.writeFileSync(filePath, XLSX.write(workbook, { type: "buffer", bookType }));
+
+    expect(hasWorkbookSignature(filePath)).toBe(true);
+  });
+
+  it.each(["This is not a valid Excel file", "PK", ""])("should not trust %j as a workbook", (content) => {
+    const filePath = path.join(tempDir, "fake.xlsx");
+    fs.writeFileSync(filePath, content, "utf-8");
+
+    expect(hasWorkbookSignature(filePath)).toBe(false);
   });
 });

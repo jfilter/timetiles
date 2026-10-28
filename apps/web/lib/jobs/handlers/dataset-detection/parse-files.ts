@@ -35,6 +35,24 @@ export const processCSVFile = async (filePath: string): Promise<SheetInfo[]> => 
   return [{ name: "CSV Data", index: 0, rowCount, columnCount: headers.length, headers }];
 };
 
+const ZIP_SIGNATURE = Buffer.from([0x50, 0x4b, 0x03, 0x04]);
+const OLE2_SIGNATURE = Buffer.from([0xd0, 0xcf, 0x11, 0xe0]);
+
+/**
+ * Whether the file starts like a real workbook (zip for xlsx/ods, OLE2 for xls). xlsx reads any
+ * other bytes as a one-cell text sheet, so its "header but no rows" cannot be trusted as empty.
+ */
+export const hasWorkbookSignature = (filePath: string): boolean => {
+  const head = Buffer.alloc(4);
+  const fd = fs.openSync(filePath, "r");
+  try {
+    fs.readSync(fd, head, 0, head.length, 0);
+  } finally {
+    fs.closeSync(fd);
+  }
+  return head.equals(ZIP_SIGNATURE) || head.equals(OLE2_SIGNATURE);
+};
+
 export const processExcelFile = async (filePath: string): Promise<SheetInfo[]> => {
   logger.info("Processing Excel file", { filePath });
   const { read, utils } = await loadXlsx();

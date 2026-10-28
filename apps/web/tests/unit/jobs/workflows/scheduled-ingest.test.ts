@@ -193,6 +193,21 @@ describe("scheduledIngestWorkflow", () => {
     expect(updateScheduledIngestFailure).not.toHaveBeenCalled();
   });
 
+  it("should record a successful run when the source has only a header", async () => {
+    tasks["dataset-detection"].mockResolvedValueOnce({
+      sheetsDetected: 1,
+      ingestJobsCreated: 0,
+      sheets: [],
+      noRecords: true,
+    });
+
+    await handler(createWorkflowArgs(mockJob, tasks, mockReq));
+
+    expect(processSheets).not.toHaveBeenCalled();
+    expect(updateScheduledIngestSuccess).toHaveBeenCalledOnce();
+    expect(updateScheduledIngestFailure).not.toHaveBeenCalled();
+  });
+
   // ── 6. Verify concurrency key format ──────────────────────────────────
 
   it("should produce per-resource concurrency key", () => {

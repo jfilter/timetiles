@@ -33,7 +33,12 @@ import {
   validateDatasetAccessForUser,
 } from "./dataset-detection/catalog-dataset-helpers";
 import type { SheetInfo } from "./dataset-detection/parse-files";
-import { buildSheetsFromWizardMetadata, processCSVFile, processExcelFile } from "./dataset-detection/parse-files";
+import {
+  buildSheetsFromWizardMetadata,
+  hasWorkbookSignature,
+  processCSVFile,
+  processExcelFile,
+} from "./dataset-detection/parse-files";
 
 /**
  * Convert GeoJSON or JSON files to CSV for pipeline processing.
@@ -312,6 +317,58 @@ const buildSheetOutputs = (sheets: SheetInfo[], createdJobs: Array<{ id: string 
   });
 
 /** Terminal failure for an ingest file: the only status the cleanup job can reclaim besides "completed". */
+/**
+ * Convert the uploaded file if needed and read its sheets. Sheets with a header but no rows are
+ * dropped; `headerOnly` reports a file where that left nothing. A file xlsx only read as text is
+ * kept as is, since its lone header row cannot tell "empty" from "unreadable".
+ */
+const parseUploadedFile = async (
+  payload: Payload,
+  ingestFileId: string | number,
+  uploadedPath: string
+): Promise<{ sheets: SheetInfo[]; headerOnly: boolean }> => {
+  let filePath = uploadedPath;
+
+  // GeoJSON/JSON files need conversion to CSV before processing.
+  // Write CSV alongside original and update the ingest-file record so downstream tasks
+  // (analyze-duplicates, create-events, etc.) also read the converted CSV.
+  const conversionStart = Date.now();
+  const conversion = await convertToCsvIfNeeded(filePath, path.extname(filePath).toLowerCase());
+  if (conversion) {
+    filePath = conversion.filePath;
+
+    await asSystem(payload).update({
+      collection: COLLECTION_NAMES.INGEST_FILES,
+      id: ingestFileId,
+      data: { filename: path.basename(conversion.filePath), mimeType: "text/csv" },
+    });
+
+    logger.info("[dataset-detection] converted file to CSV", {
+      ingestFileId,
+      durationMs: Date.now() - conversionStart,
+      ...conversion.logInfo,
+    });
+  }
+
+  // xlsx library handles .xls, .xlsx, and .ods files
+  const isDelimited = isDelimitedTextFile(filePath);
+  const sheets = isDelimited ? await processCSVFile(filePath) : await processExcelFile(filePath);
+  if (!isDelimited && !hasWorkbookSignature(filePath)) return { sheets, headerOnly: false };
+
+  const sheetsWithRows = sheets.filter((s) => s.rowCount > 0);
+  if (sheets.length > 0 && sheetsWithRows.length === 0) return { sheets, headerOnly: true };
+  return { sheets: sheetsWithRows, headerOnly: false };
+};
+
+/** A parsed source whose sheets all have a header but no data rows: a run with nothing to import. */
+const completeEmptyIngestFile = async (payload: Payload, ingestFileId: string | number, sheets: SheetInfo[]) => {
+  await payload.update({
+    collection: COLLECTION_NAMES.INGEST_FILES,
+    id: ingestFileId,
+    data: { status: "completed", completedAt: new Date().toISOString(), datasetsCount: 0, sheetMetadata: sheets },
+  });
+};
+
 const markIngestFileFailed = async (payload: Payload, ingestFileId: string | number, errorLog: string) => {
   await payload.update({
     collection: COLLECTION_NAMES.INGEST_FILES,
@@ -328,6 +385,7 @@ export const datasetDetectionJob = {
     { name: "ingestJobsCreated", type: "number" as const },
     { name: "sheets", type: "json" as const },
     { name: "reason", type: "text" as const },
+    { name: "noRecords", type: "checkbox" as const },
   ],
   onFail: async (args: TaskCallbackArgs) => {
     const ingestFileId = (args.input as Record<string, unknown> | undefined)?.ingestFileId;
@@ -369,7 +427,7 @@ export const datasetDetectionJob = {
       // always knows which catalog to search for existing datasets.
       const resolvedCatalogId = catalogId ?? (extractRelationId(ingestFile.catalog) as string | undefined);
 
-      let filePath = getIngestFilePath(ingestFile.filename ?? "");
+      const filePath = getIngestFilePath(ingestFile.filename ?? "");
 
       if (!fs.existsSync(filePath)) {
         throw new Error(`Cannot access file ${filePath}`);
@@ -384,31 +442,15 @@ export const datasetDetectionJob = {
         sheets = wizardSheets;
         logger.info("Using wizard metadata fast-path", { ingestFileId, sheetCount: sheets.length });
       } else {
-        const fileExtension = path.extname(filePath).toLowerCase();
-
-        // GeoJSON/JSON files need conversion to CSV before processing.
-        // Write CSV alongside original and update the ingest-file record so downstream tasks
-        // (analyze-duplicates, create-events, etc.) also read the converted CSV.
-        const conversionStart = Date.now();
-        const conversion = await convertToCsvIfNeeded(filePath, fileExtension);
-        if (conversion) {
-          filePath = conversion.filePath;
-
-          await asSystem(payload).update({
-            collection: COLLECTION_NAMES.INGEST_FILES,
-            id: ingestFileId,
-            data: { filename: path.basename(conversion.filePath), mimeType: "text/csv" },
-          });
-
-          logger.info("[dataset-detection] converted file to CSV", {
-            ingestFileId,
-            durationMs: Date.now() - conversionStart,
-            ...conversion.logInfo,
-          });
+        const parsed = await parseUploadedFile(payload, ingestFileId, filePath);
+        if (parsed.headerOnly) {
+          await completeEmptyIngestFile(payload, ingestFileId, parsed.sheets);
+          logger.info("[dataset-detection] no data rows in any sheet, nothing to import", { ingestFileId });
+          return {
+            output: { sheetsDetected: parsed.sheets.length, ingestJobsCreated: 0, sheets: [], noRecords: true },
+          };
         }
-
-        // xlsx library handles .xls, .xlsx, and .ods files
-        sheets = isDelimitedTextFile(filePath) ? await processCSVFile(filePath) : await processExcelFile(filePath);
+        sheets = parsed.sheets;
       }
 
       if (sheets.length === 0) {

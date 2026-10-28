@@ -235,6 +235,12 @@ export const scheduledIngestWorkflow: WorkflowConfig<"scheduled-ingest"> = {
       input: { ingestFileId: String(ingestFileId) },
     })) as DatasetDetectionOutput;
 
+    if (detection.noRecords) {
+      await recordRunSuccess(req.payload, scheduledIngestId, ingestFileId, workflowStart);
+      logger.info("scheduled-ingest: source has no data rows, nothing to import", { scheduledIngestId, ingestFileId });
+      return;
+    }
+
     if (!detection.sheets?.length) {
       throw new Error("Scheduled ingest detected no sheets to process.");
     }
