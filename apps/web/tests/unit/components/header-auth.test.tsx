@@ -7,10 +7,11 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { MobileNavDrawer, MobileNavDrawerContent } from "@timetiles/ui";
 import { NextIntlClientProvider, useLocale } from "next-intl";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { HeaderAuth } from "@/app/_components/header-auth";
+import { HeaderAuth, MobileHeaderAuth } from "@/app/_components/header-auth";
 import { authKeys } from "@/lib/hooks/use-auth-queries";
 import type { User } from "@/payload-types";
 import { TEST_EMAILS } from "@/tests/constants/test-credentials";
@@ -84,5 +85,57 @@ describe("HeaderAuth logout", () => {
 
     expect(screen.getByRole("alert")).toHaveTextContent(messages.Header.logoutError);
     expect(client.getQueryData(authKeys.currentUser)).toEqual({ user });
+  });
+});
+
+describe("MobileHeaderAuth", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.isError = false;
+  });
+  afterEach(cleanup);
+
+  const user = { id: 1, email: TEST_EMAILS.admin, firstName: "Admin" } as User;
+  const renderDrawer = (drawerUser: User | null) =>
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <NextIntlClientProvider locale="en" messages={en}>
+          <MobileNavDrawer defaultOpen>
+            <MobileNavDrawerContent>
+              <MobileHeaderAuth user={drawerUser} pathname="/" />
+            </MobileNavDrawerContent>
+          </MobileNavDrawer>
+        </NextIntlClientProvider>
+      </QueryClientProvider>
+    );
+
+  it("offers sign in when logged out", () => {
+    renderDrawer(null);
+
+    expect(screen.getByRole("link", { name: en.Common.signIn })).toHaveAttribute("href", "/login");
+    expect(screen.queryByRole("button", { name: en.Common.signOut })).toBeNull();
+  });
+
+  it("offers the account links and sign out when logged in", async () => {
+    const events = userEvent.setup();
+    renderDrawer(user);
+
+    expect(screen.getByRole("link", { name: en.Header.importData })).toHaveAttribute("href", "/ingest");
+    expect(screen.getByRole("link", { name: en.Header.accountSettings })).toHaveAttribute("href", "/account/settings");
+    expect(screen.getByRole("link", { name: en.Common.dashboard })).toHaveAttribute("href", "/dashboard");
+    expect(screen.queryByRole("link", { name: en.Common.signIn })).toBeNull();
+
+    await events.click(screen.getByRole("button", { name: en.Common.signOut }));
+    expect(mocks.mutate).toHaveBeenCalledWith(undefined, { onSuccess: expect.any(Function) });
+  });
+
+  it("keeps the drawer open while signing out", async () => {
+    const events = userEvent.setup();
+    renderDrawer(user);
+
+    await events.click(screen.getByRole("button", { name: en.Common.signOut }));
+
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: en.Common.signOut })).toBeInTheDocument();
   });
 });

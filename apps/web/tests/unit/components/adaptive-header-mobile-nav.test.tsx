@@ -35,7 +35,7 @@ vi.mock("@/lib/hooks/use-auth-queries", () => ({
 vi.mock("@/lib/hooks/use-theme", () => ({ useMounted: () => false, useTheme: () => ({ resolvedTheme: "light" }) }));
 vi.mock("@/components/locale-switcher", () => ({ LocaleSwitcher: () => null }));
 vi.mock("@/app/_components/explore-header", () => ({ ExploreFullHeader: () => null }));
-vi.mock("@/app/_components/header-auth", () => ({ HeaderAuth: () => null }));
+vi.mock("@/app/_components/header-auth", () => ({ HeaderAuth: () => null, MobileHeaderAuth: () => null }));
 vi.mock("@/app/_components/theme-preset-picker", () => ({ ThemePresetPicker: () => null }));
 vi.mock("@/app/_components/theme-toggle", () => ({ ThemeToggle: () => null }));
 

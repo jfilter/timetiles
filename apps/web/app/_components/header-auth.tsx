@@ -1,8 +1,8 @@
 /**
  * Header authentication UI component.
  *
- * Shows sign in button when logged out, user dropdown menu when logged in.
- * User dropdown includes links to import data, admin dashboard, and sign out.
+ * Shows sign in button when logged out, user dropdown menu when logged in. The mobile
+ * navigation drawer renders the same account links and sign out as drawer entries.
  *
  * @module
  * @category Components
@@ -18,10 +18,12 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  MobileNavDrawerLink,
 } from "@timetiles/ui";
-import { Activity, LogOut, Package, Settings, Upload, User as UserIcon } from "lucide-react";
+import { Activity, LogOut, type LucideIcon, Package, Settings, Upload, User as UserIcon } from "lucide-react";
 import NextLink from "next/link";
 import { useLocale, useTranslations } from "next-intl";
+import type { ComponentProps } from "react";
 
 import { localizePath } from "@/i18n/localize-path";
 import { Link } from "@/i18n/navigation";
@@ -34,12 +36,46 @@ interface HeaderAuthProps {
   user: User | null;
 }
 
-export const HeaderAuth = ({ user }: Readonly<HeaderAuthProps>) => {
-  const queryClient = useQueryClient();
+interface AccountLink {
+  href: string;
+  label: string;
+  icon: LucideIcon;
+  /** Payload dashboard lives outside the [locale] tree; the i18n Link would prefix /de/dashboard and 404. */
+  outsideLocale?: boolean;
+}
+
+const useAccountLinks = (): AccountLink[] => {
   const { isDefaultSite } = useSite();
-  const locale = useLocale();
   const t = useTranslations("Common");
   const tHeader = useTranslations("Header");
+  return [
+    ...(isDefaultSite
+      ? [
+          { href: "/ingest", label: tHeader("importData"), icon: Upload },
+          { href: "/account/imports", label: tHeader("importActivity"), icon: Activity },
+          { href: "/account/data-packages", label: tHeader("dataPackages"), icon: Package },
+        ]
+      : []),
+    { href: "/account/settings", label: tHeader("accountSettings"), icon: UserIcon },
+    { href: "/dashboard", label: t("dashboard"), icon: Settings, outsideLocale: true },
+  ];
+};
+
+/** Forwards the props and ref Radix `asChild` slots pass down, so menu and drawer semantics reach the anchor. */
+const AccountLinkContent = ({ link, ...props }: { link: AccountLink } & Omit<ComponentProps<"a">, "href">) => {
+  const Icon = link.icon;
+  const LinkComponent = link.outsideLocale ? NextLink : Link;
+  return (
+    <LinkComponent href={link.href} {...props}>
+      <Icon className="mr-2 h-4 w-4" />
+      {link.label}
+    </LinkComponent>
+  );
+};
+
+const useHeaderLogout = () => {
+  const queryClient = useQueryClient();
+  const locale = useLocale();
   const logoutMutation = useLogoutMutation();
 
   const handleLogout = () => {
@@ -53,6 +89,23 @@ export const HeaderAuth = ({ user }: Readonly<HeaderAuthProps>) => {
       },
     });
   };
+
+  return { handleLogout, isPending: logoutMutation.isPending, isError: logoutMutation.isError };
+};
+
+const LogoutError = () => {
+  const tHeader = useTranslations("Header");
+  return (
+    <p role="alert" className="text-destructive text-sm">
+      {tHeader("logoutError")}
+    </p>
+  );
+};
+
+export const HeaderAuth = ({ user }: Readonly<HeaderAuthProps>) => {
+  const t = useTranslations("Common");
+  const accountLinks = useAccountLinks();
+  const logout = useHeaderLogout();
 
   // Not logged in - show sign in button
   if (!user) {
@@ -96,64 +149,66 @@ export const HeaderAuth = ({ user }: Readonly<HeaderAuthProps>) => {
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
 
-          {isDefaultSite && (
-            <>
-              <DropdownMenuItem asChild>
-                <Link href="/ingest" className="cursor-pointer">
-                  <Upload className="mr-2 h-4 w-4" />
-                  {tHeader("importData")}
-                </Link>
-              </DropdownMenuItem>
-
-              <DropdownMenuItem asChild>
-                <Link href="/account/imports" className="cursor-pointer">
-                  <Activity className="mr-2 h-4 w-4" />
-                  {tHeader("importActivity")}
-                </Link>
-              </DropdownMenuItem>
-
-              <DropdownMenuItem asChild>
-                <Link href="/account/data-packages" className="cursor-pointer">
-                  <Package className="mr-2 h-4 w-4" />
-                  {tHeader("dataPackages")}
-                </Link>
-              </DropdownMenuItem>
-            </>
-          )}
-
-          <DropdownMenuItem asChild>
-            <Link href="/account/settings" className="cursor-pointer">
-              <UserIcon className="mr-2 h-4 w-4" />
-              {tHeader("accountSettings")}
-            </Link>
-          </DropdownMenuItem>
-
-          <DropdownMenuItem asChild>
-            {/* Payload dashboard lives outside the [locale] tree — the i18n Link
-              would prefix /de/dashboard and 404. */}
-            <NextLink href="/dashboard" className="cursor-pointer">
-              <Settings className="mr-2 h-4 w-4" />
-              {t("dashboard")}
-            </NextLink>
-          </DropdownMenuItem>
+          {accountLinks.map((link) => (
+            <DropdownMenuItem key={link.href} asChild>
+              <AccountLinkContent link={link} className="cursor-pointer" />
+            </DropdownMenuItem>
+          ))}
 
           <DropdownMenuSeparator />
 
           <DropdownMenuItem
-            onClick={handleLogout}
-            disabled={logoutMutation.isPending}
+            onClick={logout.handleLogout}
+            disabled={logout.isPending}
             className="text-destructive focus:text-destructive cursor-pointer"
           >
             <LogOut className="mr-2 h-4 w-4" />
-            {logoutMutation.isPending ? t("signingOut") : t("signOut")}
+            {logout.isPending ? t("signingOut") : t("signOut")}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
-      {logoutMutation.isError && (
-        <p role="alert" className="text-destructive text-sm">
-          {tHeader("logoutError")}
-        </p>
-      )}
+      {logout.isError && <LogoutError />}
+    </>
+  );
+};
+
+/** Auth entries of the mobile navigation drawer: sign in, or the account links and sign out. */
+export const MobileHeaderAuth = ({ user, pathname }: Readonly<HeaderAuthProps & { pathname: string }>) => {
+  const t = useTranslations("Common");
+  const accountLinks = useAccountLinks();
+  const logout = useHeaderLogout();
+
+  if (!user) {
+    return (
+      <MobileNavDrawerLink active={pathname === "/login"} asChild>
+        <Link href="/login">{t("signIn")}</Link>
+      </MobileNavDrawerLink>
+    );
+  }
+
+  return (
+    <>
+      {accountLinks.map((link) => (
+        <MobileNavDrawerLink key={link.href} active={pathname === link.href} asChild>
+          <AccountLinkContent link={link} className="flex items-center" />
+        </MobileNavDrawerLink>
+      ))}
+      <MobileNavDrawerLink asChild>
+        <button
+          type="button"
+          onClick={(event) => {
+            // Keep the drawer open: closing it unmounts this observer and drops the mutation's onSuccess.
+            event.preventDefault();
+            logout.handleLogout();
+          }}
+          disabled={logout.isPending}
+          className="text-destructive flex w-full items-center text-left"
+        >
+          <LogOut className="mr-2 h-4 w-4" />
+          {logout.isPending ? t("signingOut") : t("signOut")}
+        </button>
+      </MobileNavDrawerLink>
+      {logout.isError && <LogoutError />}
     </>
   );
 };

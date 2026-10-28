@@ -24,7 +24,6 @@ import {
   MobileNavDrawerTrigger,
 } from "@timetiles/ui";
 import Image from "next/image";
-import NextLink from "next/link";
 import { useTranslations } from "next-intl";
 import React from "react";
 
@@ -36,7 +35,7 @@ import { useMounted, useTheme } from "@/lib/hooks/use-theme";
 import type { Catalog, Dataset, MainMenu, User } from "@/payload-types";
 
 import { ExploreFullHeader } from "./explore-header";
-import { HeaderAuth } from "./header-auth";
+import { HeaderAuth, MobileHeaderAuth } from "./header-auth";
 import { ThemePresetPicker } from "./theme-preset-picker";
 import { ThemeToggle } from "./theme-toggle";
 
@@ -154,16 +153,7 @@ export const AdaptiveHeader = ({
             {/* Divider */}
             <div className="border-primary/20 dark:border-primary/40 my-2 border-t" />
 
-            {/* Auth link for mobile */}
-            <MobileNavDrawerLink active={pathname === "/login"} asChild>
-              {/* Payload dashboard lives outside the [locale] tree — it must
-                  use a plain link, while /login stays locale-aware. */}
-              {resolvedUser ? (
-                <NextLink href="/dashboard">{t("dashboard")}</NextLink>
-              ) : (
-                <Link href="/login">{t("signIn")}</Link>
-              )}
-            </MobileNavDrawerLink>
+            <MobileHeaderAuth user={resolvedUser} pathname={pathname} />
 
             {/* Theme toggle in drawer */}
             <div className="flex items-center justify-between px-6 py-4">
