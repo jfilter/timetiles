@@ -115,10 +115,10 @@ test.describe("Import Wizard - Dataset Selection Step", () => {
     const catalogNameInput = page.locator("#new-catalog-name");
     await expect(catalogDropdown.or(catalogNameInput)).toBeVisible({ timeout: 10000 });
 
-    // Should show all 3 sheets
-    await expect(page.getByText("Tech Events")).toBeVisible();
-    await expect(page.getByText("Art Exhibitions")).toBeVisible();
-    await expect(page.getByText("Sports Events")).toBeVisible();
+    // Should show all 3 sheets. Exact: a dataset suggestion banner may quote a sheet name too.
+    for (const sheetName of ["Tech Events", "Art Exhibitions", "Sports Events"]) {
+      await expect(page.getByText(sheetName, { exact: true })).toBeVisible();
+    }
   });
 
   test("should show suggested banner (not auto-applied) when match score >= 60", async ({ page, request }) => {

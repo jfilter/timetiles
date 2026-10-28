@@ -109,17 +109,43 @@ test.describe("Explore Page - Basic Functionality", () => {
     expect(url.searchParams.has("datasets")).toBe(true);
   });
 
-  test("should operate the dataset filters with the keyboard", async ({ page }) => {
+  test("should operate the dataset filters with the keyboard", async ({ page, browserName }) => {
+    // The timeline re-renders once the map reports bounds, which would drop focus mid-walk.
+    // Leave the beforeEach page first so its in-flight request cannot satisfy the wait, and
+    // subscribe before navigating so a fast response is not missed.
+    await page.goto("about:blank");
+    const boundedTimeline = page.waitForResponse(
+      (response) => {
+        const url = new URL(response.url());
+        return url.pathname === "/api/v1/events/temporal" && url.searchParams.has("bounds");
+      },
+      { timeout: 60000 }
+    );
+    await explorePage.goto();
+    await boundedTimeline;
+    await explorePage.waitForTimelineReady();
     const datasetsTrigger = explorePage.dataSourcesSection;
     await expect(datasetsTrigger).toBeVisible();
 
-    // The filter panel is the last region in the DOM, so walking backwards from the end
-    // reaches it without crossing every event card. Stop on wrap (body or a revisited element).
-    await page.locator("body").focus();
+    // The filter panel is the last region in the DOM, so walking backwards from the last
+    // tabbable element reaches it without crossing every event card. Starting from <body>
+    // does not work everywhere: Firefox leaves the document on Shift+Tab from there.
+    // Stop on wrap (body or a revisited element).
+    await page.evaluate(() => {
+      const tabbables = document.querySelectorAll<HTMLElement>(
+        "a[href], button:not([disabled]), input:not([disabled]), select, textarea, [tabindex]:not([tabindex='-1'])"
+      );
+      [...tabbables]
+        .reverse()
+        .find((el) => el.offsetParent !== null)
+        ?.focus();
+    });
+    // macOS WebKit tabs to form fields only; Option+Tab is Safari's path to every element.
+    const backwardTab = browserName === "webkit" && process.platform === "darwin" ? "Alt+Shift+Tab" : "Shift+Tab";
     let reached = false;
     let wrapped = false;
     for (let presses = 0; presses < 200 && !reached && !wrapped; presses++) {
-      await page.keyboard.press("Shift+Tab");
+      await page.keyboard.press(backwardTab);
       reached = await datasetsTrigger.evaluate((el) => el === document.activeElement);
       wrapped = await page.evaluate(() => {
         const active = document.activeElement;

@@ -116,7 +116,11 @@ export default defineConfig({
           /* Test against mobile viewports. */
           {
             name: "Mobile Chrome",
-            use: { ...devices["Pixel 5"], storageState: "test-results/.auth/admin.json" },
+            use: {
+              ...devices["Pixel 5"],
+              storageState: "test-results/.auth/admin.json",
+              launchOptions: { args: chromiumArgs },
+            },
             dependencies: ["setup"],
           },
           {
