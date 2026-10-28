@@ -161,6 +161,18 @@ describe("extractEventFields", () => {
     const result = extractEventFields({}, null, 42);
     expect(result.title).toBe("Event 42");
   });
+
+  it("should not fall back to a description key when the mapping has no description role", () => {
+    const data = { description: "Shelling reported near the station", source: "telegram" };
+    const result = extractEventFields(data, { titlePath: "description", descriptionPath: null });
+    expect(result.title).toBe("Shelling reported near the station");
+    expect(result.description).toBeNull();
+  });
+
+  it("should not fall back to a description key when the mapped column is empty", () => {
+    const result = extractEventFields({ Notes: "", description: "unrelated" }, { descriptionPath: "Notes" });
+    expect(result.description).toBeNull();
+  });
 });
 
 describe("getDatasetInfo", () => {
@@ -368,16 +380,15 @@ describe("buildConsumedFieldSet", () => {
     expect(result.has("Ort")).toBe(true);
     expect(result.has("Breitengrad")).toBe(true);
     expect(result.has("Laengengrad")).toBe(true);
-    // Probe keys still present
+    // Title probe keys still present; a literal description column is not consumed once mappings decide
     expect(result.has("title")).toBe(true);
     expect(result.has("name")).toBe(true);
-    expect(result.has("description")).toBe(true);
+    expect(result.has("description")).toBe(false);
     expect(result.has("id")).toBe(true);
   });
 
   it("should skip null and empty mapping paths", () => {
     const result = buildConsumedFieldSet({ titlePath: "event_name", descriptionPath: null, timestampPath: "" });
-    expect(result.has("event_name")).toBe(true);
-    expect(result.size).toBe(5); // id, title, name, description, event_name
+    expect(result).toEqual(new Set(["id", "title", "name", "event_name"]));
   });
 });

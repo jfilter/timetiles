@@ -74,14 +74,16 @@ export const extractFieldFromData = (data: unknown, path: string | null | undefi
  * Includes:
  * - Dynamic mapping paths from the dataset interpretation plan roles (actual column
  *   names whose values were extracted into top-level Event fields during import)
- * - Literal keys probed by extractEventFields as fallbacks ("title", "name", "description")
+ * - Literal keys probed by extractEventFields as fallbacks ("title", "name", and "description"
+ *   when there are no field mappings)
  * - "id" (structural, not user data)
  */
 export const buildConsumedFieldSet = (
   fieldMappings?: FieldMappingOverrides | null,
   idStrategy?: { externalIdPath?: string | null } | null
 ): Set<string> => {
-  const keys = new Set<string>(["id", "title", "name", "description"]);
+  const keys = new Set<string>(["id", "title", "name"]);
+  if (!fieldMappings) keys.add("description");
   if (fieldMappings) {
     for (const path of Object.values(fieldMappings)) {
       if (typeof path === "string" && path) {
@@ -100,7 +102,8 @@ export const buildConsumedFieldSet = (
  *
  * Single source of truth for field extraction — used by both the v1 API
  * (transformEvent) and client-side components (event detail modal, events list).
- * Tries the mapped field path first, then common fallback names.
+ * Title tries the mapped path, then common fallback names; description falls back to a
+ * literal `description` key only for datasets without field mappings.
  */
 export const extractEventFields = (
   eventData: unknown,
@@ -113,8 +116,10 @@ export const extractEventFields = (
     extractFieldFromData(eventData, "name") ??
     (eventId != null ? `Event ${eventId}` : "Untitled Event");
 
-  const description =
-    extractFieldFromData(eventData, fieldMappings?.descriptionPath) ?? extractFieldFromData(eventData, "description");
+  // A plan's description role is authoritative, so a null role means "no description".
+  const description = fieldMappings
+    ? extractFieldFromData(eventData, fieldMappings.descriptionPath)
+    : extractFieldFromData(eventData, "description");
 
   // Avoid showing the same text as both title and description
   return { title, description: description === title ? null : description };
