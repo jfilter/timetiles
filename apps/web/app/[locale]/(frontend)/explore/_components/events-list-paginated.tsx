@@ -106,23 +106,30 @@ export const EventsListPaginated = ({
     );
   }
 
+  // Header - explains what's being shown, also when nothing matches
+  const description = (
+    <p aria-live="polite" className="text-muted-foreground text-sm">
+      {buildEventsDescription(total, globalTotalData?.total, filterLabels, bounds != null, (k, v) =>
+        (t as TranslateFn)(k, v)
+      )}
+    </p>
+  );
+
   // Empty state
   if (events.length === 0) {
     return (
-      <div className="flex h-64 items-center justify-center">
-        <div className="text-muted-foreground">{tCommon("noEventsFound")}</div>
+      <div className="space-y-4">
+        {description}
+        <div className="flex h-64 items-center justify-center">
+          <div className="text-muted-foreground">{tCommon("noEventsFound")}</div>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="space-y-4">
-      {/* Header - explains what's being shown */}
-      <p aria-live="polite" className="text-muted-foreground text-sm">
-        {buildEventsDescription(total, globalTotalData?.total, filterLabels, bounds != null, (k, v) =>
-          (t as TranslateFn)(k, v)
-        )}
-      </p>
+      {description}
 
       {/* Events list - reuses existing component */}
       <EventsList
