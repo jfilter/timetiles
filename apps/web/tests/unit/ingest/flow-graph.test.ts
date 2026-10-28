@@ -19,7 +19,7 @@ import { serializeFlow } from "@/app/[locale]/(frontend)/ingest/flow-editor/_com
 import { createEmptyFieldMapping } from "@/lib/ingest/field-mapping-utils";
 import type { TargetFieldNodeData } from "@/lib/ingest/types/flow-mapping";
 import type { IngestTransform } from "@/lib/ingest/types/transforms";
-import type { FieldMapping, SheetInfo } from "@/lib/ingest/types/wizard";
+import type { FieldMapping, FieldMappingSuggestion, SheetInfo } from "@/lib/ingest/types/wizard";
 
 const sheet: SheetInfo = {
   index: 0,
@@ -40,6 +40,14 @@ const rename = (overrides: Partial<Extract<IngestTransform, { type: "rename" }>>
   to: "start",
   ...overrides,
 });
+
+const suggestion = (path: string | null, confidence: number): FieldMappingSuggestion => ({
+  path,
+  confidence,
+  confidenceLevel: path ? "high" : "none",
+});
+
+const connect = (source: string, target: string) => ({ source, target, sourceHandle: null, targetHandle: null });
 
 const targetData = (nodes: FlowNode[], fieldKey: string) =>
   nodes.find((n) => n.id === `target-${fieldKey}`)?.data as TargetFieldNodeData;
@@ -85,6 +93,44 @@ describe("flow graph round trip", () => {
   });
 });
 
+describe("buildInitialGraph without wizard state", () => {
+  it("connects confident suggestions only", () => {
+    const suggested: SheetInfo = {
+      ...sheet,
+      suggestedMappings: {
+        language: { code: "eng", name: "English", confidence: 0.9, isReliable: true },
+        mappings: {
+          titlePath: suggestion("name", 0.9),
+          descriptionPath: suggestion(null, 0),
+          locationNamePath: suggestion("city", 0.4),
+          timestampPath: suggestion("when", 0.8),
+          endTimestampPath: suggestion(null, 0),
+          latitudePath: suggestion(null, 0),
+          longitudePath: suggestion(null, 0),
+          locationPath: suggestion(null, 0),
+        },
+      },
+    };
+
+    const graph = buildInitialGraph(suggested, 0, undefined, [rename()]);
+
+    expect(graph.edges.map((e) => [e.source, e.target, e.data?.confidence])).toEqual([
+      ["source-0-name", "target-titleField", 0.9],
+      ["source-0-when", "target-dateField", 0.8],
+    ]);
+    expect(graph.nodes.some((n) => n.type === "transform")).toBe(false);
+    expect(targetData(graph.nodes, "dateField")).toMatchObject({ isConnected: true, connectedColumn: "when" });
+    expect(targetData(graph.nodes, "locationNameField")).toMatchObject({ isConnected: false });
+  });
+
+  it("leaves every node unconnected without suggestions", () => {
+    const graph = buildInitialGraph(sheet, 0, undefined, []);
+
+    expect(graph.edges).toEqual([]);
+    expect(graph.nodes.every((n) => !(n.data as { isConnected?: boolean }).isConnected)).toBe(true);
+  });
+});
+
 describe("connectionNodeUpdate", () => {
   const { nodes } = buildInitialGraph(sheet, 0, mapping({}), []);
 
@@ -105,9 +151,55 @@ describe("connectionNodeUpdate", () => {
     expect(targetData(updated, "titleField")).toMatchObject({ isConnected: true, connectedColumn: "name" });
     expect(updated.find((n) => n.id === "source-0-name")?.data).toMatchObject({ isConnected: true });
   });
+
+  it("rejects a connection to a node that does not exist", () => {
+    expect(connectionNodeUpdate(nodes, [], connect("source-0-name", "target-missing"))).toBeNull();
+  });
+
+  it("marks only the source of a source→transform connection", () => {
+    const graph = buildInitialGraph(sheet, 0, mapping({}), [rename({ from: "" })]);
+
+    const updated = graph.nodes.map(
+      connectionNodeUpdate(graph.nodes, graph.edges, connect("source-0-city", "transform-t1"))!
+    );
+
+    expect(updated.find((n) => n.id === "source-0-city")?.data).toMatchObject({ isConnected: true });
+    expect(updated.find((n) => n.id === "transform-t1")).toBe(graph.nodes.find((n) => n.id === "transform-t1"));
+  });
+
+  it("gives a transform→target connection the transform's upstream column", () => {
+    const graph = buildInitialGraph(sheet, 0, mapping({}), [rename()]);
+
+    const updated = graph.nodes.map(
+      connectionNodeUpdate(graph.nodes, graph.edges, connect("transform-t1", "target-dateField"))!
+    );
+
+    expect(targetData(updated, "dateField")).toMatchObject({ isConnected: true, connectedColumn: "when" });
+  });
+
+  it("leaves the column empty for a transform without an upstream source", () => {
+    const graph = buildInitialGraph(sheet, 0, mapping({}), [rename({ from: "" })]);
+
+    const updated = graph.nodes.map(
+      connectionNodeUpdate(graph.nodes, graph.edges, connect("transform-t1", "target-dateField"))!
+    );
+
+    expect(targetData(updated, "dateField")).toMatchObject({ isConnected: true, connectedColumn: null });
+  });
 });
 
 describe("edgeDeletionNodeUpdate", () => {
+  it("keeps a source connected while another of its edges remains", () => {
+    const graph = buildInitialGraph(sheet, 0, mapping({ titleField: "name", idField: "name" }), []);
+    const titleEdge = graph.edges.find((e) => e.target === "target-titleField")!;
+
+    const updated = graph.nodes.map(edgeDeletionNodeUpdate(graph.edges, [titleEdge]));
+
+    expect(updated.find((n) => n.id === "source-0-name")?.data).toMatchObject({ isConnected: true });
+    expect(targetData(updated, "titleField")).toMatchObject({ isConnected: false, connectedColumn: null });
+    expect(targetData(updated, "idField")).toMatchObject({ isConnected: true, connectedColumn: "name" });
+  });
+
   it("clears the target's column once its only edge is deleted", () => {
     const graph = buildInitialGraph(sheet, 0, mapping({ titleField: "name" }), []);
 
