@@ -21,6 +21,7 @@ describe("/api/v1/events - field filter logic", () => {
   let payload: Payload;
   let testDatasetId: number;
   let tagDatasetId: number;
+  let nestedTagDatasetId: number;
   let testEnv: TestEnvironment;
 
   beforeAll(async () => {
@@ -115,6 +116,45 @@ describe("/api/v1/events - field filter logic", () => {
           sourceData: { tags: tagEvents[i] },
           transformedData: { tags: tagEvents[i] },
           location: { latitude: 41.7128 + i * 0.01, longitude: -73.006 + i * 0.01 },
+          eventTimestamp: new Date(2024, 0, 15 + i).toISOString(),
+        },
+      });
+    }
+    // Tag fields at a dot path: a literal top-level key named like the path wins over
+    // traversal, and a numeric segment indexes into an array.
+    const { dataset: nestedTagDataset } = await withDataset(testEnv, catalog.id, {
+      name: "Nested Tag Filter Test Dataset",
+      isPublic: true,
+    });
+    nestedTagDatasetId = nestedTagDataset.id;
+    await payload.update({
+      collection: "datasets",
+      id: nestedTagDatasetId,
+      data: {
+        fieldMetadata: {
+          "meta.labels": { path: "meta.labels", isTagField: true, isEnumCandidate: true },
+          "rows.0": { path: "rows.0", isTagField: true, isEnumCandidate: true },
+        },
+      },
+    });
+
+    const nestedTagEvents: Array<Record<string, unknown>> = [
+      { meta: { labels: ["a", "b"] } },
+      { meta: { labels: ["b"] } },
+      { "meta.labels": ["a"], meta: { labels: ["b"] } },
+      { "meta.labels": ["c"] },
+      { rows: [["x"], ["y"]] },
+    ];
+    for (const [i, data] of nestedTagEvents.entries()) {
+      await payload.create({
+        collection: "events",
+        data: {
+          _status: "published",
+          uniqueId: `nested-tag-filter-${i + 1}`,
+          dataset: nestedTagDatasetId,
+          sourceData: data,
+          transformedData: data,
+          location: { latitude: 42.7128 + i * 0.01, longitude: -72.006 + i * 0.01 },
           eventTimestamp: new Date(2024, 0, 15 + i).toISOString(),
         },
       });
@@ -404,5 +444,40 @@ describe("/api/v1/events - field filter logic", () => {
     const data = await response.json();
     expect(data.metadata.mode).toBe("individual");
     expect(data.metadata.total).toBe(2);
+  });
+
+  describe("tag fields at a dot path", () => {
+    const countEvents = async (filters: Record<string, string[]>) => {
+      const ff = encodeURIComponent(JSON.stringify(filters));
+      const listResponse = await GET(
+        new NextRequest(`http://localhost:3000/api/v1/events?datasets=${nestedTagDatasetId}&ff=${ff}`),
+        { params: Promise.resolve({}) }
+      );
+      const temporalResponse = await temporalClustersGET(
+        new NextRequest(
+          `http://localhost:3000/api/v1/events/temporal-clusters?datasets=${nestedTagDatasetId}&ff=${ff}&individualThreshold=2000`
+        ),
+        { params: Promise.resolve({}) }
+      );
+      const list = await listResponse.json();
+      const temporal = await temporalResponse.json();
+      // The list (TypeScript SQL) and the timeline (PL/pgSQL) must agree.
+      expect(temporal.metadata.total).toBe(list.events.length);
+      return list.events.length;
+    };
+
+    it("traverses the path when no literal key exists", async () => {
+      expect(await countEvents({ "meta.labels": ["b"] })).toBe(2);
+    });
+
+    it("prefers a literal top-level key over the nested path", async () => {
+      expect(await countEvents({ "meta.labels": ["a"] })).toBe(2);
+      expect(await countEvents({ "meta.labels": ["c"] })).toBe(1);
+    });
+
+    it("indexes into an array on a numeric segment", async () => {
+      expect(await countEvents({ "rows.0": ["x"] })).toBe(1);
+      expect(await countEvents({ "rows.0": ["y"] })).toBe(0);
+    });
   });
 });

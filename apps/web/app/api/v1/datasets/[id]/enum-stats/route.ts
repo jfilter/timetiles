@@ -1,8 +1,8 @@
 /**
  * Live enum value counts for categorical filters.
  *
- * Computes counts via SQL GROUP BY on events.transformed_data JSONB,
- * using the existing GIN index for performance. Accepts the standard
+ * Computes counts via SQL GROUP BY on events.transformed_data JSONB.
+ * The path expressions cannot use the GIN index. Accepts the standard
  * event filter parameters (time range, bounds, field filters) so
  * dropdown values reflect the currently visible subset of data.
  *

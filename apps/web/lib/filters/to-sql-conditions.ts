@@ -157,6 +157,28 @@ const buildBoundsConditions = (bounds: CanonicalBounds): SqlFragment[] => {
   return conditions;
 };
 
+/** `a.b` + leaf → `{"a":{"b":leaf}}`. */
+const nestUnderPath = (fieldKey: string, leaf: unknown): unknown =>
+  fieldKey.split(".").reduceRight<unknown>((inner, segment) => ({ [segment]: inner }), leaf);
+
+/** `#>` indexes into arrays on a numeric segment, which containment cannot express. */
+const hasArrayIndexSegment = (fieldKey: string): boolean => fieldKey.split(".").some((s) => /^-?\d+$/.test(s));
+
+/**
+ * "The array at `fieldKey` contains `value`", literal key first, written as whole-document
+ * containment so the GIN index on `transformed_data` can serve it.
+ */
+const buildTagContainment = (fieldKey: string, value: string): SqlFragment => {
+  if (hasArrayIndexSegment(fieldKey)) {
+    const arrayValue = jsonValueAtPathOrKey(EVENT_TRANSFORMED_DATA, sql`${fieldKey}`);
+    return sql`${arrayValue} @> ${JSON.stringify([value])}::jsonb`;
+  }
+  const literal = sql`${EVENT_TRANSFORMED_DATA} @> ${JSON.stringify({ [fieldKey]: [value] })}::jsonb`;
+  if (!fieldKey.includes(".")) return literal;
+  const nested = JSON.stringify(nestUnderPath(fieldKey, [value]));
+  return sql`(${literal} OR (${EVENT_TRANSFORMED_DATA} @> ${nested}::jsonb AND NOT jsonb_exists(${EVENT_TRANSFORMED_DATA}, ${fieldKey})))`;
+};
+
 export const buildFieldFilterConditions = (
   fieldFilters?: Record<string, string[]>,
   tagFields?: Set<string>
@@ -171,13 +193,10 @@ export const buildFieldFilterConditions = (
 
     if (tagFields?.has(fieldKey)) {
       // Tag/array fields: match events whose array contains ANY of the selected values.
-      // Uses @> (contains) with OR for each value: (arr @> '["v1"]' OR arr @> '["v2"]').
-      const arrayValue = jsonValueAtPathOrKey(EVENT_TRANSFORMED_DATA, sql`${fieldKey}`);
-      const containsClauses = values.map((value) => {
-        const jsonbLiteral = JSON.stringify([value]);
-        return sql`${arrayValue} @> ${jsonbLiteral}::jsonb`;
-      });
-      const combined = sql.join(containsClauses, sql` OR `);
+      const combined = sql.join(
+        values.map((value) => buildTagContainment(fieldKey, value)),
+        sql` OR `
+      );
       conditions.push(sql`(${combined})`);
     } else {
       // Scalar fields: exact text match via IN
