@@ -837,6 +837,53 @@ describe("DatasetDetectionJob Handler", () => {
       });
     });
 
+    it("should keep the per-sheet mapping when the other sheet only has a header", async () => {
+      const XLSX = await import("xlsx");
+      const workbook = XLSX.utils.book_new();
+      const events = XLSX.utils.aoa_to_sheet([
+        ["id", "title", "date"],
+        ["1", "Event 1", "2024-01-01"],
+      ]);
+      XLSX.utils.book_append_sheet(workbook, events, "Events");
+      XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([["venue", "city"]]), "Venues");
+      const buffer = XLSX.write(workbook, { type: "buffer", bookType: "xlsx" }) as Buffer;
+      mocks.fs.readFileSync.mockReturnValue(buffer);
+      mocks.fs.readSync.mockImplementationOnce((_fd: number, target: Buffer) =>
+        buffer.copy(target, 0, 0, target.length)
+      );
+
+      const mockIngestFile = {
+        id: 123,
+        filename: "scheduled.xlsx",
+        filePath: "/tmp/scheduled.xlsx",
+        catalog: 456,
+        originalName: "scheduled.xlsx",
+        metadata: {
+          datasetMapping: {
+            mappingType: "multiple",
+            sheetMappings: [
+              { sheetIdentifier: "0", dataset: "ds-events", skipIfMissing: false },
+              { sheetIdentifier: "1", dataset: "ds-venues", skipIfMissing: false },
+            ],
+          },
+        },
+      };
+
+      mockPayload.findByID
+        .mockResolvedValueOnce(mockIngestFile)
+        .mockResolvedValueOnce({ id: "ds-events", name: "Events", catalog: 456 });
+      mockPayload.find.mockResolvedValue({ docs: [] });
+      mockPayload.create.mockResolvedValue({ id: "job-1" });
+
+      await datasetDetectionJob.handler(mockContext);
+
+      expect(mockPayload.create).toHaveBeenCalledTimes(1);
+      expect(mockPayload.create).toHaveBeenCalledWith({
+        collection: "ingest-jobs",
+        data: expect.objectContaining({ dataset: "ds-events", sheetIndex: 0 }),
+      });
+    });
+
     it("should mark the import file failed when no sheet matches a mapping", async () => {
       const mockIngestFile = {
         id: 123,

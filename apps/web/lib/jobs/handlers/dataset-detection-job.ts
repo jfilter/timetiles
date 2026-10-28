@@ -202,7 +202,7 @@ const handleMultipleSheets = async (
   return createdJobs;
 };
 
-/** Dispatch job creation: one job per detected sheet (single or multi). */
+/** Dispatch job creation: one job per detected sheet, routed by the sheet count of the source. */
 const createJobsForSheets = async (
   payload: Payload,
   ingestFile: { id: string | number; originalName?: string | null; metadata?: unknown },
@@ -211,9 +211,10 @@ const createJobsForSheets = async (
   options: {
     datasetMapping?: { mappingType: string; singleDataset?: unknown; sheetMappings?: unknown[] };
     userId?: number;
+    multiSheet: boolean;
   }
 ) =>
-  sheets.length === 1
+  !options.multiSheet
     ? [
         await handleSingleSheet(
           payload,
@@ -316,17 +317,17 @@ const buildSheetOutputs = (sheets: SheetInfo[], createdJobs: Array<{ id: string 
     };
   });
 
-/** Terminal failure for an ingest file: the only status the cleanup job can reclaim besides "completed". */
 /**
  * Convert the uploaded file if needed and read its sheets. Sheets with a header but no rows are
  * dropped; `headerOnly` reports a file where that left nothing. A file xlsx only read as text is
- * kept as is, since its lone header row cannot tell "empty" from "unreadable".
+ * kept as is, since its lone header row cannot tell "empty" from "unreadable". `multiSheet` counts
+ * the dropped sheets too, so a workbook keeps its per-sheet dataset mapping.
  */
 const parseUploadedFile = async (
   payload: Payload,
   ingestFileId: string | number,
   uploadedPath: string
-): Promise<{ sheets: SheetInfo[]; headerOnly: boolean }> => {
+): Promise<{ sheets: SheetInfo[]; headerOnly: boolean; multiSheet: boolean }> => {
   let filePath = uploadedPath;
 
   // GeoJSON/JSON files need conversion to CSV before processing.
@@ -353,11 +354,12 @@ const parseUploadedFile = async (
   // xlsx library handles .xls, .xlsx, and .ods files
   const isDelimited = isDelimitedTextFile(filePath);
   const sheets = isDelimited ? await processCSVFile(filePath) : await processExcelFile(filePath);
-  if (!isDelimited && !hasWorkbookSignature(filePath)) return { sheets, headerOnly: false };
+  const multiSheet = sheets.length > 1;
+  if (!isDelimited && !hasWorkbookSignature(filePath)) return { sheets, headerOnly: false, multiSheet };
 
   const sheetsWithRows = sheets.filter((s) => s.rowCount > 0);
-  if (sheets.length > 0 && sheetsWithRows.length === 0) return { sheets, headerOnly: true };
-  return { sheets: sheetsWithRows, headerOnly: false };
+  if (sheets.length > 0 && sheetsWithRows.length === 0) return { sheets, headerOnly: true, multiSheet };
+  return { sheets: sheetsWithRows, headerOnly: false, multiSheet };
 };
 
 /** A parsed source whose sheets all have a header but no data rows: a run with nothing to import. */
@@ -369,6 +371,7 @@ const completeEmptyIngestFile = async (payload: Payload, ingestFileId: string | 
   });
 };
 
+/** Terminal failure for an ingest file: the only status the cleanup job can reclaim besides "completed". */
 const markIngestFileFailed = async (payload: Payload, ingestFileId: string | number, errorLog: string) => {
   await payload.update({
     collection: COLLECTION_NAMES.INGEST_FILES,
@@ -437,9 +440,11 @@ export const datasetDetectionJob = {
       const wizardSheets = buildSheetsFromWizardMetadata((ingestFile.metadata as Record<string, unknown>) ?? {});
 
       let sheets: SheetInfo[];
+      let multiSheet: boolean;
 
       if (wizardSheets) {
         sheets = wizardSheets;
+        multiSheet = sheets.length > 1;
         logger.info("Using wizard metadata fast-path", { ingestFileId, sheetCount: sheets.length });
       } else {
         const parsed = await parseUploadedFile(payload, ingestFileId, filePath);
@@ -451,6 +456,7 @@ export const datasetDetectionJob = {
           };
         }
         sheets = parsed.sheets;
+        multiSheet = parsed.multiSheet;
       }
 
       if (sheets.length === 0) {
@@ -478,6 +484,7 @@ export const datasetDetectionJob = {
       const createdJobs = await createJobsForSheets(payload, ingestFile, sheets, resolvedCatalogId, {
         datasetMapping,
         userId,
+        multiSheet,
       });
 
       // No job means no downstream stage ever runs, and the status deriver
