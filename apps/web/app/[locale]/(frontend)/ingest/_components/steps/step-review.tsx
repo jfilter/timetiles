@@ -11,31 +11,17 @@
 
 "use client";
 
-import { Button, Card, CardContent, CardHeader, CardTitle } from "@timetiles/ui";
+import { Button } from "@timetiles/ui";
 import { cn } from "@timetiles/ui/lib/utils";
-import {
-  ArrowDownIcon,
-  ArrowLeft,
-  CalendarIcon,
-  DatabaseIcon,
-  FingerprintIcon,
-  FolderIcon,
-  Loader2,
-  MapPinIcon,
-  Rocket,
-  SparklesIcon,
-  TextIcon,
-} from "lucide-react";
+import { ArrowLeft, CalendarIcon, Loader2, Rocket } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useCallback } from "react";
 
 import { useIngestConfigureMutation } from "@/lib/hooks/use-ingest-wizard-mutations";
-import { useTransformTypeLabels } from "@/lib/hooks/use-transform-type-labels";
-import { formatFileSize } from "@/lib/utils/format";
 
 import { useUpdateSchedule } from "../use-update-schedule";
 import { useWizardReviewStepState } from "../wizard-store";
-import { DEDUP_STRATEGY_CONFIG, ID_STRATEGY_CONFIG } from "./id-strategy-card";
+import { ReviewDataFlowCard, ReviewMappingsCard, ReviewScheduleCard, ReviewTransformsCard } from "./review-sections";
 
 export interface StepReviewProps {
   className?: string;
@@ -43,7 +29,6 @@ export interface StepReviewProps {
 
 export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
   const t = useTranslations("Ingest");
-  const typeLabels = useTransformTypeLabels();
   const {
     file,
     sheets,
@@ -69,12 +54,6 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
   } = useWizardReviewStepState();
 
   const { updateSchedule, isUpdating } = useUpdateSchedule();
-  const idStrategyLabels = Object.fromEntries(
-    ID_STRATEGY_CONFIG.map((strategy) => [strategy.value, t(strategy.summaryLabelKey)])
-  );
-  const duplicateLabels = Object.fromEntries(
-    DEDUP_STRATEGY_CONFIG.map((strategy) => [strategy.value, t(strategy.summaryLabelKey)])
-  );
 
   const configureMutation = useIngestConfigureMutation();
 
@@ -180,14 +159,6 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
   const datasetNames = sheetMappings.map((m) =>
     m.datasetId === "new" ? m.newDatasetName : t("datasetNumber", { id: m.datasetId })
   );
-  const isMultiDataset = sheetMappings.length > 1;
-
-  const getLocationDisplay = (mapping: (typeof fieldMappings)[0] | undefined) => {
-    if (mapping?.locationField) return mapping.locationField;
-    if (mapping?.latitudeField && mapping?.longitudeField) return `${mapping.latitudeField}, ${mapping.longitudeField}`;
-    return null;
-  };
-
   const mappingsWithDataset = fieldMappings.map((mapping) => {
     const sm = sheetMappings.find((s) => s.sheetIndex === mapping.sheetIndex);
     const sheet = sheets.find((s) => s.index === mapping.sheetIndex);
@@ -203,227 +174,14 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
         <p className="text-muted-foreground mt-2">{t("reviewDescription")}</p>
       </div>
 
-      {/* Data Flow: Source → Destination */}
-      <Card className="overflow-hidden">
-        <CardContent className="p-0">
-          {/* Source file */}
-          <div className="border-primary/10 border-b p-6">
-            <div className="flex items-start gap-4">
-              <div className="bg-primary/5 flex h-12 w-12 shrink-0 items-center justify-center rounded-sm">
-                <DatabaseIcon className="text-primary h-6 w-6" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-foreground truncate font-serif text-lg font-semibold">{file?.name}</p>
-                <p className="text-muted-foreground mt-1 font-mono text-sm">
-                  {file ? formatFileSize(file.size) : "-"}
-                  <span className="text-primary/30 mx-2">•</span>
-                  {t("rowCount", { count: totalRows })}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Arrow connector */}
-          <div className="bg-card/20 flex justify-center py-3">
-            <ArrowDownIcon className="text-primary/30 h-5 w-5" />
-          </div>
-
-          {/* Destination */}
-          <div className="divide-primary/10 grid grid-cols-2 divide-x">
-            <div className="p-6">
-              <div className="flex items-center gap-3">
-                <div className="bg-secondary/10 flex h-10 w-10 shrink-0 items-center justify-center rounded-sm">
-                  <FolderIcon className="text-secondary h-5 w-5" />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-muted-foreground text-xs">{t("catalog")}</p>
-                  <p className="text-foreground truncate font-serif font-semibold">{catalogName}</p>
-                </div>
-              </div>
-            </div>
-            <div className="p-6">
-              <div className="flex items-center gap-3">
-                <div className="bg-ring/10 flex h-10 w-10 shrink-0 items-center justify-center rounded-sm">
-                  <DatabaseIcon className="text-ring h-5 w-5" />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-muted-foreground text-xs">
-                    {isMultiDataset ? t("datasetsCount", { count: sheetMappings.length }) : t("dataset")}
-                  </p>
-                  {isMultiDataset ? (
-                    <div className="space-y-1">
-                      {datasetNames.map((name) => (
-                        <p key={name} className="text-foreground truncate font-serif text-sm font-medium">
-                          {name}
-                        </p>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-foreground truncate font-serif font-semibold">{datasetNames[0]}</p>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Field Mappings + Record Handling */}
-      <Card className="overflow-hidden">
-        <div className="border-primary/10 bg-card/30 border-b px-6 py-4">
-          <h3 className="text-foreground font-serif text-lg font-semibold">{t("fieldMappings")}</h3>
-        </div>
-        <CardContent className="p-6">
-          <div className="space-y-6">
-            {mappingsWithDataset.map(({ mapping, datasetName }, idx) => {
-              const locationDisplay = getLocationDisplay(mapping);
-              return (
-                <div key={mapping.sheetIndex} data-testid={`field-mapping-${mapping.sheetIndex}`}>
-                  {isMultiDataset && (
-                    <p className="text-foreground mb-3 font-serif text-sm font-semibold">{datasetName}</p>
-                  )}
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <TextIcon className="text-primary/40 h-4 w-4" />
-                        <span className="text-muted-foreground text-sm">{t("fieldTitle")}</span>
-                      </div>
-                      <span className="text-foreground font-mono text-sm" data-testid="title-field">
-                        {mapping?.titleField ?? "\u2014"}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <CalendarIcon className="text-primary/40 h-4 w-4" />
-                        <span className="text-muted-foreground text-sm">{t("fieldDate")}</span>
-                      </div>
-                      <span className="text-foreground font-mono text-sm" data-testid="date-field">
-                        {mapping?.dateField ?? "\u2014"}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <MapPinIcon className="text-primary/40 h-4 w-4" />
-                        <span className="text-muted-foreground text-sm">{t("location")}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-foreground font-mono text-sm" data-testid="location-field">
-                          {locationDisplay ?? "\u2014"}
-                        </span>
-                        {geocodingEnabled && locationDisplay && (
-                          <span className="bg-accent/10 text-accent inline-flex items-center gap-1 rounded-sm px-2 py-0.5 text-xs">
-                            <SparklesIcon className="h-3 w-3" />
-                            {t("geocode")}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  {isMultiDataset && idx < mappingsWithDataset.length - 1 && (
-                    <div className="border-primary/10 mt-4 border-t" />
-                  )}
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Record Handling */}
-          <div className="border-primary/10 mt-6 border-t pt-6">
-            <h4 className="text-foreground mb-4 font-serif text-base font-semibold">{t("recordHandling")}</h4>
-            <div className="space-y-6">
-              {mappingsWithDataset.map(({ mapping, datasetName }, idx) => (
-                <div key={mapping.sheetIndex} data-testid={`record-handling-${mapping.sheetIndex}`}>
-                  {isMultiDataset && (
-                    <p className="text-foreground mb-3 font-serif text-sm font-semibold">{datasetName}</p>
-                  )}
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <FingerprintIcon className="text-primary/40 h-4 w-4" />
-                      <span className="text-muted-foreground text-sm">{t("identifyBy")}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-foreground font-mono text-sm">
-                        {idStrategyLabels[mapping?.idStrategy ?? "content-hash"]}
-                      </span>
-                      {mapping?.idStrategy === "external" && mapping?.idField && (
-                        <span className="text-muted-foreground font-mono text-xs">({mapping.idField})</span>
-                      )}
-                    </div>
-                  </div>
-                  {isMultiDataset && idx < mappingsWithDataset.length - 1 && (
-                    <div className="border-primary/10 mt-4 border-t" />
-                  )}
-                </div>
-              ))}
-              <div className="border-primary/10 border-t pt-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <DatabaseIcon className="text-primary/40 h-4 w-4" />
-                    <span className="text-muted-foreground text-sm">{t("onDuplicate")}</span>
-                  </div>
-                  <span className="text-foreground font-mono text-sm">{duplicateLabels[deduplicationStrategy]}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Transforms summary */}
-      {Object.values(wizardTransforms).some((transforms) => transforms.length > 0) && (
-        <Card className="overflow-hidden">
-          <div className="border-primary/10 bg-card/30 border-b px-6 py-4">
-            <h3 className="text-foreground font-serif text-lg font-semibold">{t("configuredTransforms")}</h3>
-          </div>
-          <CardContent className="p-6">
-            <div className="space-y-2">
-              {Object.entries(wizardTransforms)
-                .filter(([, transforms]) => transforms.length > 0)
-                .flatMap(([, transforms]) => transforms)
-                .map((transform) => (
-                  <div key={transform.id} className="flex items-center gap-3">
-                    <span
-                      className={cn(
-                        "inline-flex items-center gap-1.5 rounded-sm px-2.5 py-1 text-xs font-medium",
-                        transform.active ? "bg-ring/10 text-ring" : "bg-muted text-muted-foreground"
-                      )}
-                    >
-                      {typeLabels[transform.type]}
-                    </span>
-                    <span className="text-muted-foreground font-mono text-sm">
-                      {"from" in transform ? transform.from : ""}
-                    </span>
-                  </div>
-                ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Schedule summary (configured in Step 5) */}
-      {sourceUrl && scheduleConfig?.enabled && (
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">{t("scheduled")}</CardTitle>
-          </CardHeader>
-          <CardContent className="text-muted-foreground space-y-1 text-sm">
-            <p>
-              {scheduleConfig.scheduleType === "frequency"
-                ? `${t("frequency")}: ${t(scheduleConfig.frequency)}`
-                : `${t("cronExpression")}: ${scheduleConfig.cronExpression}`}
-            </p>
-            <p>
-              {t("schemaChangeHandling")}:{" "}
-              {t(
-                `schema${scheduleConfig.schemaMode.charAt(0).toUpperCase()}${scheduleConfig.schemaMode.slice(1)}` as
-                  | "schemaStrict"
-                  | "schemaAdditive"
-                  | "schemaFlexible"
-              )}
-            </p>
-          </CardContent>
-        </Card>
-      )}
+      <ReviewDataFlowCard file={file} totalRows={totalRows} catalogName={catalogName} datasetNames={datasetNames} />
+      <ReviewMappingsCard
+        mappingsWithDataset={mappingsWithDataset}
+        geocodingEnabled={geocodingEnabled}
+        deduplicationStrategy={deduplicationStrategy}
+      />
+      <ReviewTransformsCard transforms={wizardTransforms} />
+      {sourceUrl && scheduleConfig?.enabled && <ReviewScheduleCard scheduleConfig={scheduleConfig} />}
 
       {wizardError && (
         <div role="alert" className="bg-destructive/10 text-destructive rounded-lg p-4 text-sm">

@@ -9,10 +9,9 @@
  */
 "use client";
 
-import { Button, Card, CardContent, Input, Label } from "@timetiles/ui";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@timetiles/ui/components/select";
+import { Button, Card, CardContent } from "@timetiles/ui";
 import { cn } from "@timetiles/ui/lib/utils";
-import { ArrowRight, FileSpreadsheetIcon, Loader2Icon } from "lucide-react";
+import { ArrowRight, Loader2Icon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
 
@@ -21,6 +20,12 @@ import { humanizeFileName } from "@/lib/ingest/humanize-file-name";
 
 import { useWizardCanProceed } from "../use-wizard-effects";
 import { useWizardDatasetSelectionStepState } from "../wizard-store";
+import {
+  CatalogSection,
+  DatasetSuggestionBanner,
+  SheetDatasetCard,
+  SingleSheetDatasetForm,
+} from "./dataset-selection-sections";
 
 export interface StepDatasetSelectionProps {
   className?: string;
@@ -29,73 +34,6 @@ export interface StepDatasetSelectionProps {
 /** Stable empty array to avoid creating a new reference on each render. */
 const EMPTY_DATASETS: Array<{ id: number; name: string }> = [];
 
-interface DatasetSelectProps {
-  sheetIndex: number;
-  value: number | "new";
-  datasets: Array<{ id: number; name: string }>;
-  disabled?: boolean;
-  onDatasetChange: (sheetIndex: number, value: string) => void;
-}
-
-const DatasetSelect = ({ sheetIndex, value, datasets, disabled, onDatasetChange }: Readonly<DatasetSelectProps>) => {
-  const t = useTranslations("Ingest");
-
-  const handleChange = (selected: string) => {
-    onDatasetChange(sheetIndex, selected);
-  };
-
-  return (
-    <div className="space-y-2">
-      <Label htmlFor={`dataset-${sheetIndex}`}>{t("targetDataset")}</Label>
-      <Select value={value === "new" ? "new" : String(value)} onValueChange={handleChange} disabled={disabled}>
-        <SelectTrigger id={`dataset-${sheetIndex}`} className="h-11">
-          <SelectValue placeholder={t("createNewDataset")} />
-        </SelectTrigger>
-        <SelectContent>
-          {/* Same reasoning as catalog "create new" — top of list so it stays
-              visible regardless of how many existing datasets the user has. */}
-          <SelectItem value="new">{t("createNewDataset")}</SelectItem>
-          {datasets.map((dataset) => (
-            <SelectItem key={dataset.id} value={String(dataset.id)}>
-              {dataset.name}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-    </div>
-  );
-};
-
-interface DatasetNameInputProps {
-  sheetIndex: number;
-  value: string;
-  disabled?: boolean;
-  onNameChange: (sheetIndex: number, name: string) => void;
-}
-
-const DatasetNameInput = ({ sheetIndex, value, disabled, onNameChange }: Readonly<DatasetNameInputProps>) => {
-  const t = useTranslations("Ingest");
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    onNameChange(sheetIndex, e.target.value);
-  };
-
-  return (
-    <div className="space-y-2">
-      <Label htmlFor={`dataset-name-${sheetIndex}`}>{t("datasetName")}</Label>
-      <Input
-        id={`dataset-name-${sheetIndex}`}
-        type="text"
-        value={value}
-        onChange={handleChange}
-        placeholder={t("enterDatasetName")}
-        disabled={disabled}
-      />
-    </div>
-  );
-};
-
-// oxlint-disable-next-line complexity -- wizard step with many conditional UI branches
 export const StepDatasetSelection = ({ className }: Readonly<StepDatasetSelectionProps>) => {
   const t = useTranslations("Ingest");
   const {
@@ -199,10 +137,6 @@ export const StepDatasetSelection = ({ className }: Readonly<StepDatasetSelectio
     }
   };
 
-  const handleNewCatalogNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    selectCatalog("new", e.target.value);
-  };
-
   const handleDatasetChange = (sheetIndex: number, value: string) => {
     setDatasetTarget(sheetIndex, { datasetId: value === "new" ? "new" : Number(value) });
   };
@@ -211,12 +145,16 @@ export const StepDatasetSelection = ({ className }: Readonly<StepDatasetSelectio
     setDatasetTarget(sheetIndex, { newDatasetName: name });
   };
 
-  // Callback for single sheet case (index 0) to avoid inline function in JSX
-  const handleSingleSheetNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    handleNewDatasetNameChange(0, e.target.value);
+  const handleCopyConfigFrom = (datasetId: number) => {
+    const suggestion = configSuggestions.find((s) => s.datasetId === datasetId);
+    if (!suggestion) return;
+    // Actually copy the config — recording only the similarity score made this control a no-op.
+    applyFieldMappingSuggestion(0, suggestion.config);
+    setDatasetTarget(0, { similarityScore: suggestion.score / 100 });
   };
 
   const selectedCatalog = catalogs.find((c) => c.id === selectedCatalogId);
+  const catalogDatasets = selectedCatalogId === "new" ? EMPTY_DATASETS : (selectedCatalog?.datasets ?? EMPTY_DATASETS);
   const noCatalogSelected = selectedCatalogId === null;
 
   // Sibling datasets for the "copy config from" dropdown (only for existing
@@ -253,101 +191,27 @@ export const StepDatasetSelection = ({ className }: Readonly<StepDatasetSelectio
         </div>
       )}
 
-      {/* Suggestion banner: prompt the user to apply a server-detected match.
-          Applying is explicit (button click) so we never silently mutate
-          wizard state from a fuzzy server match. */}
-      {bestSuggestion && !suggestionApplied && !suggestionDismissed && (
-        <div
-          className="border-ring/20 bg-ring/5 flex items-center justify-between rounded-sm border px-4 py-3"
-          data-testid="dataset-suggestion-banner"
-        >
-          <span className="text-ring text-sm">
-            {t("similarConfig", { name: bestSuggestion.datasetName, score: bestSuggestion.score })}
-          </span>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={handleIgnoreSuggestion}>
-              {t("ignoreSuggestion")}
-            </Button>
-            <Button size="sm" onClick={handleApplySuggestion}>
-              {t("useThisConfig")}
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {/* Applied banner: shown after the user clicks "Use this config".
-          Reset clears catalog + sheet mappings and returns to the suggested
-          banner state. */}
-      {suggestionApplied && bestSuggestion && (
-        <div
-          className="border-accent/20 bg-accent/5 flex items-center justify-between rounded-sm border px-4 py-3"
-          data-testid="dataset-suggestion-applied"
-        >
-          <span className="text-accent text-sm">
-            {t("configLoadedFromDataset", { name: bestSuggestion.datasetName })}
-          </span>
-          <Button variant="ghost" size="sm" onClick={handleResetSuggestion}>
-            {t("resetToAutoDetected")}
-          </Button>
-        </div>
+      {bestSuggestion && (
+        <DatasetSuggestionBanner
+          suggestion={bestSuggestion}
+          applied={suggestionApplied}
+          dismissed={suggestionDismissed}
+          onApply={handleApplySuggestion}
+          onIgnore={handleIgnoreSuggestion}
+          onReset={handleResetSuggestion}
+        />
       )}
 
       {/* Combined catalog + dataset card */}
       <Card className="overflow-hidden">
         <CardContent className="p-0">
-          {/* Catalog section */}
-          <div className="border-secondary/30 border-l-4 p-6">
-            <h3 className="text-foreground mb-1 font-serif text-lg font-semibold">{t("catalog")}</h3>
-            <p className="text-muted-foreground mb-4 text-sm">
-              {catalogs.length === 0 ? t("createCatalogPrompt") : t("selectOrCreateCatalog")}
-            </p>
-
-            <div className="space-y-4">
-              {/* Show dropdown only if user has existing catalogs */}
-              {catalogs.length > 0 && (
-                <div className="space-y-2">
-                  <Label htmlFor="catalog-select" className="text-foreground">
-                    {t("selectCatalog")}
-                  </Label>
-                  <Select
-                    value={selectedCatalogId === "new" ? "new" : String(selectedCatalogId ?? "")}
-                    onValueChange={handleCatalogChange}
-                  >
-                    <SelectTrigger id="catalog-select" className="h-11">
-                      <SelectValue placeholder={t("chooseCatalog")} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {/* "Create new catalog" stays at the top so the most common
-                          action is always visible without scrolling — necessary for
-                          users (and Playwright auto-scroll) when the catalog list
-                          grows beyond the dropdown viewport. */}
-                      <SelectItem value="new">{t("createNewCatalog")}</SelectItem>
-                      {catalogs.map((catalog) => (
-                        <SelectItem key={catalog.id} value={String(catalog.id)}>
-                          {catalog.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-
-              {(selectedCatalogId === "new" || catalogs.length === 0) && (
-                <div className="space-y-2">
-                  <Label htmlFor="new-catalog-name" className="text-foreground">
-                    {t("catalogName")}
-                  </Label>
-                  <Input
-                    id="new-catalog-name"
-                    type="text"
-                    value={newCatalogName}
-                    onChange={handleNewCatalogNameChange}
-                    placeholder={t("enterCatalogName")}
-                  />
-                </div>
-              )}
-            </div>
-          </div>
+          <CatalogSection
+            catalogs={catalogs}
+            selectedCatalogId={selectedCatalogId}
+            newCatalogName={newCatalogName}
+            onCatalogChange={handleCatalogChange}
+            onNewCatalogNameChange={(name) => selectCatalog("new", name)}
+          />
 
           {/* Divider */}
           <div className="border-primary/10 border-t" />
@@ -360,112 +224,27 @@ export const StepDatasetSelection = ({ className }: Readonly<StepDatasetSelectio
             </p>
 
             {sheets.length <= 1 ? (
-              // Simplified single-sheet view
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="dataset-name-0" className="text-foreground">
-                    {t("datasetName")}
-                  </Label>
-                  <Input
-                    id="dataset-name-0"
-                    type="text"
-                    value={sheetMappings[0]?.newDatasetName ?? ""}
-                    onChange={handleSingleSheetNameChange}
-                    placeholder={t("enterDatasetName")}
-                    disabled={noCatalogSelected}
-                  />
-                  {sheets[0] && (
-                    <p className="text-muted-foreground font-mono text-xs">
-                      {t("rowsWillBeImported", { count: sheets[0].rowCount })}
-                    </p>
-                  )}
-                </div>
-
-                {/* Copy config from sibling dataset */}
-                {siblingDatasets.length > 0 && sheetMappings[0]?.datasetId === "new" && (
-                  <div className="space-y-2">
-                    <Label htmlFor="copy-config-from" className="text-muted-foreground">
-                      {t("copyConfigFrom")}
-                    </Label>
-                    <Select
-                      value=""
-                      onValueChange={(value) => {
-                        if (value) {
-                          const suggestion = configSuggestions.find((s) => s.datasetId === Number(value));
-                          if (suggestion) {
-                            // Actually copy the config — recording only the
-                            // similarity score made this control a no-op.
-                            applyFieldMappingSuggestion(0, suggestion.config);
-                            setDatasetTarget(0, { similarityScore: suggestion.score / 100 });
-                          }
-                        }
-                      }}
-                      disabled={noCatalogSelected}
-                    >
-                      <SelectTrigger id="copy-config-from" className="h-11">
-                        <SelectValue placeholder={t("noConfigToCopy")} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {siblingDatasets.map((ds) => (
-                          <SelectItem key={ds.id} value={String(ds.id)}>
-                            {ds.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-              </div>
+              <SingleSheetDatasetForm
+                sheet={sheets[0]}
+                mapping={sheetMappings[0]}
+                siblingDatasets={siblingDatasets}
+                disabled={noCatalogSelected}
+                onNameChange={handleNewDatasetNameChange}
+                onCopyConfigFrom={handleCopyConfigFrom}
+              />
             ) : (
-              // Multi-sheet view
               <div className="space-y-4">
-                {sheets.map((sheet) => {
-                  const mapping = sheetMappings.find((m) => m.sheetIndex === sheet.index);
-                  const datasets =
-                    selectedCatalogId === "new" ? EMPTY_DATASETS : (selectedCatalog?.datasets ?? EMPTY_DATASETS);
-
-                  return (
-                    <div key={sheet.index} className="border-primary/10 bg-card/20 rounded-sm border p-4">
-                      {/* Sheet info header */}
-                      <div className="mb-3 flex items-center gap-3">
-                        <FileSpreadsheetIcon className="text-muted-foreground h-4 w-4" />
-                        <span className="text-foreground font-medium">{sheet.name}</span>
-                        <span className="text-muted-foreground font-mono text-xs">
-                          {t("rowCount", { count: sheet.rowCount })}
-                        </span>
-                      </div>
-
-                      <div className="grid gap-4 sm:grid-cols-2">
-                        <DatasetSelect
-                          sheetIndex={sheet.index}
-                          value={mapping?.datasetId === "new" ? "new" : (mapping?.datasetId ?? "new")}
-                          datasets={datasets}
-                          disabled={noCatalogSelected}
-                          onDatasetChange={handleDatasetChange}
-                        />
-
-                        {mapping?.datasetId === "new" && (
-                          <DatasetNameInput
-                            sheetIndex={sheet.index}
-                            value={mapping.newDatasetName}
-                            disabled={noCatalogSelected}
-                            onNameChange={handleNewDatasetNameChange}
-                          />
-                        )}
-                      </div>
-
-                      {/* Schema similarity indicator */}
-                      {mapping?.similarityScore !== null && mapping?.similarityScore !== undefined && (
-                        <div className="mt-3 flex items-center gap-2 text-sm">
-                          <span className="bg-accent/10 text-accent rounded px-2 py-0.5 font-mono text-xs">
-                            {t("percentMatch", { percent: Math.round(mapping.similarityScore * 100) })}
-                          </span>
-                          <span className="text-muted-foreground">{t("schemaSimilarity")}</span>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
+                {sheets.map((sheet) => (
+                  <SheetDatasetCard
+                    key={sheet.index}
+                    sheet={sheet}
+                    mapping={sheetMappings.find((m) => m.sheetIndex === sheet.index)}
+                    datasets={catalogDatasets}
+                    disabled={noCatalogSelected}
+                    onDatasetChange={handleDatasetChange}
+                    onNameChange={handleNewDatasetNameChange}
+                  />
+                ))}
               </div>
             )}
           </div>
