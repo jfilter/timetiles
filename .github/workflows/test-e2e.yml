@@ -80,6 +80,9 @@ jobs:
 
       - name: Run E2E tests (parallel workers)
         timeout-minutes: 20
+        # The job runs as root, but $HOME belongs to pwuser; Firefox refuses to launch then.
+        env:
+          HOME: /root
         run: pnpm test:e2e --project="${{ matrix.project }}"
         working-directory: apps/web
 
