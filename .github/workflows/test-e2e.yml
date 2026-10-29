@@ -81,9 +81,10 @@ jobs:
       - name: Run E2E tests (parallel workers)
         timeout-minutes: 20
         # The job runs as root, but $HOME belongs to pwuser; Firefox refuses to launch then.
+        # Xvfb gives headed Firefox a display for WebGL (see playwright.config.ts).
         env:
           HOME: /root
-        run: pnpm test:e2e --project="${{ matrix.project }}"
+        run: xvfb-run -a pnpm test:e2e --project="${{ matrix.project }}"
         working-directory: apps/web
 
       - name: Upload E2E test results

@@ -105,7 +105,8 @@ export default defineConfig({
           },
           {
             name: "firefox",
-            use: { ...devices["Desktop Firefox"], storageState: "test-results/.auth/admin.json" },
+            // Headless Firefox on Linux gets no WebGL without a GPU; in CI it runs headed under Xvfb.
+            use: { ...devices["Desktop Firefox"], storageState: "test-results/.auth/admin.json", headless: !isCI },
             dependencies: ["setup"],
           },
           {
