@@ -28,6 +28,9 @@ test.describe("Explore Page - Basic Functionality", () => {
     // Dataset/catalog checkboxes should be present (data loaded from API)
     await expect(explorePage.datasetCheckboxes.first()).toBeVisible();
 
+    // The map's first software-rendered frame can block the page; switch views once it has loaded.
+    await explorePage.waitForMapSettled();
+
     // Should show events count (now a paragraph with "Showing X events...")
     await explorePage.show("list");
     await expect(explorePage.eventsCount).toBeVisible();
