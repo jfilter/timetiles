@@ -9,6 +9,7 @@
  */
 import { expect, test } from "../fixtures";
 import { ExplorePage } from "../pages/explore.page";
+import { showExplorerSurface } from "../pages/responsive-layout";
 
 test.describe("Explore Page - Basic Functionality", () => {
   let explorePage: ExplorePage;
@@ -231,5 +232,23 @@ test.describe("Explore Page - Basic Functionality", () => {
 
     // And disappear once both queries have data
     await expect(skeleton).toBeHidden({ timeout: 10000 });
+  });
+});
+
+test.describe("Explore Page - Without WebGL", () => {
+  test("should explain that the map cannot start instead of loading forever", async ({ page }) => {
+    await page.addInitScript(() => {
+      const canvas = HTMLCanvasElement.prototype;
+      canvas.getContext = new Proxy(Reflect.get(canvas, "getContext"), {
+        apply: (target, thisArg, args: [string, ...unknown[]]) =>
+          args[0].startsWith("webgl") ? null : Reflect.apply(target, thisArg, args),
+      });
+    });
+    await page.goto("/explore", { waitUntil: "domcontentloaded" });
+    await showExplorerSurface(page, "map");
+
+    const alert = page.getByRole("alert").filter({ hasText: "The map can't be displayed" });
+    await expect(alert).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText("Loading map data...")).toBeHidden();
   });
 });

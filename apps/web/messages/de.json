@@ -158,6 +158,8 @@
     "unableToLoadMapData": "Kartendaten konnten nicht geladen werden",
     "unableToLoadEvents": "Ereignisse konnten nicht geladen werden",
     "mapLoadError": "Beim Laden der Karte ist ein Problem aufgetreten",
+    "mapUnavailable": "Die Karte kann nicht angezeigt werden",
+    "mapUnavailableHint": "Dieser Browser konnte WebGL nicht starten, das die Karte benötigt. Die Listenansicht funktioniert weiterhin.",
     "descShowingOfTotal": "{visible, number} von {total, plural, one {# Ereignis} other {# Ereignissen}}",
     "descShowingEvents": "{count, plural, one {# Ereignis} other {# Ereignisse}}",
     "descShowingAll": "Alle {count, plural, one {# Ereignis} other {# Ereignisse}}",

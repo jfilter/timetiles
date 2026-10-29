@@ -97,6 +97,7 @@ export interface ClusteredMapRendererProps {
   // event handlers
   onMoveEnd: NonNullable<ComponentProps<typeof MapGL>["onMoveEnd"]>;
   onLoad: NonNullable<ComponentProps<typeof MapGL>["onLoad"]>;
+  onError: NonNullable<ComponentProps<typeof MapGL>["onError"]>;
   onClick: (event: MapLayerMouseEvent) => void;
   onDblClick: (event: MapLayerMouseEvent) => void;
   onMouseEnter: (e: { features?: Array<{ id?: string | number; properties?: Record<string, unknown> }> }) => void;
@@ -115,6 +116,13 @@ export interface ClusteredMapRendererProps {
    */
   initialViewState?: { latitude: number; longitude: number; zoom: number } | null;
 }
+
+const EventPopup = ({ info, onClose }: { info: PopupInfo | null; onClose: () => void }) =>
+  info ? (
+    <Popup longitude={info.longitude} latitude={info.latitude} anchor="bottom" onClose={onClose}>
+      <div>{info.title}</div>
+    </Popup>
+  ) : null;
 
 // ---------------------------------------------------------------------------
 // ClusteredMapRenderer
@@ -148,6 +156,7 @@ export const ClusteredMapRenderer = ({
   clusterSummaryLoading,
   onMoveEnd,
   onLoad,
+  onError,
   onClick,
   onDblClick,
   onMouseEnter,
@@ -171,6 +180,7 @@ export const ClusteredMapRenderer = ({
       mapStyle={mapStyleUrl}
       onMoveEnd={onMoveEnd}
       onLoad={onLoad}
+      onError={onError}
       onClick={onClick}
       onDblClick={onDblClick}
       onMouseEnter={onMouseEnter}
@@ -202,11 +212,7 @@ export const ClusteredMapRenderer = ({
         clusterLayer={clusterLayer}
         clusterLabelLayer={clusterLabelLayer}
       />
-      {popupInfo && (
-        <Popup longitude={popupInfo.longitude} latitude={popupInfo.latitude} anchor="bottom" onClose={onClosePopup}>
-          <div>{popupInfo.title}</div>
-        </Popup>
-      )}
+      <EventPopup info={popupInfo} onClose={onClosePopup} />
     </MapGL>
     <MapClusterOverlays
       focusedCluster={focusedCluster}

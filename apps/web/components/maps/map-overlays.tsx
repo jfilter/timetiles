@@ -26,7 +26,9 @@ export const MapOverlay = ({ children, className }: { children: ReactNode; class
 /** Error overlay shown when map data fails to load */
 export const MapErrorOverlay = ({ title, subtitle }: { title: string; subtitle: string }) => (
   <MapOverlay>
-    <ContentState variant="error" title={title} subtitle={subtitle} />
+    <div role="alert">
+      <ContentState variant="error" title={title} subtitle={subtitle} />
+    </div>
   </MapOverlay>
 );
 

@@ -17,11 +17,12 @@ import { useMapColors } from "@timetiles/ui/hooks/use-chart-theme";
 import type { LngLatBounds } from "maplibre-gl";
 import { useTranslations } from "next-intl";
 import { type Ref, useImperativeHandle, useRef, useState } from "react";
-import type { MapRef } from "react-map-gl/maplibre";
+import type { ErrorEvent, MapRef } from "react-map-gl/maplibre";
 
 import { MAP_STYLES, MAP_STYLES_BY_PRESET } from "@/lib/constants/map";
 import { useTheme } from "@/lib/hooks/use-theme";
 import { useThemePreset } from "@/lib/hooks/use-theme-preset";
+import { logError } from "@/lib/logger";
 import type { ClusterSummaryResponse } from "@/lib/schemas/events";
 import type { SimpleBounds, ViewScope } from "@/lib/utils/event-params";
 
@@ -127,6 +128,7 @@ export const ClusteredMap = ({
   const presetStyles = MAP_STYLES_BY_PRESET[preset] ?? MAP_STYLES;
   const mapStyleUrl = presetStyles[resolvedTheme];
   const [currentZoom, setCurrentZoom] = useState(INITIAL_VIEW_STATE.zoom);
+  const [isMapUnavailable, setIsMapUnavailable] = useState(false);
   const { popupInfo, closePopup, handleClick, handleFocusedClusterZoom, clearFocusedCluster } = useMapInteractions({
     formatFallbackTitle: (id) => t("eventFallbackTitle", { id }),
     onEventClick,
@@ -156,6 +158,11 @@ export const ClusteredMap = ({
   const handleLoadWithDiagnostics: typeof handleLoad = (event) => {
     handleLoad(event);
     exposeMapForLocalDiagnostics(event.target as MapRef);
+  };
+  // An error before the map instance exists means MapLibre could not start (e.g. no WebGL).
+  const handleError = (event: ErrorEvent) => {
+    logError(event.error, "Map error");
+    if (!mapRef.current) setIsMapUnavailable(true);
   };
   const { hoverHexData, handleH3Hover, handleH3HoverLeave } = useH3Hover({
     algorithm,
@@ -198,7 +205,7 @@ export const ClusteredMap = ({
   });
 
   // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- intentional: false must also fall through
-  const showLoading = isLoadingBounds || !isMapPositioned;
+  const showLoading = !isMapUnavailable && (isLoadingBounds || !isMapPositioned);
 
   return (
     <ClusteredMapRenderer
@@ -213,7 +220,7 @@ export const ClusteredMap = ({
       focusedCluster={focusedCluster}
       showLoading={showLoading}
       isBusy={isDataPending || isTransitioning}
-      isError={isError}
+      isError={isMapUnavailable || isError === true}
       geojsonData={geojsonData}
       h3HexData={h3HexData}
       mergeGroupData={mergeGroupData}
@@ -229,6 +236,7 @@ export const ClusteredMap = ({
       clusterSummaryLoading={clusterSummaryLoading}
       onMoveEnd={handleMoveEnd}
       onLoad={handleLoadWithDiagnostics}
+      onError={handleError}
       onClick={handleClick}
       onDblClick={handleDblClick}
       onMouseEnter={handleH3Hover}
@@ -237,8 +245,8 @@ export const ClusteredMap = ({
       onZoomIn={handleZoomInFromPanel}
       onClose={clearFocusedCluster}
       loadingMessage={t("loadingMapData")}
-      errorTitle={t("unableToLoadMapData")}
-      errorSubtitle={t("mapLoadError")}
+      errorTitle={isMapUnavailable ? t("mapUnavailable") : t("unableToLoadMapData")}
+      errorSubtitle={isMapUnavailable ? t("mapUnavailableHint") : t("mapLoadError")}
       filterLabel={t("clusterFilterActive")}
       initialViewState={initialViewState}
     />

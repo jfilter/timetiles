@@ -158,6 +158,8 @@
     "unableToLoadMapData": "Unable to load map data",
     "unableToLoadEvents": "Unable to load events",
     "mapLoadError": "There was a problem loading the map",
+    "mapUnavailable": "The map can't be displayed",
+    "mapUnavailableHint": "This browser could not start WebGL, which the map needs. The list view still works.",
     "descShowingOfTotal": "Showing {visible, number} of {total, plural, one {# event} other {# events}}",
     "descShowingEvents": "Showing {count, plural, one {# event} other {# events}}",
     "descShowingAll": "Showing all {count, plural, one {# event} other {# events}}",
