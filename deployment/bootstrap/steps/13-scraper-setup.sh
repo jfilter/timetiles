@@ -167,12 +167,34 @@ EOF
     # create it on first pull, which happens later in this step.
     install -d -o "$user" -g "$user" -m 700 "$install_dir/$SCRAPER_IMAGE_STORE_SUBDIR"
 
-    # Verify rootless Podman works
-    if podman_as "$user" 60 info --format '{{.Host.Security.Rootless}}' 2>/dev/null | grep -q "true"; then
-        print_success "Rootless Podman configured for $user"
-    else
-        print_warning "Could not verify rootless Podman (may work after re-login)"
+    ensure_podman_run_root "$user"
+    print_success "Rootless Podman configured for $user"
+}
+
+# Podman stores its run root in its database on first use and ignores later
+# settings. A store first used without XDG_RUNTIME_DIR keeps /tmp/containers-user-<uid>,
+# which ProtectSystem=strict makes read-only for the runner; only a reset changes it.
+ensure_podman_run_root() {
+    local user="$1"
+    local expected run_root
+    expected="$(runtime_dir_for "$user")/containers"
+
+    # Podman joins the namespaces of a running pause process, and one the runner started has
+    # the unit's read-only /tmp. start_runner restarts the runner at the end of this step.
+    if systemctl is-active --quiet timescrape-runner.service; then
+        systemctl stop timescrape-runner.service || die "Could not stop the runner"
     fi
+    pkill -u "$user" -x catatonit || [[ $? -eq 1 ]] || die "Could not stop the Podman pause process of $user"
+
+    run_root=$(podman_as "$user" 60 info --format '{{.Store.RunRoot}}') \
+        || die "Rootless Podman does not work for $user"
+    [[ "$run_root" == "$expected" ]] && return 0
+
+    print_warning "Podman store of $user records run root $run_root, resetting it to $expected"
+    podman_as "$user" 300 system reset --force || die "Resetting the Podman store of $user failed"
+    run_root=$(podman_as "$user" 60 info --format '{{.Store.RunRoot}}') \
+        || die "Rootless Podman does not work for $user after the reset"
+    [[ "$run_root" == "$expected" ]] || die "Podman store of $user still records run root $run_root"
 }
 
 pull_base_images() {

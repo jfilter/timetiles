@@ -114,7 +114,8 @@ const probeRuntime = async (): Promise<RuntimeHealth> => {
       try {
         await execFileAsync("podman", [kind, "exists", name], { timeout: RUNTIME_CHECK_TIMEOUT_MS });
         return null;
-      } catch {
+      } catch (error) {
+        logger.warn({ kind, name, error: String(error) }, "podman runtime check failed");
         return `${kind} ${name}`;
       }
     })

@@ -43,7 +43,7 @@ const {
   sweepStaleRunData,
 } = await import("../src/services/runner.js");
 
-const { logError } = await import("../src/lib/logger.js");
+const { logError, logger } = await import("../src/lib/logger.js");
 
 const STUB_DIR = resolve(import.meta.dirname, "fixtures/podman-stub");
 const originalPath = process.env.PATH;
@@ -475,6 +475,10 @@ describe("runner", () => {
         ok: false,
         unavailable: ["image timescrape-node", "network scraper-sandbox"],
       });
+      expect(logger.warn).toHaveBeenCalledWith(
+        { kind: "image", name: "timescrape-node", error: expect.stringContaining("podman") },
+        "podman runtime check failed"
+      );
     });
 
     it("caches the answer for the cache window", async () => {
