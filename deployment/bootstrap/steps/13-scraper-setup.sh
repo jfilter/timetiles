@@ -167,8 +167,24 @@ EOF
     # create it on first pull, which happens later in this step.
     install -d -o "$user" -g "$user" -m 700 "$install_dir/$SCRAPER_IMAGE_STORE_SUBDIR"
 
+    # Every podman call of this user joins the runner's pause process and with it the
+    # unit's read-only /var/tmp, so image copies go to a directory inside the store.
+    install -d -o "$user" -g "$user" -m 700 "$install_dir/$SCRAPER_IMAGE_STORE_SUBDIR/tmp"
+    install -d -o "$user" -g "$user" "$install_dir/.config" "$install_dir/.config/containers"
+    podman_containers_conf "$install_dir" > "$install_dir/.config/containers/containers.conf"
+    chown "$user:$user" "$install_dir/.config/containers/containers.conf"
+
     ensure_podman_run_root "$user"
     print_success "Rootless Podman configured for $user"
+}
+
+# The app user's containers.conf. Usage: podman_containers_conf <install_dir>
+podman_containers_conf() {
+    cat << EOF
+# Managed by the TimeTiles bootstrap (step 13-scraper-setup).
+[engine]
+image_copy_tmp_dir = "$1/$SCRAPER_IMAGE_STORE_SUBDIR/tmp"
+EOF
 }
 
 # Podman stores its run root in its database on first use and ignores later
