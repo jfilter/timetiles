@@ -25,6 +25,13 @@ teardown() {
     grep -qx 'systemctl restart timescrape-runner.service' "$TEST_TEMP_DIR/calls"
 }
 
+@test "the unit lets rootless podman run the setuid uid/gid mappers" {
+    run env PATH="$TEST_TEMP_DIR/bin:$PATH" bash -c \
+        'source "$1/lib/common.sh"; source "$2"; runner_unit /opt/timetiles timetiles' _ "$BOOTSTRAP_DIR" "$STEP13"
+    [ "$status" -eq 0 ]
+    ! grep -Eq '^NoNewPrivileges=(yes|true|1|on)$' <<< "$output"
+}
+
 @test "the unit hands the runner the work directory it may write" {
     run env PATH="$TEST_TEMP_DIR/bin:$PATH" bash -c \
         'source "$1/lib/common.sh"; source "$2"; runner_unit /opt/timetiles timetiles' _ "$BOOTSTRAP_DIR" "$STEP13"

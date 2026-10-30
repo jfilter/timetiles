@@ -525,8 +525,8 @@ StandardOutput=journal
 StandardError=journal
 SyslogIdentifier=timescrape-runner
 
-# Security hardening
-NoNewPrivileges=yes
+# Security hardening. No NoNewPrivileges: rootless podman maps the user
+# namespace through the setuid newuidmap/newgidmap, which it would neuter.
 ProtectSystem=strict
 # No leading dashes. A dash makes systemd skip a missing path, and under
 # ProtectSystem=strict the result is a unit that starts and then cannot write
