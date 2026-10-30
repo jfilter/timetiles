@@ -8,6 +8,13 @@ See the [release process](/development/contributing/release-process) for how new
 
 Changes landed on `main` since the last tagged release.
 
+## [0.1.0-alpha.21] - 2026-10-30
+
+### Fixed
+
+- Deployment: the scraper setup resets a Podman store that recorded `/tmp` as its run root, which the runner unit cannot write, so the runner finds its scraper images again instead of reporting them unavailable
+- TimeScrape: the runner logs the Podman error behind a failed image or network check
+
 ## [0.1.0-alpha.20] - 2026-10-30
 
 ### Changed
