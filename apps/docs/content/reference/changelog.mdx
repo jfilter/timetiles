@@ -8,6 +8,12 @@ See the [release process](/development/contributing/release-process) for how new
 
 Changes landed on `main` since the last tagged release.
 
+## [0.1.0-alpha.23] - 2026-10-30
+
+### Fixed
+
+- Deployment: Podman copies images through a directory inside the app user's image store, so pulls and builds also work once the runner is up, whose unit keeps `/var/tmp` read-only
+
 ## [0.1.0-alpha.22] - 2026-10-30
 
 ### Fixed
