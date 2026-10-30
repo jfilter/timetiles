@@ -8,6 +8,24 @@ See the [release process](/development/contributing/release-process) for how new
 
 Changes landed on `main` since the last tagged release.
 
+## [0.1.0-alpha.20] - 2026-10-30
+
+### Changed
+
+- Explore: tag filters use the GIN index on `events.transformed_data`, with a migration that drops the duplicate index on that column
+- Quotas: an admin can approve a quota-exceeded import only once the user's limit allows it; until then the approval answers 409
+- Minor updates of the lint tooling, with patched audited advisories (handlebars)
+
+### Fixed
+
+- Deployment: the TimeScrape runner starts its scraper containers again after a host reboot; its unit no longer sets `NoNewPrivileges`, which kept rootless podman from mapping its user namespace
+- Map: explains when the map cannot start instead of loading forever
+- Mobile: the navigation drawer shows account links and sign-out, and the import wizard keeps its back and edit-mode labels on small screens
+- Forms: values entered before hydration are kept
+- Explore: the event list keeps its live-announced description of counts and filters when nothing matches
+- Imports: a source with only a header row completes as a run with nothing to import, and sheets are routed by the workbook's sheet count rather than by the sheets that contain rows
+- Event detail: a mapped description path is authoritative
+
 ## [0.1.0-alpha.19] - 2026-10-26
 
 ### Changed
