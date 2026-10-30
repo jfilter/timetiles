@@ -8,6 +8,12 @@ See the [release process](/development/contributing/release-process) for how new
 
 Changes landed on `main` since the last tagged release.
 
+## [0.1.0-alpha.22] - 2026-10-30
+
+### Fixed
+
+- TimeScrape: the runner addresses its scraper images as `localhost/timescrape-<runtime>`; resolving the short name needs a lock the runner unit keeps read-only, so after a reboot no image was found
+
 ## [0.1.0-alpha.21] - 2026-10-30
 
 ### Fixed
