@@ -89,12 +89,15 @@ describe("POST /run endpoint", () => {
     });
 
     it("returns 503 naming what is missing when runs could not start", async () => {
-      vi.mocked(getRuntimeHealth).mockResolvedValue({ ok: false, unavailable: ["image timescrape-node"] });
+      vi.mocked(getRuntimeHealth).mockResolvedValue({ ok: false, unavailable: ["image localhost/timescrape-node"] });
 
       const res = await app.request("/health");
 
       expect(res.status).toBe(503);
-      expect(await res.json()).toMatchObject({ status: "unavailable", unavailable: ["image timescrape-node"] });
+      expect(await res.json()).toMatchObject({
+        status: "unavailable",
+        unavailable: ["image localhost/timescrape-node"],
+      });
     });
   });
 

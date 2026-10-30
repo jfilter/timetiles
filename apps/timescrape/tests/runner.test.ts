@@ -469,25 +469,25 @@ describe("runner", () => {
     });
 
     it("reports missing images and the missing sandbox network", async () => {
-      process.env.STUB_MISSING = "timescrape-node,scraper-sandbox";
+      process.env.STUB_MISSING = "localhost/timescrape-node,scraper-sandbox";
 
       expect(await getRuntimeHealth()).toEqual({
         ok: false,
-        unavailable: ["image timescrape-node", "network scraper-sandbox"],
+        unavailable: ["image localhost/timescrape-node", "network scraper-sandbox"],
       });
       expect(logger.warn).toHaveBeenCalledWith(
-        { kind: "image", name: "timescrape-node", error: expect.stringContaining("podman") },
+        { kind: "image", name: "localhost/timescrape-node", error: expect.stringContaining("podman") },
         "podman runtime check failed"
       );
     });
 
     it("caches the answer for the cache window", async () => {
       expect(await getRuntimeHealth()).toEqual({ ok: true, unavailable: [] });
-      process.env.STUB_MISSING = "timescrape-python";
+      process.env.STUB_MISSING = "localhost/timescrape-python";
 
       expect((await getRuntimeHealth()).ok).toBe(true);
       advancePastCache();
-      expect(await getRuntimeHealth()).toEqual({ ok: false, unavailable: ["image timescrape-python"] });
+      expect(await getRuntimeHealth()).toEqual({ ok: false, unavailable: ["image localhost/timescrape-python"] });
     });
 
     it("treats a hanging podman as unavailable instead of blocking", { timeout: 20_000 }, async () => {

@@ -98,7 +98,7 @@ const RUNTIME_CHECK_TIMEOUT_MS = 5000;
 
 export interface RuntimeHealth {
   ok: boolean;
-  /** Images and networks podman could not confirm, e.g. `image timescrape-node`. */
+  /** Images and networks podman could not confirm, e.g. `image localhost/timescrape-node`. */
   unavailable: string[];
 }
 

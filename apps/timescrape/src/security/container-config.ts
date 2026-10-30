@@ -56,7 +56,8 @@ export const CONTAINER_RUN_TIMEOUT_GRACE_SECS = 60;
 
 export const SCRAPER_SANDBOX_NETWORK = "scraper-sandbox";
 
-export const scraperImage = (runtime: ScraperRuntime): string => `timescrape-${runtime}`;
+/** Fully qualified: resolving a short name locks ~/.cache/containers, which the runner unit keeps read-only. */
+export const scraperImage = (runtime: ScraperRuntime): string => `localhost/timescrape-${runtime}`;
 
 export interface ContainerLimits {
   timeoutSecs: number;

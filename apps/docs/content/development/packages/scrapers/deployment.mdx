@@ -64,7 +64,7 @@ podman build -t timescrape-node -f apps/timescrape/images/node/Dockerfile \
 
 From a full checkout, `make timescrape-images` runs both builds.
 
-The image names `timescrape-python` and `timescrape-node` are expected by the runner. Do not change the tags.
+The image names `timescrape-python` and `timescrape-node` are expected by the runner, which refers to them fully qualified as `localhost/timescrape-python` and `localhost/timescrape-node`. Do not change the tags.
 
 Verify:
 
@@ -373,7 +373,7 @@ When Podman lacks a runtime image or the `scraper-sandbox` network, no run can s
 ```json
 {
   "status": "unavailable",
-  "unavailable": ["image timescrape-node"],
+  "unavailable": ["image localhost/timescrape-node"],
   "active_runs": 0,
   "timestamp": "2026-03-16T10:00:00.000Z"
 }

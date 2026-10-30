@@ -49,7 +49,7 @@ podman build -t timescrape-node -f apps/timescrape/images/node/Dockerfile \
 
 From a full checkout, `make timescrape-images` runs both builds.
 
-The image names `timescrape-python` and `timescrape-node` are expected by the runner. Do not change the tags unless you also change the runtime-to-image mapping in the runner code.
+The image names `timescrape-python` and `timescrape-node` are expected by the runner, which refers to them fully qualified as `localhost/timescrape-python` and `localhost/timescrape-node`. Do not change the tags unless you also change the runtime-to-image mapping in the runner code.
 
 To verify:
 
