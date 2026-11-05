@@ -14,7 +14,7 @@ catalog:
   # Type definitions
   "@types/react": ^19.3.0
   "@types/react-dom": ^19.3.0
-  "@types/node": ^26.6.4
+  "@types/node": ^26.6.6
   # Build tooling
   typescript: ^5.9.3
   eslint: ^9.39.5
@@ -28,5 +28,5 @@ catalog:
   echarts: ^6.1.0
   echarts-for-react: ^3.0.6
   # Shared libraries
-  lucide-react: ^1.59.0
+  lucide-react: ^1.64.0
   franc: ^6.2.0
