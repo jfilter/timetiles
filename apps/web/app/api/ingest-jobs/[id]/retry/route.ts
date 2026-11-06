@@ -30,10 +30,8 @@ export const POST = apiRoute({
   handler: async ({ payload, user, params }) => {
     const { id } = params;
 
-    // Get the import job with access control
     const ingestJob = await safeFindByID(payload, { collection: "ingest-jobs", id, depth: 1, user });
 
-    // Verify job is in failed state
     if (ingestJob.stage !== PROCESSING_STAGE.FAILED) {
       throw new ValidationError(`Ingest job is not in failed state. Current stage: ${ingestJob.stage}`);
     }

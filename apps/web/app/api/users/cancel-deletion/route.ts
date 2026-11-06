@@ -26,10 +26,8 @@ export const POST = apiRoute({
     const clientId = getClientIdentifier(req);
     const { password } = body;
 
-    // Rate-limit password attempts per user. verifyPasswordWithAudit resets
-    // Payload's login lockout on each failure, so `maxLoginAttempts` does NOT
-    // bound guessing here — without this gate a stolen session could brute-force
-    // the current password unlimited times. Mirrors schedule-deletion.
+    // Rate-limit password attempts per user: verifyPasswordWithAudit resets Payload's
+    // login lockout on each failure, so `maxLoginAttempts` does NOT bound guessing here.
     const passwordCheck = await getRateLimitService(payload).checkConfiguredRateLimit(
       `delete-password:${user.id}`,
       RATE_LIMITS.DELETION_PASSWORD_ATTEMPTS
@@ -45,7 +43,6 @@ export const POST = apiRoute({
       // on failure and throws 401.
       await verifyPasswordWithAudit(payload, user, password, clientId, "cancel_deletion", "Password is incorrect");
 
-      // Cancel deletion
       const deletionService = createAccountDeletionService(payload);
       await deletionService.cancelDeletion(user.id);
 

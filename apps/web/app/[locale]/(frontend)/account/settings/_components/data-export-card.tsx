@@ -26,7 +26,7 @@ const useExportDate = (value: string | null | undefined): string => {
     ? format.dateTime(date, {
         dateStyle: "medium",
         timeStyle: "short",
-        // Preserve the existing display in the viewer's local time zone.
+        // Display in the viewer's local time zone.
         timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       })
     : t("unknownDate");

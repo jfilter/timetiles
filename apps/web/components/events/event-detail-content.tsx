@@ -386,7 +386,7 @@ export const EventDetailContent = ({
         </Collapsible>
       )}
 
-      {/* Metadata card (page variant only) — kept for created/updated dates */}
+      {/* Metadata card (page variant only): created/updated dates */}
       {variant === "page" && (
         <div className="border-t pt-4">
           <h4 className="text-muted-foreground mb-3 text-xs font-bold tracking-wider uppercase">{t("metadata")}</h4>

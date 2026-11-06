@@ -19,12 +19,10 @@ import { LoginPageContent } from "./_components/login-page-content";
 export const dynamic = "force-dynamic";
 
 export default async function LoginPage() {
-  // Check if user is already logged in
   const payload = await getPayload({ config });
   const headersList = await headers();
   const { user } = await payload.auth({ headers: headersList });
 
-  // Redirect authenticated users to home
   if (user) {
     const locale = await getLocale();
     redirect({ href: "/", locale });

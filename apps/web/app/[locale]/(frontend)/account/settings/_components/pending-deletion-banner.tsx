@@ -30,8 +30,7 @@ export const PendingDeletionBanner = ({ deletionScheduledAt }: PendingDeletionBa
   const cancelMutation = useCancelDeletionMutation();
   const [password, setPassword] = useState("");
 
-  // The route requires the current password (matching schedule-deletion), so the
-  // banner must collect it; without it the request always failed with 422.
+  // The route requires the current password (matching schedule-deletion).
   const handleCancel = () => {
     if (!password) return;
     cancelMutation.mutate(password, { onSuccess: () => router.refresh() });
@@ -40,11 +39,8 @@ export const PendingDeletionBanner = ({ deletionScheduledAt }: PendingDeletionBa
   const loading = cancelMutation.isPending;
   const error = cancelMutation.error?.message ?? null;
 
-  // Date.now() and toLocaleDateString() depend on the runtime clock + timezone,
-  // which differ between the SSR render and client hydration and would cause a
-  // hydration mismatch (the banner is server-rendered from the user prop).
-  // Compute the time-derived display only after mount; SSR and the first client
-  // render show neutral values, then the real local values fill in.
+  // Date.now() and toLocaleDateString() differ between SSR and hydration, so the
+  // time-derived display is computed only after mount; until then it is neutral.
   const mounted = useMounted();
   const [now] = useState(Date.now);
   const deletionDate = new Date(deletionScheduledAt);

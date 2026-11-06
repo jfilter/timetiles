@@ -102,7 +102,6 @@ const ListExplorerContent = ({ chrome, initialViewState }: ListExplorerContentPr
     setMapBounds(dataBounds);
   }, [isDesktop, mobileActiveTab, mapBounds, boundsData?.bounds, setMapBounds]);
 
-  // Helper functions for filter labels using shared helpers
   const getDatasetNames = (): string[] =>
     filters.datasets.map((id) => getDatasetName(datasets, id, t("unknownDataset")));
   const dateRangeLabel = formatDateRangeLabel(filters.startDate, filters.endDate, locale);

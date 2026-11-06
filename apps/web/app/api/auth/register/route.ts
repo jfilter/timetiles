@@ -118,7 +118,6 @@ const sendVerificationAndAudit = async (
 };
 
 const registerOrNotify = async (payload: Payload, req: Request, normalizedEmail: string, password: string) => {
-  // Check if user already exists
   const existingUser = await payload.find({
     collection: "users",
     where: { email: { equals: normalizedEmail } },
@@ -135,15 +134,10 @@ const registerOrNotify = async (payload: Payload, req: Request, normalizedEmail:
   }
 
   let createdUser: Awaited<ReturnType<typeof createSelfRegisteredUser>>;
-  // Race detection guards ONLY the insert. The create may fail for a race where
-  // the user was inserted between our pre-flight find and this create; Payload's
-  // drizzle adapter rethrows the unique violation as a generic ValidationError
-  // ("The following field is invalid: Email") with neither "unique" nor
-  // "duplicate", so we re-query structurally: if a row now exists, treat it as
-  // the account-exists path. This must NOT wrap the post-create verification
-  // email + audit — a queue failure there would be misread as a race, sending a
-  // misleading "account exists" email and reporting success while leaving a
-  // fresh, unverified account with no verification mail.
+  // Race detection guards ONLY the insert. The drizzle adapter rethrows a unique
+  // violation as a generic ValidationError, so re-query: if a row now exists, take the
+  // account-exists path. Verification mail + audit stay outside, or a queue failure
+  // there would be misread as a race.
   try {
     createdUser = await createSelfRegisteredUser(payload, normalizedEmail, password);
   } catch (createError) {
@@ -164,9 +158,6 @@ const registerOrNotify = async (payload: Payload, req: Request, normalizedEmail:
     throw createError;
   }
 
-  // The account now exists. Send verification + audit OUTSIDE the race-catch so a
-  // failure here surfaces as a real error instead of a bogus account-exists
-  // response that hides an unverified, mail-less account.
   await sendVerificationAndAudit(payload, req, createdUser, normalizedEmail);
 };
 

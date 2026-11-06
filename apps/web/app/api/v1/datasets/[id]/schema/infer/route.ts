@@ -32,17 +32,14 @@ export const POST = apiRoute({
       throw new ValidationError("Invalid dataset ID");
     }
 
-    // Check user permissions - only editors and admins can infer schema
     requirePrivileged(user);
 
-    // Verify dataset exists and user has access
     await safeFindByID(payload, { collection: "datasets", id: datasetId, user });
 
     const options = body;
 
     logger.info({ datasetId, userId: user.id, options }, "Schema inference requested");
 
-    // Perform schema inference
     const result = await SchemaInferenceService.inferSchemaFromEvents(payload, datasetId, options);
 
     logger.info(

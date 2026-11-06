@@ -59,7 +59,6 @@ export const useFlowEditor = (previewId: string | null, sheetIndex: number): Use
   const hasInitializedRef = useRef(false);
   const initKeyRef = useRef<string | null>(null);
 
-  // Read wizard state from Zustand store
   const wizardFieldMapping = useWizardStore((s) => s.fieldMappings.find((fm) => fm.sheetIndex === sheetIndex));
   const wizardTransforms = useWizardStore((s) => s.transforms[sheetIndex] ?? EMPTY_TRANSFORMS);
 
@@ -72,19 +71,14 @@ export const useFlowEditor = (previewId: string | null, sheetIndex: number): Use
     initKeyRef.current = initKey;
   }, [initKey]);
 
-  // Load preview data via React Query
   const { data: previewData, isLoading: queryLoading, error: queryError } = usePreviewSheetsQuery(previewId);
 
-  // Derive sheet info from query data
   const sheet = previewData?.sheets[sheetIndex] ?? null;
 
-  // Derive loading and error states
   const isLoading = !previewId ? false : queryLoading;
-  // A discriminated CAUSE, not a sentence: these are rendered full-screen, and returning
-  // English from this hook meant /de showed English. The literals escaped the
-  // i18next/no-literal-string rule because they live in a .ts hook rather than in JSX.
-  // The render site switches on `kind` so every t() call keeps a literal key, which is what
-  // next-intl's types require. A server message is passed through — no key can express it.
+  // A discriminated cause, not a sentence, so the render site translates it: switching on
+  // `kind` keeps every t() key literal, as next-intl's types require. A server message is
+  // passed through — no key can express it.
   const error = ((): FlowEditorError | null => {
     if (!previewId) return { kind: "noPreviewId" };
     if (queryError) {
@@ -129,7 +123,6 @@ export const useFlowEditor = (previewId: string | null, sheetIndex: number): Use
     [edges, setNodes]
   );
 
-  // Add a new transform node at the specified position
   const addTransformNode = useCallback(
     (type: TransformType, position: { x: number; y: number }) => {
       const transform = createTransform(type);

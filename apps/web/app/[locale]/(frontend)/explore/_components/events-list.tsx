@@ -140,7 +140,6 @@ const EventItem = memo(({ event, eventId, onEventClick, hideDatasetBadge }: Even
           </span>
         )}
 
-        {/* Title */}
         <CardTitle className={cn("text-base font-semibold", datasetInfo && !hideDatasetBadge && "mt-1.5")}>
           {title}
         </CardTitle>

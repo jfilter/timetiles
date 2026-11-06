@@ -93,7 +93,6 @@ export const buildEventsDescription = (
   // Determine if map bounds are limiting the results
   const isMapLimiting = hasBounds && globalTotal != null && visibleCount < globalTotal;
 
-  // Build the base sentence
   let sentence: string;
   if (isMapLimiting) {
     sentence = t("descShowingOfTotal", { visible: visibleCount, total: globalTotal });
@@ -103,7 +102,6 @@ export const buildEventsDescription = (
     sentence = t("descShowingAll", { count: visibleCount });
   }
 
-  // Add dataset filter
   if (datasetsText) {
     sentence += t("descFromDatasets", { datasets: datasetsText });
   }
@@ -113,12 +111,10 @@ export const buildEventsDescription = (
     sentence += t("descInMapView");
   }
 
-  // Add field filters
   if (fieldFiltersText) {
     sentence += t("descFilteredBy", { filters: fieldFiltersText });
   }
 
-  // Add date filter
   if (filterLabels.dateRange) {
     const { type, formatted } = filterLabels.dateRange;
     const untilOrFormatted = type === "until" ? t("descUntil", { date: formatted }) : formatted;

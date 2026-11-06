@@ -39,13 +39,11 @@ const fixCircularReferences = (filePath: string) => {
   const fullPath = join(process.cwd(), filePath);
   let content = readFileSync(fullPath, "utf-8");
 
-  // Remove any existing @ts-nocheck (no longer needed with proper fix)
+  // The AnyPgColumn annotations below make @ts-nocheck unnecessary.
   content = content.replaceAll(/\/\/ @ts-nocheck[^\n]*\n/g, "");
 
-  // Annotate ALL .references() calls with AnyPgColumn for platform independence.
-  // Payload generates tables in different order on macOS vs Linux, so we can't
-  // reliably detect which references are "forward" references. Using AnyPgColumn
-  // on all references is harmless and ensures identical output across platforms.
+  // Annotate every .references() call: Payload orders tables differently on macOS
+  // and Linux, so forward references can't be detected reliably.
   const refPattern = /\.references\(\s*\(\) => (\w+)\.id/g;
   let needsImport = false;
   const fixedContent = content.replace(refPattern, (_fullMatch, tableName) => {
@@ -53,7 +51,6 @@ const fixCircularReferences = (filePath: string) => {
     return `.references((): AnyPgColumn => ${tableName}.id`;
   });
 
-  // Add AnyPgColumn import if needed
   let finalContent = fixedContent;
   if (needsImport && !finalContent.includes("AnyPgColumn")) {
     finalContent = finalContent.replace(
@@ -74,22 +71,15 @@ const generate = () => {
   try {
     logger.info("🔄 Starting Payload file generation...");
 
-    // Generate TypeScript types
     logger.info("📝 Generating TypeScript types...");
     execFileSync(localBin("payload"), ["generate:types"], { stdio: "pipe" });
     logger.info("✓ TypeScript types generated");
 
-    // Generate database schema
     logger.info("🗄️ Generating database schema...");
     execFileSync(localBin("payload"), ["generate:db-schema"], { stdio: "pipe" });
     logger.info("✓ Database schema generated");
 
-    // Fix circular foreign key references in generated schema
     fixCircularReferences("payload-generated-schema.ts");
-
-    // Generated files are NOT formatted with oxfmt — they must match raw
-    // Payload output so CI validation passes (payload migrate auto-regenerates
-    // types via typescript.autoGenerate during init).
 
     logger.info("✅ Successfully generated all Payload files!");
     logger.info("Files updated: payload-types.ts, payload-generated-schema.ts");
@@ -100,5 +90,4 @@ const generate = () => {
   }
 };
 
-// Run the generation
 generate();

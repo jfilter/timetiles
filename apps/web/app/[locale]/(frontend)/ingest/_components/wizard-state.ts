@@ -168,7 +168,7 @@ export const initialState: WizardState = {
   error: null,
 };
 
-// Step definitions — single source of truth for labels
+// Step definitions; displayed labels come from the Ingest namespace (stepLabel1..7).
 export const WIZARD_STEPS: ReadonlyArray<{ step: WizardStep; label: string; shortLabel: string }> = [
   { step: 1, label: "Sign In", shortLabel: "Auth" },
   { step: 2, label: "Upload", shortLabel: "Upload" },

@@ -37,10 +37,8 @@ const streamExportFile = async (
   exportRecord: Pick<DataExportRecord, "filePath" | "expiresAt">,
   userId: number
 ): Promise<Response> => {
-  // Check expiry. Retire the record, then unlink — and drop `filePath` only once the file is
-  // actually gone. Clearing it first meant a failed unlink stranded a ZIP of personal data on
-  // disk with nothing pointing at it; the cleanup job now re-sweeps expired records that still
-  // carry a path, so leaving it set is what lets that retry find the file.
+  // Retire the record, then unlink, and drop `filePath` only once the file is gone:
+  // the cleanup job re-sweeps expired records that still carry a path.
   if (exportRecord.expiresAt && new Date(exportRecord.expiresAt) <= new Date()) {
     await payload.update({
       collection: DATA_EXPORTS_COLLECTION,
@@ -62,7 +60,6 @@ const streamExportFile = async (
     throw new AppError(410, "Export has expired. Please request a new export.");
   }
 
-  // Verify file exists
   const filePath = exportRecord.filePath;
   if (!filePath) {
     throw new NotFoundError("Export file not found");
@@ -123,7 +120,6 @@ export const GET = apiRoute({
     const normalizedExportId = params.id;
     const exportId = String(normalizedExportId);
 
-    // Fetch export record
     const exportRecord = await payload.findByID({
       collection: DATA_EXPORTS_COLLECTION,
       id: normalizedExportId,
@@ -135,12 +131,10 @@ export const GET = apiRoute({
       throw new NotFoundError("Export not found");
     }
 
-    // Verify ownership
     const ownerId = extractRelationId(exportRecord.user);
 
     requireOwnerOrAdmin(user, ownerId);
 
-    // Check status
     if (exportRecord.status === "pending" || exportRecord.status === "processing") {
       return Response.json(
         { status: exportRecord.status, message: "Export is still processing. Please wait." },

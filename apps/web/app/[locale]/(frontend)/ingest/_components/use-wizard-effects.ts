@@ -30,28 +30,20 @@ interface InitialAuth {
  * Must be called once in the layout component that wraps all wizard pages.
  */
 export const useWizardEffects = (initialAuth: InitialAuth): void => {
-  // 1. Initialize store with server-provided auth (once)
-  // Category A (UI initialization): seeds startedAuthenticated and the
-  // initial step from server-known auth state. The data is the user's
-  // own session, not a fuzzy server suggestion, and `initialize` is
-  // idempotent (gated by `_initialized`). No user-facing config is
-  // mutated.
+  // Seeds startedAuthenticated and the initial step from the server-known session;
+  // `initialize` is idempotent (gated by `_initialized`).
   useEffect(() => {
     useWizardStore.getState().initialize(initialAuth);
   }, [initialAuth]);
 
-  // 2. Validate preview file still exists (auto-resets on expiry)
-  // In edit mode, skip validation when previewId is null (before URL re-fetch)
+  // Validate that the preview file still exists. In edit mode, skip while previewId
+  // is null (before the URL re-fetch).
   const { previewId, currentStep, startedAuthenticated, ingestFileId, editMode } = useWizardPreviewValidationState();
   const validationEnabled = currentStep !== 7 && ingestFileId === null && !(editMode && !previewId);
   const { data: validationData } = usePreviewValidationQuery(previewId, validationEnabled);
 
-  // Category B but safe: this is forced session recovery, not silent
-  // auto-apply. The server has confirmed the preview file is gone (1h
-  // expiry on disk), so any wizard state referring to it is stale and
-  // the user must re-upload. There is no alternative UI path — the user
-  // can't "Apply / Ignore" a missing file. Resetting to the upload step
-  // is the only correct behaviour.
+  // Forced session recovery: the server confirmed the preview file is gone (expired
+  // on disk), so wizard state referring to it is stale and the user must re-upload.
   useEffect(() => {
     if (validationEnabled && validationData && !validationData.valid) {
       const store = useWizardStore.getState();

@@ -20,7 +20,6 @@ interface WizardLayoutClientProps {
 }
 
 export const WizardLayoutClient = ({ children, initialAuth }: Readonly<WizardLayoutClientProps>) => {
-  // Initialize wizard store and run side effects
   useWizardEffects(initialAuth);
 
   // Lock body scroll while wizard is mounted

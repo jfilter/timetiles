@@ -23,7 +23,6 @@ const RECENT_EVENTS_LIMIT = 50;
 export default async function EventsListPage() {
   const payload = await getPayload({ config: configPromise });
 
-  // Fetch published events
   const { docs: events } = await payload.find({
     collection: "events",
     overrideAccess: false,
@@ -34,8 +33,7 @@ export default async function EventsListPage() {
   });
 
   const t = await getTranslations("Events");
-  // Without an explicit locale, Intl formats in the SERVER's, so /de rendered
-  // English dates next to German labels.
+  // Without an explicit locale, Intl formats in the server's locale.
   const locale = await getLocale();
 
   return (

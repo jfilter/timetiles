@@ -70,12 +70,9 @@ export const createMappingSlice: WizardSlice<WizardMappingActions> = (set) => ({
 
   applyDatasetSelectionSuggestion: ({ catalogId, sheetMatches }) =>
     set((s) => {
-      // Atomically set the catalog and matching sheet mappings in one
-      // store update so consumers can never observe a half-applied
-      // intermediate state (e.g. catalog set but sheet mappings still
-      // "new"). This is the user-initiated counterpart to the prior
-      // auto-apply effect and replaces the multi-call sequence that
-      // produced reset/re-fire bugs.
+      // Set the catalog and matching sheet mappings in one store update so
+      // consumers never observe a half-applied state (catalog set but sheet
+      // mappings still "new").
       let nextSheetMappings = s.sheetMappings;
       for (const match of sheetMatches) {
         nextSheetMappings = updateBySheetIndex(nextSheetMappings, match.sheetIndex, {

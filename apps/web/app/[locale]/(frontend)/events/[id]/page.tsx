@@ -52,7 +52,6 @@ interface EventDetailsPageProps {
   params: Promise<{ id: string }>;
 }
 
-// Draft mode banner component
 const DraftModeBanner = ({ previewMode, draftPreview }: { previewMode: string; draftPreview: string }) => (
   <div className="border-ring bg-ring/10 mb-6 rounded-sm border px-4 py-3">
     <p className="text-ring font-serif font-bold">{previewMode}</p>
@@ -60,7 +59,6 @@ const DraftModeBanner = ({ previewMode, draftPreview }: { previewMode: string; d
   </div>
 );
 
-// Validation errors display component
 const ValidationErrorsSection = ({ errors, title }: { errors: unknown[]; title: string }) => (
   <Card variant="ghost" padding="sm">
     <CardContent className="p-4">
@@ -72,7 +70,6 @@ const ValidationErrorsSection = ({ errors, title }: { errors: unknown[]; title: 
   </Card>
 );
 
-// Schema version display component
 const SchemaVersionSection = ({ label }: { label: string }) => (
   <div className="text-muted-foreground mt-6 border-t pt-4 text-sm">
     <span className="font-mono">{label}</span>
@@ -109,20 +106,16 @@ export default async function EventDetailsPage({ params }: Readonly<EventDetails
 
   return (
     <div className="container mx-auto max-w-4xl px-4 py-8">
-      {/* Draft Mode Banner */}
       {isDraftMode && <DraftModeBanner previewMode={t("previewMode")} draftPreview={t("draftPreview")} />}
 
-      {/* Main Event Content - using shared component */}
       <EventDetailContent event={event} variant="page" />
 
       {/* Additional page-only sections */}
       <div className={cn("mt-8 space-y-6", hasValidationErrors && "border-t pt-6")}>
-        {/* Validation Errors */}
         {hasValidationErrors && (
           <ValidationErrorsSection errors={event.validationErrors as unknown[]} title={t("validationErrors")} />
         )}
 
-        {/* Schema Version Info */}
         {event.schemaVersionNumber != null && (
           <SchemaVersionSection label={t("schemaVersion", { version: event.schemaVersionNumber })} />
         )}

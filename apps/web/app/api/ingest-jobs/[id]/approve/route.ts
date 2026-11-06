@@ -157,9 +157,8 @@ export const patchPlanFromBody = (
     ? { ...base, roles: { ...base.roles }, columns: base.columns.map((c) => ({ ...c })) }
     : { ops: [], columns: [], roles: {}, ambiguityResolution: "strict" };
 
-  // A "continue, best-guess" approval flips the sticky policy instead of (or
-  // alongside) supplying a confirmed order, making the per-row guessing explicit
-  // and persistent rather than an accidental side effect of the skip flag.
+  // A "continue, best-guess" approval sets the sticky policy, with or without a
+  // confirmed order, so per-row guessing is explicit and persistent.
   if (body?.ambiguityResolution) plan.ambiguityResolution = body.ambiguityResolution;
 
   const roles = plan.roles as MutableRoles;
@@ -182,8 +181,7 @@ export const patchPlanFromBody = (
  * Apply column-picker / order-confirm picks to the canonical interpretation plan.
  *
  * Writes the resolved plan to BOTH the dataset (so a resume re-derives the same
- * resolved plan — this replaces the override-precedence-on-resume mechanism) and
- * the in-flight job (so the resume reads the resolved orders immediately), plus
+ * resolved plan) and the in-flight job (so the resume reads the resolved orders immediately), plus
  * the job's configSnapshot (frozen authored plan). Returns true if applied.
  */
 const applyFieldMappingOverrides = async (
@@ -251,10 +249,8 @@ export const POST = apiRoute({
   handler: async ({ payload, user, params, body }) => {
     const { id } = params;
 
-    // Get the import job with access control
     const ingestJob = await safeFindByID(payload, { collection: "ingest-jobs", id, depth: 1, user });
 
-    // Verify job is in needs-review state
     if (ingestJob.stage !== PROCESSING_STAGE.NEEDS_REVIEW) {
       throw new ValidationError(`Import job is not awaiting review. Current stage: ${ingestJob.stage}`);
     }
@@ -278,10 +274,8 @@ export const POST = apiRoute({
       );
     }
 
-    // If user provided field mapping overrides (column picker), set them on the dataset
     const hasOverrides = await applyFieldMappingOverrides(payload, ingestJob, body, user);
 
-    // Approve by setting schemaValidation.approved = true
     // The afterChange hook handles: skip flags, workflow queueing, or marking completed
     await payload.update({
       collection: COLLECTION_NAMES.INGEST_JOBS,

@@ -433,7 +433,6 @@ const generateMapStyle = async (): Promise<void> => {
   const layerCount = Number((sourceStyle.layers as unknown[])?.length ?? 0) | 0;
   console.log(`   Fetched style with ${layerCount} layers`);
 
-  // Ensure output directory exists
   if (!fs.existsSync(outputDir)) {
     fs.mkdirSync(outputDir, { recursive: true });
   }
@@ -448,7 +447,6 @@ const generateMapStyle = async (): Promise<void> => {
     const replaceColors = createColorReplacer(replacements);
     const transformedStyle = replaceColors(sourceStyle) as Record<string, unknown>;
 
-    // Update style metadata
     transformedStyle.name = variant.name;
 
     const metadata = (transformedStyle.metadata ?? {}) as Record<string, unknown>;
@@ -458,7 +456,6 @@ const generateMapStyle = async (): Promise<void> => {
     metadata["timetiles:variant"] = variant.name.includes("dark") ? "dark" : "light";
     transformedStyle.metadata = metadata;
 
-    // Write the file
     const outputPath = path.join(outputDir, variant.filename);
     fs.writeFileSync(outputPath, JSON.stringify(transformedStyle, null, 2));
 

@@ -18,8 +18,8 @@ interface FilterPanelProps {
 
 export const FilterPanel = ({ isOpen, children, className }: FilterPanelProps) => (
   // `inert` rather than unmounting: the children stay in the DOM so the width
-  // transition still runs, but a closed drawer is out of the tab order and out
-  // of the accessibility tree instead of hiding ~20 focusable controls at w-0.
+  // transition still runs, but a closed drawer leaves the tab order and the
+  // accessibility tree.
   <div
     inert={!isOpen}
     className={cn(

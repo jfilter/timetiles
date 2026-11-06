@@ -83,19 +83,15 @@ export const GET = apiRoute({
     // valid metadata paths and sanitized like enum-stats.
     const numberPaths = readNumberFieldTypes(dataset.fieldTypes).filter((path) => {
       if (!validPaths.has(path)) return false;
-      // Unicode-aware validation (isValidFieldKey) — the prior ASCII strip-and-
-      // compare skipped every non-ASCII-named numeric field. The path reaches SQL
-      // only as a bound parameter, so no ASCII restriction is needed for safety.
+      // Unicode-aware: the path reaches SQL only as a bound parameter, so no ASCII
+      // restriction is needed for safety.
       return isValidFieldKey(path);
     });
     if (numberPaths.length === 0) return { fields: [] };
 
-    // Resolve each numeric path's NumberFormat from the dataset's interpretation
-    // plan. A path with NO number-kind policy is dropped rather than defaulted:
-    // Event queries deny active ranges without a resolved policy, so advertising
-    // a slider for these paths would offer a control that cannot be applied.
-    // The two sides must agree on one rule, and the query side owns it ("never
-    // cast blind" — an unknown convention cannot be safely ::numeric-normalized).
+    // A path with no number-kind policy in the interpretation plan is dropped, not
+    // defaulted: event queries deny ranges without a resolved policy ("never cast
+    // blind"), so a slider for it could never be applied.
     const planFormats = projectNumberFormats(dataset.interpretationPlan, numberPaths);
     const filterablePaths = numberPaths.filter((path) => Object.hasOwn(planFormats, path));
     if (filterablePaths.length === 0) return { fields: [] };
@@ -107,14 +103,12 @@ export const GET = apiRoute({
      * Build the WHERE scope for one field's bounds query.
      *
      * Cross-filtering mirrors enum-stats: every OTHER active filter applies, but
-     * the field's own range filter is excluded. Sharing one clause across all
-     * fields computed each slider's domain THROUGH its own filter, so dragging a
-     * handle progressively collapsed that slider's own range.
+     * the field's own range filter is excluded, so dragging a handle does not
+     * collapse that slider's own domain.
      *
      * Tag containment and number formats are resolved from the already-loaded
-     * `dataset` (rather than `resolveDatasetFieldContext`, which would re-fetch
-     * it once per field) — without them an active tag filter takes the scalar
-     * SQL branch and zeroes every bound, and range filters are dropped.
+     * `dataset` (not `resolveDatasetFieldContext`, which re-fetches per field) —
+     * without them an active tag filter zeroes every bound and range filters drop.
      */
     const scopeFor = (ownPath: string) => {
       const { [ownPath]: _ownRange, ...otherRanges } = baseQuery.rf ?? {};

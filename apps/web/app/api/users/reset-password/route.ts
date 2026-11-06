@@ -43,9 +43,8 @@ export const POST = apiRoute({
     return withTimingPad(TIMING_PAD_MS.PASSWORD_RESET, async () => {
       let resetUser: User | undefined;
       try {
-        // Reset + full session wipe run in ONE transaction (see helper): a
-        // transient failure can no longer leave the account reset but its old
-        // sessions alive while we return 200.
+        // Reset + full session wipe run in ONE transaction (see helper), so a failure
+        // cannot leave the account reset with its old sessions alive.
         resetUser = await resetPasswordAndRevokeSessions(payload, body.token, body.password);
       } catch (error) {
         // Invalid/expired token OR a transaction failure (which rolled the reset

@@ -92,7 +92,6 @@ export const POST = apiRoute({
     // activity on a specific resource.
     await recordWebhookAudit(payload, target);
 
-    // Dispatch based on target type
     if (target.type === "scheduled-ingest") {
       return handleScheduledIngestTrigger(payload, target);
     }

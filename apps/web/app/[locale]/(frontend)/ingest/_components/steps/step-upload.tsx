@@ -92,8 +92,7 @@ export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
     inputMode: sourceUrl != null || editMode ? "url" : "file",
     error: null,
     // Step components unmount on navigation: a persisted jsonApiConfig means a
-    // JSON API URL was already fetched — without this the config panel
-    // vanished after back-navigation/reload while still being submitted.
+    // JSON API URL was already fetched, so the config panel must stay visible.
     jsonDetected: jsonApiConfig != null,
     urlInput: sourceUrl ?? "",
     authConfig: storeAuthConfig ?? DEFAULT_AUTH_CONFIG,
@@ -243,8 +242,7 @@ export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
 
       {/* Error message */}
       {error && (
-        // role="alert" so a screen reader announces the failure instead of leaving
-        // the user waiting on a silently rendered box.
+        // role="alert" so a screen reader announces the failure.
         <div role="alert" className="bg-destructive/10 text-destructive rounded-lg p-4 text-sm">
           {error}
         </div>

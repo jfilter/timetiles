@@ -58,14 +58,12 @@ export const POST = apiRoute({
       // Serialize concurrent requests for the same user before the check.
       await acquireUserExportLock(payload, user.id, req);
 
-      // Check for existing pending/processing export
       const existingExports = await findActiveExport(payload, user.id, req);
 
       if (existingExports.docs.length > 0) {
         throw new ConflictError("Export already in progress");
       }
 
-      // Get export summary
       const exportService = createDataExportService(payload);
       summary = await exportService.getExportSummary(user.id);
 

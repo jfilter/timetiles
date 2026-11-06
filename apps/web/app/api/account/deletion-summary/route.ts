@@ -20,7 +20,6 @@ export const GET = apiRoute({
     const deletionService = createAccountDeletionService(payload);
     const summary = await deletionService.getDeletionSummary(user.id);
 
-    // Also check if user can be deleted
     const canDelete = await deletionService.canDeleteUser(user.id);
 
     return {
@@ -30,10 +29,8 @@ export const GET = apiRoute({
       // Locale-independent code so the client can translate the block reason;
       // `reason` alone would render untranslated English in the modal.
       reasonCode: canDelete.reasonCode,
-      // The UI interpolates this into the grace-period copy — hardcoded "7
-      // days" strings previously contradicted the configured 30-day default.
+      // The UI interpolates this into the grace-period copy.
       gracePeriodDays: getAppConfig().account.deletionGracePeriodDays,
-      // Include current deletion status if pending
       deletionStatus: user.deletionStatus,
       deletionScheduledAt: user.deletionScheduledAt,
     };

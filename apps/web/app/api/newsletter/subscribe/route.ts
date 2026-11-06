@@ -31,7 +31,6 @@ export const POST = apiRoute({
   handler: async ({ body, payload }) => {
     const { email } = body;
 
-    // Get newsletter service configuration from Payload settings
     const settings = (await payload.findGlobal({ slug: "settings", overrideAccess: true })) as Settings;
 
     const serviceUrl = settings.newsletter?.serviceUrl;
@@ -44,9 +43,7 @@ export const POST = apiRoute({
       throw new AppError(500, "Newsletter service not configured", "NEWSLETTER_NOT_CONFIGURED");
     }
 
-    // Forward the subscription request to the configured service.
-    // The service should handle authentication, list management, etc.
-    // Use `safeFetch` to block SSRF — `serviceUrl` comes from the admin-configured
+    // `safeFetch` blocks SSRF — `serviceUrl` comes from the admin-configured
     // Settings global and must not be allowed to target internal networks.
     let serviceResponse: Response;
     try {
@@ -54,7 +51,6 @@ export const POST = apiRoute({
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          // Forward authorization if provided
           ...(settings.newsletter?.authHeader ? { Authorization: settings.newsletter.authHeader } : {}),
         },
         body: JSON.stringify(body),

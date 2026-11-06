@@ -50,9 +50,8 @@ export const EventsListPaginated = ({
   const tCommon = useTranslations("Common");
   const scope = useViewScope();
 
-  // Clicking a marker sets an H3 cell focus that the map, charts and the surrounding
-  // description all respect. This list did not, so the same screen showed "12 events" above
-  // and every event of the base filters below.
+  // Clicking a marker sets an H3 cell focus that the map, charts and description
+  // respect; the list must honour it too.
   const clusterFilterCells = useUIStore((s) => s.ui.clusterFilterCells);
   const clusterFilter = useMemo(() => parseH3ClusterFilter(clusterFilterCells), [clusterFilterCells]);
 
@@ -82,7 +81,6 @@ export const EventsListPaginated = ({
       filters.fieldFilters && Object.keys(filters.fieldFilters).length > 0 ? filters.fieldFilters : undefined,
   };
 
-  // Initial loading state
   if (isLoading) {
     return (
       <div className="space-y-4">
@@ -94,7 +92,6 @@ export const EventsListPaginated = ({
     );
   }
 
-  // Error state
   if (isError) {
     return (
       <ContentState
@@ -115,7 +112,6 @@ export const EventsListPaginated = ({
     </p>
   );
 
-  // Empty state
   if (events.length === 0) {
     return (
       <div className="space-y-4">
@@ -131,7 +127,6 @@ export const EventsListPaginated = ({
     <div className="space-y-4">
       {description}
 
-      {/* Events list - reuses existing component */}
       <EventsList
         events={events}
         isInitialLoad={false}

@@ -25,27 +25,20 @@ export const POST = apiRoute({
   handler: async ({ req, user, payload, params }) => {
     const scraper = await loadManageableScraper(payload, user, params.id);
 
-    // Reject disabled scrapers up-front: the disable toggle must hold for manual
-    // runs too, not just the cron scheduler. The execution job enforces this
-    // centrally as well, but rejecting here gives immediate feedback and avoids
-    // queueing a job that would only fail.
+    // The disable toggle must hold for manual runs too. The execution job enforces
+    // it as well; rejecting here gives immediate feedback.
     if (scraper.enabled === false) {
       throw new ConflictError("Scraper is disabled");
     }
 
-    // Report "already running" (409) ahead of the rate limit (429): 409 is the
-    // more specific, actionable response, and the atomic claim below — not the
-    // rate limit — is what actually prevents duplicate concurrent runs. The
-    // rate limit still bounds genuine re-triggers once the scraper is idle.
+    // 409 ahead of the rate limit's 429: it is the more actionable response, and
+    // the atomic claim below — not the rate limit — prevents duplicate runs.
     if (scraper.lastRunStatus === "running") {
       throw new ConflictError("Scraper is already running");
     }
 
-    // Defense-in-depth rate limit on re-triggers, checked after the running
-    // check so a *stored* "running" status always wins over the limit. It does
-    // not order the two absolutely: two concurrent triggers can both read the
-    // scraper as idle, and the loser can then hit the limit here and get a 429
-    // rather than the 409 the atomic claim below would have produced.
+    // Defense-in-depth limit on re-triggers. Two concurrent triggers can both read
+    // the scraper as idle, so the loser may still get a 429 rather than a 409.
     const rateLimited = await checkRateLimit(req, user, {
       configName: "SCRAPER_TRIGGER",
       keyPrefix: (u) => `scraper-run:${u!.id}`,

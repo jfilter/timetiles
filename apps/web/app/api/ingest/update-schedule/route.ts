@@ -82,11 +82,9 @@ export const PATCH = apiRoute({
       throw new ForbiddenError("You do not have access to this scheduled ingest");
     }
 
-    // Validate preview
     const previewMeta = loadPreviewMetadata(body.previewId);
     validateRequest(previewMeta, user);
 
-    // Resolve catalog
     const finalCatalogId = await getOrCreateCatalog(payload, req, body.catalogId, body.newCatalogName, user);
     if (finalCatalogId === "forbidden") {
       throw new ForbiddenError("You do not have access to this catalog");
@@ -106,10 +104,8 @@ export const PATCH = apiRoute({
       throw new ValidationError(`Failed to re-parse preview for validation: ${message}`);
     }
 
-    // Dataset creation/updates and the scheduled-ingest update below must land
-    // together — without a transaction, a failure partway through (e.g. the final
-    // scheduled-ingest update) leaves datasets modified/orphaned while the API
-    // reports failure, and a retry then operates on half-applied state.
+    // Dataset changes and the scheduled-ingest update must land together, or a
+    // failure partway leaves half-applied state for the retry.
     const txReq = req as unknown as PayloadRequest;
     txReq.payload = payload;
     txReq.context ??= {};
@@ -117,7 +113,6 @@ export const PATCH = apiRoute({
 
     let datasetMappingEntries;
     try {
-      // Process sheet mappings — creates/updates datasets with field mapping overrides
       ({ datasetMappingEntries } = await processSheetMappings(
         payload,
         req,
@@ -130,14 +125,12 @@ export const PATCH = apiRoute({
         previewSheets
       ));
 
-      // Update dataset schema config based on schema mode
       await applySchemaConfigToDatasets(payload, datasetMappingEntries, body.scheduleConfig.schemaMode, txReq);
     } catch (error) {
       if (ownsTransaction) await killTransaction(txReq);
       throw error;
     }
 
-    // Build scheduled ingest update data
     // Only treat jsonApiConfig as meaningful if it has a recordsPath or enabled pagination.
     // Zod's optional() can produce an empty object {} which is truthy but has no real config.
     const hasJsonApiConfig =
@@ -168,7 +161,6 @@ export const PATCH = apiRoute({
       ...buildSheetLinkFields(datasetMappingEntries),
     };
 
-    // Always include advancedOptions to prevent Payload from filling group defaults
     updateData.advancedOptions = advancedOptions;
 
     // Only update auth config if provided (otherwise keep existing encrypted values)
@@ -194,15 +186,9 @@ export const PATCH = apiRoute({
       "Updated scheduled ingest from wizard"
     );
 
-    // Optionally trigger a run. Route through claimAndQueueScheduledIngest — the same
-    // path manual triggers, webhooks, and the scheduler use — so the FULL
-    // scheduled-ingest WORKFLOW runs (url-fetch → dataset-detection → per-sheet
-    // pipeline). Queueing the raw `url-fetch` task alone created the ingest file
-    // but never ran detection (url-fetch sets skipIngestFileHooks; only the
-    // workflow chains the next stages), so no events were produced even though the
-    // schedule got marked "success"; with deferLifecycleUpdates unset it also
-    // recorded a failure on every one of url-fetch's retries, burning the retry
-    // budget. Best-effort: the schedule update already succeeded, so a failed or
+    // Trigger through claimAndQueueScheduledIngest (like manual triggers, webhooks and
+    // the scheduler) so the full workflow runs; the bare `url-fetch` task never chains
+    // detection. Best-effort: the update already succeeded, so a failed or
     // already-running trigger must not fail the request.
     if (body.triggerRun) {
       const updatedSchedule = await payload.findByID({

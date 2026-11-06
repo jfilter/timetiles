@@ -30,7 +30,6 @@ if (!isBuildPhase) {
 
 const env = getEnv();
 
-// Use factory with build phase handling
 export default buildConfigWithDefaults({
   // Use dummy values during build phase
   secret: isBuildPhase ? "dummy-build-secret" : env.PAYLOAD_SECRET,

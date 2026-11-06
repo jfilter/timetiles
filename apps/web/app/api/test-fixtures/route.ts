@@ -10,7 +10,7 @@
 
 import { isE2E } from "@/lib/utils/is-e2e";
 
-// Use lat/lon columns instead of address — skips geocoding (coordinates used directly)
+// Lat/lon columns rather than an address, so the fixture skips geocoding.
 const CSV_DATA = `title,description,date,latitude,longitude,category
 Workshop on AI,Hands-on workshop covering practical AI applications,2025-06-01,52.5200,13.4050,technology
 Summer Jazz Night,Open-air jazz concert in the park,2025-06-15,52.5280,13.4430,music

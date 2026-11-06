@@ -61,11 +61,9 @@ export const useMapInteractions = ({
       const resolvedSourceCells = resolveParentCells(rawSourceCells, clusterId);
       const sourceCells = resolvedSourceCells.length > 0 ? resolvedSourceCells : null;
 
-      // Derive the resolution from the clicked feature's own cells — the
-      // zoom formula uses JS half-up rounding while the SQL function uses
-      // PG's half-even ROUND(), so exact .5 ties (scale 0.5/0.75) produced a
-      // resolution one off from the returned cells and the focus summary
-      // matched zero rows.
+      // Derive the resolution from the clicked feature's own cells: the zoom
+      // formula rounds half-up while PG's ROUND() rounds half-even, so .5 ties
+      // (scale 0.5/0.75) would be one resolution off from the returned cells.
       const cellForResolution = [clusterId, ...resolvedSourceCells].find((c) => c !== "" && isValidCell(c));
       const h3Resolution = cellForResolution
         ? getResolution(cellForResolution)

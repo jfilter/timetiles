@@ -61,8 +61,7 @@ export const useH3Hover = ({ algorithm, currentZoom, mapRef, isMapLoaded, scope 
   const roundedZoom = Math.round(currentZoom);
   const searchParams = useSearchParams();
 
-  // Build URL params lazily when the query runs — captures the latest bounds/zoom
-  // at fetch time, matching the prior behavior.
+  // Build URL params lazily when the query runs, capturing the latest bounds/zoom.
   const buildParams = useCallback(() => {
     const mapInstance = mapRef.current?.getMap();
     const bounds = mapInstance ? mapInstance.getBounds() : null;

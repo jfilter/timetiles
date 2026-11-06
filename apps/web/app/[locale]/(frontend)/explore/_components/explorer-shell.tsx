@@ -78,7 +78,6 @@ export const ExplorerShell = ({ explorerOptions, className, children }: Readonly
     <div className={cn("flex flex-col", heightClass, className)}>
       {children({ explorer, filterPanel, mobileFilters })}
 
-      {/* Event Detail Modal — shared across all layouts */}
       <ExplorerEventModal selectedEventId={selection.selectedEventId} onClose={selection.closeEvent} />
     </div>
   );

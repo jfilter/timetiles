@@ -15,9 +15,7 @@ import { createLogger, logError } from "@/lib/logger";
 const logger = createLogger("admin-health-api");
 
 const determineHealthStatus = (results: Record<string, { status: string }>) => {
-  // HealthCheckResult.status is "healthy" | "degraded" | "error" — earlier
-  // comparisons against "pending"/"not found"/"warning" never matched, so
-  // degraded results (e.g. pending migrations) logged "passed successfully".
+  // HealthCheckResult.status is "healthy" | "degraded" | "error".
   const hasError = Object.values(results).some((r) => r.status === "error");
   const hasDegraded = Object.values(results).some((r) => r.status === "degraded");
 

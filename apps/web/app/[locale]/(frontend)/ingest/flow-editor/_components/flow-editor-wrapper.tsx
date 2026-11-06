@@ -13,7 +13,7 @@ import dynamic from "next/dynamic";
 import { useTranslations } from "next-intl";
 
 // Hooks can't run in the `loading` thunk directly, so the fallback is its own
-// component — this keeps the loading copy translated instead of hardcoded English.
+// component to keep the loading copy translated.
 const FlowEditorLoading = () => {
   const t = useTranslations("Ingest");
   return (
@@ -23,8 +23,7 @@ const FlowEditorLoading = () => {
   );
 };
 
-// Dynamic import for heavy @xyflow/react library (~300KB)
-// This reduces initial bundle size for pages that don't use the flow editor
+// Keeps the heavy @xyflow/react library out of the initial bundle.
 // oxlint-disable-next-line promise/prefer-await-to-then -- next/dynamic requires .then() to select named exports
 const FlowEditorClient = dynamic(() => import("./flow-editor-client").then((mod) => mod.FlowEditorClient), {
   ssr: false,

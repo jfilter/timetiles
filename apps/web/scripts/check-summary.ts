@@ -236,13 +236,11 @@ const runTypeCheck = (): CheckResults["typecheck"] => {
 
     return { success: true, errorCount: 0, errors: [] };
   } catch (error) {
-    // Parse TypeScript output
     const errorWithOutput = error as { stdout?: Buffer | string; stderr?: Buffer | string };
     const output = errorWithOutput.stdout?.toString() ?? "";
     errors.push(...parseTscOutput(output, "raw"));
     const warningCount = errors.filter((e) => e.severity === "warning").length;
 
-    // Save all errors to JSON file
     const results = {
       success: false,
       errorCount: errors.filter((e) => e.severity === "error").length,
@@ -285,7 +283,6 @@ console.log("=".repeat(50));
 
 console.log("\n📋 Running checks...");
 
-// Run all checks
 const oxlintResults = runOxlintCheck();
 const lintResults = runLintCheck();
 const typecheckResults = runTypeCheck();

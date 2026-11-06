@@ -107,7 +107,6 @@ export const ChartSection = ({
   const [groupBy, setGroupBy] = useQueryState("groupBy", parseAsString.withDefault("none"));
   const [topGroups, setTopGroups] = useQueryState("topGroups", parseAsInteger.withDefault(8));
 
-  // Get filter state to determine which chart types are relevant
   const { filters, setStartDate, setEndDate } = useFilters();
   // Determine which chart types should be available based on filters and data capabilities
   const availableChartTypes = useMemo<ChartType[]>(() => {
@@ -141,7 +140,6 @@ export const ChartSection = ({
     // Clear any pending transition from a previous rapid click
     clearTimeout(transitionTimer.current);
 
-    // Start fade out
     setIsTransitioning(true);
 
     // After fade out, swap chart type

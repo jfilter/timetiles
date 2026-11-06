@@ -31,19 +31,15 @@ export const GET = apiRoute({
   handler: async ({ user, query }) => {
     const { slug, collection } = query;
 
-    // Draft/preview reveals unpublished CMS content, so restrict it to the
-    // content roles (admin/editor). `auth: "required"` alone let any registered
-    // user enable draft mode and read drafts; `auth: "admin"` would wrongly
-    // exclude editors, so gate by role here.
+    // Drafts reveal unpublished content, so restrict to admin/editor. `auth: "required"`
+    // admits any user and `auth: "admin"` excludes editors, hence the role check.
     if (user.role !== "admin" && user.role !== "editor") {
       throw new ForbiddenError("Preview is restricted to content editors");
     }
 
-    // Enable draft mode
     const draft = await draftMode();
     draft.enable();
 
-    // Redirect to the appropriate page
     const redirectPath = collection === "events" ? `/events/${slug}` : `/${slug}`;
 
     // Belt-and-suspenders guard: even though Zod restricts inputs above, reject any

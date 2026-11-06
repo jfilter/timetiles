@@ -60,7 +60,6 @@ export const groupDatasetsByCatalog = (
   // Build a set of allowed dataset IDs if scope is active
   const scopeIds = scopeDatasetIds?.length ? new Set(scopeDatasetIds) : null;
 
-  // Map datasets to their catalog
   const datasetsByCatalog = new Map<number, DataSourceDataset[]>();
   for (const dataset of datasets) {
     if (dataset.catalogId == null) continue;

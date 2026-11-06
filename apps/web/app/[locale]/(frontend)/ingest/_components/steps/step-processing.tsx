@@ -165,7 +165,7 @@ const StageTimeline = ({ stages }: { stages: FormattedStage[] }) => {
   );
 };
 
-// --- Status header (unchanged) ---
+// --- Status header ---
 
 // Helper component to render status header and avoid nested ternaries
 const StatusHeader = ({ status }: { status: ProcessingStatus }) => {
@@ -279,7 +279,6 @@ export const StepProcessing = ({ className }: Readonly<StepProcessingProps>) => 
 
   return (
     <div className={cn("space-y-8", className)}>
-      {/* Status header */}
       <div className="text-center">
         <StatusHeader status={status} />
       </div>

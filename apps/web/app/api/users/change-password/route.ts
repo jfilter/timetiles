@@ -39,7 +39,6 @@ export const POST = apiRoute({
     // Constant-time response to prevent timing side-channel attacks
     // from distinguishing password verification success/failure timing.
     return withTimingPad(TIMING_PAD_MS.PASSWORD_CHANGE, async () => {
-      // Verify current password
       await verifyPasswordWithAudit(
         payload,
         user,
@@ -49,9 +48,8 @@ export const POST = apiRoute({
         "Current password is incorrect"
       );
 
-      // Password write and session revocation in ONE transaction: a stolen or
-      // older session must not survive the change, and committing the password
-      // first left every one of them alive whenever the wipe failed.
+      // Password write and session revocation in ONE transaction: a failed wipe rolls the
+      // password back, so a committed change never leaves stolen or older sessions alive.
       const cookiePrefix = payload.config?.cookiePrefix ?? "payload";
       const currentToken = req.cookies?.get(`${cookiePrefix}-token`)?.value;
       const txReq = { payload, transactionID: undefined, context: {} } as Pick<

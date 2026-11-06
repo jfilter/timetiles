@@ -58,8 +58,7 @@ const MarketingNavigation = ({ mainMenu }: { mainMenu: MainMenu }) => (
   <>
     {mainMenu.navItems?.map((item) => (
       // asChild + locale-aware Link: a plain <a href="/explore"> would drop
-      // the /de prefix and silently switch the user back to English (the
-      // mobile drawer below already does this correctly).
+      // the /de prefix and silently switch the user back to English.
       <HeaderNavItem key={`${item.url}-${item.label}`} asChild>
         <Link href={item.url}>{item.label}</Link>
       </HeaderNavItem>
@@ -140,7 +139,6 @@ export const AdaptiveHeader = ({
           <ThemeToggle />
         </div>
 
-        {/* Mobile navigation drawer */}
         <MobileNavDrawer>
           <MobileNavDrawerTrigger />
           <MobileNavDrawerContent>

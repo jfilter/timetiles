@@ -116,7 +116,6 @@ export const HeaderAuth = ({ user }: Readonly<HeaderAuthProps>) => {
     );
   }
 
-  // Build display name
   const getDisplayName = (): string => {
     if (user.firstName) {
       const lastName = user.lastName ?? "";

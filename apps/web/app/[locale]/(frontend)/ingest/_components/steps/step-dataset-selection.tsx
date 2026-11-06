@@ -148,7 +148,6 @@ export const StepDatasetSelection = ({ className }: Readonly<StepDatasetSelectio
   const handleCopyConfigFrom = (datasetId: number) => {
     const suggestion = configSuggestions.find((s) => s.datasetId === datasetId);
     if (!suggestion) return;
-    // Actually copy the config — recording only the similarity score made this control a no-op.
     applyFieldMappingSuggestion(0, suggestion.config);
     setDatasetTarget(0, { similarityScore: suggestion.score / 100 });
   };

@@ -55,13 +55,11 @@ const AggregationBarChartComponent = ({
     scope
   );
 
-  // Transform API data to chart format
   const chartData: BarChartDataItem[] = data?.items
     ? data.items.map((item) => ({ label: item.name, value: item.count }))
     : [];
 
-  // Click handler based on aggregation type
-  // Routes through useFilters() to ensure dependent filters are cleared
+  // Routes through useFilters() so dependent filters are cleared.
   const handleBarClick = (_item: BarChartDataItem, index: number) => {
     const items = data?.items;
     if (!items?.[index]) return;

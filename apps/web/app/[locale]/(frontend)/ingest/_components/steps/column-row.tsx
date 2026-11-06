@@ -225,7 +225,6 @@ const SplitChildRow = ({
         <td className="px-4 py-2" />
       </tr>
 
-      {/* Expanded transform editor row for split child */}
       <ExpandedEditorRow
         expandedTransform={editing.expandedTransform}
         columnName={childName}
@@ -346,7 +345,6 @@ export const ColumnRow = ({
         <td className="px-4 py-3" />
       </tr>
 
-      {/* Expanded transform editor row */}
       <ExpandedEditorRow
         expandedTransform={editing.expandedTransform}
         columnName={columnName}

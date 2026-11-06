@@ -108,7 +108,6 @@ export const EventFilters = () => {
   const { data: statsData, isError: isStatsError } = useDataSourceStatsQuery();
   const { data: dataSources } = useDataSourcesQuery();
 
-  // Determine whether to show temporal filters based on visible datasets
   const showTemporalFilters = useMemo(
     () => hasVisibleTemporalData(dataSources?.datasets, filters),
     [dataSources?.datasets, filters]

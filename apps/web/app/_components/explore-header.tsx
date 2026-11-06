@@ -130,7 +130,6 @@ const ExploreDesktopHeader = ({ catalogs, datasets, currentView }: ExploreNaviga
           <ArrowLeft className="text-primary dark:text-foreground h-5 w-5" />
         </Link>
 
-        {/* View Toggle */}
         <div className="ml-2">
           <ViewToggle currentView={currentView} />
         </div>
@@ -197,11 +196,9 @@ const ExploreDesktopHeader = ({ catalogs, datasets, currentView }: ExploreNaviga
 export const ExploreFullHeader = ({ catalogs, datasets, currentView }: ExploreNavigationProps) => {
   return (
     <>
-      {/* Mobile: simplified header */}
       <div className="flex flex-1 md:hidden">
         <ExploreMobileHeader catalogs={catalogs} datasets={datasets} />
       </div>
-      {/* Desktop: full split-pane header */}
       <div className="hidden flex-1 md:flex">
         <ExploreDesktopHeader catalogs={catalogs} datasets={datasets} currentView={currentView} />
       </div>

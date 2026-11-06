@@ -60,12 +60,9 @@ export const GET = apiRoute({
     let hexRadiusPx: number | undefined;
     let h3Res: number | undefined;
     if (algorithm === "h3") {
-      // Derive the EFFECTIVE resolution from the returned cells rather than
-      // re-deriving from zoom: the SQL function refines parentCells
-      // drill-downs by +2 resolutions, and PG's ROUND() rounds half-even
-      // while Math.round rounds half-up (exact .5 ties occur at scale
-      // 0.5/0.75) — both made hexRadius sizing and the location-vs-cluster
-      // feature shape disagree with the cells actually returned.
+      // Derive the effective resolution from the returned cells, not from zoom: the SQL
+      // function refines parentCells drill-downs by +2, and PG's ROUND() rounds half-even
+      // while Math.round rounds half-up (.5 ties occur at scale 0.5/0.75).
       const cellFromRows = result.rows
         .flatMap((r) => [typeof r.cluster_id === "string" ? r.cluster_id : "", ...(r.source_cells ?? [])])
         .find((c) => c !== "" && isValidCell(c));
@@ -87,11 +84,8 @@ export const GET = apiRoute({
         15: 0.5,
       };
       const centerLat = (bounds.south + bounds.north) / 2;
-      // 78271.517, not the more familiar 156543.03: that constant is metres per pixel at zoom
-      // 0 for 256px tiles, but MapLibre defines the world as 512px wide at zoom 0. Using the
-      // 256px value made groundRes twice too large, so hexRadius came out at half the real
-      // hex size and capped every cluster circle at half its intended radius — down to
-      // 1-2px, effectively invisible, at low zoom.
+      // 78271.517, not the familiar 156543.03: that constant is for 256px tiles, but
+      // MapLibre defines the world as 512px wide at zoom 0.
       const groundRes =
         (WEB_MERCATOR_METERS_PER_PIXEL_AT_ZOOM_0 * Math.cos((centerLat * Math.PI) / 180)) / 2 ** query.zoom;
       hexRadiusPx = (edgeMeters[h3Res] ?? 100) / groundRes;
@@ -134,12 +128,9 @@ const executeClusteringQuery = async (
   opts: ClusteringOptions
 ) => {
   const { targetClusters, algorithm, minPoints, mergeOverlapping, h3ResolutionScale, useHexCenter, parentCells } = opts;
-  // Only well-formed H3 cells reach the array literal. Drizzle parameterizes
-  // this value, so a crafted cell cannot escape into the SQL text — but a brace,
-  // quote or backslash produces an invalid array literal, which Postgres rejects
-  // and this public endpoint turns into a 500. Dropping invalid cells keeps the
-  // literal well-formed; an all-invalid list becomes NULL, which the function
-  // already treats as "no parent-cell restriction".
+  // The value is parameterized, but a brace, quote or backslash would still make an
+  // invalid array literal and a 500. Drop invalid cells; an all-invalid list becomes
+  // NULL, which the function treats as "no parent-cell restriction".
   const validParentCells = parentCells?.filter((cell) => isValidCell(cell)) ?? [];
   const parentCellsParam = validParentCells.length > 0 ? `{${validParentCells.join(",")}}` : null;
   return (await payload.db.drizzle.execute(sql`

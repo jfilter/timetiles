@@ -355,10 +355,8 @@ export const DataSourceSelector = ({ eventCountsByCatalog, eventCountsByDataset 
   // Auth state for ownership grouping
   const { isAuthenticated } = useAuthState();
 
-  // Fetch lightweight catalog/dataset data
   const { data: dataSources } = useDataSourcesQuery();
 
-  // Group datasets by catalog
   const catalogGroups = groupDatasetsByCatalog(
     dataSources?.datasets ?? [],
     dataSources?.catalogs ?? [],
@@ -368,7 +366,6 @@ export const DataSourceSelector = ({ eventCountsByCatalog, eventCountsByDataset 
     eventCountsByDataset
   );
 
-  // Split into owned vs public
   const { owned, public: publicGroups } = groupCatalogs(catalogGroups);
   const showGrouping = isAuthenticated && owned.length > 0;
 

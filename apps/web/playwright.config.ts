@@ -55,13 +55,10 @@ export default defineConfig({
     ["html", { outputFolder: "playwright-report", open: "never" }],
   ],
 
-  /* Explicit output directory for test artifacts */
   outputDir: "./test-results",
 
-  /* Test timeout - 60 seconds locally, 120 seconds in CI */
   timeout: isCI ? 120000 : 60000,
 
-  /* Expect timeout - shorter expect assertions timeout */
   expect: { timeout: isCI ? 10000 : 5000 },
 
   globalSetup: "./tests/e2e/global-setup.ts",
@@ -72,19 +69,15 @@ export default defineConfig({
     /* Collect trace on failure for better debugging. See https://playwright.dev/docs/trace-viewer */
     trace: "retain-on-failure",
 
-    /* Take screenshot on failure */
     screenshot: "only-on-failure",
 
-    /* Record video on failure */
     video: "retain-on-failure",
 
-    /* Navigation timeout */
     navigationTimeout: isCI ? 30000 : 15000,
 
     /* Action timeout - for click, fill, etc */
     actionTimeout: isCI ? 8000 : 5000,
 
-    /* Run tests in headless mode */
     headless: true,
   },
 

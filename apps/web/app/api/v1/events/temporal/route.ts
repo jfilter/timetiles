@@ -46,10 +46,8 @@ export const GET = apiRoute({
 });
 
 const executeHistogramQuery = async (payload: Payload, query: HistogramQuery, filters: CanonicalEventFilters) => {
-  // The SQL function caps bucket count to maxBuckets first, then unconditionally
-  // enforces minBuckets afterwards. If a caller supplies minBuckets > maxBuckets the
-  // min clamp would override the max cap and return more buckets than requested.
-  // Clamp minBuckets so the max cap always wins.
+  // The SQL function applies the maxBuckets cap before the minBuckets floor, so
+  // minBuckets > maxBuckets would exceed the cap. Clamp so the max always wins.
   const maxBuckets = query.maxBuckets;
   const minBuckets = Math.min(query.minBuckets, maxBuckets);
 
@@ -61,8 +59,8 @@ const executeHistogramQuery = async (payload: Payload, query: HistogramQuery, fi
       ${maxBuckets}::integer
     )
   `)) as {
-    // `bucket_size_seconds` is an int8 since 20260731_210000, and node-postgres hands int8
-    // back as a string to avoid a silent precision loss — coerce before it reaches the JSON.
+    // `bucket_size_seconds` is an int8, which node-postgres returns as a string to avoid
+    // precision loss — coerce before it reaches the JSON.
     rows: Array<{ bucket_start: string; bucket_end: string; bucket_size_seconds: string; event_count: number }>;
   };
 };

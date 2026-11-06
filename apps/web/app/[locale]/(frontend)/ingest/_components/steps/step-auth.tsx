@@ -36,7 +36,6 @@ export const StepAuth = ({ className }: Readonly<StepAuthProps>) => {
     void queryClient.invalidateQueries({ queryKey: ["auth", "current-user"] });
   };
 
-  // Show loading while checking auth status
   if (isCheckingAuth) {
     return (
       <div className={cn("flex flex-col items-center justify-center py-12", className)}>

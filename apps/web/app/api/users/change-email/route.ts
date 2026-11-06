@@ -39,13 +39,9 @@ const updateEmailAndNotify = async (
 ): Promise<void> => {
   const verificationToken = randomBytes(20).toString("hex");
 
-  // Stage the change instead of overwriting `email`: the current (verified)
-  // address must stay the working login credential until the NEW address
-  // proves reachable. Overwriting up front meant a typo'd or undeliverable
-  // address instantly logged the user out everywhere with no way back in
-  // (login demands _verified, the old email no longer existed, and password
-  // reset does not re-verify). The verify route applies the swap — and
-  // re-checks uniqueness there, so no TOCTOU handling is needed here.
+  // Stage the change rather than overwrite `email`: the verified address stays the
+  // login credential until the new one proves reachable, so a typo cannot lock the
+  // user out. The verify route applies the swap and re-checks uniqueness there.
   await payload.update({
     collection: "users",
     id: user.id,
@@ -111,12 +107,10 @@ export const POST = apiRoute({
     const clientId = getClientIdentifier(req);
     const { newEmail, password } = body;
 
-    // Check if email is same as current
     if (newEmail === user.email.toLowerCase()) {
       throw new ValidationError("New email must be different from current email");
     }
 
-    // Verify password
     await verifyPasswordWithAudit(payload, user, password, clientId, "email_change");
 
     // Constant-time response: both paths return after the same elapsed time

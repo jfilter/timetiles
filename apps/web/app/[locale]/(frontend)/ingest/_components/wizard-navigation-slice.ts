@@ -28,11 +28,9 @@ export const createNavigationSlice: WizardSlice<WizardNavigationActions> = (set,
   initialize: (auth) => {
     if (get()._initialized) return;
     const wasAuthenticated = auth.isAuthenticated && auth.isEmailVerified;
-    // Keep a persisted step from a reload (localStorage rehydrates
-    // before this runs) — clobbering it dumped users back to step 2
-    // with all their later-step data intact but unreachable without
-    // re-clicking through. Authenticated users never land below step 2;
-    // unauthenticated users always start at the auth step.
+    // Keep a step persisted across a reload (localStorage rehydrates before this
+    // runs). Authenticated users never land below step 2; unauthenticated users
+    // always start at the auth step.
     const restoredStep = get().currentStep;
     const currentStep = (wasAuthenticated ? Math.max(restoredStep, 2) : 1) as WizardStep;
     set({ _initialized: true, startedAuthenticated: wasAuthenticated, currentStep });
@@ -87,10 +85,8 @@ export const createNavigationSlice: WizardSlice<WizardNavigationActions> = (set,
 
   reset: () => {
     api.persist?.clearStorage();
-    // Carry the auth state over instead of falling back to initialState:
-    // the layout's initialize() effect only runs on mount, so a plain reset
-    // dropped a signed-in user onto the sign-in step — with a 7-step progress
-    // bar, because startedAuthenticated had been wiped too.
+    // Carry the auth state over: the layout's initialize() effect only runs on
+    // mount, so a plain reset would drop a signed-in user onto the sign-in step.
     const wasAuthenticated = get().startedAuthenticated;
     set({
       ...initialState,

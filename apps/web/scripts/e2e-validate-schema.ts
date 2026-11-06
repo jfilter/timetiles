@@ -81,9 +81,8 @@ const parseCount = (result: string): number => {
 
 const checkDatabaseExists = async (): Promise<boolean> => {
   try {
-    // The query succeeds with an EMPTY result set when the database is absent, so the
-    // rows have to be inspected — returning true on "no exception" reported every
-    // missing database as present and pushed the failure into the checks below.
+    // The query succeeds with an EMPTY result set when the database is absent,
+    // so the rows have to be inspected; a missing exception proves nothing.
     const result = await runDatabaseQuery("postgres", `SELECT 1 FROM pg_database WHERE datname = '${getDbName()}'`);
     return result
       .split("\n")

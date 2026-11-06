@@ -369,10 +369,7 @@ const renderBlock = (block: Block, newsletter: NewsletterLabels): React.ReactEle
 };
 
 export const BlockRenderer: React.FC<BlockRendererProps> = ({ blocks }) => {
-  // Newsletter status/button copy comes from the locale messages — the
-  // hardcoded English constant previously leaked into German pages even
-  // though the Newsletter keys exist in both locales (the footer already
-  // rendered them translated).
+  // Newsletter status/button copy comes from the locale messages.
   const t = useTranslations("Newsletter");
   const newsletter: NewsletterLabels = {
     messages: { success: t("success"), error: t("error"), networkError: t("networkError") },

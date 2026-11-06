@@ -37,14 +37,11 @@ export const useExplorerViewport = (options?: UseExplorerViewportOptions) => {
 
   const mapRef = useRef<ClusteredMapHandle>(null);
 
-  // Zustand store
   const mapBounds = useUIStore((state) => state.ui.mapBounds);
   const setMapBounds = useUIStore((state) => state.setMapBounds);
 
-  // Bounds. simpleBounds MUST be identity-stable across renders: useDebounce
-  // keys its effect on reference identity, so a fresh object literal every
-  // render re-arms the 300 ms timer whose setState produces another fresh
-  // reference — a self-sustaining re-render loop for the whole explorer tree.
+  // simpleBounds MUST be identity-stable: useDebounce keys its effect on reference
+  // identity, so a fresh object every render would re-arm the timer in an endless loop.
   const simpleBounds = useMemo(() => simplifyBounds(mapBounds), [mapBounds]);
   const debouncedSimpleBounds = useDebounce(simpleBounds, 300);
 
@@ -84,9 +81,8 @@ export const useExplorerViewport = (options?: UseExplorerViewportOptions) => {
       if (boundsState === "initial") {
         setBoundsState("bounds-applied");
       } else if (boundsState === "bounds-applied" && isUserMove === true) {
-        // Only real input flips to user-panned — programmatic fits (auto-fit
-        // on load, the "Zoom to data" button itself) also fire moveend, and
-        // counting them made the button appear immediately and never go away.
+        // Only real input flips to user-panned — programmatic fits (auto-fit on
+        // load, the "Zoom to data" button itself) also fire moveend.
         setBoundsState("user-panned");
       }
     } else {

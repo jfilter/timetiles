@@ -51,9 +51,7 @@ All event endpoints support common filter parameters:
 - \`bounds\`: Geographic bounding box as JSON string
     `.trim(),
     contact: { name: "TimeTiles", url: "https://github.com/timetiles/timetiles" },
-    // Must match package.json and LICENSE. This said MIT while the project is
-    // AGPL — a licence statement served to every API consumer, telling them
-    // they had permissions they do not have.
+    // Must match package.json and LICENSE: it tells every API consumer what they may do.
     license: { name: "AGPL-3.0-or-later", url: "https://www.gnu.org/licenses/agpl-3.0.html" },
   },
   servers: [{ url: "/", description: "Current server" }],
@@ -65,17 +63,14 @@ All event endpoints support common filter parameters:
   ],
 });
 
-// Ensure public directory exists
 const publicDir = path.join(__dirname, "../public");
 if (!fs.existsSync(publicDir)) {
   fs.mkdirSync(publicDir, { recursive: true });
 }
 
-// Write YAML
 const yamlPath = path.join(publicDir, "openapi.yaml");
 fs.writeFileSync(yamlPath, yaml.stringify(doc));
 
-// Write JSON
 const jsonPath = path.join(publicDir, "openapi.json");
 fs.writeFileSync(jsonPath, JSON.stringify(doc, null, 2));
 

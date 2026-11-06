@@ -53,7 +53,6 @@ const DeleteAccountFlow = ({ onClose }: { onClose: () => void }) => {
     error: summaryError,
   } = useDeletionSummaryQuery({ enabled: step === "summary" });
 
-  // Derive summary and error from query data
   const summary = summaryData?.canDelete ? summaryData.summary : null;
   // Configured grace period for copy interpolation; 30 matches the server
   // default until the summary response arrives.

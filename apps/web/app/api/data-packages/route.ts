@@ -23,8 +23,7 @@ export const GET = apiRoute({
         ...manifest,
         // Strip auth secrets from response
         source: { ...manifest.source, auth: manifest.source.auth ? { type: manifest.source.auth.type } : undefined },
-        // `enabled` matters: a deactivated package kept reporting "Activated", so the UI
-        // only ever offered Deactivate and there was no way back on.
+        // A deactivated package keeps its activation record, so `enabled` decides.
         activated: activation?.enabled === true,
         activation,
       };

@@ -60,14 +60,9 @@ const nextConfig = {
   env: { DEFAULT_LOCALE: process.env.DEFAULT_LOCALE ?? "en" },
   transpilePackages: ["@timetiles/ui", "@timetiles/assets"],
   poweredByHeader: false,
-  // Event images are user-imported from arbitrary third-party hosts (schema
-  // detection in event-creation-helpers.ts classifies any URL column pointing
-  // at image extensions, regardless of domain). A static host allowlist here
-  // doesn't scale across data packages, and a wildcard hostname would turn the
-  // built-in image optimizer into an open SSRF-capable proxy. Left empty on
-  // purpose — event-detail-content.tsx and events-list.tsx render these images
-  // with `unoptimized` instead, which skips the optimizer route entirely and
-  // lets the browser fetch directly from the source host.
+  // Event images come from arbitrary third-party hosts, and a wildcard hostname would
+  // turn the image optimizer into an open SSRF proxy. Empty on purpose: event-detail-content.tsx
+  // and events-list.tsx render these images `unoptimized`, so the browser fetches them directly.
   images: { remotePatterns: [] },
   headers: async () => [
     { source: "/:path*", headers: SECURITY_HEADERS },

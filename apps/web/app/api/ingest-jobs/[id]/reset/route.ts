@@ -68,7 +68,6 @@ export const POST = apiRoute({
     // Get the import job (admins have access to all jobs)
     const ingestJob = await safeFindByID(payload, { collection: "ingest-jobs", id, user });
 
-    // Only allow resetting failed jobs
     if (ingestJob.stage !== PROCESSING_STAGE.FAILED) {
       throw new ValidationError(`Can only reset jobs in FAILED state. Current stage: ${ingestJob.stage}`);
     }

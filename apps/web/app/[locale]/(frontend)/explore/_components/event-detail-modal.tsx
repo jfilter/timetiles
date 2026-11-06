@@ -63,13 +63,11 @@ export const EventDetailModal = ({ eventId, onClose }: EventDetailModalProps) =>
         )}
         aria-describedby="event-detail-description"
       >
-        {/* Screen reader accessible title */}
         <DialogTitle className="sr-only">{dialogTitle}</DialogTitle>
         <DialogDescription id="event-detail-description" className="sr-only">
           {t("eventDescription")}
         </DialogDescription>
 
-        {/* Content */}
         {isLoading && <EventDetailSkeleton />}
         {error && <EventDetailError error={error} onRetry={handleRetry} />}
         {event && !isLoading && !error && <EventDetailContent event={event} variant="modal" onClose={onClose} />}

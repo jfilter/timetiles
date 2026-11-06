@@ -52,11 +52,8 @@ export const useExplorerState = (options?: UseExplorerStateOptions) => {
   // (unstable) viewport object as an effect dependency.
   const { setBoundsState } = viewport;
 
-  // Push event counts to Zustand so the header (outside explore tree) can display them.
-  // Use eventsData.total (from API pagination) instead of events.length, because the events
-  // array is capped at 1000 items while total reflects the true count matching the viewport+filters.
-  // totalEvents comes from the SCOPED total query — the header cannot read the
-  // view scope itself (it renders outside ViewProvider).
+  // Push event counts to Zustand for the header, which renders outside the explore tree
+  // and ViewProvider. eventsData.total, not events.length: the array is capped at 1000.
   useEffect(() => {
     if (eventsData != null) {
       useUIStore
@@ -65,8 +62,7 @@ export const useExplorerState = (options?: UseExplorerStateOptions) => {
     }
   }, [eventsData, totalEventsData]);
 
-  // Clear stale mapStats when the explorer unmounts (e.g. route transition away from /explore).
-  // Without this, the header would briefly show the previous count until new data loads.
+  // Clear mapStats on unmount so the header does not briefly show a stale count.
   useEffect(() => {
     return () => {
       useUIStore.getState().setMapStats(null);
@@ -113,7 +109,6 @@ export const useExplorerState = (options?: UseExplorerStateOptions) => {
     }
   }, [dataBounds, mapRef, setBoundsState]);
 
-  // Shared zoom-to-data logic
   const dataBoundsOutsideViewport = isDataBoundsOutsideViewport(boundsData?.bounds, mapBounds);
   const showZoomToData = shouldShowZoomToData(
     boundsState === "user-panned",

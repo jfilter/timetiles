@@ -21,7 +21,7 @@ export const createSourceSlice: WizardSlice<WizardSourceActions> = (set, get) =>
       return sheet.name;
     };
 
-    // In edit mode with an existing dataset, pre-select it instead of "new"
+    // In edit mode with an existing dataset, pre-select it rather than "new"
     const editDatasetId = state.editMode ? (state.editScheduleData?.datasetId ?? null) : null;
 
     set({

@@ -49,7 +49,6 @@ export const GET = apiRoute({
     const { filters } = ctx;
     const { eventTable, datasetTable, whereClause } = createFilteredEventDatasetScope(filters);
 
-    // Execute bounds query using MIN/MAX for efficient computation
     type BoundsRow = {
       west: number | string | null;
       south: number | string | null;
@@ -73,7 +72,6 @@ export const GET = apiRoute({
         .limit(1)
     )[0] as BoundsRow | undefined;
 
-    // Check if we have any results with valid bounds
     if (!row || row.count === 0 || row.west == null || row.south == null || row.east == null || row.north == null) {
       return { bounds: null, count: 0 } satisfies BoundsResponse;
     }

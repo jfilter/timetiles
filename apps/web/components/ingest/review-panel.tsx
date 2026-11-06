@@ -406,10 +406,8 @@ export const ReviewPanel = ({ job, className }: Readonly<ReviewPanelProps>) => {
     approveMutation.mutate({ ingestJobId: String(job.id) });
   };
 
-  // For ambiguous-order reasons, "continue without picking an order" means: keep
-  // importing but let the dataset guess per row. Flip the sticky policy to
-  // best-effort so the guessing is explicit and persistent (ADR 0040) rather than
-  // an accidental side effect of the per-import skip flag.
+  // For ambiguous-order reasons, "continue without picking an order" keeps importing
+  // and sets the sticky best-effort policy, so per-row guessing is explicit (ADR 0040).
   const handleApproveBestEffort = () => {
     approveMutation.mutate({ ingestJobId: String(job.id), ambiguityResolution: "best-effort" });
   };
@@ -445,7 +443,6 @@ export const ReviewPanel = ({ job, className }: Readonly<ReviewPanelProps>) => {
           t={t}
         />
 
-        {/* Reason-specific stats */}
         {details && <ReasonStats reason={reason} details={details} t={t} />}
 
         {/* Error message from mutation */}
@@ -455,7 +452,6 @@ export const ReviewPanel = ({ job, className }: Readonly<ReviewPanelProps>) => {
           </div>
         )}
 
-        {/* Actions */}
         <div className="flex flex-wrap gap-2 pt-2">
           <ReviewActions
             reason={reason}

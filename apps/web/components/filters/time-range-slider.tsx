@@ -67,12 +67,9 @@ export const DateInput = ({
       value={draft ?? value}
       onChange={(e) => {
         const next = e.target.value;
-        // `<input type="date">` reports "" for every incomplete entry, so committing each
-        // keystroke pushed null while the user was still typing the year and the field
-        // refilled itself from the data minimum. Hold those in a draft — but a COMPLETE date
-        // applies at once, because that is also what picking one from the native calendar
-        // popup produces, and a popup selection does not blur the field. Waiting for blur
-        // there meant choosing a date visibly did nothing.
+        // `<input type="date">` reports "" for every incomplete entry, so hold those in a
+        // draft. A COMPLETE date applies at once: a native calendar popup selection
+        // produces one without blurring the field.
         if (COMPLETE_DATE.test(next)) {
           setDraft(null);
           onCommit(next);
@@ -118,8 +115,7 @@ export const TimeRangeSlider = ({
   const t = useTranslations("Explore");
   const tCommon = useTranslations("Common");
   const locale = useLocale();
-  // Localize month/year labels (e.g. German month abbreviations) using the
-  // active locale instead of the runtime default.
+  // Localize month/year labels with the active locale, not the runtime default.
   const monthYear = (ts: string | number): string => formatMonthYear(ts, locale);
 
   const {
@@ -150,7 +146,6 @@ export const TimeRangeSlider = ({
     handleHistogramClick,
   } = useTimeRangeSlider({ filters, onStartDateChange, onEndDateChange, bounds });
 
-  // Loading state
   if (isLoading) {
     return (
       <div className="flex h-24 items-center justify-center">

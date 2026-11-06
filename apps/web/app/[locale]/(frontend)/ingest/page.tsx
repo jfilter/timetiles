@@ -9,7 +9,6 @@
  */
 import { IngestWizard } from "./_components";
 
-// Force dynamic rendering to read cookies on every request
 export const dynamic = "force-dynamic";
 
 interface ImportPageProps {

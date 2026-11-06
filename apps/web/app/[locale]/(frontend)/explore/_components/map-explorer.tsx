@@ -80,8 +80,8 @@ const MapExplorerContent = ({ chrome, initialViewState }: MapExplorerContentProp
   // Loading phase derived from React Query's native fields:
   //   - isInitialLoad: any query has no successful fetch yet (dataUpdatedAt === 0)
   //   - isUpdating: at least one query is fetching while stale data is on screen
-  // `&& !isError`: a failed query never advances dataUpdatedAt, so without this
-  // the list pulsed its loading skeleton forever instead of showing the error.
+  // `&& !isError`: a failed query never advances dataUpdatedAt, so without it the
+  // loading skeleton would never give way to the error.
   const isInitialLoad = (eventsDataUpdatedAt === 0 && !eventsError) || (clustersDataUpdatedAt === 0 && !clustersError);
   const isUpdating = (eventsFetching || clustersFetching) && !isInitialLoad;
 
@@ -105,7 +105,6 @@ const MapExplorerContent = ({ chrome, initialViewState }: MapExplorerContentProp
     };
   }, [mapRef]);
 
-  // Get human-readable filter labels (uses helper function)
   const filterLabels = getFilterLabels(filters, catalogs, datasets, t("unknownDataset"), locale);
 
   // Desktop: Flex layout - both map and list shrink proportionally when filters open

@@ -55,17 +55,15 @@ interface FlowEditorClientProps {
   sheetIndex: number;
 }
 
-// Define custom node types
 const nodeTypes = { "source-column": SourceColumnNode, "target-field": TargetFieldNode, transform: TransformNode };
 
-// Minimap color function — uses CSS custom properties for theme support
+// CSS custom properties keep the minimap themed.
 const getNodeColor = (node: Node): string => {
   if (node.type === "source-column") return "var(--card)";
   if (node.type === "target-field") return "var(--background)";
   return "var(--ring)";
 };
 
-// ReactFlow options
 const fitViewOptions = { padding: 0.2 };
 const proOptions = { hideAttribution: true };
 
@@ -87,7 +85,6 @@ export const FlowEditorClient = ({ previewId, sheetIndex }: Readonly<FlowEditorC
     serializeFlowState,
   } = useFlowEditor(previewId, sheetIndex);
 
-  // Save and return to wizard
   const handleSave = useCallback(() => {
     const { fieldMapping, transforms } = serializeFlowState();
     useWizardStore.getState().setFieldMapping(sheetIndex, fieldMapping);
@@ -95,13 +92,11 @@ export const FlowEditorClient = ({ previewId, sheetIndex }: Readonly<FlowEditorC
     router.push("/ingest");
   }, [serializeFlowState, router, sheetIndex]);
 
-  // Handle drag over to allow drop
   const onDragOver = useCallback((event: DragEvent<HTMLDivElement>) => {
     event.preventDefault();
     event.dataTransfer.dropEffect = "move";
   }, []);
 
-  // Handle dropping a transform node
   const onDrop = useCallback(
     (event: DragEvent<HTMLDivElement>) => {
       event.preventDefault();
@@ -122,8 +117,6 @@ export const FlowEditorClient = ({ previewId, sheetIndex }: Readonly<FlowEditorC
     },
     [addTransformNode]
   );
-
-  // nodeTypes is a module-level constant — no memoization needed
 
   if (isLoading) {
     return (

@@ -59,7 +59,6 @@ export const SiteBranding = () => {
   const brandingCSS = useMemo((): string | null => {
     const declarations: string[] = [];
 
-    // Inject semantic color tokens
     if (colors) {
       for (const [key, cssVar] of Object.entries(COLOR_TOKEN_MAP)) {
         const value = colors[key as keyof SiteBrandingColors];
@@ -69,7 +68,6 @@ export const SiteBranding = () => {
       }
     }
 
-    // Inject border radius
     if (brandingStyle?.borderRadius) {
       const radius = BORDER_RADIUS_MAP[brandingStyle.borderRadius];
       if (radius) {
@@ -77,12 +75,10 @@ export const SiteBranding = () => {
       }
     }
 
-    // Inject font pairing
     if (typography?.fontPairing) {
       declarations.push(`--site-font-pairing: ${typography.fontPairing};`);
     }
 
-    // Inject density
     if (brandingStyle?.density) {
       declarations.push(`--site-density: ${brandingStyle.density};`);
     }

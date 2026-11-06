@@ -121,7 +121,6 @@ export const GET = apiRoute({
   handler: async ({ user, payload, params }) => {
     const { ingestId } = params;
 
-    // Get the import file with access control enforced
     const ingestFile = await payload
       .findByID({
         collection: "ingest-files",
@@ -160,7 +159,6 @@ export const GET = apiRoute({
           }, 0) / jobs.length
         : 0;
 
-    // Get earliest estimated completion time
     const estimatedCompletionTime = jobs
       .map((job) => job.progress?.estimatedCompletionTime as Date | undefined)
       .filter((time): time is Date => time != null)
@@ -172,7 +170,6 @@ export const GET = apiRoute({
         ? ingestFile.catalog.id
         : ingestFile.catalog;
 
-    // Build comprehensive response
     return {
       type: "ingest-file",
       id: ingestFile.id,

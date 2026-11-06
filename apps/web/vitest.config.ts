@@ -2,7 +2,7 @@
  * Vitest configuration file.
  *
  * Configures Vitest for unit, integration, and component testing.
- * Uses vitest 4 projects API (replaces deprecated vitest.workspace.ts).
+ * Uses the vitest 4 projects API.
  *
  * @module
  */
@@ -62,7 +62,7 @@ export default defineConfig({
       reportsDirectory: "./coverage",
     },
     watch: false,
-    // Test projects (replaces vitest.workspace.ts)
+    // Test projects
     projects: [
       {
         extends: "./vitest.config.base.ts",
@@ -88,10 +88,8 @@ export default defineConfig({
           name: "components",
           globals: true,
           environment: "jsdom",
-          // Every .tsx unit test needs jsdom + the React plugin, not just the
-          // ones under components/. Keep this glob wide so a React/hook test
-          // placed elsewhere under tests/unit/ is still collected — a narrower
-          // glob silently dropped tests/unit/lib/hooks/*.test.tsx.
+          // Every .tsx unit test needs jsdom + the React plugin, not just those under
+          // components/. Keep this glob wide so React/hook tests anywhere under tests/unit/ run.
           include: ["tests/unit/**/*.test.tsx"],
           setupFiles: ["tests/setup/unit/global-setup.ts"],
           testTimeout: 10000,

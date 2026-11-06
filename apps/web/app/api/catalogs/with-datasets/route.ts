@@ -22,8 +22,7 @@ export const GET = apiRoute({
       payload.find({
         collection: "catalogs",
         where: { createdBy: { equals: user.id } },
-        // `pagination: false` keeps an explicit limit — only `limit: 0` lifts it. A user with
-        // more than 100 catalogs silently lost the rest from the wizard.
+        // `pagination: false` keeps an explicit limit — only `limit: 0` lifts it.
         limit: 0,
         pagination: false,
         sort: "-createdAt",
@@ -39,11 +38,10 @@ export const GET = apiRoute({
       }),
     ]);
 
-    // Count events per dataset in a single GROUP BY query instead of N+1 individual counts
+    // One GROUP BY query, not N+1 counts.
     const datasetIds = datasetsResult.docs.map((ds) => ds.id);
     const eventCounts = await fetchDatasetEventCounts(payload, datasetIds);
 
-    // Group datasets by catalog ID
     const datasetsByCatalog = new Map<number, Array<{ id: number; name: string; eventCount: number }>>();
     for (const ds of datasetsResult.docs) {
       const catalogId = typeof ds.catalog === "object" && ds.catalog != null ? ds.catalog.id : null;

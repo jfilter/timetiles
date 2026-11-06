@@ -40,7 +40,6 @@ export const MobileFilterSheet = ({
   const startY = useRef(0);
   const currentY = useRef(0);
 
-  // Handle touch start
   const handleTouchStart = (e: React.TouchEvent) => {
     const touch = e.touches[0];
     if (touch) {
@@ -50,7 +49,6 @@ export const MobileFilterSheet = ({
     }
   };
 
-  // Handle touch move
   const handleTouchMove = (e: React.TouchEvent) => {
     if (!isDragging) return;
     const touch = e.touches[0];
@@ -64,17 +62,14 @@ export const MobileFilterSheet = ({
     }
   };
 
-  // Handle touch end
   const handleTouchEnd = () => {
     setIsDragging(false);
-    // If dragged more than 100px down, close the sheet
     if (dragOffset > 100) {
       onClose();
     }
     setDragOffset(0);
   };
 
-  // Close on escape key
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === "Escape" && isOpen) {
@@ -89,7 +84,6 @@ export const MobileFilterSheet = ({
   // Tab cannot leave the sheet, and focus returns to the trigger on close.
   useFocusTrap(sheetRef, isOpen);
 
-  // Prevent body scroll when sheet is open
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = "hidden";
@@ -105,7 +99,6 @@ export const MobileFilterSheet = ({
 
   return (
     <>
-      {/* Floating Action Button */}
       <button
         type="button"
         onClick={onOpen}

@@ -142,7 +142,6 @@ export const GET = apiRoute({
     const fm = dataset.fieldMetadata as Record<string, FieldStatistics> | null;
     if (!fm) return { fields: [] };
 
-    // Find enum candidate fields
     const candidates = Object.values(fm).filter((f) => f.isEnumCandidate);
     if (candidates.length === 0) return { fields: [] };
 
@@ -154,14 +153,12 @@ export const GET = apiRoute({
     // Force dataset filter to this dataset (regardless of URL params)
     const baseQuery = { ...query, datasets: [datasetId] };
 
-    // Live SQL counts for all qualifying fields
     const fields = [];
     for (const field of candidates) {
       if (!validPaths.has(field.path)) continue;
 
-      // Validate the key (Unicode-aware) instead of an ASCII strip-and-compare,
-      // which skipped every non-ASCII-named field entirely. isValidFieldKey bounds
-      // length/depth and the path is passed to SQL only as a bound parameter.
+      // Unicode-aware: isValidFieldKey bounds length/depth, and the path reaches
+      // SQL only as a bound parameter.
       if (!isValidFieldKey(field.path)) continue;
       const fieldPath = field.path;
 

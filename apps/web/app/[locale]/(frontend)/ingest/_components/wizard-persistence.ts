@@ -34,7 +34,6 @@ export const wizardPersistOptions: PersistOptions<WizardStore, Partial<WizardSto
   merge: (persisted, current) => {
     if (!persisted || typeof persisted !== "object") return current;
     const p = persisted as Partial<WizardState> & { _savedAt?: number };
-    // Check expiry
     if (p._savedAt && Date.now() - p._savedAt > STORAGE_EXPIRY_MS) {
       return current;
     }

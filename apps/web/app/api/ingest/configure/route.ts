@@ -59,7 +59,6 @@ export const POST = apiRoute({
     // Validate business-logic constraints (preview exists, not expired, user owns it)
     validateRequest(previewMeta, user);
 
-    // Get or create catalog
     logger.debug(
       { catalogId: body.catalogId, newCatalogName: body.newCatalogName, userId: user.id, userRole: user.role },
       "Resolving catalog for import"
@@ -85,7 +84,6 @@ export const POST = apiRoute({
 
     let shouldCleanupPreview = false;
     try {
-      // Process sheet mappings and create/update datasets
       const { datasetIdMap, datasetMappingEntries } = await processSheetMappings(
         payload,
         req,
@@ -100,7 +98,6 @@ export const POST = apiRoute({
 
       shouldCleanupPreview = true;
 
-      // Create the import file record
       const ingestFile = await createIngestFileRecord(
         payload,
         user,
@@ -111,7 +108,6 @@ export const POST = apiRoute({
         datasetMappingEntries
       );
 
-      // Create scheduled ingest if requested
       let scheduledIngestId: number | null = null;
       if (body.createSchedule?.enabled) {
         await requireFeatureEnabled(payload, "enableScheduledIngests", "Scheduled imports are currently disabled.");

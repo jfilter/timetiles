@@ -133,7 +133,6 @@ export const StepFieldMapping = ({ className }: Readonly<StepFieldMappingProps>)
   const requiredFieldsCount = useFieldMappingCompletion(activeMapping);
   const isComplete = activeMapping ? isFieldMappingComplete(activeMapping) : false;
 
-  // Apply transforms to preview data
   const sheetTransforms = transforms[activeSheetIndex];
   const transformedSampleData = useMemo(
     () => applyPreviewTransforms(activeSheet?.sampleData ?? [], sheetTransforms ?? []),
@@ -240,7 +239,6 @@ export const StepFieldMapping = ({ className }: Readonly<StepFieldMappingProps>)
         missingFields={requiredFieldsCount.missing}
       />
 
-      {/* Column mapping table — all columns with inline transforms */}
       <ColumnMappingTable
         headers={headers}
         sampleData={activeSheet.sampleData}

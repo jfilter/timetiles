@@ -49,13 +49,9 @@ export const IngestWizard = ({ className, editScheduleId }: Readonly<IngestWizar
   const router = useRouter();
   const { data: schedule, isLoading: isLoadingSchedule, isError } = useScheduledIngestQuery(editScheduleId ?? null);
 
-  // Category B but safe: server-data-driven mutation that is the user's
-  // explicit request — they navigated here with `?edit=N` to load a
-  // schedule they already own. The full-screen loading state below
-  // blocks rendering until init runs, so the user never sees a
-  // half-applied state, and the per-id `Ref` guard makes init run
-  // exactly once. `initializeForEdit` is a single atomic `set()` that
-  // also clears any persisted wizard state.
+  // `?edit=N` loads a schedule the user owns. The loading state below blocks
+  // rendering until init runs, the per-id ref guard runs it exactly once, and
+  // `initializeForEdit` is a single atomic `set()` that clears persisted state.
   useEffect(() => {
     if (editScheduleId && schedule && editInitializedRef.current !== editScheduleId) {
       editInitializedRef.current = editScheduleId;
@@ -68,12 +64,10 @@ export const IngestWizard = ({ className, editScheduleId }: Readonly<IngestWizar
     }
   }, [editScheduleId, schedule, initializeForEdit, setError]);
 
-  // Scroll to top when step changes
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, [currentStep]);
 
-  // Show error state if schedule fetch failed
   if (editScheduleId && isError) {
     return (
       <div className="flex flex-col items-center justify-center gap-4 py-20">
@@ -86,7 +80,6 @@ export const IngestWizard = ({ className, editScheduleId }: Readonly<IngestWizar
     );
   }
 
-  // Show loading state while fetching schedule for edit
   if (editScheduleId && (isLoadingSchedule || !editMode)) {
     return (
       <div className="flex flex-col items-center justify-center gap-4 py-20">

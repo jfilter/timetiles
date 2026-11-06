@@ -23,7 +23,6 @@ export const POST = apiRoute({
   auth: "required",
   body: z.object({ password: z.string().min(1) }),
   handler: async ({ payload, user, req, body }) => {
-    // Rate limiting
     const clientId = getClientIdentifier(req);
     const rateLimitService = getRateLimitService(payload);
 
@@ -52,11 +51,9 @@ export const POST = apiRoute({
     // Constant-time response to prevent timing side-channel attacks
     // from distinguishing password verification or eligibility check timing.
     return withTimingPad(TIMING_PAD_MS.ACCOUNT_DELETION, async () => {
-      // Verify password
       await verifyPasswordWithAudit(payload, user, password, clientId, "account_deletion", "Invalid password");
 
       const deletionService = createAccountDeletionService(payload);
-      // Schedule deletion
       const result = await deletionService.scheduleDeletion(user.id);
 
       await auditLog(payload, {

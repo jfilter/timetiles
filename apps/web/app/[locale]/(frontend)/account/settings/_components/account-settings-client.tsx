@@ -38,7 +38,6 @@ export const AccountSettingsClient = ({ user }: AccountSettingsClientProps) => {
 
   return (
     <div className="space-y-6">
-      {/* Pending Deletion Banner */}
       {user.deletionStatus === "pending_deletion" && user.deletionScheduledAt && (
         <PendingDeletionBanner deletionScheduledAt={user.deletionScheduledAt} />
       )}
@@ -67,15 +66,12 @@ export const AccountSettingsClient = ({ user }: AccountSettingsClientProps) => {
         </CardContent>
       </Card>
 
-      {/* Change Email */}
       <ChangeEmailForm currentEmail={user.email} onSuccess={handleEmailChanged} />
 
-      {/* Change Password */}
       <ChangePasswordForm />
 
       <hr className="border-border" />
 
-      {/* Data Export */}
       <DataExportCard />
 
       <hr className="border-border" />
@@ -110,7 +106,6 @@ export const AccountSettingsClient = ({ user }: AccountSettingsClientProps) => {
         </CardContent>
       </Card>
 
-      {/* Delete Account Modal */}
       <DeleteAccountModal open={showDeleteModal} onOpenChange={setShowDeleteModal} />
     </div>
   );

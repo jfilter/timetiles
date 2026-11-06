@@ -73,8 +73,7 @@ export const canProceedFromStep = (
  */
 const hasCompleteCatalogSelection = (state: ProceedState): boolean => {
   if (state.selectedCatalogId === null || state.sheetMappings.length === 0) return false;
-  // `?? ""` is defence in depth: the types now guarantee the field is present, but reading it
-  // off an incomplete store slice previously threw here and crashed the whole step.
+  // `?? ""` is defence in depth against an incomplete store slice; the types guarantee the field.
   if (state.selectedCatalogId === "new" && (state.newCatalogName ?? "").trim() === "") return false;
   return state.sheetMappings.every((m) => m.datasetId !== "new" || (m.newDatasetName ?? "").trim() !== "");
 };

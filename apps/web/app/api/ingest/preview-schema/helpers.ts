@@ -46,11 +46,8 @@ export const MAX_PREVIEW_FILE_SIZE = 50 * 1024 * 1024; // 50MB
 /**
  * The size limit that applies to one user's preview.
  *
- * Previously a flat 50 MB for everyone, which contradicted the quota in both
- * directions: a low-trust user could upload and parse 50 MB only to be rejected
- * at 1 MB when the import itself was created, while trusted levels were capped
- * at 50 MB despite being promised 100/500/1000 MB. The quota is authoritative;
- * the constant above only stops it exceeding what a preview can hold.
+ * The user's file-size quota is authoritative; MAX_PREVIEW_FILE_SIZE only
+ * caps it at what a preview can hold.
  */
 export const getPreviewFileSizeLimit = (payload: Payload, user: User | null | undefined): number => {
   try {
@@ -58,9 +55,8 @@ export const getPreviewFileSizeLimit = (payload: Payload, user: User | null | un
     if (typeof quotaMb !== "number" || quotaMb <= 0) return MAX_PREVIEW_FILE_SIZE;
     return Math.min(quotaMb * 1024 * 1024, MAX_PREVIEW_FILE_SIZE);
   } catch {
-    // A quota lookup that fails must not turn a preview into a 500. Falling
-    // back to the technical ceiling keeps the endpoint working and is no more
-    // permissive than the flat limit that used to apply to everyone.
+    // A failed quota lookup must not turn a preview into a 500; fall back to the
+    // technical ceiling.
     return MAX_PREVIEW_FILE_SIZE;
   }
 };
@@ -110,8 +106,7 @@ const detectFieldFromHeaders = (
   const match = matchFieldNamePatterns(headers, fieldType, language);
   if (!match) return { path: null, confidence: 0, confidenceLevel: "none" };
 
-  // Position-based confidence: earlier patterns = higher confidence
-  // Fallback matches are penalized (0.7 base instead of 0.9)
+  // Earlier patterns score higher; fallback matches start lower.
   const baseConfidence = match.isFallback ? 0.7 : 0.9;
   const decrement = 0.1;
   const minConfidence = match.isFallback ? 0.3 : 0.5;

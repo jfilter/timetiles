@@ -214,13 +214,11 @@ export const ColumnMappingTable = ({
 }: Readonly<ColumnMappingTableProps>) => {
   const t = useTranslations("Ingest");
 
-  // Build derived column view
   const columnRows = useMemo(
     () => buildColumnView(headers, sampleData, fieldMapping, transforms, suggestedMappings),
     [headers, sampleData, fieldMapping, transforms, suggestedMappings]
   );
 
-  // Collect assigned targets
   const assignedTargets = useMemo(() => {
     const set = new Set<string>();
     for (const key of WIZARD_TARGET_KEYS) {
@@ -239,15 +237,12 @@ export const ColumnMappingTable = ({
 
   const handleTargetChange = useCallback(
     (columnName: string, newTarget: FieldMappingStringField | null) => {
-      // Find current target for this column
       const currentTarget = findTargetForColumn(columnName, fieldMapping);
 
-      // Clear old assignment
       if (currentTarget) {
         onFieldMappingChange(currentTarget, null);
       }
 
-      // Set new assignment
       if (newTarget) {
         // If the new target is already assigned to another column, clear it
         if (fieldMapping[newTarget]) {
@@ -365,8 +360,6 @@ export const ColumnMappingTable = ({
         <Plus className="h-4 w-4" />
         {t("combineColumns")}
       </Button>
-
-      {/* Geocoding is now inline in the ColumnRow when target is locationField */}
     </div>
   );
 };
