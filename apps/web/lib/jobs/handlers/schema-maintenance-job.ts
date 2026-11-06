@@ -68,11 +68,10 @@ export interface SchemaMaintenanceResult {
 /**
  * Get datasets to check for schema staleness.
  *
- * Every dataset is inspected, not the first N. The old `limit: maxDatasets` truncated the
- * scan at a fixed 100 with no cursor and no rotating order, so an installation with more
- * datasets than that re-checked the same head of the list every night and everything past
- * it kept a stale schema forever. The staleness check itself is cheap (a count plus the
- * latest schema version); the run is bounded by capping the expensive regenerations below.
+ * Every dataset is inspected, not the first N: a fixed cap without a rotating order would
+ * re-check the same head of the list every night. The staleness check itself is cheap (a
+ * count plus the latest schema version); the run is bounded by capping the expensive
+ * regenerations below.
  */
 const getDatasetsToCheck = async (payload: Payload, specificIds: number[] | undefined): Promise<DatasetInfo[]> => {
   const datasets = await asSystem(payload).find({

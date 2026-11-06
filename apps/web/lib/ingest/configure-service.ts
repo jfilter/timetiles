@@ -208,14 +208,14 @@ export const processDataset = async (
   >;
 
   if (sheetMapping.datasetId === "new") {
-    // Bug 14 fix: pass req so Payload hooks and access control know the acting user
+    // Pass req so Payload hooks and access control know the acting user
     const newDataset = await payload.create({
       collection: "datasets",
       data: {
         name: sheetMapping.newDatasetName,
         catalog: catalogId,
         language: "eng",
-        isPublic: true, // Default to public for wizard imports
+        isPublic: true,
         _status: "published",
         interpretationPlan,
         idStrategy,
@@ -247,7 +247,6 @@ export const processDataset = async (
 
   const updateData: Record<string, unknown> = { interpretationPlan, geoFieldDetection, schemaConfig };
 
-  // Only update idStrategy if dataset has no events yet
   if (eventCount.totalDocs === 0) {
     updateData.idStrategy = idStrategy;
   } else {
@@ -257,7 +256,7 @@ export const processDataset = async (
     );
   }
 
-  // Bug 14 fix: pass req so Payload hooks and access control know the acting user
+  // Pass req so Payload hooks and access control know the acting user
   await payload.update({ collection: "datasets", id: sheetMapping.datasetId, data: updateData, req });
 
   logger.info(
@@ -350,8 +349,7 @@ export const validateFieldMappingPaths = (
 
 /**
  * Process all sheet mappings and return dataset mapping entries.
- * Bug 28 fix: process sequentially instead of in parallel to prevent race conditions
- * when multiple sheets target the same dataset.
+ * Runs sequentially so multiple sheets targeting the same dataset cannot race.
  *
  * Validates user-supplied field-mapping paths against the preview's detected
  * schema before any dataset is persisted — invalid paths would otherwise be
@@ -370,9 +368,7 @@ export const processSheetMappings = async (
   previewSheets?: SheetInfo[]
 ): Promise<{ datasetIdMap: Map<number, number>; datasetMappingEntries: DatasetMappingEntry[] }> => {
   // Validate field-mapping paths against the detected schema BEFORE persisting
-  // any datasets. Callers that skip passing previewSheets (legacy callers or
-  // tests) fall through without validation — this preserves backwards
-  // compatibility while opting the main route into validation.
+  // any datasets. Callers without previewSheets skip this check.
   if (previewSheets) {
     validateFieldMappingPaths(previewSheets, sheetMappings, fieldMappings, transformsBySheet);
   }
@@ -432,7 +428,7 @@ export const createScheduledIngest = async ({
     return null;
   }
 
-  // Bug 15 fix: enforce scheduled-ingest quota before creation
+  // Enforce scheduled-ingest quota before creation
   const quotaService = createQuotaService(payload);
   await quotaService.validateQuota(user, "ACTIVE_SCHEDULES", 1);
 
@@ -440,12 +436,10 @@ export const createScheduledIngest = async ({
 
   await applySchemaConfigToDatasets(payload, datasetMappingEntries, scheduleConfig.schemaMode);
 
-  // Build advanced options with JSON API config if present
   const advancedOptions = scheduleConfig.jsonApiConfig
     ? { responseFormat: "json" as const, jsonApiConfig: scheduleConfig.jsonApiConfig }
     : undefined;
 
-  // Build base scheduled ingest data
   const baseData = {
     name: scheduleConfig.name,
     sourceUrl: scheduleConfig.sourceUrl,
@@ -518,18 +512,11 @@ export const getOrCreateCatalog = async (
 /**
  * Build `processingOptions` for the ingest-file from the wizard's schedule config.
  *
- * When the user enabled scheduling and picked a `schemaMode`, that choice must
- * land on the *first-run* ingest-file (not just on the scheduled-ingests
- * record) so `validate-schema-job` can run the explicit `evaluateSchemaMode`
- * path on this run. Without this, the first run goes through the dataset-config
- * fallback while subsequent re-fetches via `url-fetch-job` use the explicit
- * mode-evaluator path — an inconsistency that this helper closes.
+ * A scheduled run's `schemaMode` must land on the first-run ingest-file (not just the
+ * scheduled-ingests record) so `validate-schema-job` takes the explicit `evaluateSchemaMode`
+ * path, as scheduled re-runs from `url-fetch-job` do with the same shape.
  *
- * Mirrors the `processingOptions` shape that `url-fetch-job` writes for
- * scheduled re-runs (see `apps/web/lib/jobs/handlers/url-fetch-job/index.ts`).
- *
- * Returns `undefined` for non-scheduled uploads so the field stays unset on
- * one-off imports — the dataset-config fallback handles those correctly.
+ * Returns `undefined` for non-scheduled uploads; the dataset-config fallback handles those.
  */
 export const buildWizardProcessingOptions = (
   scheduleConfig: ConfigureIngestRequest["createSchedule"]

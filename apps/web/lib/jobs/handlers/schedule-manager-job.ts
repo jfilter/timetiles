@@ -30,11 +30,8 @@ import { processScheduledScrapers } from "./schedule-manager/scraper-scheduling"
 /**
  * Disable a scheduled ingest after detecting an invalid schedule configuration.
  *
- * Previously `getNextExecutionTime` swallowed parse errors and silently rescheduled
- * for 24 hours from now, making broken cron expressions look like "runs once
- * per day." Now the scheduler disables the ingest, stamps a readable
- * `lastError`, and emits an audit entry so operators notice and re-enable
- * after fixing the config.
+ * Stamps a readable `lastError` and emits an audit entry so operators notice and re-enable
+ * after fixing the config, rather than the schedule silently misfiring.
  */
 const disableScheduledIngestForInvalidConfig = async (
   payload: Payload,
@@ -79,7 +76,6 @@ const disableScheduledIngestForInvalidConfig = async (
   }
 };
 
-// Helper to process a single scheduled ingest
 const processScheduledIngest = async (
   payload: Payload,
   scheduledIngest: ScheduledIngest,
@@ -136,7 +132,6 @@ const processScheduledIngest = async (
   return true;
 };
 
-// Helper to handle import error
 const handleImportError = async (
   payload: Payload,
   scheduledIngest: ScheduledIngest,
@@ -211,7 +206,6 @@ export const scheduleManagerJob = {
 
       const currentTime = new Date();
 
-      // Find all enabled scheduled ingests
       const scheduledIngests = await payload.find({
         collection: COLLECTION_NAMES.SCHEDULED_INGESTS,
         where: { enabled: { equals: true } },

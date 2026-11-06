@@ -32,7 +32,7 @@ export function validateRequest(
     throw new ValidationError("Preview not found or expired. Please upload the file again.");
   }
 
-  // Bug 27 fix: reject expired previews
+  // Reject expired previews
   if (previewMeta.expiresAt && new Date(previewMeta.expiresAt) < new Date()) {
     throw new ValidationError("Preview has expired. Please upload the file again.");
   }

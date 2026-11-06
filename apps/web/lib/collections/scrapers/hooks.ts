@@ -79,11 +79,9 @@ export const webhookTokenLifecycleHook: CollectionBeforeChangeHook = ({ data, or
  * shouldScraperRunNow gives nextRunAt absolute precedence, so a stale value from
  * the OLD schedule defers the new cadence until the previous fire time passes
  * (e.g. switching daily→hourly waits up to a day; a far-future value defers
- * indefinitely). The manifest-sync path (scraper-repo-sync-job) already resets
- * nextRunAt on a schedule change and scheduled-ingests does the same in its
- * collection hook — but a direct admin/REST edit of `schedule` had no equivalent
- * guard. Clearing it forces a recompute from the new schedule (the scheduler's
- * lastRunAt fallback, or "run now" on first match).
+ * indefinitely). This covers direct admin/REST edits of `schedule`; manifest sync
+ * resets nextRunAt itself. Clearing it forces a recompute from the new schedule
+ * (the scheduler's lastRunAt fallback, or "run now" on first match).
  */
 export const resetNextRunOnScheduleChange: CollectionBeforeChangeHook = ({ data, originalDoc, operation }) => {
   if (!data) return data;
@@ -164,13 +162,10 @@ const RUNNING_CLAIM_STALE_AFTER_MS = 4 * 60 * 60 * 1000;
  * owns a container on the runner and an in-progress auto-import, and neither is
  * reliably cancellable from here.
  *
- * But the refusal is bounded by age, because an UNBOUNDED one is a trap. A
- * worker killed mid-scrape leaves `last_run_status = 'running'` with nothing to
- * clear it, and scraper-repos' beforeDelete re-raises this 409 at repo level —
- * which account deletion (deletion-service) cascades through inside a single
- * transaction. One wedged scraper therefore aborted and rolled back a user's
- * entire account deletion, permanently. A claim older than the reaper's own
- * threshold is treated as abandoned and the delete proceeds.
+ * But the refusal is bounded by age: a worker killed mid-scrape leaves
+ * `last_run_status = 'running'` with nothing to clear it, and the 409 propagates
+ * through repo deletes, so an unbounded refusal would block them forever. A claim
+ * older than the reaper's own threshold is treated as abandoned.
  *
  * The bound only applies when staleness can be PROVEN. A NULL last_run_at keeps
  * blocking: it means the claim's age is unknown, not that it is old, and

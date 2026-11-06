@@ -150,7 +150,6 @@ export const cleanupStuckScrapersJob = {
 
       logger.info("Starting cleanup stuck scrapers job", { jobId: context.job?.id, stuckThresholdHours, dryRun });
 
-      // Find all scrapers with "running" status
       const runningScrapers = await asSystem(payload).find({
         collection: "scrapers",
         where: { lastRunStatus: { equals: "running" } },

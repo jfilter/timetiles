@@ -228,13 +228,12 @@ const buildSuccessOutput = (
   };
 };
 
-// Helper to load user from userId (which can be object or ID)
+// userId can be a populated user or an ID
 const loadUser = async (payload: Payload, userId: string | number | User): Promise<User | null> => {
   if (typeof userId === "object") return userId;
   return payload.findByID({ collection: "users", id: userId });
 };
 
-// Helper to check and track URL fetch quota atomically
 const checkAndTrackQuota = async (
   payload: Payload,
   userId: string | number | User | null | undefined,
@@ -269,7 +268,6 @@ const compensateUrlFetchQuotaOnError = async (
   }
 };
 
-// Helper to prepare cache options
 const prepareCacheOptions = (
   scheduledIngest: ScheduledIngest | null,
   triggeredBy: string | undefined,
@@ -281,12 +279,8 @@ const prepareCacheOptions = (
   respectCacheControl: scheduledIngest?.advancedOptions?.respectCacheControl !== false,
 });
 
-// Helper to compute fetch timeout respecting test environment.
-//
-// URL_FETCH_TEST_TIMEOUT_MS is read directly from process.env (NOT via getEnv)
-// because tests mutate it per-assertion and getEnv() is memoized. See the
-// comment in lib/config/env.ts for why this one variable is an exception to
-// the "all env goes through getEnv()" rule.
+// URL_FETCH_TEST_TIMEOUT_MS is read from process.env, not getEnv(): tests mutate it
+// per-assertion and getEnv() is memoized (see lib/config/env.ts).
 const computeTimeout = (scheduledIngest: ScheduledIngest | null): number => {
   const timeoutMinutes = scheduledIngest?.advancedOptions?.timeoutMinutes ?? 30;
   const isTestEnv = getEnv().NODE_ENV === "test";
@@ -376,13 +370,8 @@ const createImportFromFetchResult = async (
   return { ingestFileId, filename };
 };
 
-// No `queue` or `concurrency` here, deliberately: Payload's TaskConfig has
-// neither field. Only workflow.queue is read (queues/localAPI.js), so both were
-// silently ignored while reading as authoritative intent. This task runs solely
-// as a step of the scheduled-ingest workflow, which declares queue: "ingest" --
-// that is where the queue actually comes from. Declaring it here again would
-// only mislead the next reader, and would still do nothing if someone ever
-// queued this task standalone: it would land on `default`.
+// No `queue` or `concurrency` here: Payload's TaskConfig has neither field (only
+// workflow.queue is read). The queue comes from the scheduled-ingest workflow (queue: "ingest").
 export const urlFetchJob = {
   slug: "url-fetch",
   // Retry transient infrastructure failures (DNS not ready at container cold-start,
@@ -438,11 +427,9 @@ export const urlFetchJob = {
         wasConverted: result.wasConverted,
       });
 
-      // A successful fetch that yielded zero records is a successful run with nothing to
-      // import — an empty listing today is a valid answer, not a fault. Stop here rather
-      // than creating an ingest file whose schema detection would fail: that failure
-      // consumed a retry per empty day and eventually auto-disabled the schedule. This
-      // matches how the scraper path already treats a zero-row run (see auto-import.ts).
+      // A successful fetch with zero records is a successful run with nothing to import. Stop
+      // before creating an ingest file whose schema detection would fail and burn a retry; the
+      // scraper path treats a zero-row run the same way (see auto-import.ts).
       if (result.wasConverted && result.recordCount === 0) {
         logger.info("URL fetch returned no records; nothing to import", {
           sourceUrl: sanitizeUrlForLogging(effectiveInput.sourceUrl),
@@ -495,13 +482,9 @@ export const urlFetchJob = {
         scheduledIngestId: input.scheduledIngestId,
       });
 
-      // Compensate on EVERY failed attempt (not only pre-fetch failures):
-      // `retries` re-runs the whole handler, and each attempt re-increments
-      // URL_FETCHES_PER_DAY at the top. Without refunding here, a failure that
-      // occurs *after* a successful fetch (duplicate check, import creation,
-      // lifecycle update) would leak a quota unit on every retry. The claim is
-      // non-null only when this attempt actually incremented, and the helper
-      // no-ops on a null claim, so this refunds exactly this attempt's charge.
+      // Compensate on EVERY failed attempt: `retries` re-runs the whole handler and each attempt
+      // re-increments URL_FETCHES_PER_DAY. The claim is non-null only when this attempt
+      // incremented, and the helper no-ops on null, so this refunds exactly this attempt's charge.
       await compensateUrlFetchQuotaOnError(payload, urlFetchQuotaClaim, effectiveInput.sourceUrl);
 
       if (scheduledIngest && !deferLifecycleUpdates) {

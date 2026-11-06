@@ -81,7 +81,7 @@ const assertNoRestrictedAuthFieldWrites = ({
   if (changesEmail || changesPassword || changesApiKey) {
     // Payload's own REST/GraphQL/Local API error handling reads `err.status`, not
     // `err.statusCode` — throwing the `apiRoute()`-flavored AppError here silently
-    // downgrades every rejection to an opaque 500 (see issue #168).
+    // downgrades every rejection to an opaque 500.
     throw new APIError("Email, password and API keys can only be changed through their dedicated endpoints.", 403);
   }
 };
@@ -107,25 +107,16 @@ export const usersBeforeChangeHook: CollectionBeforeChangeHook[] = [
     // SECURITY: block direct REST writes to credential/auth fields (see helper).
     assertNoRestrictedAuthFieldWrites({ data, operation, req, originalDoc });
 
-    // SECURITY: Handle self-registration (unauthenticated user creation)
-    // Force safe defaults to prevent privilege escalation
-    //
-    // We check req.payloadAPI === "REST" to distinguish between:
-    // - Public API requests (REST): Users self-registering via HTTP endpoints
-    // - Local API calls (payload.create()): Tests, seeding scripts, system operations
-    //
-    // Only public API self-registration should be restricted. Local API calls
-    // (which have req.payloadAPI === "local" or undefined) need to create
-    // admin users for testing and seeding purposes.
+    // SECURITY: force safe defaults on unauthenticated REST self-registration to
+    // prevent privilege escalation. Local API calls (tests, seeds, system operations)
+    // stay unrestricted because they need to create admin users.
     const isPublicApiRequest = req.payloadAPI === "REST";
     if (operation === "create" && !req.user && isPublicApiRequest) {
       // Force user role - prevent self-registrants from becoming admin/editor
       data.role = "user";
       // Force BASIC trust level - lowest quotas for new self-registered users
       data.trustLevel = String(TRUST_LEVELS.BASIC);
-      // Mark as self-registered
       data.registrationSource = "self";
-      // Ensure account is active
       data.isActive = true;
     }
 
@@ -173,13 +164,10 @@ export const usersBeforeLoginHook: CollectionBeforeLoginHook[] = [
 /**
  * Revoke everything a deactivated account can still authenticate with.
  *
- * `isActive: false` was enforced ONLY in beforeLogin, which runs in the login operation and
- * nowhere else. An already-signed-in user therefore kept full access: their existing
- * `payload-token` still authenticated every route, and `POST /api/users/refresh-token` (which
- * does not run beforeLogin) re-stamped the session and minted a fresh JWT indefinitely, so
- * deactivation never actually took effect. An issued API key was worse — Payload's API-key
- * strategy consults neither `isActive` nor sessions nor beforeLogin, so the key kept working
- * with the account's original role even after a full account deletion.
+ * beforeLogin enforces `isActive: false` only on login. An existing `payload-token` keeps
+ * authenticating, `POST /api/users/refresh-token` skips beforeLogin and mints fresh JWTs, and
+ * Payload's API-key strategy checks neither `isActive` nor sessions. So deactivation also
+ * deletes the user's sessions and clears the API key.
  */
 const revokeCredentialsOnDeactivation: CollectionAfterChangeHook = async ({ doc, previousDoc, operation, req }) => {
   if (operation !== "update" || !previousDoc) return doc;
@@ -282,11 +270,9 @@ export const usersAfterChangeHook: CollectionAfterChangeHook[] = [
  *
  * `verifyPassword` (lib/api/auth-helpers) confirms a password by running the real login
  * operation and then undoing its side effects — the attempt counter and the session it
- * creates. The audit entry is the third side effect: without this flag, every password
- * change, email change and deletion request appended a LOGIN_SUCCESS row for a login that
- * never happened, with no IP because no request is passed. That corrupts the very artifact
- * the audit log exists for, and the "review your recent activity" advice in the
- * deletion-cancelled email points users straight at it.
+ * creates. This flag suppresses the third side effect, the audit entry: otherwise every
+ * password change, email change and deletion request would log a LOGIN_SUCCESS for a login
+ * that never happened.
  */
 export const SKIP_LOGIN_AUDIT = "skipLoginAudit";
 
@@ -343,18 +329,9 @@ export const usersAfterErrorHook: CollectionAfterErrorHook[] = [
       { req }
     );
 
-    // Collapse the RESPONSE too, not just the audit entry.
-    //
-    // /api/auth/login is a hardened wrapper, but Payload's own /api/users/login stays
-    // registered and is served by the catch-all at app/(payload)/api/[...slug]. There,
-    // LockedAuth's "This user is locked due to having too many failed login attempts"
-    // went back verbatim — so six requests against an address proved whether it exists,
-    // the exact oracle the wrapper was hardened to close. It also locks the real owner
-    // out for lockTime, making it a targeted DoS on any known address.
-    //
-    // `result` carries the REST-formatted body; returning a response overrides it. In a
-    // GraphQL context `result` is absent and this is a no-op, which is correct — GraphQL
-    // is disabled by default here.
+    // Collapse the RESPONSE too: Payload's own /api/users/login (served by the catch-all)
+    // would otherwise return LockedAuth's message verbatim, revealing whether an address
+    // exists. `result` carries the REST body; it is absent under GraphQL (disabled by default).
     if (!result) return;
 
     const generic = new AuthenticationError(req.t);
@@ -368,9 +345,8 @@ export const usersAfterErrorHook: CollectionAfterErrorHook[] = [
  * The app has hardened wrappers at /api/auth/login and /api/auth/forgot-password
  * which carry the rate limits, the audit entries and the response-timing
  * padding. But Payload registers /api/users/login and /api/users/forgot-password
- * for every auth-enabled collection, and those are served by the catch-all — so
- * the same two operations were reachable on a second, entirely unlimited path.
- * All the abuse controls lived in the door nobody had to use.
+ * for every auth-enabled collection, served by the catch-all, and those need the
+ * same limits.
  *
  * Enforced here rather than by removing the endpoints: `endpoints: false` would
  * disable every REST endpoint on the collection, including ones the Payload

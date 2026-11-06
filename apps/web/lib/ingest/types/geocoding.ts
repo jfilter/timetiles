@@ -83,7 +83,6 @@ export const getIngestGeocodingCandidate = (job: { interpretationPlan?: unknown 
   const locationField = typeof roles.location === "string" ? roles.location : undefined;
   const locationNameField = typeof roles.locationName === "string" ? roles.locationName : undefined;
 
-  // Return null if neither location field nor location name field was detected
   if (!locationField && !locationNameField) {
     return null;
   }

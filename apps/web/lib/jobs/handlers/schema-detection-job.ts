@@ -53,16 +53,14 @@ import {
   syncDatasetTemporalFlag,
 } from "./schema-detection-job-support";
 
-// Helper to load dataset and extract active transforms
 const loadDatasetAndTransforms = async (
   payload: Payload,
   job: IngestJob,
   logger: ReturnType<typeof createJobLogger>
 ): Promise<{ dataset: Dataset; transforms: IngestTransform[] }> => {
-  // Deliberately unguarded: loadEffectiveDatasetForJob either returns a dataset or
-  // throws. Swallowing the throw ran detection with NO authored transforms, which
-  // silently produced a schema for untransformed data — every other stage treats
-  // the same lookup as fatal, so let Payload retry the job.
+  // Deliberately unguarded: loadEffectiveDatasetForJob returns a dataset or throws. Detecting
+  // without the authored transforms would build a schema for untransformed data, and every
+  // other stage treats this lookup as fatal too, so let Payload retry the job.
   const dataset = await loadEffectiveDatasetForJob(payload, job);
 
   // Authored ops come from the dataset plan (frozen on the config snapshot at
@@ -245,30 +243,22 @@ export const schemaDetectionJob = {
       // Set stage for UI progress display (workflow controls sequencing)
       await setJobStage(payload, ingestJobId, PROCESSING_STAGE.DETECT_SCHEMA);
 
-      // Load resources
       const { job, filePath } = await loadJobAndFilePath(payload, ingestJobId);
 
       // Initialize stage with total file rows (stream iterates all rows, including duplicates)
       const totalFileRows = job.duplicates?.summary?.totalRows ?? 0;
       await ProgressTrackingService.startStage(payload, ingestJobId, PROCESSING_STAGE.DETECT_SCHEMA, totalFileRows);
 
-      // Re-read the job AFTER startStage so the snapshot used by the per-batch
-      // progress writes carries the persisted startedAt/in_progress status
-      // (same fix as analyze-duplicates/create-events/geocode). Passing the
-      // pre-startStage `job` would rewrite the stage back to
-      // pending/startedAt=null on every batch — freezing the bar and ETA.
+      // Re-read the job AFTER startStage so the snapshot used by the per-batch progress writes
+      // carries the persisted startedAt/in_progress status; the pre-startStage `job` would reset
+      // the stage to pending on every batch.
       const progressJob = await loadIngestJob(payload, ingestJobId);
 
-      // Load dataset and extract active transforms
       const { dataset, transforms } = await loadDatasetAndTransforms(payload, job, logger);
-      // Schema detection should only skip *internal* duplicates (same row appearing
-      // multiple times within the same file would otherwise double-count samples).
-      // External duplicates — rows already present in the dataset — carry the same
-      // schema as the existing data, and the downstream create-events stage is what
-      // applies the skip/update strategy. Skipping externals here meant that a
-      // scheduled re-import of an unchanged URL saw all rows as external dupes,
-      // produced zero samples, and then failed validation with every field marked
-      // "removed" under additive schema mode.
+      // Skip only *internal* duplicates (a row repeated within the file would double-count
+      // samples). External duplicates share the existing schema, and create-events applies the
+      // skip/update strategy; skipping them would leave an unchanged scheduled re-import with
+      // zero samples and every field marked "removed".
       const duplicateRows = getInternalDuplicateSkipSet(job);
       const { batchNumber, totalRowsProcessed, lastSchemaBuilder, emptyRowCount } = await runSchemaDetectionBatches({
         payload,
@@ -284,11 +274,8 @@ export const schemaDetectionJob = {
       // Complete stage and finalize
       await ProgressTrackingService.completeStage(payload, ingestJobId, PROCESSING_STAGE.DETECT_SCHEMA);
 
-      // A sheet with a header but no data rows produces no schema builder, so
-      // nothing is persisted and the NEXT task dies on "Schema builder state not
-      // found" — an internal message that tells the user nothing. Fail here with
-      // the real reason instead. (Whether an empty scheduled source should count
-      // as a failed run at all is a separate product question.)
+      // A sheet with a header but no data rows produces no schema builder, so the NEXT task would
+      // die on an internal "Schema builder state not found". Fail here with the real reason.
       if (lastSchemaBuilder == null && totalRowsProcessed === 0) {
         throw new Error("No data rows found in the file — nothing to detect a schema from.");
       }

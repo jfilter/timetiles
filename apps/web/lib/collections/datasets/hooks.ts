@@ -114,19 +114,6 @@ const processCatalogValidation = async (
   return { catalogCreatorId, catalogIsPublic: catalog.isPublic ?? false };
 };
 
-/**
- * Validates that datasets in public catalogs are also public.
- * Also forces datasets to be public if allowPrivateImports is disabled.
- * Sets createdBy and catalogCreatorId on creation/update.
- */
-/**
- * Validate user-supplied regex patterns on `extract` ingest transforms before
- * the dataset is saved.
- *
- * Mirrors the runtime guard in `applyExtractTransform` — rejects known
- * catastrophic-backtracking shapes up front so the user sees the error at
- * configuration time rather than having their import stall the worker.
- */
 /** Read the ordered transform ops from an interpretationPlan value. */
 const planOps = (plan: unknown): Array<Record<string, unknown>> => {
   if (!plan || typeof plan !== "object") return [];
@@ -141,6 +128,14 @@ const planRoles = (plan: unknown): Record<string, unknown> => {
   return roles && typeof roles === "object" ? (roles as Record<string, unknown>) : {};
 };
 
+/**
+ * Validate user-supplied regex patterns on `extract` ingest transforms before
+ * the dataset is saved.
+ *
+ * Mirrors the runtime guard in `applyExtractTransform` — rejects known
+ * catastrophic-backtracking shapes up front so the user sees the error at
+ * configuration time rather than having their import stall the worker.
+ */
 export const validateIngestTransformPatterns: CollectionBeforeChangeHook = ({ data, operation, originalDoc }) => {
   if (operation !== "create" && operation !== "update") return data;
 
@@ -267,7 +262,7 @@ export const collectProtectedMappingPaths = (roles: unknown, geo: unknown): Arra
   for (const [field, label] of MAPPING_ROLE_FIELDS) {
     add(roles, field, label);
   }
-  // geoFieldDetection only carries lat/lng (still its own group, out of scope).
+  // geoFieldDetection only carries lat/lng.
   add(geo, "latitudePath", "latitude");
   add(geo, "longitudePath", "longitude");
 
@@ -366,6 +361,11 @@ export const validateMappingOverrideTransforms: CollectionBeforeChangeHook = ({ 
 /** Denormalized access-control fields on datasets — derived here, never client-supplied. */
 const DATASET_DENORM_FIELDS = ["catalogCreatorId", "catalogIsPublic"] as const;
 
+/**
+ * Validates that datasets in public catalogs are also public.
+ * Also forces datasets to be public if allowPrivateImports is disabled.
+ * Sets createdBy and catalogCreatorId on creation/update.
+ */
 export const validatePublicCatalogDataset: CollectionBeforeChangeHook = async ({
   data: incoming,
   req,

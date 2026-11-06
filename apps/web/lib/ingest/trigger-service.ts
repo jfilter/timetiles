@@ -28,8 +28,7 @@ import type { ScheduledIngest } from "@/payload-types";
  * Thrown when the atomic claim loses to a concurrent trigger.
  *
  * A distinct type, not a message substring: every caller has to tell "someone else got there
- * first" (skip, or 409) apart from a real failure, and matching on wording meant a reworded
- * message would silently route the busy case into the error branch of four call sites.
+ * first" (skip, or 409) apart from a real failure without depending on message wording.
  */
 export class ScheduledIngestBusyError extends Error {
   constructor(scheduledIngestId: number | string) {

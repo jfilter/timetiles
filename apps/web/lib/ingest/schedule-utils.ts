@@ -62,16 +62,13 @@ const getNextFrequencyInTimezone = (frequency: string, now: Date, timezone: stri
  *
  * When a timezone is provided, schedule boundaries (midnight, start of week, etc.)
  * are computed in that timezone. The returned Date is always a UTC instant.
- * Defaults to UTC for backward compatibility.
+ * Defaults to UTC.
  */
 export const getNextFrequencyExecution = (frequency: string, fromDate?: Date, timezone?: string): Date => {
   const now = fromDate ?? new Date();
-  // An empty-string timezone is not a valid IANA zone (the field's validate
-  // accepts "" and a data-package manifest can supply ""), and `?? "UTC"` would
-  // keep "" — which `tz !== "UTC"` then routes into
-  // Intl.DateTimeFormat({ timeZone: "" }) → RangeError, crashing schedule
-  // create/activate. defaultIfEmpty falls back on "" too, matching the cron
-  // sibling (calculateNextCronRun) which treats a falsy timezone as UTC.
+  // "" is not a valid IANA zone, yet the field's validate and data-package manifests allow it;
+  // `?? "UTC"` would keep it and Intl.DateTimeFormat would throw a RangeError. defaultIfEmpty
+  // treats "" as UTC, matching calculateNextCronRun.
   const tz = defaultIfEmpty(timezone, "UTC");
 
   if (tz !== "UTC") {

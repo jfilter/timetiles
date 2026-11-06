@@ -113,10 +113,6 @@ const buildRunOutput = (
   ...(autoImportError != null ? { autoImportError } : {}),
 });
 
-// ---------------------------------------------------------------------------
-// Job handler
-// ---------------------------------------------------------------------------
-
 export const scraperExecutionJob = {
   slug: "scraper-execution",
   handler: async (context: JobHandlerContext) => {

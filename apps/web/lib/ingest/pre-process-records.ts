@@ -124,7 +124,7 @@ export const preProcessRecords = (
     logger.info("Extract fields complete", { extractedFields: config.extractFields.length, records: records.length });
   }
 
-  // Step 2: Group and merge (existing behavior)
+  // Step 2: Group and merge
   if (!config.groupBy) return records;
 
   const { groupBy, mergeFields } = config;
@@ -146,8 +146,7 @@ export const preProcessRecords = (
       typeof rawKey === "string" || typeof rawKey === "number" || typeof rawKey === "boolean" ? String(rawKey) : "";
 
     if (!key) {
-      // A record with no group key is still a record. Grouping is a merge operation, not a
-      // filter — dropping these silently truncated the import while it reported success.
+      // A record with no group key is still a record: grouping merges, it never filters.
       ungroupedCount++;
       buckets.push([record]);
       continue;

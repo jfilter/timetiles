@@ -147,7 +147,6 @@ export const createSlugHook =
     return value;
   };
 
-// Helper functions to reduce cognitive complexity
 const getSourceValue = (data: Record<string, unknown> | undefined, sourceField: string | undefined): unknown => {
   let sourceValue = data?.name;
   if (sourceField != null && sourceField !== "" && data != null) {

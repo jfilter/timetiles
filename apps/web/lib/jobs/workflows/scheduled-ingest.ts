@@ -54,10 +54,8 @@ const getFailedJobError = (failedJob: { errorLog?: unknown; errors?: unknown }):
  * A run that stopped because a human has to approve something.
  *
  * NOT a failure: the fetch and downstream jobs worked, the pipeline is simply waiting.
- * Counting it as a failure incremented `currentRetries`, and since a review-paused run
- * never calls `updateScheduledIngestSuccess` (which resets the counter), a feed that
- * legitimately needs review each day auto-disabled itself after `maxRetries` runs even
- * though the owner approved every one of them.
+ * Counting it as one would climb `currentRetries` (a paused run never reaches the reset in
+ * `updateScheduledIngestSuccess`) and auto-disable a feed that needs review each day.
  */
 class ScheduledIngestPausedError extends Error {
   constructor(message: string) {
@@ -111,25 +109,20 @@ const buildScheduledIngestFailure = async (
   );
 };
 
-/**
- * Resolve the schedule's lifecycle for a run that finished without a failure.
- *
- * Every non-failure exit must go through here: leaving `lastStatus` at "running" strands
- * the schedule in the UI, and only this path resets `currentRetries`.
- */
+/** Attempts for a non-failure lifecycle write (see reconcileLifecycle). */
 const LIFECYCLE_RECONCILE_ATTEMPTS = 5;
 
 /**
  * First backoff step; each further attempt doubles it (0.5s, 1s, 2s, 4s ≈ 7.5s total).
- *
- * Retrying without a pause put all attempts inside the same millisecond of the
- * same outage, so the retry loop only ever survived an error that was not going
- * to repeat anyway.
+ * Without a pause, every attempt would land inside the same outage.
  */
 const LIFECYCLE_RECONCILE_BASE_DELAY_MS = 500;
 
 /**
  * Write a non-failure lifecycle result, retrying with backoff and never rethrowing.
+ *
+ * Every non-failure exit must go through here: leaving `lastStatus` at "running" strands
+ * the schedule in the UI, and only this path resets `currentRetries`.
  *
  * The import itself has already finished at this point. Letting a failed bookkeeping
  * write escape to Payload would record the run as a failure, burn a
@@ -206,8 +199,8 @@ export const scheduledIngestWorkflow: WorkflowConfig<"scheduled-ingest"> = {
       },
     })) as UrlFetchOutput;
 
-    // A source with nothing to report is a successful run, not a failure — failing here
-    // burned a retry per empty day until the schedule auto-disabled itself.
+    // A source with nothing to report is a successful run, not a failure; failing would
+    // burn a retry per empty day until the schedule auto-disables itself.
     if (fetchResult.noRecords) {
       await recordRunSuccess(req.payload, scheduledIngestId, undefined, workflowStart);
       logger.info("scheduled-ingest: source returned no records, nothing to import", { scheduledIngestId });

@@ -44,11 +44,9 @@ const Media: CollectionConfig = {
       { name: "tablet", width: 1024, height: undefined, position: "centre" },
     ],
     adminThumbnail: "thumbnail",
-    // Raster types only, enumerated deliberately. `image/*` accepted image/svg+xml, and an
-    // SVG is an active document: any authenticated user could upload one containing a
-    // <script>, and media `read` is public and served inline from this origin, so sending
-    // the file URL to an admin executed it with their session. There is no script-src CSP to
-    // fall back on. SVG also cannot be resized into the configured sizes anyway.
+    // Raster types only, enumerated deliberately: an SVG is an active document, and media
+    // `read` is public and served inline from this origin with no script-src CSP, so an
+    // uploaded <script> would run with the session of any admin opening the file URL.
     mimeTypes: ["image/png", "image/jpeg", "image/gif", "image/webp", "image/avif"],
   },
   admin: {
@@ -57,10 +55,8 @@ const Media: CollectionConfig = {
     group: "Content",
   },
   access: {
-    // Public media is readable by all, private media only by owner/admins
     read: () => {
-      // For now, all media is readable (images used in public pages)
-      // Can be made stricter if private media uploads are needed
+      // All media is readable: images are used in public pages.
       return true;
     },
 

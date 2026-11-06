@@ -30,10 +30,6 @@ import { createCronSchedule } from "./cron-parser";
 
 const logger = createLogger("manifest-parser");
 
-// ---------------------------------------------------------------------------
-// Zod schemas
-// ---------------------------------------------------------------------------
-
 /** URL-safe slug: lowercase alphanumeric, hyphens, max 128 chars. */
 const slugSchema = z
   .string()
@@ -94,10 +90,6 @@ const manifestSchema = z.object({
   defaults: defaultsSchema,
 });
 
-// ---------------------------------------------------------------------------
-// Public types
-// ---------------------------------------------------------------------------
-
 /** A fully-resolved scraper definition after defaults have been applied. */
 export interface ParsedScraper {
   name: string;
@@ -121,18 +113,10 @@ export interface ManifestParseError {
   error: string;
 }
 
-// ---------------------------------------------------------------------------
-// Constants
-// ---------------------------------------------------------------------------
-
 const DEFAULT_RUNTIME: ScraperRuntime = "python";
 const DEFAULT_OUTPUT = SCRAPER_DEFAULT_OUTPUT_FILE;
 const DEFAULT_TIMEOUT = SCRAPER_TIMEOUT_DEFAULT_SECONDS;
 const DEFAULT_MEMORY = SCRAPER_MEMORY_DEFAULT_MB;
-
-// ---------------------------------------------------------------------------
-// Implementation
-// ---------------------------------------------------------------------------
 
 /**
  * Parse and validate a `scrapers.yml` manifest string.

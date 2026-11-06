@@ -202,7 +202,6 @@ export const checkEventQuotaBeforeProcessing = async (
   // updates of existing events under the "update" strategy.
   const uniqueRows = getUniqueRowsForQuota(job);
 
-  // Check if this import would exceed the per-import limit
   const quotaCheck = await quotaService.checkQuota(user, "EVENTS_PER_IMPORT", uniqueRows);
 
   if (!quotaCheck.allowed) {
@@ -249,18 +248,11 @@ export const cleanupPriorAttempt = async (
     return;
   }
 
-  // Only delete events this job actually CREATED in a prior attempt — never the
-  // pre-existing events it updated in place. Under `duplicateStrategy: "update"`,
-  // `tryUpdateExistingEvent` reassigns an existing event's `ingestJob` to this
-  // job (so the completion count includes updates), which means a bare
-  // `ingestJob = thisJob` delete would wipe real, previously-imported data when
-  // a mid-stream failure triggers a retry. Fresh inserts are stamped with
-  // `createdAt = now` during create-events (several stages after the job row is
-  // created), whereas in-place updates leave `created_at` untouched (Payload
-  // only bumps `updated_at`). So `created_at >= job.createdAt` keeps the updated
-  // originals and removes only this attempt's inserts. The restore above already
-  // reverted (and un-stamped `ingestJob` on) every updated event, so only true
-  // fresh inserts remain matching.
+  // Only delete events this job CREATED in a prior attempt, never pre-existing events it
+  // updated in place: under "update", `tryUpdateExistingEvent` reassigns `ingestJob` to this
+  // job, so a bare `ingestJob = thisJob` delete would wipe previously-imported data. Inserts
+  // get `createdAt = now` (after the job row exists) while updates keep `created_at`, so
+  // `created_at >= job.createdAt` matches only inserts; the restore above un-stamped updates.
   const job = await payload.findByID({ collection: COLLECTION_NAMES.INGEST_JOBS, id: ingestJobId });
   const jobCreatedAt = typeof job?.createdAt === "string" ? job.createdAt : null;
   if (!jobCreatedAt) {
@@ -302,8 +294,7 @@ export const cleanupPriorAttempt = async (
     log.info("Cleaned up events from prior attempt", { ingestJobId, deletedTotal });
   }
 
-  // Clear the previous attempt's row errors too. updateJobErrors MERGES into
-  // whatever is stored, and the caller always passes a stored count of 0, so a
-  // retry listed every bad row twice and could push the list past its cap.
+  // Clear the previous attempt's row errors too: updateJobErrors MERGES into the stored list
+  // and the caller passes a stored count of 0, so stale entries would be listed twice.
   await payload.update({ collection: COLLECTION_NAMES.INGEST_JOBS, id: ingestJobId, data: { errors: [] } });
 };

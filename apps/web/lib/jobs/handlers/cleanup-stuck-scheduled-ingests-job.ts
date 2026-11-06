@@ -185,7 +185,6 @@ const resetStuckImport = async (
   thresholdHours: number
 ): Promise<void> => {
   try {
-    // Calculate how long it was stuck
     const lastRunTime = scheduledIngest.lastRun ? parseDateInput(scheduledIngest.lastRun) : null;
     const stuckDuration = lastRunTime ? currentTime.getTime() - lastRunTime.getTime() : 0;
     const mayForce = stuckDuration > thresholdHours * FORCE_RESET_THRESHOLD_MULTIPLE * 60 * 60 * 1000;
@@ -278,7 +277,6 @@ export const cleanupStuckScheduledIngestsJob = {
         dryRun,
       });
 
-      // Find all scheduled ingests with "running" status
       const runningImports = await payload.find({
         collection: COLLECTION_NAMES.SCHEDULED_INGESTS,
         where: { lastStatus: { equals: "running" } },
@@ -302,8 +300,7 @@ export const cleanupStuckScheduledIngestsJob = {
         totalRunning: runningImports.docs.length,
         stuckCount: processResult.stuckCount,
         resetCount: processResult.resetCount,
-        // Omitted when nothing was reconciled — the common case reports the same
-        // shape it always did.
+        // Omitted when nothing was reconciled.
         reconciledCount: processResult.reconciledCount > 0 ? processResult.reconciledCount : undefined,
         dryRun,
         errors: processResult.errors.length > 0 ? processResult.errors : undefined,

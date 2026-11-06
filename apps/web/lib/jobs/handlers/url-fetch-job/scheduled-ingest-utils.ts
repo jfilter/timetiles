@@ -85,9 +85,8 @@ export const loadScheduledIngestForLifecycle = async (
   } catch (error) {
     logError(error, "Failed to load scheduled ingest for lifecycle update", { scheduledIngestId });
 
-    // A deleted schedule has nothing left to reconcile; anything else (a DB blip)
-    // must surface — swallowing it skipped the status write and stranded the
-    // schedule at lastStatus="running" with its retry counter frozen.
+    // A deleted schedule has nothing left to reconcile; anything else (a DB blip) must surface,
+    // or the schedule would stay at lastStatus="running" with its retry counter frozen.
     if (isNotFoundError(error)) {
       return null;
     }
@@ -147,10 +146,9 @@ export const updateScheduledIngestSuccess = async (
  * Resolve a run that finished but left the import waiting on a human.
  *
  * NOT the success path: that one increments `successfulRuns`, clears `lastError` and writes
- * a "success" history entry, which would claim the import completed and hide the pending
- * review. NOT the failure path either: that increments `currentRetries`, so a feed that
- * legitimately needs review on every run auto-disabled itself after `maxRetries` runs even
- * though the owner approved each one. `lastStatus` must still move off "running".
+ * a "success" history entry, hiding the pending review. NOT the failure path either: that
+ * increments `currentRetries`, so a feed that needs review on every run would auto-disable
+ * despite each approval. `lastStatus` must still move off "running".
  */
 export const updateScheduledIngestPaused = async (
   payload: Payload,

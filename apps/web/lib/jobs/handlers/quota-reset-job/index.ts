@@ -27,7 +27,6 @@ export const quotaResetJobConfig = {
 
       const quotaService = createQuotaService(payload);
 
-      // Reset all daily counters
       await quotaService.resetAllDailyCounters();
 
       logger.info("Daily quota reset completed successfully");

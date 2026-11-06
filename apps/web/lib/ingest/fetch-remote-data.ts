@@ -31,10 +31,6 @@ import { type PreProcessingConfig, preProcessRecords } from "./pre-process-recor
 const stripFields = (records: Record<string, unknown>[], fields: string[]): Record<string, unknown>[] =>
   stripExcludedFieldsFromRecords(records, fields);
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
 export interface FetchRemoteDataOptions {
   sourceUrl: string;
   authConfig?: Exclude<ScheduledIngest["authConfig"], undefined>;
@@ -81,10 +77,6 @@ export interface FetchRemoteDataResult {
 
 /** File extensions the import pipeline can process. */
 const SUPPORTED_EXTENSIONS = new Set([".csv", ".xls", ".xlsx", ".ods", ".txt"]);
-
-// ---------------------------------------------------------------------------
-// Implementation
-// ---------------------------------------------------------------------------
 
 const isGeoJsonDetected = (mimeType: string, responseFormat: string | undefined, data: Buffer): boolean => {
   if (responseFormat === "geojson") return true;
@@ -371,7 +363,6 @@ export const fetchRemoteData = async (options: FetchRemoteDataOptions): Promise<
 
   const authHeaders = await buildAuthHeaders(authConfig);
 
-  // Normalize WFS URLs to ensure they return GeoJSON
   const normalizedUrl = normalizeWfsUrl(sourceUrl);
 
   logger.info("Fetching remote data", {
@@ -386,7 +377,6 @@ export const fetchRemoteData = async (options: FetchRemoteDataOptions): Promise<
     return fetchPostPaginated(options, authHeaders);
   }
 
-  // Fetch the data
   const fetchResult = await fetchWithRetry(normalizedUrl, {
     authHeaders,
     timeout,
@@ -421,20 +411,13 @@ export const fetchRemoteData = async (options: FetchRemoteDataOptions): Promise<
     const rows: Record<string, unknown>[] = [];
     parseCsvText(decodeBufferToUtf8(finalData), (row) => rows.push(row));
     const strippedRows = stripFields(rows, options.excludeFields);
-    // No formula-escaping: this is canonical ingest data the pipeline re-parses
-    // into events, so an apostrophe would corrupt real values. Direct CSV
-    // uploads are already stored verbatim; escaping only this converted subset
-    // was both inconsistent and lossy. Formula-injection escaping (CWE-1236)
-    // belongs at the user-facing export boundary — see lib/utils/csv-escape.ts.
-    //
-    // unparseRowsToCsv (not bare Papa.unparse) because parsed records omit
-    // trailing keys on short rows: a ragged CSV whose first data row is short
-    // would otherwise derive the header from that row and drop every later
-    // column for the entire file.
+    // No formula-escaping: this is canonical ingest data the pipeline re-parses into events,
+    // so an apostrophe would corrupt real values. CWE-1236 escaping belongs at the export
+    // boundary (lib/utils/csv-escape.ts). unparseRowsToCsv, not bare Papa.unparse: parsed
+    // records omit trailing keys on short rows, so a short first row would drop later columns.
     finalData = Buffer.from(unparseRowsToCsv(strippedRows), "utf-8");
   }
 
-  // Validate file extension
   if (!SUPPORTED_EXTENSIONS.has(finalExtension)) {
     throw new Error(
       `Unsupported file type: ${finalMimeType} (${finalExtension}). ` +

@@ -114,8 +114,7 @@ export interface ColumnInterpretation {
 
 /**
  * The semantic role each event field plays, mapped to a source column name.
- * The canonical home for field identity (formerly the path fields of the
- * removed `dataset.fieldMappingOverrides` group).
+ * The canonical home for field identity.
  */
 export interface InterpretationRoles {
   title?: string | null;
@@ -144,9 +143,8 @@ export type AmbiguityResolution = "strict" | "best-effort";
  * The full per-dataset interpretation plan: the single source of truth for
  * import → event interpretation, in two clearly-separated parts.
  *
- * Normalization is therefore a two-step pipeline whose first step is provably
- * byte-identical to the legacy path:
- * 1. **Structural rewrite** — replay {@link ops} in order (exactly the legacy
+ * Normalization is therefore a two-step pipeline:
+ * 1. **Structural rewrite** — replay {@link ops} in order (exactly
  *    `applyTransforms`). This is what the content-hash dedup ID is computed over,
  *    so order MUST be preserved; that is why ops is a single flat ordered list,
  *    not grouped per column.

@@ -70,7 +70,6 @@ interface DuplicateAnalysisResult {
   uniqueIdMap: Map<string, number>;
 }
 
-// Helper functions to reduce complexity
 const skipDeduplication = async (
   payload: Payload,
   ingestJobId: string | number,
@@ -140,8 +139,7 @@ const analyzeInternalDuplicates = async (
       const idRow = interpretForId(row);
 
       // `generateUniqueId` throws on an unusable row (e.g. an empty external ID). Create-events
-      // records the same failure per row and keeps going — without this guard one bad row out
-      // of ten thousand failed the whole sheet here and, for a scheduled source, burned a retry.
+      // records the same failure per row; failing here would fail the whole sheet for one bad row.
       let uniqueId: string;
       try {
         uniqueId = generateUniqueId(idRow, dataset);
@@ -226,7 +224,6 @@ const analyzeExternalDuplicates = async (
   return externalDuplicates;
 };
 
-// Helper to perform full duplicate analysis
 const performDuplicateAnalysis = async (
   payload: Payload,
   ingestJobId: number | string,
@@ -241,11 +238,9 @@ const performDuplicateAnalysis = async (
 }> => {
   await ProgressTrackingService.startStage(payload, ingestJobId, PROCESSING_STAGE.ANALYZE_DUPLICATES, fileTotalRows);
 
-  // Re-read the job AFTER startStage so the snapshot passed to the per-batch
-  // progress writes carries the persisted startedAt/in_progress status (same fix
-  // as create-events/geocode). The `job` from loadJobResources predates
-  // startStage, so passing it would rewrite the stage back to
-  // pending/startedAt=null every batch — freezing the bar and ETA.
+  // Re-read the job AFTER startStage so the snapshot passed to the per-batch progress writes
+  // carries the persisted startedAt/in_progress status; the `job` from loadJobResources
+  // predates startStage and would reset the stage to pending every batch.
   const progressJob = await loadIngestJob(payload, ingestJobId);
 
   const { internalDuplicates, uniqueIdMap, totalRows } = await analyzeInternalDuplicates(
@@ -267,7 +262,6 @@ const performDuplicateAnalysis = async (
   return { internalDuplicates, externalDuplicates, totalRows, uniqueRows };
 };
 
-// Helper to update job with duplicate results
 const updateJobWithDuplicates = async (
   payload: Payload,
   ingestJobId: number | string,
@@ -441,7 +435,6 @@ export const analyzeDuplicatesJob = {
       // Perform duplicate analysis — totalRows derived from streaming, no pre-scan needed
       const results = await performDuplicateAnalysis(payload, ingestJobId, filePath, dataset, 0);
 
-      // Update job with results
       await updateJobWithDuplicates(payload, ingestJobId, dataset, results);
 
       logPerformance("Duplicate analysis", Date.now() - startTime, {
@@ -463,17 +456,10 @@ export const analyzeDuplicatesJob = {
         await recordConfigError(payload, ingestJobId, reviewChecksError);
       }
 
-      // Review check: high duplicate rate (>80%).
-      //
-      // `results.uniqueRows` subtracts externals under the "skip" strategy,
-      // which makes scheduled re-imports of unchanged URLs look 100%
-      // duplicate and trip the review gate on every run. External duplicates
-      // are expected and handled by the dedup strategy itself — the review
-      // gate's real signal is *internal* duplication (same-file dupes that
-      // suggest a user error). `getDuplicateRatesForReview` reads
-      // `job.duplicates.summary`, which we just wrote above; we mirror the
-      // freshly persisted shape onto the in-memory `job` so the accessor
-      // sees the latest values without an extra DB round-trip.
+      // Review check: high duplicate rate (>80%). Only *internal* (same-file) duplicates count:
+      // external ones are expected on scheduled re-imports and handled by the dedup strategy.
+      // `getDuplicateRatesForReview` reads `job.duplicates.summary`; mirror the freshly persisted
+      // summary onto the in-memory job to skip a DB round-trip.
       const jobWithFreshSummary: IngestJob = {
         ...job,
         duplicates: {

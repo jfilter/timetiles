@@ -35,7 +35,6 @@ import { runtimeFields } from "./fields/runtime-fields";
 import { beforeChangeHook } from "./hooks";
 import { validateCronExpression, validateScheduleConfig, validateUrl } from "./validation";
 
-// Helper to check if quota checks should be skipped
 const shouldSkipQuotaChecks = (
   req: { user?: User | null; context?: Record<string, unknown> },
   context?: Record<string, unknown>
@@ -122,12 +121,10 @@ const compensateActiveScheduleQuotaOnError = async (req: PayloadRequest): Promis
   }
 };
 
-// Helper to check if update is enabling a schedule
 const isEnablingSchedule = (originalDoc: Record<string, unknown>, data: Record<string, unknown>): boolean => {
   return originalDoc.enabled !== data?.enabled && data?.enabled === true;
 };
 
-// Helper function to handle schedule quota tracking
 const handleScheduleQuotaTracking = async ({
   data,
   operation,
@@ -168,7 +165,6 @@ const handleScheduleQuotaTracking = async ({
   return data;
 };
 
-// Helper to validate catalog access
 const validateCatalogAccess = async (data: unknown, req: PayloadRequest): Promise<void> => {
   const typedData = data as Record<string, unknown> | undefined;
   if (!typedData?.catalog || !req.user) return;
@@ -316,7 +312,7 @@ const ScheduledIngests: CollectionConfig = {
     read: createOwnershipAccess(),
 
     // Anyone authenticated can create (denied for pending-deletion accounts), but createdBy will be set automatically
-    // Quota check moved to beforeChange hook to avoid deadlock
+    // Quota check lives in the beforeChange hook to avoid a deadlock
     create: denyPendingDeletion(async ({ req: { user, payload } }) => {
       if (!user) return false;
 

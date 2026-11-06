@@ -41,7 +41,6 @@ import {
   handleSchemaModeFailure,
 } from "./validate-schema/validation-persistence";
 
-// Helper function to get schema from cached builder state
 const getSchemaFromCache = async (job: {
   schemaBuilderState?: unknown;
 }): Promise<{ schemaBuilder: ProgressiveSchemaBuilder; detectedSchema: Record<string, unknown> }> => {
@@ -53,7 +52,6 @@ const getSchemaFromCache = async (job: {
     throw new Error("Schema builder state not found. Schema detection stage must run first.");
   }
 
-  // Create schema builder from cached state
   const schemaBuilder = new ProgressiveSchemaBuilder(previousState);
 
   // Generate schema from cached state (no file reading needed)
@@ -64,7 +62,6 @@ const getSchemaFromCache = async (job: {
   return { schemaBuilder, detectedSchema };
 };
 
-// Helper function to get current schema
 const getCurrentSchema = async (payload: Payload, datasetId: number | string): Promise<Record<string, unknown>> => {
   const currentSchemaDoc = await payload.find({
     collection: COLLECTION_NAMES.DATASET_SCHEMAS,

@@ -280,8 +280,7 @@ const resolveCoordinateFields = (
     return { latitudeField, longitudeField };
   }
 
-  // First fallback: the job plan's latitude/longitude roles (replaces the former
-  // dataset.fieldMappingOverrides read).
+  // First fallback: the job plan's latitude/longitude roles.
   const roles = readInterpretationPlan(job)?.roles;
   ({ latitudeField, longitudeField } = fillCoordsFromConfig(
     { latitudePath: roles?.latitude ?? undefined, longitudePath: roles?.longitude ?? undefined },
@@ -290,7 +289,7 @@ const resolveCoordinateFields = (
   ));
 
   if ((!latitudeField || !longitudeField) && dataset != null && typeof dataset === "object") {
-    // Second fallback: dataset.geoFieldDetection (out of scope, unchanged).
+    // Second fallback: dataset.geoFieldDetection.
     const geo = (dataset as Record<string, unknown>).geoFieldDetection as Record<string, unknown> | null | undefined;
     ({ latitudeField, longitudeField } = fillCoordsFromConfig(geo, latitudeField, longitudeField));
   }
@@ -499,7 +498,6 @@ export const geocodeBatchJob = {
       const processingOptions = (ingestFile.processingOptions as Record<string, unknown> | null) ?? {};
       const geocodingBias = processingOptions.geocodingBias as GeocodingBias | undefined;
 
-      // Geocode unique locations
       const { results, successCount, failureCount, failures } = await geocodeUniqueLocations(
         geocodingService,
         payload,

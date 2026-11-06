@@ -12,10 +12,6 @@ import { unparseRowsToCsv } from "@/lib/utils/csv-escape";
 
 import { flattenObject, stripExcludedFieldsFromRecords } from "./json-to-csv";
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
 export interface GeoJsonToCsvResult {
   csv: Buffer;
   featureCount: number;
@@ -60,9 +56,7 @@ interface GeoJsonFeatureCollection {
 /**
  * Coerce a geometry `coordinates` value to an array. A typed geometry with
  * null/absent coordinates (real in WFS/GIS exports) would otherwise throw on
- * `.flat()`/`.flatMap()` and abort the whole conversion. Keeping the guard in a
- * helper (rather than an inline branch per case) keeps extractCentroid's
- * cyclomatic complexity within bounds.
+ * `.flat()`/`.flatMap()` and abort the whole conversion.
  */
 const coordArray = (value: unknown): unknown[] => (Array.isArray(value) ? value : []);
 
@@ -265,10 +259,6 @@ export const isGeoJsonBuffer = (buffer: Buffer): boolean => {
   }
 };
 
-// ---------------------------------------------------------------------------
-// Main converter
-// ---------------------------------------------------------------------------
-
 /**
  * Convert a GeoJSON buffer to CSV.
  *
@@ -293,10 +283,8 @@ export const convertGeoJsonToCsv = (buffer: Buffer, options?: GeoJsonToCsvOption
     throw new Error("Not a valid GeoJSON FeatureCollection or Feature.");
   }
 
-  // An empty FeatureCollection is valid GeoJSON and a legitimate answer from a source that
-  // simply has nothing to report today. Returning an empty result lets the caller record a
-  // successful run with nothing to import; throwing here burned a scheduled-ingest retry per
-  // empty day and eventually auto-disabled the schedule.
+  // An empty FeatureCollection is a legitimate answer from a source with nothing to report
+  // today; throwing would burn a scheduled-ingest retry per empty day and auto-disable it.
   const { features } = featureCollection;
 
   const geometryTypes = new Set<string>();
@@ -325,10 +313,6 @@ export const convertGeoJsonToCsv = (buffer: Buffer, options?: GeoJsonToCsvOption
 
   return { csv, featureCount: features.length, geometryTypes: [...geometryTypes] };
 };
-
-// ---------------------------------------------------------------------------
-// Type guards
-// ---------------------------------------------------------------------------
 
 const isFeatureCollection = (data: unknown): data is GeoJsonFeatureCollection =>
   data !== null &&
@@ -369,7 +353,6 @@ export const normalizeWfsUrl = (url: string): string => {
 
   if (!hasWfsPath && !hasWfsParam) return url;
 
-  // Add missing WFS parameters
   if (!params.has("service")) {
     params.set("service", "WFS");
   }

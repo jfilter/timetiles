@@ -41,10 +41,9 @@ type OverridePathKey = keyof FlatFieldMappings;
 /**
  * Read the dataset's AUTHORED plan roles/policies as the flat override source.
  *
- * Replaces the former `dataset.fieldMappingOverrides` read. A confirmed order
- * (from an ambiguous review, written by the approve-route to the dataset plan)
- * wins over re-detection on resume — detection re-runs and would otherwise
- * re-derive "ambiguous", losing the chosen order.
+ * A confirmed order (from an ambiguous review, written by the approve-route to the dataset
+ * plan) wins over re-detection on resume — detection re-runs and would otherwise re-derive
+ * "ambiguous", losing the chosen order.
  */
 const mergeFieldMappings = (detectedMappings: FlatFieldMappings, dataset: Dataset | null): FlatFieldMappings => {
   const overrides: Partial<FlatFieldMappings> = dataset ? planToFieldMappings(readInterpretationPlan(dataset)) : {};
@@ -111,10 +110,8 @@ const detectFieldMappingsWithService = async (
 
   const result = await service.detect(null, context);
 
-  // Enum candidacy is decided ONLY by the schema builder, whose config carries
-  // the dataset's enumThreshold/enumMode. The service's pattern detection runs
-  // with hardcoded defaults ({50, count}) — pre-marking candidates from it
-  // silently overrode the dataset's enum configuration.
+  // Enum candidacy is decided ONLY by the schema builder, whose config carries the dataset's
+  // enumThreshold/enumMode; the service's pattern detection uses hardcoded defaults ({50, count}).
   schemaBuilder.detectEnumFields();
 
   const detectedMappings = toFlatMappings(result.fieldMappings);

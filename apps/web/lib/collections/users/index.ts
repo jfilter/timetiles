@@ -37,9 +37,8 @@ const Users: CollectionConfig = {
   ...createCommonConfig({ versions: false, drafts: false }),
   auth: {
     useAPIKey: true,
-    // Payload defaults `cookies.secure` to false, so the session cookie went out without the
-    // Secure attribute — a single plaintext http:// request to this host (or a sibling
-    // subdomain) before HSTS is primed leaks the token in the clear.
+    // Payload defaults `cookies.secure` to false; without the Secure attribute a single
+    // plaintext http:// request before HSTS is primed leaks the session token.
     cookies: { secure: getEnv().NODE_ENV === "production", sameSite: "Lax" },
     // Enable email verification token generation and direct-email fallback
     // This auto-adds _verified and _verificationToken fields
@@ -106,9 +105,8 @@ const Users: CollectionConfig = {
     // Only admins may create users via the generic REST collection API.
     // Self-registration goes EXCLUSIVELY through /api/auth/register, which uses
     // the Local API (overrideAccess) and enforces the `enableRegistration` flag
-    // plus the REGISTRATION rate limit. Allowing anonymous REST create (the old
-    // `|| !user`) bypassed both gates and let the caller inject `customQuotas`/
-    // `quotas` (e.g. -1 = unlimited) straight through POST /api/users.
+    // plus the REGISTRATION rate limit. Anonymous REST create would bypass both gates
+    // and let the caller inject `customQuotas`/`quotas` (e.g. -1 = unlimited).
     create: isAdmin,
 
     // Users can update their own profile, admins can update anyone

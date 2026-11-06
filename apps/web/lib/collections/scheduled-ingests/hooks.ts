@@ -69,8 +69,7 @@ const handleScheduleInitialization = (
       }
     }
 
-    // This would be calculated by the schedule manager
-    // For now, just ensure the fields exist
+    // Initial counters; each run updates them (see scheduled-ingest-utils).
     data.statistics ??= { totalRuns: 0, successfulRuns: 0, failedRuns: 0, averageDuration: 0 };
   }
 };

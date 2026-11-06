@@ -19,10 +19,6 @@ import {
 import { getEnv } from "@/lib/config/env";
 import type { Scraper, ScraperRepo } from "@/payload-types";
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
 export interface ScraperExecutionJobInput {
   scraperId: number;
   triggeredBy: "schedule" | "manual" | "webhook";
@@ -52,10 +48,6 @@ const isUnreachable = (error: unknown): boolean => {
   const cause = error instanceof Error ? (error.cause as { code?: unknown } | undefined) : undefined;
   return typeof cause?.code === "string" && UNREACHABLE_CODES.has(cause.code);
 };
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
 
 /**
  * Build the code_url string for a git-based repo.

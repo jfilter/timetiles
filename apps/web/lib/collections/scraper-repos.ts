@@ -278,11 +278,9 @@ const ScraperRepos: CollectionConfig = {
           req,
         });
 
-        // Payload's bulk delete collects per-document failures instead of
-        // throwing. Ignoring them let a running child scraper — whose own
-        // beforeDelete refuses with 409 — survive, and the repo delete then
-        // died on the foreign key as an opaque 500. Surface the child's
-        // conflict as the repo's conflict instead.
+        // Payload's bulk delete collects per-document failures instead of throwing.
+        // Surface a child's 409 (running scraper) as the repo's conflict; otherwise the
+        // repo delete dies on the foreign key as an opaque 500.
         if (result.errors.length > 0) {
           throw new APIError(
             `Cannot delete repo: ${result.errors.length} scraper(s) could not be deleted. ` +

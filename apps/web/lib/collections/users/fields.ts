@@ -140,8 +140,8 @@ export const usersFields: Field[] = [
     },
     fields: quotaFields,
   },
-  // Note: usage tracking has been moved to the separate 'user-usage' collection
-  // to avoid session-clearing issues when updating user records
+  // Usage tracking lives in the separate 'user-usage' collection to avoid
+  // session-clearing issues when updating user records.
   {
     name: "customQuotas",
     type: "json",
@@ -221,8 +221,7 @@ export const usersFields: Field[] = [
   // Email-change staging: the requested new address lives here until its
   // verification link is confirmed, at which point the verify route swaps it
   // into `email`. The CURRENT (verified) address stays the login credential
-  // throughout — overwriting `email` up front locked the account out
-  // whenever the new address was mistyped or undeliverable.
+  // throughout, so a mistyped or undeliverable new address cannot lock the account out.
   {
     name: "pendingEmail",
     type: "text",

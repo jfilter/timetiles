@@ -191,8 +191,8 @@ const extractErrorMessage = (error: unknown): string => {
 /**
  * Factory for standard onFail callbacks that mark an ingest job as FAILED.
  *
- * Covers the common pattern shared by 6 of 7 ingest job handlers
- * (all except dataset-detection which updates INGEST_FILES instead).
+ * Shared by the ingest job handlers except dataset-detection, which updates
+ * INGEST_FILES instead.
  *
  * @param context - Error context string identifying the handler (e.g. "schema-detection")
  * @param options.beforeFail - Optional async callback invoked before marking the job as failed.
@@ -252,21 +252,10 @@ export const setJobStage = async (payload: Payload, jobId: string | number, stag
 // ---------------------------------------------------------------------------
 // Duplicate accessors
 //
-// Each pipeline stage interprets the shared `job.duplicates` struct
-// differently. Two production bugs were caused by stages mis-using a single
-// overloaded helper (`extractDuplicateRows`):
-//
-//   - 13768faf "review high-duplicates only on internal duplicates" — the
-//     review gate counted external duplicates and tripped on every scheduled
-//     re-import of an unchanged URL.
-//   - da87dd49 "include external duplicates in schema detection samples" —
-//     schema detection filtered external duplicates out of the sample set,
-//     which left the schema empty on full-overlap re-imports and failed
-//     additive validation with every field marked "removed".
-//
-// The accessors below name each stage's intent at the call site so this class
-// of "wrong duplicate semantics" bug becomes a name mismatch instead of a
-// shared-shape footgun.
+// Each pipeline stage interprets the shared `job.duplicates` struct differently
+// (internal vs external duplicates, skip vs update strategy). The accessors below
+// name each stage's intent at the call site, so picking up another stage's
+// duplicate semantics becomes a visible name mismatch.
 // ---------------------------------------------------------------------------
 
 const isDuplicateEntry = (d: unknown): d is { rowNumber: number; existingEventId?: string | number } =>
@@ -279,8 +268,8 @@ const parseDuplicateArray = (arr: unknown): Array<{ rowNumber: number; existingE
  * Schema detection: skip internal duplicates only.
  *
  * External duplicates carry the dataset's existing schema and MUST be in the
- * sample set, otherwise re-imports of unchanged URLs produce empty schemas
- * (regression: da87dd49). The skip/update strategy is meaningful only at the
+ * sample set, otherwise re-imports of unchanged URLs produce empty schemas.
+ * The skip/update strategy is meaningful only at the
  * event-creation stage; here we ignore it.
  */
 export const getInternalDuplicateSkipSet = (job: IngestJob): Set<number> => {
@@ -338,8 +327,8 @@ export const getEventCreationDuplicates = (
  * Review gate: internal-only duplicate rate.
  *
  * External duplicates are expected on scheduled re-imports of unchanged URLs
- * — counting them would pause the schedule on every run (regression:
- * 13768faf). Returns the internal-unique row count and the total row count
+ * — counting them would pause the schedule on every run. Returns the
+ * internal-unique row count and the total row count
  * so callers can compute the duplicate rate themselves.
  *
  * `totalRows` and the count of internal duplicates are read from

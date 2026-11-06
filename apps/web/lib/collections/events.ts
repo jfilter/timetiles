@@ -294,9 +294,8 @@ const Events: CollectionConfig = {
   ],
   hooks: {
     beforeChange: [eventsBeforeChangeHook],
-    // afterChange only clears the request-local quota claim — dataset-stats
-    // afterChange/afterDelete hooks were removed for performance (stats are
-    // computed on-demand or via scheduled job).
+    // afterChange only clears the request-local quota claim; dataset stats are
+    // computed on demand or by a scheduled job.
     afterChange: [eventsAfterChangeHook],
     afterError: [eventsAfterErrorHook],
   },

@@ -42,7 +42,6 @@ export const shouldRunNow = (scheduledIngest: ScheduledIngest, currentTime: Date
     return false;
   }
 
-  // Check schedule configuration
   const hasValidSchedule = Boolean(
     // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     (scheduledIngest.scheduleType === "frequency" && scheduledIngest.frequency) ||

@@ -283,14 +283,8 @@ export interface FieldTypeMap {
  * Groups field names by their detected type. Only includes non-default types
  * (string is the default and omitted). Compute once per dataset, not per row.
  *
- * This is the single producer of `dataset.fieldTypes`: it runs exactly once in
- * `create-schema-version-job` to derive the persisted type groups from the
- * already-persisted `dataset.fieldMetadata`. The create-events path does NOT
- * re-classify field types — `createEventData` reads only field *mappings*
- * (coordinatePath, timestampPath, …), never field *types*. So this is not a
- * redundant re-classification of `dataset.fieldTypes`; it is how that column is
- * populated (consumed downstream by the categorical-filter UI, e.g.
- * `events/cluster-summary`). Keep it.
+ * The single producer of `dataset.fieldTypes` (run once in `create-schema-version-job`);
+ * consumed by the categorical-filter UI, e.g. `events/cluster-summary`.
  */
 export const buildFieldTypes = (fieldMetadata: unknown): FieldTypeMap | null => {
   if (!fieldMetadata || typeof fieldMetadata !== "object") return null;
@@ -405,8 +399,7 @@ export interface CreateEventDataExtras {
    * Precomputed flat projection of the job's interpretation plan. The batch
    * processor computes it ONCE per batch (`planToFieldMappings(plan)`) and threads
    * it in so the projection is not re-run per row. When omitted it falls back to
-   * `planToFieldMappings(readInterpretationPlan(job))` (direct unit-test callers
-   * that pass `{}` as `job` therefore keep working unchanged).
+   * `planToFieldMappings(readInterpretationPlan(job))`.
    */
   fieldMappings?: FlatPlanFieldMappings;
 }

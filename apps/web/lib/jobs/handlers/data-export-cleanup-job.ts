@@ -55,11 +55,9 @@ type PendingUnlink = { exportId: string | number; filePath: string };
  * Records are updated sequentially (Payload writes are cheap and serialize
  * naturally) and marked BEFORE the unlink so no download can race the cleanup.
  *
- * The status flips but `filePath` stays — it is cleared only once the file is actually gone
- * (see `unlinkPending`). Clearing it up front meant a transient unlink failure — I/O error,
- * unmounted volume, permissions — left a ZIP full of exported personal data on disk with no
- * record pointing at it, so neither this pass nor the later purge could ever remove it.
- * Already-expired records that still carry a path are picked up again here for that reason.
+ * The status flips but `filePath` stays until the file is actually gone (see `unlinkPending`):
+ * after a transient unlink failure the path is the only pointer to a ZIP of exported personal
+ * data. Already-expired records that still carry a path are picked up again here for that reason.
  */
 const expireReadyExports = async (
   sys: SystemPayload,
@@ -163,8 +161,8 @@ const purgeOldRecords = async (sys: SystemPayload, now: Date): Promise<PassResul
         const outcome = await unlinkExportFile(record.id, record.filePath, "purge");
         if (outcome === "deleted") filesDeleted++;
         // Deleting the record destroys the only pointer to the archive, so keep it until the
-        // file is confirmed gone — the next hourly run retries. (An explicit comparison: the
-        // outcome is a string now, and every string is truthy.)
+        // file is confirmed gone — the next hourly run retries. (Explicit comparison: the outcome
+        // is a string, and every string is truthy.)
         if (outcome === "failed") {
           errors++;
           continue;

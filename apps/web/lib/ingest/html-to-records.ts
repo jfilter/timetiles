@@ -16,10 +16,6 @@ import { sleep } from "@/lib/utils/sleep";
 
 const logger = createLogger("html-to-records");
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
 /** A single field to extract from each HTML record element. */
 export interface HtmlFieldDef {
   /** Output column name. */
@@ -63,10 +59,6 @@ export interface HtmlExtractionConfig {
   /** Optional: fetch each record's detail page to extract additional fields. */
   detailPage?: DetailPageConfig;
 }
-
-// ---------------------------------------------------------------------------
-// Implementation
-// ---------------------------------------------------------------------------
 
 /**
  * Extract a single field value from a cheerio element.

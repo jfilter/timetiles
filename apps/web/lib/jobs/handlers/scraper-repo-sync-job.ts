@@ -162,7 +162,7 @@ const cloneRepo = async (gitUrl: string, branch: string | undefined): Promise<st
         tempDir,
       ],
       {
-        timeout: 60_000, // 60 seconds
+        timeout: 60_000,
         env: {
           ...process.env,
           // Disable interactive prompts (password, SSH key, etc.)
@@ -230,13 +230,6 @@ interface UpsertResult {
 }
 
 /**
- * Synchronize scrapers collection to match the parsed manifest.
- *
- * - Creates new scrapers that exist in the manifest but not in the DB.
- * - Updates existing scrapers whose properties have changed.
- * - Deletes scrapers in the DB that are no longer in the manifest.
- */
-/**
  * Is this the scrapers beforeDelete hook refusing to remove a running scraper?
  *
  * Matched on status rather than instanceof: the hook throws Payload's `APIError`
@@ -246,6 +239,13 @@ interface UpsertResult {
 const isScraperRunningConflict = (error: unknown): boolean =>
   typeof error === "object" && error !== null && "status" in error && (error as { status?: number }).status === 409;
 
+/**
+ * Synchronize scrapers collection to match the parsed manifest.
+ *
+ * - Creates new scrapers that exist in the manifest but not in the DB.
+ * - Updates existing scrapers whose properties have changed.
+ * - Deletes scrapers in the DB that are no longer in the manifest.
+ */
 const syncScrapers = async (
   payload: Payload,
   repoId: number,
@@ -306,18 +306,10 @@ const syncScrapers = async (
     }
   }
 
-  // Delete scrapers no longer in manifest.
-  //
-  // The runs are NOT deleted here. The scrapers beforeDelete hook cascades them
-  // itself, and — crucially — it does so AFTER assertScraperNotRunning. Deleting
-  // them up front inverted that order: a scraper that was mid-run had its entire
-  // run history destroyed and only then hit the 409 that refused the delete, so
-  // the sync both lost data and failed.
-  //
-  // A refusal is also per-scraper, not fatal to the sync. One scraper running
-  // while its manifest entry disappears must not abort the whole job (which
-  // would roll back or skip every remaining create/update); it is left in place
-  // and picked up by the next sync once the run finishes.
+  // Delete scrapers no longer in the manifest. Runs are NOT deleted here: the scrapers
+  // beforeDelete hook cascades them only AFTER assertScraperNotRunning, so a running scraper
+  // keeps its history when the delete is refused. A refusal is per-scraper: it stays in place
+  // for the next sync instead of aborting the remaining creates/updates.
   for (const [slug, doc] of existingBySlug) {
     if (manifestSlugs.has(slug)) continue;
 
@@ -340,21 +332,13 @@ const syncScrapers = async (
   return result;
 };
 
-// ---------------------------------------------------------------------------
-// Job handler
-// ---------------------------------------------------------------------------
-
 export const scraperRepoSyncJob = {
   slug: "scraper-repo-sync",
   retries: 2,
-  // Serialize per repo AND coalesce rapid re-triggers. `exclusive` (default):
-  // the slug upsert is find-then-create, so two parallel syncs (afterChange
-  // auto-sync + manual force-sync) could both miss the existing slug and create
-  // duplicate scrapers. `supersedes`: when a new sync is queued, Payload deletes
-  // any older PENDING (not-yet-running) sync for the same repo — so a burst of
-  // source edits collapses to a single follow-up that reads the LATEST state,
-  // without a manual dedup check (which had a check-then-queue race). The
-  // running sync is untouched; the superseding one runs after it.
+  // Serialize per repo AND coalesce rapid re-triggers. `exclusive` (default): the slug upsert
+  // is find-then-create, so parallel syncs could create duplicate scrapers. `supersedes`:
+  // queueing a new sync deletes any older PENDING sync for the same repo, so a burst of edits
+  // collapses to one follow-up reading the LATEST state. The running sync is untouched.
   concurrency: {
     key: ({ input }: { input: { scraperRepoId: number } }) => `scraper-repo-sync:${input.scraperRepoId}`,
     supersedes: true,

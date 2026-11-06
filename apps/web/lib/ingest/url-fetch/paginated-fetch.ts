@@ -84,10 +84,8 @@ export interface PaginatedFetchResult {
 const resolveDynamicDates = (template: string): string =>
   template
     .replace(/\{\{days_ago_(\d+)\}\}/g, (match, days) => {
-      // Use UTC throughout: `toISOString()` below renders in UTC, so the
-      // subtraction must also be UTC-based (`setUTCDate`/`getUTCDate`). Mixing
-      // local-time `setDate` with a UTC render shifted the resolved date by a
-      // day near midnight in non-UTC timezones.
+      // Use UTC throughout: `toISOString()` renders in UTC, so the subtraction must be UTC-based
+      // too, or the date shifts by a day near midnight in non-UTC timezones.
       const d = new Date();
       d.setUTCDate(d.getUTCDate() - Number(days));
       // An absurd N (e.g. {{days_ago_99999999999}}) overflows the Date range →
@@ -231,22 +229,6 @@ const extractPageRecords = (
   return extractRecordsFromJson(json, recordsPath).records;
 };
 
-/**
- * Fetches all pages from a paginated JSON API endpoint and collects the
- * records into a single array.
- *
- * Supports three pagination strategies:
- * - **offset** -- uses a numeric offset incremented by `limitValue`
- * - **page** -- uses a page number starting at 1
- * - **cursor** -- uses a cursor value extracted from each response
- *
- * @param baseUrl - The API endpoint URL (may already contain query params)
- * @param paginationConfig - Pagination strategy and parameter configuration
- * @param recordsPath - Dot-path to the records array in each response, or
- *   `undefined` to auto-detect
- * @param options - Authentication headers, timeout, and cache settings
- * @returns All collected records with page and count metadata
- */
 interface PageFetchConfig {
   baseUrl: string;
   isPost: boolean;
@@ -315,6 +297,22 @@ const getRemainingPaginationTimeout = (startedAt: number, timeout: number | unde
   return remaining;
 };
 
+/**
+ * Fetches all pages from a paginated JSON API endpoint and collects the
+ * records into a single array.
+ *
+ * Supports three pagination strategies:
+ * - **offset** -- uses a numeric offset incremented by `limitValue`
+ * - **page** -- uses a page number starting at 1
+ * - **cursor** -- uses a cursor value extracted from each response
+ *
+ * @param baseUrl - The API endpoint URL (may already contain query params)
+ * @param paginationConfig - Pagination strategy and parameter configuration
+ * @param recordsPath - Dot-path to the records array in each response, or
+ *   `undefined` to auto-detect
+ * @param options - Authentication headers, timeout, and cache settings
+ * @returns All collected records with page and count metadata
+ */
 export const fetchPaginated = async (
   baseUrl: string,
   paginationConfig: PaginationConfig,

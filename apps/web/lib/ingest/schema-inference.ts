@@ -69,13 +69,11 @@ const inferSchemaFromEvents = async (
 
   logger.info("Starting schema inference", { datasetId, sampleSize, batchSize, forceRegenerate });
 
-  // Fetch and validate dataset
   const dataset = await fetchDataset(payload, datasetId, req);
   if (!dataset) {
     return { generated: false, schema: null, message: `Dataset ${datasetId} not found` };
   }
 
-  // Get latest schema
   const latestSchema = await getLatestSchema(payload, datasetId, req);
 
   // Check freshness (queries event count from DB)
@@ -174,10 +172,8 @@ const generateSchema = async (context: InferenceContext, eventCount: number): Pr
   const { payload, datasetId, dataset, options } = context;
   const { sampleSize, batchSize, req } = options;
 
-  // Create schema builder with dataset config
   const schemaBuilder = createSchemaBuilder(dataset, sampleSize);
 
-  // Process events in batches
   const processedCount = await processEventBatches(
     payload,
     datasetId,
@@ -190,7 +186,6 @@ const generateSchema = async (context: InferenceContext, eventCount: number): Pr
 
   logger.info("Event sampling complete", { datasetId, processedCount });
 
-  // Create schema version
   const schema = await schemaBuilder.getSchema();
   const fieldStats = schemaBuilder.getFieldStatistics();
 
@@ -244,13 +239,9 @@ const processEventBatches = async (
   const eventsToSample = Math.min(sampleSize, eventCount);
 
   while (processedCount < eventsToSample) {
-    // The page size must stay CONSTANT: Payload derives the offset as (page - 1) * limit,
-    // so shrinking the limit for the final batch rewound it. With sampleSize 250 and
-    // batchSize 100, page 3 asked for limit 50 and therefore offset 100 — re-reading events
-    // 101-150 instead of 201-250. The run then reported 250 samples drawn from 200 distinct
-    // events, and any field that only occurs in the tail never reached the schema. Trim the
-    // surplus locally instead. `sort: "id"` keeps the scan stable: the default ordering is
-    // by createdAt, which a bulk insert gives every row in a batch identically.
+    // The page size must stay CONSTANT: Payload derives the offset as (page - 1) * limit, so a
+    // smaller final limit would rewind the offset and re-read earlier events. Trim the surplus
+    // locally. `sort: "id"` keeps the scan stable; a bulk insert gives a whole batch one createdAt.
     const events = await payload.find({
       collection: COLLECTION_NAMES.EVENTS,
       where: { dataset: { equals: datasetId } },

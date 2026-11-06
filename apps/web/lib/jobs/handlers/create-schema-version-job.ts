@@ -26,7 +26,6 @@ import { buildFieldTypes } from "../utils/event-creation-helpers";
 import type { JobHandlerContext } from "../utils/job-context";
 import { createStandardOnFail, loadDataset, loadIngestJob, setJobStage } from "../utils/resource-loading";
 
-// Helper to check if schema version creation should be skipped
 const shouldSkipSchemaVersionCreation = (job: {
   datasetSchemaVersion?: unknown;
   schemaValidation?: { approved?: boolean | null; requiresApproval?: boolean | null };
@@ -72,17 +71,13 @@ const findReusableSchemaVersion = async (
   return comparison.changes.length === 0 ? { id: latestVersion.id, versionNumber: latestVersion.versionNumber } : null;
 };
 
-// Helper to extract approvedBy user ID
 const getApprovedById = (approvedBy: unknown): number | null => {
-  // If it's a populated user object with an id property
   if (typeof approvedBy === "object" && approvedBy && "id" in approvedBy) {
     return approvedBy.id as number;
   }
-  // If it's a direct user ID
   if (typeof approvedBy === "number") {
     return approvedBy;
   }
-  // Otherwise null
   return null;
 };
 
@@ -105,7 +100,6 @@ export const createSchemaVersionJob = {
     logger.info("Creating schema version after approval", { ingestJobId });
 
     try {
-      // Get import job
       const job = await loadIngestJob(payload, ingestJobId);
 
       // Set stage for UI progress tracking (workflow controls sequencing)
@@ -120,7 +114,6 @@ export const createSchemaVersionJob = {
         uniqueRows
       );
 
-      // Check if we should skip
       const skipCheck = shouldSkipSchemaVersionCreation(job);
       if (skipCheck.skip) {
         logger.info("Skipping schema version creation", { ingestJobId, reason: skipCheck.reason });
@@ -179,21 +172,12 @@ export const createSchemaVersionJob = {
 
       logger.info("Schema version resolved", { ingestJobId, schemaVersionId: schemaVersion.id });
 
-      // Sync this sheet's field metadata onto the dataset so the categorical
-      // filter UI can read it. Multiple sheets can map to the SAME dataset and
-      // run in parallel (see process-sheets), so a wholesale update here is
-      // last-writer-wins: each write replaced the whole object and dropped the
-      // other sheets' fields, so their enum filters vanished. Merge atomically at
-      // the DB level with the jsonb `||` operator instead — a single UPDATE with
-      // no read-modify-write race, preserving the union of field keys. isPublic
-      // and owner are untouched, so the datasets afterChange sync stays a no-op.
-      //
-      // Known consequence: `||` unions keys, so a field that disappears from the
-      // source keeps its (now stale) entry here. Pruning is deliberately NOT done
-      // from this job — a single sheet only ever knows its own subset of the
-      // dataset's fields, and dropping the rest is exactly the last-writer-wins
-      // bug the merge exists to prevent. Reconciling removed fields needs a
-      // dataset-level pass that can see every sheet/source feeding the dataset.
+      // Sync this sheet's field metadata onto the dataset for the categorical filter UI. Sheets
+      // mapped to the same dataset run in parallel (see process-sheets), so merge atomically with
+      // jsonb `||` in one UPDATE rather than replacing the object, which would drop other sheets'
+      // fields. isPublic and owner are untouched, so the datasets afterChange sync stays a no-op.
+      // `||` never prunes: a field gone from the source keeps a stale entry. Pruning needs a
+      // dataset-level pass that sees every sheet feeding the dataset.
       if (fieldStats && Object.keys(fieldStats).length > 0) {
         // `buildFieldTypes` returns null when no column falls into a type group (e.g. every
         // column is free text). Merging that would evaluate as `'{}'::jsonb || 'null'::jsonb`,

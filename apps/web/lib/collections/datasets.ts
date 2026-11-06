@@ -273,7 +273,7 @@ const Datasets: CollectionConfig = {
           "Canonical import interpretation plan: ordered transforms (ops), per-column typing (columns), semantic roles, and ambiguity policy.",
       },
     },
-    // Geographic Field Detection (integrates with existing)
+    // Geographic Field Detection
     {
       name: "geoFieldDetection",
       type: "group",

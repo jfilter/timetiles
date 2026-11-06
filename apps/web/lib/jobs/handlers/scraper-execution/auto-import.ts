@@ -38,7 +38,7 @@ export const triggerAutoImport = async (
   const originalName = `${scraper.name}-${timestamp}.csv`;
   const filename = `scraper-import-${timestamp}-${uuidv4()}.csv`;
 
-  // Download CSV from runner instead of decoding base64
+  // Download the CSV from the runner
   const env = getEnv();
 
   if (!env.SCRAPER_RUNNER_URL) {
@@ -71,14 +71,9 @@ export const triggerAutoImport = async (
     if (found) user = found;
   }
 
-  // The `scrapers` collection does not currently expose a `schemaMode` field
-  // (only `scheduled-ingests` does — see `apps/web/payload-types.ts:1600`).
-  // Scraper-driven imports therefore omit `schemaMode` from `processingOptions`,
-  // which lets `validate-schema-job` fall through to the dataset-level
-  // `schemaConfig` (the permissive fallback documented on `translateSchemaMode`
-  // in `apps/web/lib/ingest/configure-service.ts`). If the scraper schema ever
-  // gains a `schemaMode` field, propagate it here in the same shape as the
-  // `url-fetch-job` writes for scheduled re-runs.
+  // Scrapers have no `schemaMode` field (only scheduled-ingests do), so `processingOptions`
+  // omits it and `validate-schema-job` falls back to the dataset-level `schemaConfig` (see
+  // `translateSchemaMode`). A scraper `schemaMode` would belong here in url-fetch-job's shape.
   const importFileData: Record<string, unknown> = {
     originalName,
     status: "pending",
@@ -119,8 +114,7 @@ export const triggerAutoImport = async (
  * Record an auto-import failure on the run without turning the run itself into a failure.
  *
  * The scrape succeeded, so it is not a failed run — but it must not read as a clean success
- * either. Without this the run showed status "success" with N rows, no error and no
- * resultFile, and the only trace that the user received no data at all was a log line.
+ * either, since the user received no data.
  */
 const recordAutoImportFailure = async (
   payload: JobHandlerContext["req"]["payload"],

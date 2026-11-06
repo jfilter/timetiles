@@ -118,7 +118,6 @@ export const dataExportJob = {
         throw new Error(`User not found: ${userId}`);
       }
 
-      // Execute export
       const exportService = createDataExportService(payload);
       const result = await exportService.executeExport(exportId);
       unpublishedArchive = result.filePath;
@@ -154,7 +153,6 @@ export const dataExportJob = {
       const baseUrl = env.NEXT_PUBLIC_SITE_URL ?? getBaseUrl();
       const downloadUrl = `${baseUrl}/api/data-exports/${exportId}/download`;
 
-      // Calculate file size in MB for email
       const fileSizeMB = result.fileSize / (1024 * 1024);
 
       // The archive and ready status are already persisted. Notification failures

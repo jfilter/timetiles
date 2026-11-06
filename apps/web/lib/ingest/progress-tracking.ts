@@ -122,7 +122,7 @@ const deserializeStages = (stages: unknown): Record<string, StageProgress> => {
  * Initialize progress tracking for all stages at job start.
  *
  * This should be called once when the job begins (during ANALYZE_DUPLICATES).
- * It sets up the progress structure for all 8 stages with "pending" status.
+ * It sets up the progress structure for every stage with "pending" status.
  *
  * @param payload - Payload instance
  * @param jobId - Ingest job ID
@@ -449,7 +449,6 @@ const calculateWeightedProgress = (stages: Record<string, StageProgress>): numbe
 
     totalWeight += weight;
 
-    // Calculate stage progress percentage
     let stageProgress = 0;
     if (stageData.status === "completed") {
       stageProgress = 100;
@@ -459,7 +458,6 @@ const calculateWeightedProgress = (stages: Record<string, StageProgress>): numbe
       stageProgress = (stageData.rowsProcessed / stageData.rowsTotal) * 100;
     }
 
-    // Add weighted contribution
     totalWeightedProgress += stageProgress * weight;
   }
 
@@ -484,7 +482,6 @@ const estimateCompletionTime = (stages: Record<string, StageProgress>): Date | n
   for (const [stageName, stageData] of Object.entries(stages)) {
     const weight = STAGE_TIME_WEIGHTS[stageName as ProcessingStage] || 0;
 
-    // Skip stages with zero weight
     if (weight === 0) continue;
 
     if (stageData.status === "completed" || stageData.status === "skipped") {
@@ -497,9 +494,8 @@ const estimateCompletionTime = (stages: Record<string, StageProgress>): Date | n
         hasValidEstimate = true;
       }
     } else if (stageData.status === "pending") {
-      // For pending stages, use weight as rough estimate (weight * some factor)
-      // This is a rough estimate; could be improved with historical data
-      totalEstimatedSeconds += weight * 10; // Assume ~10 seconds per weight unit
+      // Pending stages: rough estimate of ~10 seconds per weight unit
+      totalEstimatedSeconds += weight * 10;
     }
   }
 
@@ -515,7 +511,6 @@ const estimateCompletionTime = (stages: Record<string, StageProgress>): Date | n
   const now = new Date();
   const estimatedDate = new Date(now.getTime() + totalEstimatedSeconds * 1000);
 
-  // Validate the resulting date is valid
   if (isNaN(estimatedDate.getTime())) {
     return null;
   }
@@ -572,7 +567,6 @@ const updatePostDeduplicationTotals = async (
 
   const stages = job.progress?.stages ? deserializeStages(job.progress.stages) : {};
 
-  // Update totals for post-deduplication stages
   const postDeduplicationStages: ProcessingStage[] = [
     PROCESSING_STAGE.DETECT_SCHEMA,
     PROCESSING_STAGE.VALIDATE_SCHEMA,

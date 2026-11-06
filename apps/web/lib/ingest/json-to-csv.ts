@@ -14,10 +14,6 @@ import { deleteByPathOrKey, getByPath } from "@/lib/utils/object-path";
 
 import { type PreProcessingConfig, preProcessRecords } from "./pre-process-records";
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
 export interface JsonToCsvOptions {
   /** Dot-path to the records array, e.g. "data.results" */
   recordsPath?: string;
@@ -34,9 +30,7 @@ export interface JsonToCsvResult {
   detectedPath: string;
 }
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
+const MAX_FLATTEN_DEPTH = 20;
 
 /**
  * Flatten a record's nested objects into dot-separated keys.
@@ -45,8 +39,6 @@ export interface JsonToCsvResult {
  * - Arrays are serialized as JSON strings rather than being expanded.
  * - Primitives (string, number, boolean, null) are kept as-is.
  */
-const MAX_FLATTEN_DEPTH = 20;
-
 export const flattenObject = (obj: Record<string, unknown>, prefix?: string, depth = 0): Record<string, unknown> => {
   // Source field names are data, including __proto__; avoid inherited setters.
   const result = Object.create(null) as Record<string, unknown>;
@@ -83,9 +75,8 @@ export const flattenObject = (obj: Record<string, unknown>, prefix?: string, dep
  * @returns `{ records, path }` or `null` if no suitable array was found.
  */
 const autoDetectRecords = (json: unknown): { records: Record<string, unknown>[]; path: string } | null => {
-  // Top-level array. An empty one is unambiguous — it IS the records array, it just has no
-  // records today. Reporting "could not find records array" turned a quiet source into a
-  // scheduled-ingest failure that consumed a retry.
+  // Top-level array. An empty one is still the records array, just with no records today;
+  // failing it would cost a scheduled-ingest retry.
   if (Array.isArray(json)) {
     if (json.length === 0) {
       return { records: [], path: "" };
@@ -163,10 +154,6 @@ export const stripExcludedFieldsFromRecords = (
   });
 };
 
-// ---------------------------------------------------------------------------
-// Main exports
-// ---------------------------------------------------------------------------
-
 /**
  * Convert a JSON buffer (an API response body) to CSV.
  *
@@ -180,10 +167,8 @@ export const convertJsonToCsv = (jsonBuffer: Buffer, options?: JsonToCsvOptions)
 
   const { records: rawRecords, detectedPath } = extractRecordsFromJson(json, options?.recordsPath);
 
-  // Apply pre-processing (e.g. group-by with date merge) if configured
   let records = options?.preProcessing ? preProcessRecords(rawRecords, options.preProcessing) : rawRecords;
 
-  // Remove excluded fields before CSV conversion
   records = stripExcludedFieldsFromRecords(records, options?.excludeFields);
 
   logger.info({ recordCount: records.length, detectedPath }, "json-to-csv: found records array");
@@ -198,12 +183,9 @@ export const convertJsonToCsv = (jsonBuffer: Buffer, options?: JsonToCsvOptions)
  * collected across multiple pages and do not need path detection.
  */
 export const recordsToCsv = (records: Record<string, unknown>[]): Buffer => {
-  // Do NOT formula-escape here. This CSV is canonical ingest data: the pipeline
-  // re-parses it into events and Papa Parse does not strip a leading apostrophe,
-  // so escaping corrupts real values ("-42" -> "'-42", "@venue", "+1-555…", and
-  // numeric strings stop parsing as numbers). Formula-injection escaping
-  // (CWE-1236) belongs at the user-facing CSV/XLSX *export* boundary — see
-  // escapeCsvFormulaBoundaries in lib/utils/csv-escape.ts — not at ingest.
+  // Do NOT formula-escape: this CSV is canonical ingest data and Papa Parse keeps a leading
+  // apostrophe, so escaping corrupts values like "-42" or "@venue". Formula-injection escaping
+  // (CWE-1236) belongs at the export boundary — escapeCsvFormulaBoundaries in lib/utils/csv-escape.ts.
   const flattened = records.map((record) => flattenObject(record));
   const csvString = unparseRowsToCsv(flattened);
   return Buffer.from(csvString, "utf-8");

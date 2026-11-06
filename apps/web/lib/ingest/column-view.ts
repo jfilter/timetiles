@@ -17,10 +17,6 @@ import type {
   SuggestedMappings,
 } from "@/lib/ingest/types/wizard";
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
 /** Clear mappings only when replacing transforms removes their previously available column. */
 export const clearRemovedColumns = (
   mapping: FieldMapping,
@@ -51,10 +47,6 @@ export interface ColumnViewRow {
   splitChildTargets?: Record<string, FieldMappingStringField | null>;
 }
 
-// ---------------------------------------------------------------------------
-// Constants
-// ---------------------------------------------------------------------------
-
 /** Keys the wizard column table can assign; it has no target option for a combined coordinate column. */
 export const WIZARD_TARGET_KEYS: readonly FieldMappingStringField[] = FIELD_MAPPING_STRING_KEYS.filter(
   (key) => key !== "coordinateField"
@@ -71,10 +63,6 @@ const FIELD_TO_SUGGESTION_KEY: Partial<Record<FieldMappingStringField, keyof Sug
   latitudeField: "latitudePath",
   longitudeField: "longitudePath",
 };
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
 
 /** Find which target field a source column is currently assigned to. */
 export const findTargetForColumn = (columnName: string, fieldMapping: FieldMapping): FieldMappingStringField | null => {
@@ -127,14 +115,12 @@ export const buildColumnView = (
     .map((columnName) => {
       const targetField = findTargetForColumn(columnName, fieldMapping);
 
-      // Find transforms that reference this column
       const columnTransforms = transforms.filter((t) => {
         if ("from" in t) return t.from === columnName;
         if ("fromFields" in t) return (t as { fromFields: string[] }).fromFields.includes(columnName);
         return false;
       });
 
-      // Check auto-detection
       let isAutoDetected = false;
       let confidenceLevel: ConfidenceLevel = "none";
 
@@ -149,7 +135,6 @@ export const buildColumnView = (
         }
       }
 
-      // Check for split transforms
       const splitTransform = columnTransforms.find((t) => t.type === "split");
       const isSplitParent = Boolean(splitTransform);
       const splitChildren = splitTransform?.type === "split" ? splitTransform.toFields : undefined;

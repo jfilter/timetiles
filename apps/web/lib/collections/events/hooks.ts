@@ -27,14 +27,14 @@ import type { Event } from "@/payload-types";
 /** Claim/clear/compensate for TOTAL_EVENTS; see createQuotaClaimLifecycle for the transaction rule. */
 const eventQuota = createQuotaClaimLifecycle({ contextKey: "eventQuotaClaimedForUser", quotaKey: "TOTAL_EVENTS" });
 
+/** Denormalized access-control fields on events — derived here, never client-supplied. */
+const EVENT_DENORM_FIELDS = ["datasetIsPublic", "catalogOwnerId"] as const;
+
 /**
  * Before change hook for events.
  * - Sets datasetIsPublic and catalogOwnerId from the dataset/catalog for access control
  * - Validates quotas before event creation
  */
-/** Denormalized access-control fields on events — derived here, never client-supplied. */
-const EVENT_DENORM_FIELDS = ["datasetIsPublic", "catalogOwnerId"] as const;
-
 export const eventsBeforeChangeHook: CollectionBeforeChangeHook<Event> = async ({
   data: incoming,
   operation,
@@ -67,9 +67,8 @@ export const eventsBeforeChangeHook: CollectionBeforeChangeHook<Event> = async (
     const dataset = await safeFetchRecord(req, "datasets", datasetId, 1);
 
     if (!dataset) {
-      // Fail closed: silently skipping the derivation left the row's previous
-      // catalogOwnerId/datasetIsPublic in place, so a lookup failure handed the
-      // old owner continued read access to an event that had moved on.
+      // Fail closed: skipping the derivation would leave the row's previous
+      // catalogOwnerId/datasetIsPublic in place, keeping the old owner's read access.
       throw new Error(`Event dataset ${datasetId} could not be resolved for access-field derivation`);
     }
 
@@ -91,7 +90,6 @@ export const eventsBeforeChangeHook: CollectionBeforeChangeHook<Event> = async (
       throw new Forbidden(req.t);
     }
 
-    // Assign collected values (avoids race condition warnings)
     Object.assign(data, accessFields);
   }
 
@@ -100,7 +98,6 @@ export const eventsBeforeChangeHook: CollectionBeforeChangeHook<Event> = async (
     return data;
   }
 
-  // Check quotas on creation
   if (operation === "create") {
     await eventQuota.claim(req);
   }

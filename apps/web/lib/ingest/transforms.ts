@@ -62,7 +62,6 @@ export const applyTransforms = (
   // Shallow copy to avoid mutating input (safe: CSV/Excel rows are flat string/number maps)
   const result = { ...data };
 
-  // Apply only active transforms
   const activeTransforms = transforms.filter((t) => t.active);
 
   for (const transform of activeTransforms) {
@@ -129,7 +128,6 @@ const applyRenameTransform = (data: Record<string, unknown>, transform: RenameTr
 
   const value = getByPathOrKey(data, transform.from);
 
-  // Only apply if source field exists
   if (value !== undefined) {
     setByPathOrKey(data, transform.to, value);
     deleteByPathOrKey(data, transform.from);
@@ -178,23 +176,19 @@ const applyDateParseTransform = (data: Record<string, unknown>, transform: DateP
     const trimmedValue = value.trim();
     const parsed = parseImportDateWithFormat(trimmedValue, transform.inputFormat);
     if (parsed && !isNaN(parsed.getTime())) {
-      // Apply timezone if configured
       const adjusted = transform.timezone ? adjustForTimezone(parsed, transform.timezone) : parsed;
 
-      // Format output based on outputFormat. Everything except ISO 8601 is a date-only
-      // pattern, so its calendar parts must be read in the source timezone: the instant for
-      // "2024-06-15 in Asia/Tokyo" is 2024-06-14T15:00Z, and taking the UTC date off that
-      // silently moved every imported date a day back for zones east of Greenwich.
+      // Format output based on outputFormat. Everything except ISO 8601 is a date-only pattern, so
+      // its calendar parts are read in the source timezone: "2024-06-15 in Asia/Tokyo" is
+      // 2024-06-14T15:00Z, whose UTC date would be a day early.
       const output =
         transform.outputFormat === "ISO 8601"
           ? adjusted.toISOString()
           : formatDateWithPattern(adjusted, transform.outputFormat ?? "YYYY-MM-DD", transform.timezone);
 
-      // Round-trip sanity check (same idea as `parseAsDate`): an ISO date-only input must
-      // parse back to the same calendar date, otherwise the parse misread it and writing the
-      // result would corrupt the value. Compare the CANONICAL ISO rendering — comparing the
-      // formatted output makes every non-ISO output format differ trivially, which silently
-      // turned the whole transform into a no-op for ISO input.
+      // Round-trip check (as in `parseAsDate`): an ISO date-only input must parse back to the same
+      // calendar date, otherwise the parse misread it. Compare the canonical ISO rendering, since
+      // any non-ISO output format always differs from the input.
       const canonical = formatDateWithPattern(adjusted, "YYYY-MM-DD", transform.timezone);
       if (ISO_DATE_ONLY_REGEX.test(trimmedValue) && canonical !== trimmedValue && !transform.timezone) {
         return;

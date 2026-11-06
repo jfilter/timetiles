@@ -230,12 +230,9 @@ export const sweepExpiredPreviews = (now: Date = new Date(), dirOverride?: strin
     }
   }
 
-  // Remove orphaned data files (no matching .meta.json), but only once they are older than
-  // the preview TTL. The upload route writes the data file, parses every sheet, and only then
-  // saves the metadata — for a large XLSX that gap is seconds to minutes, during which the
-  // file legitimately has no sidecar. Deleting on sight meant a sweep landing in that window
-  // handed the wizard a previewId whose data file was already gone, and counted it as a
-  // successful cleanup. Same grace-period reasoning as INGEST_FILE_ORPHAN_GRACE_HOURS.
+  // Remove orphaned data files (no .meta.json) only once older than the preview TTL: the upload
+  // route writes the data file before its metadata, and for a large XLSX that gap can last
+  // minutes. Same grace-period reasoning as INGEST_FILE_ORPHAN_GRACE_HOURS.
   const orphanCutoff = now.getTime() - PREVIEW_EXPIRY_MS;
   for (const orphan of dataFileSet) {
     if (!PREVIEW_DATA_FILE_NAME_RE.test(orphan)) continue;

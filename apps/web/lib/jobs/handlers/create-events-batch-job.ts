@@ -118,10 +118,9 @@ const releaseEventQuotaOnFailure = async ({
   trackedEventQuota: number;
   eventQuotaFinalized: boolean;
 }): Promise<void> => {
-  // trackedEventQuota is -1 until markJobCompleted reconciles the reservation to
-  // the actual count. Once reconciled (>= 0), release exactly that — 0 when a
-  // completed job created no new events — not the original reservation again
-  // (the previous `trackedEventQuota > 0` proxy double-released in that case).
+  // trackedEventQuota is -1 until markJobCompleted reconciles the reservation to the actual
+  // count. Once reconciled (>= 0), release exactly that — 0 when a completed job created no
+  // new events — not the original reservation again.
   const quotaToRelease = trackedEventQuota >= 0 ? trackedEventQuota : reservedEventQuota;
   if (quotaToRelease <= 0 || eventQuotaFinalized) return;
 
@@ -135,12 +134,10 @@ const releaseEventQuotaOnFailure = async ({
 /**
  * Finalize the terminal COMPLETED stage from inside the retryable handler.
  *
- * The onSuccess task callback (which swallows its errors) used to be the ONLY
- * writer of COMPLETED — a transient failure there stranded a fully-imported job
- * at create-events forever, and there is no stuck-stage recovery for ingest
- * jobs. Calling this in the handler body lets a failure throw → Payload retry
- * (idempotent via cleanupPriorAttempt). reviewHighRowErrors already set
- * NEEDS_REVIEW when it returned true, so only mark COMPLETED otherwise.
+ * Writing it here, not only in the error-swallowing onSuccess callback, lets a transient
+ * failure throw → Payload retry (idempotent via cleanupPriorAttempt); ingest jobs have no
+ * stuck-stage recovery. reviewHighRowErrors already set NEEDS_REVIEW when it returned
+ * true, so only mark COMPLETED otherwise.
  */
 const finalizeCompletedStage = async (
   payload: Payload,
@@ -290,10 +287,9 @@ export const createEventsBatchJob = {
       await cleanupPriorAttemptUnderLease(payload, ingestJobId);
     },
   }),
-  // Belt-and-suspenders: the handler now writes COMPLETED itself (inside its
-  // retryable body). This callback re-asserts it in case the handler returned
-  // success without reaching that write, and is intentionally non-throwing —
-  // the handler's write is the load-bearing one.
+  // Belt-and-suspenders: the handler writes COMPLETED itself (inside its retryable body).
+  // This callback re-asserts it in case the handler returned success without reaching that
+  // write, and is intentionally non-throwing — the handler's write is the load-bearing one.
   onSuccess: async (args: TaskCallbackArgs) => {
     const ingestJobId = (args.input as Record<string, unknown> | undefined)?.ingestJobId;
     if (typeof ingestJobId !== "string" && typeof ingestJobId !== "number") return;
@@ -346,14 +342,8 @@ export const createEventsBatchJob = {
       // Now serialized on this dataset, so the catch may safely roll back.
       leaseHeld = true;
 
-      // Idempotency guard against at-least-once redelivery: if this job already
-      // COMPLETED (a worker crashed after success but before Payload acked the task,
-      // so Payload redelivers it), re-processing would delete this job's own committed
-      // events via cleanupPriorAttempt and could then fail midway with the originals
-      // already gone. Re-read the stage UNDER the lease so a concurrent double-delivery
-      // serializes — the second holder then sees the first's COMPLETED and no-ops.
-      // (NEEDS_REVIEW is deliberately NOT guarded: the post-approval ingest-process
-      // workflow re-runs create-events on purpose.)
+      // Idempotency guard against at-least-once redelivery (see completedRedeliveryOutput),
+      // re-read UNDER the lease so a concurrent double-delivery serializes.
       const alreadyDone = await completedRedeliveryOutput(payload, ingestJobId);
       if (alreadyDone) {
         logger.info("Import already completed; skipping redelivered re-run", { ingestJobId });

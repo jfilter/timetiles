@@ -58,12 +58,8 @@ const deleteEligibleJob = async (sys: ReturnType<typeof asSystem>, id: number, w
 };
 
 /**
- * Delete every matching job, not just the first page.
- *
- * A single capped query per category meant any instance producing more than PAGE_SIZE stale
- * jobs a day fell further behind every day — while the run reported success and the retention
- * windows this job exists to enforce were quietly exceeded. Always re-reads page 1: each pass
- * removes the rows it just matched.
+ * Delete every matching job, not just the first page, so busy instances cannot fall behind
+ * the retention windows. Always re-reads page 1: each pass removes the rows it just matched.
  */
 const drainJobs = async (sys: ReturnType<typeof asSystem>, where: Where, label: string): Promise<DrainResult> => {
   let deleted = 0;

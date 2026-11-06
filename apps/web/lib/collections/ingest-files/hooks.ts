@@ -50,19 +50,15 @@ export const enforceUploadRateLimit = async (
 
 export const beforeOperationHooks: CollectionBeforeOperationHook[] = [
   ({ operation, req }) => {
-    // Only run on create operations
     if (operation !== "create") return;
-    // Skip during seeding
     if (req.context?.seed) return;
 
     const logger = createRequestLogger("import-files-beforeoperation");
 
-    // Handle file uploads
     if (req.file) {
-      // Store original filename for later use
       const originalName = req.file.name;
 
-      // Always store original name in request context for use in beforeChange hook
+      // Read back by the beforeChange hook.
       (req as typeof req & { originalFileName?: string }).originalFileName = originalName;
 
       // URL imports are flagged via req.context.isUrlImport by createIngestFile.
@@ -71,7 +67,6 @@ export const beforeOperationHooks: CollectionBeforeOperationHook[] = [
       // future URL imports.
       const isUrlImport = req.context?.isUrlImport === true;
       if (isUrlImport) {
-        // Keep the programmatic URL import filename as-is
         logger.debug("Preserving URL import filename", { originalName });
       } else {
         // Generate unique filename with timestamp and UUID to prevent conflicts
@@ -80,7 +75,6 @@ export const beforeOperationHooks: CollectionBeforeOperationHook[] = [
         const fileExtension = originalName.split(".").pop() ?? "csv";
         const uniqueFilename = `${timestamp}-${uniqueId}.${fileExtension}`;
 
-        // Update the file name
         req.file.name = uniqueFilename;
 
         logger.debug("Generated unique filename", { originalName, uniqueFilename, timestamp, uniqueId });
@@ -91,7 +85,6 @@ export const beforeOperationHooks: CollectionBeforeOperationHook[] = [
 
 export const beforeValidateHooks: CollectionBeforeValidateHook[] = [
   async ({ data, req, operation }) => {
-    // Only run on create operations
     if (operation !== "create") return data;
 
     // Skip all validation during seeding
@@ -100,15 +93,13 @@ export const beforeValidateHooks: CollectionBeforeValidateHook[] = [
     const logger = createRequestLogger("import-files-validate");
     const user = req.user;
 
-    // Skip validation for local API calls without a user (test/system operations)
-    // These bypass access control via overrideAccess: true
-    // Real API requests always have req.payloadAPI === "REST" or "GraphQL"
+    // Local API calls without a user (tests, system operations) skip validation;
+    // real API requests always have req.payloadAPI "REST" or "GraphQL".
     if (!user && req.payloadAPI !== "REST" && req.payloadAPI !== "GraphQL") {
       logger.debug("Skipping authentication check for local API operation");
       return data;
     }
 
-    // Authentication is required for external API requests
     if (!user) {
       throw new Error("Authentication required to upload files");
     }
@@ -135,19 +126,13 @@ export const beforeValidateHooks: CollectionBeforeValidateHook[] = [
       return data;
     }
 
-    // Atomic check-and-increment to prevent TOCTOU race between concurrent uploads.
-    // The claim is compensated by afterError hook (or downstream validation catch)
-    // if the create fails after this point. See compensateUploadQuotaOnError below.
+    // Atomic check-and-increment prevents a TOCTOU race between concurrent uploads;
+    // compensateUploadQuotaOnError undoes the claim if the create fails afterwards.
     await quotaService.checkAndIncrementUsage(user, "FILE_UPLOADS_PER_DAY", 1, req);
 
-    // Mark that the quota was claimed so afterError / afterChange hooks know whether
-    // a compensating decrement is needed — but only for a NON-transactional increment. On
-    // Postgres the create runs in a transaction, and Payload's create op calls
-    // killTransaction() in its catch, rolling the increment back AND deleting
-    // req.transactionID before afterError fires. The compensating decrement would then run
-    // outside the rolled-back transaction and subtract a SECOND time; decrementUsage floors
-    // at 0, so alternating a good create with a failing one pins the daily counter at 0.
-    // Same guard as scraper-repos.ts, which hit this first.
+    // Flag the claim for compensation only when the increment is NON-transactional. In a
+    // transaction, Payload's killTransaction() already rolls it back (and deletes
+    // req.transactionID before afterError fires), so compensating would subtract twice.
     if (!req.transactionID) {
       (req as typeof req & { ingestFileQuotaClaimed?: boolean }).ingestFileQuotaClaimed = true;
     }
@@ -179,7 +164,6 @@ const compensateUploadQuotaOnError = async (
 
 export const beforeChangeHooks: CollectionBeforeChangeHook[] = [
   async ({ data, req, operation }) => {
-    // Only run on create operations
     if (operation !== "create") return data;
     // Skip during seeding — seed data provides all fields directly
     if (req.context?.seed) return data;
@@ -187,21 +171,19 @@ export const beforeChangeHooks: CollectionBeforeChangeHook[] = [
     const changeLogger = createRequestLogger("import-files-beforechange");
     const clientId = await enforceUploadRateLimit(req, changeLogger);
 
-    // Extract custom metadata from the request
     const userAgent = req.headers?.get?.("user-agent") ?? null;
 
-    // Get original filename from beforeOperation hook (for file uploads)
-    // OR preserve the originalName if it's already set (for programmatic creation from url-fetch-job)
+    // Preserve an originalName set programmatically (url-fetch-job), else take the
+    // upload's name stashed by the beforeOperation hook.
     const originalName =
       data.originalName ?? (req as typeof req & { originalFileName?: string }).originalFileName ?? null;
 
     if (data.catalog && req.user) await validateCatalogOwnership(req.payload, data.catalog, req.user, req);
 
-    // Add rate limiting and metadata info
     return {
       ...data,
-      originalName, // Set or preserve the original filename
-      user: req.user?.id, // Set the authenticated user
+      originalName,
+      user: req.user?.id,
       ...(clientId && { rateLimitInfo: { clientId, isAuthenticated: true, timestamp: new Date().toISOString() } }),
       metadata: { uploadSource: "api", userAgent, ...data.metadata },
       uploadedAt: new Date().toISOString(),
@@ -211,7 +193,6 @@ export const beforeChangeHooks: CollectionBeforeChangeHook[] = [
 
 export const afterChangeHooks: CollectionAfterChangeHook[] = [
   async ({ doc, req, operation }) => {
-    // Only run on create
     if (operation !== "create") return doc;
     const { payload } = req;
 
@@ -232,19 +213,11 @@ export const afterChangeHooks: CollectionAfterChangeHook[] = [
       return doc;
     }
 
-    // Queue the manual-ingest workflow to process the file through the full
-    // pipeline. Every write below runs in the file-create transaction (req is
-    // passed), so the file row, the queued job, and the jobId reconcile commit
-    // atomically: the ingest queue poller never sees a job whose owning file is
-    // not yet committed, and a rollback never strands an orphaned job.
-    //
-    // Because they share one transaction, a failure in ANY step poisons it —
-    // there is no valid partial state, and no in-transaction recovery is possible
-    // (a "mark failed" write would itself fail on the aborted transaction, and
-    // swallowing the error only masks the rollback while the create still fails at
-    // commit). So we log and rethrow: the upload fails atomically and the client
-    // retries. Only the physical upload file may linger briefly; the afterError
-    // hook still compensates the quota claim because we have not cleared its flag.
+    // Queue the manual-ingest workflow. Every write below runs in the file-create
+    // transaction, so file row, queued job and jobId commit atomically and a rollback
+    // never strands an orphaned job. A failure in any step poisons the transaction and
+    // no in-transaction recovery is possible, so we log and rethrow; the afterError
+    // hook still compensates the quota claim because its flag is not yet cleared.
     try {
       await payload.update({
         collection: COLLECTION_NAMES.INGEST_FILES,

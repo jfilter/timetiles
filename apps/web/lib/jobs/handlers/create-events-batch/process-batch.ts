@@ -358,7 +358,7 @@ export const processEventBatch = async (
   const geocodingResults = getIngestGeocodingResults(job);
   // The detection-resolved JOB plan carries the authored ops + resolved policies.
   const plan = readInterpretationPlan(job) ?? planFromOps([]);
-  // Project the plan to the flat extractor shape ONCE per batch (was O(rows)).
+  // Project the plan to the flat extractor shape once per batch.
   const fieldMappings = planToFieldMappings(plan);
 
   // Dataset-scope guard: `analyze-duplicates` already filters candidates by

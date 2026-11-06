@@ -191,7 +191,7 @@ const buildColumns = (
  * Skips any field already resolved to a date or coordinate-pair kind so a
  * numeric-looking date column (e.g. "2024" / "20240131") or coordinate column
  * keeps its kind. Each surviving column carries its per-column `NumberPolicy`
- * separators for QUERY-time locale-aware range filtering. Extracted from
+ * separators for QUERY-time locale-aware range filtering.
  * {@link buildColumns} purely to keep that builder under the complexity budget.
  */
 const applyNumberColumns = (
@@ -242,10 +242,9 @@ export const fieldMappingToRoles = (fieldMapping: FieldMapping | undefined): Int
 /** Run the typed wizard transforms through the exact legacy filter/normalization. */
 const filterAuthoredOps = (transforms: IngestTransform[] | undefined): IngestTransform[] => {
   if (!transforms || transforms.length === 0) return [];
-  // Route through buildTransformsFromDataset so the authored ops are byte-identical
-  // to today's dataset.ingestTransforms round-trip (drops active!==true and
-  // incomplete entries, normalizes per-type fields). This is the dedup-stability
-  // guarantee (RISK 1) — never hand-filter here.
+  // Route through buildTransformsFromDataset so authored ops match the dataset.ingestTransforms
+  // round-trip exactly (drops active!==true and incomplete entries, normalizes per-type fields).
+  // Dedup hashes depend on this — never hand-filter here.
   return buildTransformsFromDataset({ ingestTransforms: transforms });
 };
 

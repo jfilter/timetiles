@@ -119,9 +119,7 @@ export const detectFileTypeFromResponse = (
   }
 
   // Detect JSON by first non-whitespace byte — `{` (0x7B) for objects or
-  // `[` (0x5B) for arrays (GeoJSON/record-list). Previously this path fell
-  // through to the comma/newline CSV heuristic, which misidentified every
-  // JSON file as CSV because any JSON text contains both.
+  // `[` (0x5B) for arrays (GeoJSON/record-list).
   const firstNonWhitespace = findFirstNonWhitespaceByte(data);
   if (firstNonWhitespace === 0x7b || firstNonWhitespace === 0x5b) {
     return { mimeType: "application/json", fileExtension: ".json" };
@@ -231,11 +229,9 @@ const buildCacheOptions = (
     headers["Content-Type"] = "application/json";
   }
 
-  // Fingerprint the credential-bearing headers so the cache isolates responses
-  // per auth identity. Without this, callers omit userId and every auth'd fetch
-  // shares the ":anonymous" bucket keyed by URL alone — leaking one tenant's
-  // authenticated response to another. No auth headers → no segment (public
-  // responses for the same URL are still shared, which is correct).
+  // Fingerprint the credential-bearing headers so the cache isolates responses per auth
+  // identity: callers omit userId, so authenticated fetches would otherwise share one bucket
+  // keyed by URL. No auth headers → no segment, so public responses stay shared.
   const authFingerprint =
     Object.keys(authHeaders).length > 0
       ? hashOpaqueValue(
@@ -254,8 +250,7 @@ const buildCacheOptions = (
     body: fetchOptions.body,
     bypassCache: !useCache,
     forceRevalidate: cacheOptions?.forceRevalidate,
-    // Per-schedule override of the global respectCacheControl config —
-    // dropping it here previously made the admin-exposed checkbox a no-op.
+    // Per-schedule override of the global respectCacheControl config.
     respectCacheControl: cacheOptions?.respectCacheControl,
     userId,
     authFingerprint,

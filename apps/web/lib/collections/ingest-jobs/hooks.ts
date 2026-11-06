@@ -306,7 +306,6 @@ export const afterChangeHooks: CollectionAfterChangeHook[] = [
 
     if (operation === "create") {
       await trackIngestJobQuota(req, doc);
-      // No longer queue jobs here — workflow handles orchestration
     }
 
     // Queue ingest-process workflow when NEEDS_REVIEW is approved

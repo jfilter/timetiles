@@ -37,10 +37,9 @@ export const auditLogIpCleanupJob = {
       let totalEligible = 0;
       let hasMore = false;
 
-      // Page until the backlog is drained. A single page of 500 per daily run meant any
-      // instance producing more than that many IP-carrying entries a day fell further behind
-      // every day, and raw IPs outlived the retention window the collection promises. The
-      // query always re-reads page 1 because each update removes a row from the result set.
+      // Page until the backlog is drained: a single page per run would fall behind on busy
+      // instances and let raw IPs outlive the retention window. The query always re-reads
+      // page 1 because each update removes a row from the result set.
       for (let page = 1; page <= MAX_PAGES; page++) {
         const entries = await sys.find({
           collection: "audit-log",
