@@ -5,9 +5,8 @@
  * @category Lib
  */
 
-// Default import (not named): pino 10's named `{ pino }` export no longer
-// carries the namespace types (LoggerOptions/Logger) or statics
-// (multistream/destination). The default export does.
+// Default import (not named): pino 10's named `{ pino }` export does not carry
+// the namespace types (LoggerOptions/Logger) or statics (multistream/destination).
 import pino from "pino";
 
 const baseConfig: pino.LoggerOptions = { name: "timescrape", level: process.env.LOG_LEVEL ?? "info" };
@@ -25,9 +24,7 @@ const createLogger = (): pino.Logger => {
   if (!logFile) return pino(isDevelopment ? developmentConfig : baseConfig);
 
   // A transport in the options cannot be combined with multistream, so in development the
-  // pretty printer becomes one of the streams — same shape as apps/web's logger. Skipping the
-  // file in development instead (as this did) meant one LOG_FILE with two different meanings
-  // across the two apps.
+  // pretty printer becomes one of the streams — same shape and LOG_FILE meaning as apps/web.
   const stdoutStream = isDevelopment ? pino.transport(developmentConfig.transport!) : process.stdout;
   return pino(baseConfig, pino.multistream([{ stream: stdoutStream }, { stream: pino.destination(logFile) }]));
 };

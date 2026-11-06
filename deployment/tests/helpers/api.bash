@@ -1,10 +1,9 @@
 #!/usr/bin/env bash
 # Authenticated API helpers for BATS integration tests.
 #
-# The rest of this suite only touches unauthenticated endpoints, so this is the
-# first place that needs a logged-in session. A fresh deployment has no users at
-# all -- bootstrap deliberately creates none -- so the admin is created through
-# `timetiles create-admin`, the same command an operator uses.
+# A fresh deployment has no users at all -- bootstrap deliberately creates
+# none -- so the admin is created through `timetiles create-admin`, the same
+# command an operator uses.
 
 load '../helpers/common.bash'
 

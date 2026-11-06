@@ -13,10 +13,7 @@ SCRAPER_COOLDOWN_FILE="$STATE_DIR/.scraper-last-restart"
 SCRAPER_UNIT_FILE="/etc/systemd/system/timescrape-runner.service"
 
 # Both subsystems are checked on every run, and each reports through its own
-# exit status rather than ending the script. They used to exit directly, which
-# meant the scraper was only ever probed in the narrow window where the web app
-# was ALSO failing but still below its restart threshold -- so on a healthy
-# host, the runner was never checked at all.
+# exit status rather than ending the script, so neither check can skip the other.
 STATUS=0
 
 check_web() {
@@ -95,8 +92,7 @@ logger -t timescrape "Scraper runner health check failed (attempt $scraper_failu
 
 if [[ $scraper_failures -ge $MAX_FAILURES ]]; then
     # A runner that is broken rather than briefly wedged fails every probe, and
-    # restarting it on each one bounces it every 5 minutes indefinitely with no
-    # trace beyond journal lines nobody reads. Same counter, cooldown and alert
+    # restarting it on each one would bounce it indefinitely. Same counter, cooldown and alert
     # as the web path above, so a permanently dead runner reaches a human.
     if [[ -f "$SCRAPER_COOLDOWN_FILE" ]]; then
         scraper_last_restart=$(cat "$SCRAPER_COOLDOWN_FILE")

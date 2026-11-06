@@ -83,10 +83,8 @@ const extractLinks = (content: string): string[] => {
   linkPatterns.forEach((pattern) => {
     const matches = contentWithoutCode.matchAll(pattern);
     for (const match of matches) {
-      // Get the URL from the match (position varies by pattern).
-      // The bare-URL pattern has no capture group, so match[1]/match[2] are both
-      // undefined and the whole match IS the URL. Without the match[0] fallback
-      // every plain-text URL was silently dropped and never checked.
+      // Get the URL from the match (position varies by pattern). The bare-URL
+      // pattern has no capture group, so there the whole match IS the URL.
       const destination = match[2] || match[1] || match[0];
       const url = destination.startsWith("<") && destination.endsWith(">") ? destination.slice(1, -1) : destination;
       if (url && !ignorePatterns.some((ignore) => ignore.test(url))) {

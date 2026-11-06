@@ -45,15 +45,11 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ENV DATABASE_URL=${DATABASE_URL:-postgresql://user:pass@postgres:5432/db}
 ENV NEXT_PUBLIC_PAYLOAD_URL=${NEXT_PUBLIC_PAYLOAD_URL:-http://localhost:3000}
 ENV DEFAULT_LOCALE=${DEFAULT_LOCALE:-en}
-# Raise the V8 heap, as the CI workflows already do for their builds
-# (build.yml, test-unit-integration.yml). Without it the build depends on how
-# much RAM the host happens to have: Node sizes the default heap from system
-# memory, and tsup runs declaration generation in a worker that inherits it.
-# The UI package's DTS pass needs ~1 GB since TypeScript 5.9, so an unset
-# limit fails with ERR_WORKER_OUT_OF_MEMORY on smaller machines while passing
-# on larger ones. 4096 keeps 4x headroom without letting V8 outgrow a
-# memory-capped container, where exceeding the cgroup limit means a SIGKILL
-# rather than a readable error.
+# Raise the V8 heap, as the CI workflows do (build.yml, test-unit-integration.yml).
+# Node sizes the default heap from host RAM, and the UI package's tsup DTS worker
+# needs ~1 GB since TypeScript 5.9, so an unset limit fails with
+# ERR_WORKER_OUT_OF_MEMORY on smaller machines. 4096 keeps headroom without
+# letting V8 outgrow a memory-capped container (SIGKILL instead of an error).
 ENV NODE_OPTIONS=--max-old-space-size=4096
 
 # Build every workspace package the web app imports; their exports point at dist/

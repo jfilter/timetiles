@@ -9,8 +9,8 @@
  * defence-in-depth on top of the trust-level-3 gate and the container network
  * isolation; the clone itself runs over the host network, so the check matters.
  *
- * The IP-range classification comes from @timetiles/shared (bundled into the
- * runner at build time), so web and timescrape cannot drift apart on it.
+ * The IP-range classification comes from @timetiles/shared, so web and
+ * timescrape cannot drift apart on it.
  *
  * @module
  * @category Lib

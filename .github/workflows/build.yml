@@ -36,9 +36,7 @@ jobs:
         run: pnpm typecheck || (cat apps/web/.typecheck-results/$(ls -t apps/web/.typecheck-results/ 2>/dev/null | head -1) 2>/dev/null; exit 1)
 
       # The spec is committed AND publicly served, so it can drift from the
-      # routes without anything noticing. It had: a stale copy documented
-      # /api/v1/health, an endpoint that does not exist, and declared the API
-      # MIT-licensed while the project is AGPL.
+      # routes without anything noticing.
       - name: Check the committed OpenAPI spec matches the routes
         timeout-minutes: 2
         working-directory: apps/web
@@ -66,9 +64,7 @@ jobs:
           pnpm lint:devops
 
       # The unit-test workflow runs `pnpm test:coverage` with working-directory
-      # apps/web, so it never reaches this package. Without this step nothing in
-      # CI executes packages/ui's suite -- a test asserting a class the source
-      # stopped emitting sat green here for months.
+      # apps/web, so this is the only step that executes packages/ui's suite.
       - name: Test UI package
         timeout-minutes: 3
         run: pnpm test
@@ -91,8 +87,7 @@ jobs:
         working-directory: packages/ui
 
       # Gate only: nothing consumes this build. The E2E workflow rebuilds from
-      # source in its global setup, so uploading .next as an artifact was pure
-      # transfer cost for a directory that was overwritten on arrival.
+      # source in its global setup, so .next is not uploaded as an artifact.
       - name: Build web app
         timeout-minutes: 10
         run: pnpm build:compile

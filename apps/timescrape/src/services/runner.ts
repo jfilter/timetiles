@@ -223,13 +223,9 @@ export const startRunDataSweep = (): void => {
 /**
  * Terminate a run's container, escalating until it is actually gone.
  *
- * Every step here is sized against podman's OWN grace period, because the
- * previous shape could not kill anything: it ran `podman stop` under a 10s
- * client timeout against a container configured with `--stop-timeout` equal to
- * the run timeout (up to 3600s), then fell back to `podman rm -f` under a 5s
- * client timeout while `rm --force` itself waits out the same grace before
- * SIGKILL. Both calls were killed before podman ever reached the SIGKILL step,
- * so a container ignoring SIGTERM survived the timeout meant to end it.
+ * Every step here is sized against podman's OWN grace period: a client timeout
+ * shorter than it kills the podman client before podman reaches SIGKILL, and a
+ * container ignoring SIGTERM would survive.
  *
  *   1. `podman stop -t <grace>` — lets a well-behaved scraper flush and exit.
  *      The client timeout exceeds the grace so podman's own SIGKILL can land.
@@ -331,9 +327,8 @@ const OUTPUT_WATCHDOG_INTERVAL_MS = 2000;
 /**
  * Kill a run as soon as its output exceeds the configured size or entry cap.
  *
- * SCRAPER_MAX_OUTPUT_SIZE_MB was only ever checked in `collectOutput`, after
- * the container exited — by which point the bytes are already on the runner
- * host's disk, so the limit could not prevent the write it exists to limit.
+ * The check in `collectOutput` runs after the container exited, when the bytes
+ * are already on the runner host's disk.
  * `/output` is a bind mount and carries no quota of its own (see the mount
  * comment in security/container-config.ts), so the cap has to be enforced from
  * out here while the run is still in flight.
@@ -424,9 +419,7 @@ type CollectedOutput = { output: RunResult["output"] | undefined; exitCode: numb
 /**
  * Record a bad output as a FAILED RUN carrying the scraper's own logs.
  *
- * Throwing `OutputValidationError` here used to answer the caller with HTTP
- * 422, which discards stdout and stderr — the operator saw "invalid output"
- * and had no way to learn why the scraper produced it. Bad output is a fact
+ * Not an HTTP error: that would discard stdout and stderr. Bad output is a fact
  * ABOUT the run, not a malformed request, so it belongs in the run record.
  * An already-failing exit code is preserved; a scraper that claimed success
  * is forced to exit 1.

@@ -49,10 +49,8 @@ EOF
     # nginx runs as a CONTAINER here and logs through Docker's json-file
     # driver, so on a stock deployment nothing ever creates
     # /var/log/nginx/error.log on the host. fail2ban >= 0.10 refuses to start
-    # the whole server when a jail's logpath is missing — so unconditionally
-    # writing this jail took down the sshd jail with it, and the swallowed
-    # restart failure below meant the step still reported "configured and
-    # running" while no brute-force protection existed at all.
+    # the whole server when a jail's logpath is missing, taking the sshd jail
+    # down with it.
     if [[ -f /var/log/nginx/error.log ]]; then
         cat >> /etc/fail2ban/jail.local << 'EOF'
 
@@ -102,8 +100,7 @@ EOF
     sleep 2
 
     # Confirm it is still up: fail2ban can exit shortly after a "successful"
-    # restart when a jail turns out to be unusable, and this step used to
-    # report success regardless.
+    # restart when a jail turns out to be unusable.
     if ! systemctl is-active --quiet fail2ban; then
         print_error "fail2ban is not running after restart"
         journalctl -u fail2ban --no-pager -n 20 || true

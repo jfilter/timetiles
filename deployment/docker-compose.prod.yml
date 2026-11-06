@@ -74,16 +74,10 @@ services:
         max-file: "5"
     # No ports exposed directly - nginx handles this.
     #
-    # 3000 is hardcoded here and below, deliberately. It used to be
-    # ${CONTAINER_PORT:-3000}, which made the port look configurable while two
-    # consumers ignored it: this service's healthcheck hardcodes 3000, and
-    # nginx/nginx.conf hardcodes `server web:3000`. Setting CONTAINER_PORT
-    # therefore moved the listener away from both, so web never reported
-    # healthy, the workers (which gate on web's health) never started, and nginx
-    # proxied to a closed port -- the whole stack deadlocked on a knob the
-    # template advertised. nginx.conf is a plain bind-mounted file with no
-    # substitution step for compose-only installs, so there is nowhere to
-    # honour the value; the knob is gone from .env.production.example instead.
+    # 3000 is hardcoded here and below, deliberately: the healthcheck and
+    # nginx's `server web:3000` upstream (a bind-mounted file with no
+    # substitution step) both assume it, so a configurable port would only
+    # move the listener away from them and deadlock the stack.
     expose:
       - "3000"
     # Allow the web container to reach host-native services (e.g., scraper runner)
@@ -135,9 +129,8 @@ services:
       # Logging (all containers write to /var/log/timetiles/ via shared volume)
       LOG_LEVEL: ${LOG_LEVEL:-info}
       LOG_FILE: /var/log/timetiles/web.log
-      # Without this the value in .env.production never reaches the container:
-      # compose has no env_file, so the app always used the in-memory store --
-      # per-process counters and an empty pg table, with nothing logged.
+      # Compose has no env_file: without this line the value in .env.production
+      # never reaches the container and the app silently uses the in-memory store.
       RATE_LIMIT_BACKEND: ${RATE_LIMIT_BACKEND:-memory}
       # Absolute and shared, because the pieces live in different containers:
       # a worker writes the file, web stat()s the stored absolute path to serve
@@ -191,9 +184,8 @@ services:
       # Long enough to cover a slow migration. This container applies pending
       # migrations during Payload init, and /api/health cannot answer until
       # that finishes, so the startup grace period has to outlast the longest
-      # plausible migration rather than a normal boot. It also gates more than
-      # itself now: the workers wait for this health check, so a premature
-      # "unhealthy" here would keep them from starting at all.
+      # plausible migration rather than a normal boot. The workers wait for this
+      # health check, so a premature "unhealthy" keeps them from starting at all.
       start_period: 180s
 
   # Ingest worker — processes ingest workflows (high throughput)
@@ -247,9 +239,8 @@ services:
       # comes up. depends_on below keeps this container from starting until web
       # reports healthy, which it only does after its migrations finished.
       RUN_MIGRATIONS: "false"
-      # Without this the value in .env.production never reaches the container:
-      # compose has no env_file, so the app always used the in-memory store --
-      # per-process counters and an empty pg table, with nothing logged.
+      # Compose has no env_file: without this line the value in .env.production
+      # never reaches the container and the app silently uses the in-memory store.
       RATE_LIMIT_BACKEND: ${RATE_LIMIT_BACKEND:-memory}
       # Transactional mail is queued as a job and therefore SENT BY A WORKER,
       # not by web. Without these the worker falls through to the no-op
@@ -312,8 +303,7 @@ services:
         "--cron",
         "*/1 * * * *",
         # One queue per worker. --queue takes exactly one value: Payload matches
-        # it with `equals`, so "default,maintenance" matched no job at all and
-        # both queues silently accumulated work that was never tried.
+        # it with `equals`, so "default,maintenance" would match no job at all.
         "--queue",
         "default",
         "--limit",
@@ -329,9 +319,8 @@ services:
       LOG_FILE: /var/log/timetiles/worker-general.log
       # See worker-ingest: only web migrates, and this container waits for it.
       RUN_MIGRATIONS: "false"
-      # Without this the value in .env.production never reaches the container:
-      # compose has no env_file, so the app always used the in-memory store --
-      # per-process counters and an empty pg table, with nothing logged.
+      # Compose has no env_file: without this line the value in .env.production
+      # never reaches the container and the app silently uses the in-memory store.
       RATE_LIMIT_BACKEND: ${RATE_LIMIT_BACKEND:-memory}
       # Absolute and shared, because the pieces live in different containers:
       # a worker writes the file, web stat()s the stored absolute path to serve
@@ -376,8 +365,8 @@ services:
   # Maintenance worker — cleanup and retention jobs
   #
   # Separate from worker-general because --queue takes exactly one value:
-  # Payload matches it with `equals`, so "default,maintenance" matched no
-  # job at all and both queues sat idle. --all-queues would cover them, but
+  # Payload matches it with `equals`, so "default,maintenance" would match
+  # no job at all. --all-queues would cover them, but
   # it would also let this worker race worker-ingest for ingest jobs, and
   # Payload's concurrency-key guard reads before it locks -- two workers
   # polling the same instant can admit two different jobs sharing one key,
@@ -406,16 +395,15 @@ services:
         "--cron",
         "*/1 * * * *",
         # One queue per worker. --queue takes exactly one value: Payload matches
-        # it with `equals`, so "default,maintenance" matched no job at all and
-        # both queues silently accumulated work that was never tried.
+        # it with `equals`, so "default,maintenance" would match no job at all.
         "--queue",
         "maintenance",
         "--limit",
         "20",
         # Each worker schedules only its OWN queue: handleSchedules skips any
         # schedule whose queue differs from --queue (handleSchedules/index.js:36).
-        # A single scheduler on `default` therefore left the maintenance
-        # schedules unqueued -- this worker consumed a queue nobody filled.
+        # A single scheduler on `default` would leave the maintenance
+        # schedules unqueued.
         # Separate schedulers are safe because the filter makes their work
         # disjoint; they would only double-queue if they shared a queue.
         "--handle-schedules",
@@ -431,9 +419,8 @@ services:
       INGEST_FILE_ORPHAN_GRACE_HOURS: ${INGEST_FILE_ORPHAN_GRACE_HOURS:-12}
       # See worker-ingest: only web migrates, and this container waits for it.
       RUN_MIGRATIONS: "false"
-      # Without this the value in .env.production never reaches the container:
-      # compose has no env_file, so the app always used the in-memory store --
-      # per-process counters and an empty pg table, with nothing logged.
+      # Compose has no env_file: without this line the value in .env.production
+      # never reaches the container and the app silently uses the in-memory store.
       RATE_LIMIT_BACKEND: ${RATE_LIMIT_BACKEND:-memory}
       # Absolute and shared, because the pieces live in different containers:
       # a worker writes the file, web stat()s the stored absolute path to serve
@@ -530,8 +517,7 @@ services:
       - letsencrypt:/etc/letsencrypt
       # Pin /var/lib/letsencrypt to a named volume. The certbot image declares
       # it as an image-level VOLUME; left unmapped, Docker spawns a fresh
-      # ANONYMOUS volume on every container recreate (a health-check restart
-      # loop once stranded ~1150 empty ones on a staging host). Naming it also
+      # ANONYMOUS volume on every container recreate. Naming it also
       # lets certbot keep its work/archive state across recreates.
       - letsencrypt-lib:/var/lib/letsencrypt
       - certbot-webroot:/var/www/certbot
@@ -570,8 +556,8 @@ networks:
     # An auto-allocated subnet cannot be named that way: Docker hands out
     # 172.17→172.31 in creation order, so the range this network gets depends on
     # what else exists on the host and changes when networks are recreated —
-    # a firewall rule written against it would go stale silently and every
-    # scraper run would start failing again.
+    # a firewall rule written against it would go stale silently and break
+    # every scraper run.
     #
     # 172.16.238.0/24 is deliberate on both ends: inside 172.16.0.0/12, so
     # TRUSTED_PROXY_CIDRS and postgres's ALLOW_IP_RANGE still cover it and the

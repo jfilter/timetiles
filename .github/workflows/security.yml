@@ -407,10 +407,8 @@ jobs:
             let comment = '## Security Scan Results\n\n';
             comment += `Scan completed at ${new Date().toISOString()}\n\n`;
 
-            // Returns { report } on success or { error } when the report is
-            // missing or unparseable. Collapsing both into null previously made
-            // an absent report indistinguishable from a clean scan, so a run
-            // where every scan failed to upload still claimed "All Checks Passed".
+            // Returns { report } on success or { error } when the report is missing
+            // or unparseable, so an absent report never reads as a clean scan.
             function readJSON(filePath) {
               if (!fs.existsSync(filePath)) {
                 return { error: `report not found at ${filePath} (the scan job likely failed or uploaded no artifact)` };

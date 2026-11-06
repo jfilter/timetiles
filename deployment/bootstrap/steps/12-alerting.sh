@@ -16,7 +16,7 @@ run_step() {
 
     # alert.sh ships as a tracked file in deployment/scripts/ so that
     # `timetiles update` (git fetch + reset --hard) restores it instead of
-    # losing it (see 09-monitoring.sh for the history).
+    # losing it.
     print_step "Checking alert script..."
     if [[ ! -f "$scripts_dir/alert.sh" ]]; then
         print_error "Missing $scripts_dir/alert.sh — deployment/scripts/ is tracked in git; restore with: git checkout -- scripts/"

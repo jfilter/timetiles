@@ -259,11 +259,10 @@ jobs:
           DB_PASSWORD: ${{ steps.secrets.outputs.db_password }}
         working-directory: deployment
         run: |
-          # Drive the smoke test from the production compose file. Standalone
-          # `docker run` for postgres drifts from prod (no shm_size, no
-          # EXTRA_CONF tuning, divergent healthcheck flags) and the kartoza
-          # init dance has been making the standalone postgres flaky for
-          # months. Compose is the same path operators run.
+          # Drive the smoke test from the production compose file: a standalone
+          # `docker run` for postgres drifts from prod (no shm_size, no EXTRA_CONF
+          # tuning, divergent healthcheck flags) and is flaky during kartoza's
+          # init. Compose is the same path operators run.
 
           cat > .env.production <<EOF
           COMPOSE_PROJECT_NAME=timetiles
@@ -423,8 +422,7 @@ jobs:
             fi
           done
 
-          # A missing arm64 manifest previously only printed a WARNING, so this
-          # step could not fail the job and arm64 regressions shipped unnoticed.
+          # A missing arm64 manifest fails the job so arm64 regressions cannot ship.
           if [ -n "$MISSING" ]; then
             echo "ERROR: arm64 manifest missing for:$MISSING"
             exit 1

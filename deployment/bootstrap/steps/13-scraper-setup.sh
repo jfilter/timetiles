@@ -5,33 +5,17 @@
 
 # Rootless Podman can wedge instead of failing: it blocks in a futex wait
 # after opening its sqlite backend and never returns, turning any invocation
-# into a silent bootstrap hang. Observed here at 47 minutes with no output,
-# with the run otherwise healthy — so the cap below is the load-bearing part.
-# Every call goes through common.sh's podman_as, which bounds the call and pins
-# XDG_RUNTIME_DIR, since sudo does not carry it over.
-#
-# The timeout is what guarantees the bootstrap makes progress. The runtime dir
-# handling in configure_rootless is hardening around the same area, not a
-# proven cure — the underlying wedge was not fully root-caused.
-# Podman's runtime state (runroot), and the reason the runner could never start
-# a container: the unit paired this with ProtectHome=yes, which mounts an empty
-# read-only tmpfs over /run/user just as it does over /home and /root. Verified
-# inside the running service's namespace -- /run/user was mode d--------- and
-# empty. Podman fell back to $HOME/rundir, read-only under ProtectSystem=strict,
-# and every run died with
-#   mkdir /opt/timetiles-src/deployment/rundir/libpod: no such file or directory
-# while systemctl reported the unit active.
-#
-# The fix is to expose this path to the unit (ProtectHome=tmpfs + BindPaths),
-# not to move podman somewhere logind-independent. That was tried: a runroot
-# under /run created by tmpfiles works for starting containers but loses the
-# systemd user session, and rootless podman needs that session's cgroup
-# delegation to apply a limit. `podman run --memory 512m` -- which the runner
-# always passes -- then fails with
-#   rootless needs no limits + no cgrouppath when no permission is granted
-# Delegate=yes on the unit does not help; podman still resolves its cgroup
-# under system.slice rather than the delegated subtree. So logind is not
-# avoidable here, only orderable: lingering below, plus After=user@$uid.
+# into a silent bootstrap hang. Every call therefore goes through common.sh's
+# podman_as, which bounds the call and pins XDG_RUNTIME_DIR (sudo drops it).
+# The timeout is the load-bearing part; the runtime dir handling in
+# configure_rootless is hardening, not a proven cure.
+
+# Podman's runtime state (runroot). ProtectHome=yes would hide /run/user under an
+# empty tmpfs, so the unit uses ProtectHome=tmpfs + BindPaths for this path.
+# A logind-independent runroot is no alternative: rootless podman needs the
+# systemd user session's cgroup delegation to apply the runner's --memory limit
+# (Delegate=yes on the unit does not help). So logind is not avoidable, only
+# orderable: lingering below, plus After=user@$uid.
 runtime_dir_for() {
     echo "/run/user/$(id -u "$1")"
 }
@@ -41,15 +25,9 @@ runtime_dir_for() {
 # ProtectSystem=strict makes the whole tree read-only, so the unit grants this
 # one directory back through ReadWritePaths.
 #
-# Relocating it instead, via XDG_DATA_HOME or a storage.conf graphroot, was
-# tried and reverted: it splits podman's network handling. `network create` and
-# `network ls` follow the moved graphroot while `podman run --network` keeps
-# looking at the default, so a network created seconds earlier comes back as
-#   unable to find network with name or ID scraper-sandbox: network not found
-# Reproduced with a freshly created network, and confirmed against a control run
-# on the default graphroot, which works. Keeping the store where podman expects
-# it is the cheaper half of the trade: the directory is gitignored, so the only
-# real objection to its location was tidiness.
+# Do not relocate it via XDG_DATA_HOME or a storage.conf graphroot: that splits
+# podman's network handling (`network create` follows the moved graphroot while
+# `podman run --network` keeps the default), so the sandbox network is "not found".
 SCRAPER_IMAGE_STORE_SUBDIR=".local/share/containers"
 
 # Work area for scraper checkouts and outputs. Under /tmp, which is cleared on
@@ -151,9 +129,8 @@ configure_rootless() {
     # The directories podman and the runner write to, recreated at every boot.
     # The work dir is under /tmp, which is cleared on reboot, and it appears in
     # the unit's ReadWritePaths without a leading dash — a dash would let the
-    # unit start and then fail to write, which is exactly how the runtime-dir
-    # bug stayed hidden. /run/user/$uid is deliberately NOT listed here: it
-    # belongs to logind, and the unit orders itself after user@$uid instead.
+    # unit start and then fail to write. /run/user/$uid is deliberately NOT
+    # listed: it belongs to logind, and the unit orders itself after user@$uid.
     cat > /etc/tmpfiles.d/timetiles-scraper.conf << EOF
 # Work area for the TimeScrape runner, recreated after /tmp is cleared.
 d $SCRAPER_WORK_DIR 0700 $user $user -
@@ -416,18 +393,13 @@ install_runner() {
     # apps/timescrape/Dockerfile starts with `turbo prune timescrape --docker`,
     # which needs the monorepo ROOT (package.json, pnpm-workspace.yaml,
     # pnpm-lock.yaml, turbo.json) plus the workspace packages timescrape
-    # depends on -- it takes workspace:* deps on @timetiles/eslint-config and
-    # @timetiles/typescript-config. A bootstrapped host has none of that:
-    # step 05 sparse-checks-out only deployment/, apps/web/config/ and
-    # apps/timescrape/, so `docker build "$src_dir"` sends a context with an
-    # app and no workspace around it and prune fails deep inside the build
-    # with an error that says nothing about sparse checkout.
+    # depends on through workspace:* deps. A bootstrapped host has none of
+    # that (see step 05's sparse checkout), so prune would fail deep inside
+    # the build with an error that says nothing about sparse checkout.
     #
     # A full checkout (the VM harness rsyncs one to /opt/timetiles-src) passes
-    # this check and builds normally. Widening the sparse checkout was the
-    # alternative and was rejected: it would have to track which packages
-    # timescrape's dependency graph pulls in and stay correct as that changes,
-    # to rescue a path that only runs when the registry is unreachable.
+    # this check and builds normally. The sparse checkout is not widened for a
+    # path that only runs when the registry is unreachable.
     local build_context_ok=false
     if [[ -f "$src_dir/apps/timescrape/Dockerfile" ]] \
         && [[ -f "$src_dir/pnpm-workspace.yaml" ]] \
@@ -436,12 +408,9 @@ install_runner() {
         build_context_ok=true
     fi
 
-    # SCRAPER_LOCAL_BUILD forces strategy 2. Without it the registry pull always
-    # wins, so a checkout's runner source is never what gets installed -- which
-    # made the VM harness verify published runner code against working-tree
-    # deployment code, and let a packaging bug in this app's Dockerfile survive a
-    # green run. Strategy 1 stays the default: a normal host has no reason to
-    # spend a monorepo build on something it can pull.
+    # SCRAPER_LOCAL_BUILD forces strategy 2, so the VM harness can install the
+    # checkout's runner source instead of the published one. Strategy 1 stays the
+    # default: a normal host has no reason to build what it can pull.
     if [[ "${SCRAPER_LOCAL_BUILD:-false}" == "true" ]]; then
         if [[ "$build_context_ok" != "true" ]]; then
             die_incomplete_monorepo "$src_dir" "SCRAPER_LOCAL_BUILD=true was requested"
@@ -496,13 +465,10 @@ enable_scraper_url() {
         echo "SCRAPER_RUNNER_URL=$runner_url" >> "$env_file"
     fi
 
-    # Restart the whole stack so the new env var reaches every service.
-    #
-    # Not just web, despite what this used to say: worker-ingest is the process
-    # that actually calls the runner (the scraper runs as the `scraper-ingest`
-    # workflow on the "ingest" queue), and web only reads the value to report
-    # runner health. Naming one container here sent anyone debugging a failed
-    # scraper run to the wrong logs.
+    # Restart the whole stack so the new env var reaches every service:
+    # worker-ingest is the process that actually calls the runner (the
+    # `scraper-ingest` workflow on the "ingest" queue), and web only reads the
+    # value to report runner health.
     #
     # Writing the file is not the same as applying it: a running container keeps
     # the environment it started with. If the restart fails, the worker never
@@ -567,10 +533,8 @@ SyslogIdentifier=timescrape-runner
 # namespace through the setuid newuidmap/newgidmap, which it would neuter.
 ProtectSystem=strict
 # No leading dashes. A dash makes systemd skip a missing path, and under
-# ProtectSystem=strict the result is a unit that starts and then cannot write
-# where podman needs to -- which is how every scraper run came to fail while
-# systemctl reported the service active and healthy. Without the dash a missing
-# directory stops the unit, which is the failure anyone would actually notice.
+# ProtectSystem=strict the result is a unit that reports active but cannot write
+# where podman needs to. Without the dash a missing directory stops the unit.
 ReadWritePaths=$SCRAPER_WORK_DIR $install_dir/scraper-runner /var/log/timetiles $(runtime_dir_for "$user") $install_dir/$SCRAPER_IMAGE_STORE_SUBDIR
 # tmpfs rather than yes, plus an explicit bind of the runtime dir. ProtectHome=yes
 # covers /home, /root AND /run/user, and hiding the last one is what left podman
@@ -662,10 +626,7 @@ verify_runner_health() {
 # The loopback check above proves the process is serving; it says nothing about
 # the path that actually carries scraper runs. Those originate in the
 # worker-ingest container and cross the docker bridge into the host's INPUT
-# chain, where the firewall governs them. A loopback-only check passed happily
-# on a host where every single scraper run failed with a connection timeout,
-# which is exactly the gap allow_runner_ingress closes -- so verify the closed
-# gap here rather than trusting it.
+# chain, where the firewall governs them -- verify allow_runner_ingress worked.
 #
 # wget is BusyBox's, from the node:*-alpine base the app image uses.
 verify_runner_reachable_from_worker() {

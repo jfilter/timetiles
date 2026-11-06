@@ -19,9 +19,8 @@ const resultsPath = path.join(historyDir, `${createTimestamp()}.json`);
 let errors: TypeScriptError[] = [];
 /**
  * Set when tsgo itself broke rather than reporting type errors — a bad
- * tsconfig, a crash, an OOM, a missing binary. Previously such a run produced
- * zero parsed diagnostics and therefore `success: true`, so a typechecker that
- * never typechecked anything read as a passing gate in CI.
+ * tsconfig, a crash, an OOM, a missing binary. Such a run parses zero
+ * diagnostics, which must not read as a passing gate.
  */
 let runnerError: string | undefined;
 

@@ -17,15 +17,9 @@ run_step() {
     fi
 
     # Secrets are NOT saved to state — they are only written to .env.production
-    # (chmod 600). On resume they are therefore read back out of .env.production
-    # rather than a plaintext state file.
-    #
-    # That read-back is what this loop does, and until now it did not exist: the
-    # comment claimed it while the code below unconditionally generated fresh
-    # values on every run. Re-running step 06 against a live install issued a
-    # DB_PASSWORD that no longer opened the existing database and a
-    # PAYLOAD_SECRET that invalidated every session and every encrypted field —
-    # bricking the deployment rather than reconfiguring it.
+    # (chmod 600) and read back from there on resume. Regenerating them on a live
+    # install would lock out the database and invalidate every session and
+    # encrypted field.
     local secret_var existing_secret
     for secret_var in DB_PASSWORD PAYLOAD_SECRET RESTIC_PASSWORD SCRAPER_API_KEY; do
         # An explicitly configured value (config file / env) always wins.
@@ -84,9 +78,8 @@ run_step() {
     # repo's apps/web/config dir, so bundled data-package manifests refresh
     # on every `git pull`. The path is resolved relative to the compose file.
     #
-    # This is also the template's default, so the sed is normally a no-op — it
-    # stays because it must hold even for an .env.production carried over from
-    # an older install, where the default was "./config".
+    # This is also the template's default, so the sed is normally a no-op; it
+    # also corrects an .env.production carried over with "./config".
     #
     # It must NOT be "./config" (deployment/config): the single mount also
     # carries data-packages/ and

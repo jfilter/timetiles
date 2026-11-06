@@ -26,12 +26,9 @@ RUN --mount=type=bind,from=sdk-builder,source=/build/timetiles-scraper.tgz,targe
 # Create non-root user.
 #
 # node:24-slim already ships a `node` account at uid 1000, so adding a second
-# account at that uid fails with "UID is not unique". That failure used to be
-# swallowed by `|| true`, leaving the image with `USER scraper` pointing at an
-# account that does not exist -- every Node scraper died with "unable to find
-# user scraper: no matching entries in passwd file". Rename the existing
-# account instead of adding one, so the image keeps uid 1000 and stays
-# symmetric with the Python image. No `|| true`: this must fail the build.
+# account at that uid fails with "UID is not unique". Rename the existing
+# account instead, so the image keeps uid 1000 and stays symmetric with the
+# Python image. No `|| true`: a failure here must fail the build.
 RUN usermod -l scraper -d /home/scraper -m -s /bin/false node \
  && groupmod -n scraper node
 
@@ -42,10 +39,7 @@ RUN mkdir -p /scraper /output && chown scraper:scraper /output
 #
 # NODE_PATH alone is NOT enough: Node's ESM resolver ignores it entirely, and
 # every scraper the SDK scaffolds uses `import` syntax (Node 24 auto-detects
-# ESM in a bare .js file, so the import runs as ESM even without a
-# package.json). The result was that no node-runtime scraper could load
-# @timetiles/scraper -- it died with ERR_MODULE_NOT_FOUND before scraping
-# anything.
+# ESM in a bare .js file, even without a package.json).
 #
 # The ESM resolver DOES walk the node_modules chain up to the filesystem root,
 # so a /node_modules symlink puts the global store on that path. The scraper's

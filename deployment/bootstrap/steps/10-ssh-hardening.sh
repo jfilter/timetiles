@@ -72,9 +72,8 @@ run_step() {
     print_success "SSH configuration test passed"
 
     # Verify what sshd will ACTUALLY do, rather than trusting that the write
-    # took effect. This is the check that was missing: settings were edited
-    # into sshd_config and reported as applied, while a drop-in included ahead
-    # of them quietly kept PasswordAuthentication enabled.
+    # took effect: a drop-in included ahead of ours can keep
+    # PasswordAuthentication enabled.
     print_step "Verifying effective SSH configuration..."
 
     local expected_password_auth="no"

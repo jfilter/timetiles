@@ -4,18 +4,11 @@
 # install.sh is the documented one-liner entry point --
 #   curl -sSL .../install.sh | sudo bash
 # -- so its NO-ARGUMENT path is the most-travelled install route there is.
-# Nothing exercised install.sh at all until this suite.
 #
-# Regression under test: parse_args built the array with
-#   BOOTSTRAP_ARGS=("${bootstrap_args[@]:-}")
-# and main expanded it again with
-#   run_bootstrap "${BOOTSTRAP_ARGS[@]:-}"
-# On an EMPTY array, `:-` substitutes a single empty-string element rather than
-# nothing at all. bootstrap.sh was therefore invoked as `./bootstrap.sh ""`,
-# fell through to the `*)` arm of its parser, and exited 1 with
-# "Unknown option: ". Every default installation aborted, and so did every
-# `--domain`/`--email`/`--branch` install, since those flags are consumed by
-# install.sh and never appended to the array.
+# Regression under test: expanding an EMPTY array with `"${a[@]:-}"` yields a
+# single empty-string argument, which bootstrap.sh rejects with
+# "Unknown option: ". That also hits `--domain`/`--email`/`--branch` installs,
+# since those flags are consumed by install.sh and never appended to the array.
 
 setup() {
     load '../helpers/common.bash'

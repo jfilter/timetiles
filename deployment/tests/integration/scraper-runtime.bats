@@ -1,13 +1,9 @@
 #!/usr/bin/env bats
 # Integration tests for the scraper container runtime
 #
-# These close a gap that let a broken deployment report success: step 13's
-# health check only asks whether the runner answers on its port, and that
-# endpoint returns a static payload without touching Podman. A deployment
-# where rootless Podman cannot start a single container passed it cleanly.
-#
-# So these tests actually start containers, as the app user, the way the
-# runner does.
+# Step 13's health check only asks whether the runner answers on its port,
+# without touching Podman. These tests actually start containers, as the app
+# user, the way the runner does.
 
 setup() {
     load '../helpers/podman.bash'
@@ -56,13 +52,9 @@ setup() {
 # Node SDK resolution
 # =============================================================================
 
-# Starting the interpreter is not the same as running a scraper. The image
-# exposed its globally installed packages through NODE_PATH alone, which the
-# ESM resolver ignores entirely -- so every scraper the SDK scaffolds (all of
-# them use `import`) died with ERR_MODULE_NOT_FOUND before scraping anything,
-# while `node -e "console.log('ok')"` above kept passing. Nothing executed a
-# real scraper against the image, so the whole node runtime was broken
-# unnoticed. This test does.
+# Starting the interpreter is not the same as running a scraper: the ESM
+# resolver ignores NODE_PATH, so the SDK must resolve through `import` the way
+# every scaffolded scraper uses it.
 @test "a node scraper can import the SDK and write its output" {
     skip_if_no_podman
     require_scraper_image timescrape-node
@@ -130,17 +122,15 @@ SCRAPER
 
     run podman_value network inspect scraper-sandbox --format '{{.Internal}}'
     [ "$status" -eq 0 ]
-    # This used to assert "true", which read as containment but is the opposite
-    # of what the feature needs: podman's --internal strips the external
-    # gateway, so a scraper on such a network can reach nothing at all. ADR 0015
-    # specifies internet access without access to internal services. Egress
-    # filtering delivers that, and the two tests below are what actually verify
-    # it — this one only pins the network shape they depend on.
+    # Not --internal: that strips the external gateway, while ADR 0015 specifies
+    # internet access without access to internal services. Egress filtering
+    # delivers that and the two tests below verify it; this one only pins the
+    # network shape they depend on.
     [ "$output" = "false" ]
 }
 
 # The property the sandbox exists for, stated as two opposing facts. Asserting
-# the network's flags cannot express it: the containment now lives in firewall
+# the network's flags cannot express it: the containment lives in firewall
 # rules, so only a real connection attempt proves anything.
 
 @test "a scraper can reach the public internet" {

@@ -12,8 +12,8 @@ describe("countCsvRecords", () => {
   });
 
   it("treats a quoted line break as part of one record", () => {
-    // The bug this guards: counting raw lines reported 4 rows for a single
-    // event whose description happened to span three lines.
+    // Counting raw lines would report 4 rows for a single event whose
+    // description spans three lines.
     const csv = 'id,description\n1,"line one\nline two\nline three"\n';
     expect(countCsvRecords(csv)).toBe(2);
     expect(countCsvDataRows(csv)).toBe(1);

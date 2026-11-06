@@ -31,16 +31,10 @@ init_podman() {
 # companions, for one. A test comparing $output to "true" then fails while the
 # actual value is correct, which is a test bug reported as a product bug.
 #
-# The filtering used to be a pipeline (`podman_bounded … | grep … | tail -1`).
-# BATS runs tests without `pipefail`, so $status was always `tail`'s -- i.e.
-# always 0 -- and every `[ "$status" -ne 124 ]` canary in this suite was dead
-# code that could not fail. Since the timeout canary is the entire reason this
-# file exists (see the header), that defeated the point of the helper.
-#
-# So: run podman first, keep its status in a variable, and only then filter.
-# 2>&1 is part of the contract -- the banner goes to stderr, and if it is not
-# captured and filtered here it escapes into the $output that `run` assembles,
-# which is exactly the mess this helper was added to prevent.
+# Not a pipeline: BATS runs without `pipefail`, so $status would be `tail`'s and
+# every `[ "$status" -ne 124 ]` timeout canary would be dead code. Run podman
+# first, keep its status in a variable, and only then filter. 2>&1 is part of
+# the contract -- the banner goes to stderr and must be filtered here too.
 podman_value() {
     local raw
     local status=0
@@ -60,8 +54,7 @@ podman_value() {
 # CLI that spawned them. Under BATS, stdin is a pipe the runner reads to decide
 # when the suite is done, so the daemon ends up holding that pipe's write end
 # open after every test has finished. BATS then waits for an EOF that cannot
-# arrive and the whole run hangs indefinitely: observed once as a 52-minute
-# stall with all tests already reported and no process left doing any work.
+# arrive and the whole run hangs indefinitely.
 #
 # The timeout above does not save us here, because nothing has timed out --
 # podman exited cleanly long ago and only its orphaned daemon still holds the

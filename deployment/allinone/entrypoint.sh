@@ -45,7 +45,7 @@ if [ -z "${DB_PASSWORD:-${POSTGRES_PASSWORD:-}}" ]; then
     exit 1
 fi
 
-# PAYLOAD_SECRET must be provided and must not be the old placeholder
+# PAYLOAD_SECRET must be provided and must not be the template placeholder
 if [ -z "${PAYLOAD_SECRET:-}" ]; then
     echo "ERROR: PAYLOAD_SECRET must be set. Refusing to start without an application secret." >&2
     exit 1
@@ -150,11 +150,8 @@ export UPLOAD_DIR="/data/uploads"
 
 # Write environment to file for the Next.js wrapper script.
 # The wrappers run as nextjs (uid 1001) via supervisord, so the file must be
-# readable by that user. It used to be written root-owned 0600, which made every
-# `source /etc/timetiles.env` fail with "Permission denied" — silently, because
-# the wrappers had no `set -e`. Nothing broke only because the same values also
-# reached the process via supervisord's inherited environment; the next variable
-# added here would have had no effect at all.
+# readable by that user; a root-owned 0600 file makes every
+# `source /etc/timetiles.env` fail with "Permission denied".
 #
 # Notes on the values below — kept out here because the heredoc is unquoted, so
 # anything inside it is expanded, backticks included:
@@ -175,11 +172,7 @@ export UPLOAD_DIR="/data/uploads"
 # Every value is written single-quoted, with any embedded single quote escaped.
 # The wrappers read this file back with `source`, so the file is shell code, not
 # data: an unquoted space splits the line into a bogus command, a dollar sign
-# interpolates, and a backtick executes. This used to quote only some of the
-# values and left DATABASE_URL and PAYLOAD_SECRET bare -- the two that carry
-# operator-chosen secrets and are therefore the most likely to contain a
-# character that matters. A password with a space in it broke the boot; one with
-# a backtick in it would have run whatever it enclosed, as root, at startup.
+# interpolates, and a backtick executes -- as root, at startup.
 env_line() {
     local name="$1" value="$2"
     # '\'' closes the quote, emits a literal quote, and reopens it -- the only
@@ -207,9 +200,8 @@ umask 077
 chown root:nodejs /etc/timetiles.env
 chmod 640 /etc/timetiles.env
 
-# Create wrapper script that loads environment and starts Next.js
-# This replaces fragile sed-based env injection into supervisord.conf — the wrapper
-# sources /etc/timetiles.env so any value (including special chars) is handled safely.
+# Wrapper script that loads the environment and starts Next.js. Sourcing
+# /etc/timetiles.env handles any value, including special characters, safely.
 cat > /app/start-nextjs.sh << 'WRAPPER'
 #!/bin/bash
 # set -e so an unreadable/broken /etc/timetiles.env aborts the process instead of

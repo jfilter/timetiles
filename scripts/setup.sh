@@ -51,7 +51,7 @@ setup_env_files() {
         exit 1
     fi
 
-    # Web app .env.local file (CRITICAL - this was missing!)
+    # Web app .env.local file
     if [ -f apps/web/.env.example ]; then
         if [ ! -f apps/web/.env.local ]; then
             cp apps/web/.env.example apps/web/.env.local

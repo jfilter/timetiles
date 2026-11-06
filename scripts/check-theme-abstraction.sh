@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Ensures no hardcoded theme colors leak into component or app code.
-# Run as part of CI to prevent regressions after the theme abstraction refactor.
+# Runs as part of CI.
 #
 # Exit codes:
 #   0 = clean

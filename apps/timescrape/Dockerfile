@@ -50,26 +50,19 @@ COPY --from=builder /app/deploy/package.json ./
 # Next to the bundle, not under dist/security/. container-config.ts resolves the
 # profile against import.meta.dirname, and tsup flattens src/index.ts into
 # dist/index.js, so at runtime that directory is dist/ — mirroring the source
-# layout here put the file one level away from where it is looked up. Every
-# container then died with
-#   opening seccomp profile failed: .../dist/seccomp-profile.json: no such file
-# which stayed invisible for as long as the runner could not start a container
-# at all for unrelated reasons.
+# layout would put the file one level away from where it is looked up.
 COPY --from=builder /app/apps/timescrape/src/security/seccomp-profile.json ./dist/seccomp-profile.json
 
 # uid of the timescrape account created above
 USER 1001
 EXPOSE 4000
 
-# node, not wget: node:24-slim installs wget only to build itself and purges it
-# in the same layer, so the probe exited 127 (command not found) on every
-# interval and the container never left "starting"/"unhealthy" no matter how
-# well the runner was serving. node is the one binary this image is guaranteed
-# to have.
+# node, not wget: node:24-slim purges wget in the layer that installed it, and
+# node is the one binary this image is guaranteed to have.
 #
-# 127.0.0.1 rather than localhost for the same reason as
-# docker-compose.prod.yml:161 -- Node resolves localhost via dns.lookup, which
-# answers with the AAAA record first, while the server binds 0.0.0.0 only.
+# 127.0.0.1 rather than localhost, as in docker-compose.prod.yml's web
+# healthcheck -- Node resolves localhost via dns.lookup, which answers with the
+# AAAA record first, while the server binds 0.0.0.0 only.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
   CMD ["node", "-e", "fetch('http://127.0.0.1:4000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
 

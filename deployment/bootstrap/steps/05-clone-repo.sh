@@ -117,10 +117,8 @@ sparse_checkout_patterns() {
 # backups/, exports/, ssl/, logs/, data/, the scraper-runner/ dir, and
 # apps/web/config/timetiles.yml.
 #
-# Before this, a re-clone moved the old tree to .old and then `rm -rf`'d it,
-# destroying all of the above in one step. That path is not hypothetical: it is
-# exactly what `bootstrap.sh --force` does, since completed steps are otherwise
-# skipped.
+# The re-clone `rm -rf`s the old tree at the end of this step, which is what
+# `bootstrap.sh --force` runs, so everything above must be carried over first.
 #
 # The list comes from git rather than being hardcoded, so it tracks .gitignore
 # as that evolves and correctly spans BOTH ignore files that matter here — the

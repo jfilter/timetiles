@@ -32,9 +32,7 @@ create_health_check_script() {
 
     # health-check.sh ships as a tracked file in deployment/scripts/ so that
     # `timetiles update` (git fetch + reset --hard) restores it instead of
-    # losing it. A generated copy was deleted by the June 2026 layout
-    # migration while /etc/cron.d/timetiles kept invoking it every 5 minutes
-    # (cron error mail -> Pushover spam, and no health checks running).
+    # losing it while /etc/cron.d/timetiles keeps invoking it.
     # Note: the worktree is owned by the app user, which is in the docker
     # group and therefore already root-equivalent on this host.
     if [[ ! -f "$script" ]]; then
@@ -90,11 +88,9 @@ setup_log_rotation() {
 
     # The app's own logs (web.log, worker-*.log) are NOT in /var/log/timetiles on
     # the host — that path is only the CONTAINER side of the bind mount declared in
-    # docker-compose.prod.yml as `${LOG_HOST_DIR:-./logs}:/var/log/timetiles`.
-    # Rotating only the host /var/log/timetiles caught the cron-written files
-    # (backup.log, nginx-reload.log, alerts.log) and reported success nightly while
-    # web.log/worker-*.log grew unbounded at LOG_LEVEL=info until the disk filled.
-    # LOG_HOST_DIR is relative to the compose file, i.e. to $install_dir.
+    # docker-compose.prod.yml as `${LOG_HOST_DIR:-./logs}:/var/log/timetiles`, so
+    # both directories need rotating. LOG_HOST_DIR is relative to the compose
+    # file, i.e. to $install_dir.
     local log_host_dir="${LOG_HOST_DIR:-./logs}"
     if [[ "$log_host_dir" != /* ]]; then
         log_host_dir="$install_dir/${log_host_dir#./}"
@@ -159,7 +155,7 @@ WorkingDirectory=$install_dir
 ExecStart=$install_dir/timetiles up
 ExecStop=$install_dir/timetiles down
 ExecReload=$install_dir/timetiles restart
-# \`timetiles up\` no longer returns as soon as the containers are created: the
+# \`timetiles up\` does not return as soon as the containers are created: the
 # workers declare depends_on web with condition service_healthy, so compose
 # blocks until web answers /api/health, and web only does that once it has
 # applied any pending migrations. That start is bounded by web's own 180s

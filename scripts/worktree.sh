@@ -167,7 +167,7 @@ cmd_create() {
 
 # ---------------------------------------------------------------------------
 # cmd: setup <path>
-# Sets up env/deps in an existing worktree (useful for Claude Code worktrees)
+# Sets up env/deps in an existing worktree (e.g. one created outside this script)
 # ---------------------------------------------------------------------------
 cmd_setup() {
     local target="${1:?Usage: worktree.sh setup <path>}"

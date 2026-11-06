@@ -11,9 +11,8 @@ import { OutputValidationError } from "../lib/errors.js";
  * Reject output that cannot be handed on, and only that.
  *
  * An EMPTY file is deliberately accepted. A scrape that legitimately finds
- * nothing — a listing page with no entries today — writes a zero-byte file,
- * and rejecting it turned a correct run into a failed one. The caller reads
- * "file present, zero records" as a successful run of zero rows; a scraper
+ * nothing — a listing page with no entries today — writes a zero-byte file.
+ * The caller reads "file present, zero records" as a successful run of zero rows; a scraper
  * that never wrote the file at all is still a failure, and that distinction
  * lives in the caller because only it knows whether the file exists.
  *

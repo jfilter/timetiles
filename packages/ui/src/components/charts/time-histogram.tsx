@@ -261,8 +261,7 @@ interface HistogramTooltipEntry {
 
 // ECharts hands the formatter the RAW data item — the time values are
 // whatever the series was built from (ISO strings from the API, Dates in
-// stories), NOT normalized timestamps. Requiring numbers here rejected
-// every real entry and rendered an empty tooltip.
+// stories), NOT normalized timestamps, so numbers cannot be required here.
 const isHistogramTooltipEntry = (entry: unknown): entry is HistogramTooltipEntry =>
   typeof entry === "object" &&
   entry !== null &&
@@ -457,8 +456,7 @@ const getClickedBarRange = (params: EChartsEventParams): { start: Date; end: Dat
   }
 
   // Click params carry the raw data item — same string/Date/number forms as
-  // the tooltip: [date, count, dateEnd]. A number-only check made bar clicks
-  // dead for ISO-string data.
+  // the tooltip: [date, count, dateEnd].
   const start = parseTimeAxisValue(params.data[0]);
   if (!start) return null;
   // Buckets are adaptive (month/year, not always a day) — fall back to the

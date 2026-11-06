@@ -146,14 +146,10 @@ parse_args() {
 
 # Run one step and record it as completed only if it actually succeeded.
 #
-# Deliberately NOT `if run_step; then mark_completed "$step"`. Putting a
-# function call in an `if` condition disables errexit for that function's
-# ENTIRE body, so a step whose internal command failed but whose LAST command
-# succeeded was still marked completed — and every run_step in steps/ ends on a
-# print_success, so that was the normal outcome, not a corner case. The
-# bootstrap then continued over a broken step, and worse, `--resume` skipped it
-# on the next run because the state file recorded it as done. Only explicit
-# `die` calls ever stopped anything; bare failures were invisible.
+# Deliberately NOT `if run_step; then mark_completed "$step"`: a function call
+# in an `if` condition disables errexit for its ENTIRE body, so a step that
+# failed midway but ended on print_success would be marked completed and
+# skipped by `--resume`.
 #
 # Calling run_step outside any condition keeps errexit armed inside its body:
 # the first unguarded failure aborts the script and mark_completed is never

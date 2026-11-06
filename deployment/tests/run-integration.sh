@@ -33,9 +33,8 @@ cd "$SCRIPT_DIR"
 # A hard ceiling on the whole suite. The individual helpers bound their own
 # calls, but a run can also hang *between* tests: a daemon that inherits BATS's
 # stdin pipe keeps the runner waiting for an EOF long after the last assertion
-# has been reported. Without this the harness stalls until someone notices,
-# which cost 52 minutes once. Generous enough for a cold VM, short enough to
-# fail as a test failure rather than an unattended wait.
+# has been reported. Generous enough for a cold VM, short enough to fail as a
+# test failure rather than an unattended wait.
 INTEGRATION_TIMEOUT="${INTEGRATION_TIMEOUT:-900}"
 
 if [[ -d "integration" ]] && ls integration/*.bats &>/dev/null; then

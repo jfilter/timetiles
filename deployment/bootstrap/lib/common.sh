@@ -53,14 +53,8 @@ die() {
     print_error "$1"
 
     # `exit` only leaves the CURRENT shell. A die that fires inside a command
-    # substitution, a pipeline element or any other subshell runs in a child,
-    # so the message got printed and the script carried straight on. That is
-    # how an unescaped backtick in step 09's systemd heredoc produced
-    #     ✗ Step 09-monitoring failed
-    #     ✓ Step 09-monitoring completed
-    # in the same run: the ERR trap fired inside the heredoc's command
-    # substitution, die exited only that subshell, and bootstrap went on to
-    # mark the step completed and run steps 10-13 over it.
+    # substitution, a pipeline element or any other subshell would print its
+    # message and let the script carry straight on.
     #
     # $$ stays the top-level shell's PID inside a subshell ($BASHPID is the
     # child), so this reaches the real script. The TERM trap in this file turns
@@ -384,18 +378,10 @@ configure_nginx() {
     # drops the marks before its `git reset --hard`, so upstream template
     # changes propagate normally.
     # $install_dir is a SYMLINK to <src>/deployment, and bash's `cd` resolves
-    # ".." logically -- against the symlink path rather than the real one. So
-    # `cd /opt/timetiles/nginx/../..` canonicalized to /opt, not to the intended
-    # /opt/timetiles-src; the `-d "$repo_root/.git"` guard below then never
-    # matched and the assume-unchanged marking this comment describes never ran
-    # at all, leaving every substituted nginx conf permanently dirty in
-    # `git status`. `cd -P` resolves each component physically.
-    #
-    # The file paths need the same treatment: find'ing through $nginx_dir
-    # yields /opt/timetiles/... paths, which share no prefix with the resolved
-    # repo root, so `${f#...}` stripped nothing and git was handed an absolute
-    # path outside its worktree. Walk the resolved directory instead, so the
-    # stripped paths come out repo-relative.
+    # ".." logically (`cd /opt/timetiles/nginx/../..` gives /opt, not
+    # /opt/timetiles-src); `cd -P` resolves each component physically.
+    # Walk the resolved directory too, so the stripped paths come out
+    # repo-relative rather than as absolute paths outside the worktree.
     local nginx_real repo_root=""
     nginx_real="$(cd -P "$nginx_dir" && pwd)"
     repo_root="$(cd -P "$nginx_real/../.." && pwd)"
@@ -602,10 +588,7 @@ verify_alerting() {
 # Closing report for a completed bootstrap.
 #
 # Lives here rather than in a step file because it describes the whole run, and
-# because a step file only defines it once that step is sourced. It spent time
-# defined in step 09 and called from nowhere, so operators finished a bootstrap
-# with a bare "completed successfully" and no pointer to the admin account they
-# still had to create.
+# a step file only defines it once that step is sourced.
 print_final_summary() {
     local install_dir="${INSTALL_DIR:-/opt/timetiles}"
 

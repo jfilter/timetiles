@@ -375,7 +375,7 @@ const lintFiles = (pkgPath: string, files: string[], toolFailures: string[]): Fi
   const failed: FileLintResult = { errors: 0, warnings: 0, ran: false, issues: [] };
   const configPath = path.resolve(process.cwd(), ".oxlintrc.json");
 
-  // An argument array, not a shell string: word-splitting paths with spaces made oxlint lint nothing.
+  // An argument array, not a shell string: word-splitting paths with spaces would make oxlint lint nothing.
   const lintRun = spawnSync(localBin("oxlint", pkgPath), ["--config", configPath, "--format=json", ...files], {
     encoding: "utf-8",
     cwd: pkgPath,

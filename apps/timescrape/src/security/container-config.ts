@@ -40,14 +40,10 @@ export const assertSecurityAssets = (): void => {
 /**
  * Grace period podman waits between SIGTERM and SIGKILL when stopping a run.
  *
- * This is deliberately a small fixed value and NOT the run's own timeout.
- * `--stop-timeout` is the shutdown grace period, not a run budget: setting it
- * to `timeoutSecs` (up to 3600s via the API's `timeout_secs` max) meant every
- * `podman stop` for a timed-out container waited up to an hour for SIGTERM to
- * be honoured. The runner's own client timeouts are far shorter, so they killed
- * the podman *client* first and left the container running — the timeout could
- * never actually terminate anything. Callers must size their client timeout
- * above this value; see `forceKillContainer` in services/runner.ts.
+ * Deliberately a small fixed value and NOT the run's own timeout (up to 3600s):
+ * a longer grace would outlast the runner's client timeouts, which then kill
+ * the podman *client* and leave the container running. Callers must size their
+ * client timeout above this value; see `forceKillContainer` in services/runner.ts.
  */
 export const CONTAINER_STOP_GRACE_SECS = 10;
 
@@ -142,9 +138,7 @@ export const buildPodmanArgs = (config: ContainerConfig): string[] => {
   }
 
   // Output location env vars for helper libraries. The filename must travel
-  // with the directory: the runner reads back the manifest's configured
-  // `output:` name, so an SDK that only knew the directory always wrote
-  // data.csv and any other configured name failed the run.
+  // with the directory: the runner reads back the manifest's configured `output:` name.
   args.push("-e=TIMESCRAPE_OUTPUT_DIR=/output");
   args.push(`-e=TIMESCRAPE_OUTPUT_FILE=${outputFile ?? SCRAPER_DEFAULT_OUTPUT_FILE}`);
 

@@ -109,10 +109,8 @@ RUN export PAYLOAD_SECRET=dummy_secret_for_build_only \
 # Remove dev dependencies to reduce image size and eliminate dev-only CVEs.
 # Run prune from the web workspace, matching Dockerfile.prod. Running it from
 # the monorepo root removes web's workspace links, including the runtime link to
-# @timetiles/typescript-config that Payload needs while loading tsconfig.json.
-# The image still builds in that broken state, but both Next.js and the worker
-# then crash on startup. Keep a build-time assertion so packaging cannot drift
-# back to an image that only fails after publication.
+# @timetiles/typescript-config that Payload needs while loading tsconfig.json;
+# the image still builds but crashes on startup, hence the build-time assertion.
 # CI=true suppresses pnpm's interactive "recreate modules?" prompt.
 WORKDIR /build/apps/web
 RUN CI=true pnpm prune --prod --ignore-scripts \

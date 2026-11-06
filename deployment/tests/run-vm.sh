@@ -135,7 +135,7 @@ echo -e "${GREEN}✓ Cleanup done${NC}"
 # --delete gives each run a pristine tree. Excluded paths are not deleted on
 # the receiver, which is what keeps .env.production, uploads/ and backups/
 # alive across runs; ssl/, nginx-test/ and scraper-runner/ are not excluded and
-# so get cleared, matching what the old harness removed by hand.
+# so get cleared.
 print_info "Syncing codebase into the VM..."
 vm_sudo "
     mkdir -p $GUEST_SRC
@@ -152,11 +152,8 @@ if [[ "$LOCAL_BUILD" == "true" ]]; then
     print_info "Configuring local build mode..."
     # A local image name and pull_policy: never are what actually make this
     # local. Without them the build is tagged with the same GHCR reference the
-    # base file names, and `up` is free to replace it with the pulled image --
-    # so the VM silently tested the published build instead of the working
-    # tree, and `docker compose ps` could not show the difference because it
-    # prints the tag, not the image ID. docker-compose.override.yml.example
-    # has always set a local tag for exactly this reason; the harness did not.
+    # base file names, and `up` is free to replace it with the pulled image
+    # while `docker compose ps` (which prints the tag) hides the difference.
     #
     # Every app service needs it: they only share an image name, there is no
     # inheritance from web, so naming the tag once is not enough. A service
@@ -187,9 +184,8 @@ fi
 
 # The scraper runner is installed by bootstrap step 13, which has its own source
 # for the binary and does not look at the compose override above. Left alone it
-# always pulls from GHCR, so --local tested published runner code against
-# working-tree deployment code -- and a packaging bug in the runner's Dockerfile
-# survived a full green run because the image under test predated the fix.
+# always pulls from GHCR, so --local would test published runner code against
+# working-tree deployment code.
 # Written into the config after the sync, since --delete would remove it.
 vm_sudo "sed -i '/^SCRAPER_LOCAL_BUILD=/d' $GUEST_DEPLOY/tests/bootstrap.test.conf
     echo 'SCRAPER_LOCAL_BUILD=\"$LOCAL_BUILD\"' >> $GUEST_DEPLOY/tests/bootstrap.test.conf"
@@ -209,9 +205,7 @@ vm_sudo "
     # 1001, and step 07 deliberately hands them the log and upload dirs; the
     # recursive chown above takes both back for the app user, so every
     # container restarted for the test phase dies on its first log write with
-    # EACCES. That failure is silent in the harness output and surfaces much
-    # later as an unrelated-looking API error, because Payload's onInit seed
-    # dies with it -- which is exactly how it was found.
+    # EACCES, which surfaces much later as an unrelated-looking API error.
     chown -R 1001:1001 $GUEST_DEPLOY/logs $GUEST_DEPLOY/uploads $GUEST_DEPLOY/exports 2>/dev/null || true
 
     cd /opt/timetiles

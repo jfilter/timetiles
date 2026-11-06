@@ -89,7 +89,7 @@ load_restic_config() {
     fi
 
     # Resolve relative UPLOAD_HOST_DIR against deployment dir (not cwd,
-    # which is $SCRIPT_DIR/.. due to line 62 cd for build context)
+    # which is $SCRIPT_DIR/.. due to the top-level cd for build context)
     if [[ -n "${UPLOAD_HOST_DIR:-}" && "${UPLOAD_HOST_DIR:0:1}" != "/" ]]; then
         UPLOAD_HOST_DIR="$SCRIPT_DIR/$UPLOAD_HOST_DIR"
     fi
@@ -323,13 +323,9 @@ update_scraper_runner() {
     # apps/timescrape/Dockerfile runs `turbo prune`, which reads
     # package.json / pnpm-workspace.yaml / turbo.json and the workspace
     # packages timescrape takes workspace:* deps on. Install hosts have
-    # a sparse checkout (deployment/, apps/web/config/, apps/timescrape/
-    # — see bootstrap/steps/05-clone-repo.sh), so the Dockerfile being
-    # present says nothing about the context being buildable. Testing
-    # only for the Dockerfile sent bootstrap into a build that failed
-    # inside prune with an error naming neither the sparse checkout nor
-    # the missing files. Same guard as
-    # bootstrap/steps/13-scraper-setup.sh.
+    # a sparse checkout (see bootstrap/steps/05-clone-repo.sh), so the Dockerfile being
+    # present says nothing about the context being buildable. Same guard
+    # as bootstrap/steps/13-scraper-setup.sh.
     src_root="$SCRIPT_DIR/.."
     if docker pull "$image"; then
         install_runner_from_image "$image" "$runner_dir" || exit 1
@@ -506,27 +502,12 @@ case "$1" in
         check_env
         check_db_in_volume
         echo -e "${YELLOW}Restarting services...${NC}"
-        # `docker compose restart` bounces the EXISTING containers and never
-        # re-reads --env-file, so a value written to .env.production after the
-        # container was created stays invisible to the app. That silently broke
-        # the bootstrap: step 13 writes SCRAPER_RUNNER_URL and calls us to apply
-        # it, and the web container came back still not knowing a runner exists.
-        # `up -d` reconciles against the current env + compose files instead,
-        # recreating only the containers whose config actually changed — data
-        # lives in named volumes, so nothing is lost. Note the flip side: when
-        # nothing changed, `up -d` legitimately leaves every container running.
-        #
-        # An optional service name is honoured -- the maintenance docs tell
-        # operators to run `timetiles restart worker-ingest`, and before this the
-        # argument was silently ignored and the whole stack came up instead.
-        #
-        # Then an explicit restart, because `up -d` alone is NOT one: it only
-        # recreates containers whose compose config changed, so it is a no-op
-        # in exactly the cases the docs send people here for -- freeing memory
-        # on a running web container, reviving a wedged worker, picking up an
-        # edited nginx.conf, which is bind-mounted and therefore changes no
-        # compose config. `up -d` applies env and compose changes; the restart
-        # then guarantees a fresh process either way.
+        # `docker compose restart` alone never re-reads --env-file, so a value
+        # written to .env.production later (e.g. step 13's SCRAPER_RUNNER_URL)
+        # stays invisible. `up -d` applies env and compose changes, recreating
+        # only changed containers (data lives in named volumes); the restart
+        # then guarantees a fresh process even when nothing changed, e.g. for an
+        # edited bind-mounted nginx.conf. An optional service name is honoured.
         $DC_CMD up -d ${2:+"$2"}
         $DC_CMD restart ${2:+"$2"}
         echo -e "${GREEN}Services restarted!${NC}"
@@ -923,8 +904,7 @@ EOF
         # Track what actually landed. Both steps below are conditional, and the
         # uploads path is reconstructed from the CURRENT config while restic stored
         # the ORIGINAL host path — so restoring onto a rebuilt host with a different
-        # install dir (the main disaster-recovery case) matches nothing at all.
-        # Without this, that ended in a green "Restore complete!" and no data.
+        # install dir matches nothing, which must not report "Restore complete!".
         RESTORED_WHAT=""
 
         # Quiesce the stack before touching data (see restore_cleanup above).
@@ -940,17 +920,10 @@ EOF
         if [[ -f "$RESTORE_DIR/database.sql" ]]; then
             echo -e "${YELLOW}Restoring database...${NC}"
 
-            # Restore database.
-            #
-            # ON_ERROR_STOP=1 and --single-transaction are load-bearing, not
-            # hygiene. psql's default is to report an error, carry on, and exit
-            # 0 -- so a dump whose DROP statements succeeded and whose CREATE
-            # and COPY statements all failed still exited 0, and this command
-            # printed "Database restored" / "Restore complete!" over a database
-            # it had just emptied. Disaster recovery reported success while
-            # destroying the data it was called to save. With both flags an
-            # error aborts and the transaction rolls back, leaving the previous
-            # contents intact and this branch reporting the failure.
+            # ON_ERROR_STOP=1 and --single-transaction are load-bearing: psql
+            # otherwise reports an error, carries on and exits 0, so a dump whose
+            # DROPs succeeded but CREATEs failed would "succeed" over an emptied
+            # database. With both flags an error rolls back and is reported.
             if ! $DC_CMD exec -T postgres bash -c 'PGPASSWORD=$POSTGRES_PASS psql -v ON_ERROR_STOP=1 --single-transaction -h localhost -U $POSTGRES_USER $POSTGRES_DBNAME' < "$RESTORE_DIR/database.sql"; then
                 echo -e "${RED}Database restore failed${NC}"
                 send_alert "Restore Failed" "Database restore failed at $(date)"
@@ -1152,11 +1125,9 @@ EOF
 
         print_section "Deployment files"
 
-        # Hosts bootstrapped before the cloned-source layout was introduced
-        # (March 2026) have flat copies of deployment files instead of a git
-        # working tree. `timetiles update` then silently leaves those files
-        # stale — and stale compose files miss new env passthroughs (the SMTP
-        # cert hostname issue, May 2026). Compare local files against the
+        # Hosts bootstrapped before the cloned-source layout have flat copies of
+        # deployment files that `timetiles update` leaves stale, and stale compose
+        # files miss new env passthroughs. Compare local files against the
         # version actually running to surface drift.
 
         CHECK_REF=$(deploy_files_ref)
@@ -1198,11 +1169,8 @@ EOF
         print_section "System references"
 
         # Persistent system configs (cron, systemd units) reference paths
-        # inside the install dir. A layout migration once deleted a
-        # bootstrap-generated script while /etc/cron.d/timetiles kept
-        # invoking it every 5 minutes (June 2026: cron error mail ->
-        # Pushover spam, and no health checks running). Verify every
-        # absolute path they reference still exists.
+        # inside the install dir that a layout change can remove while cron
+        # keeps invoking them. Verify every absolute path they reference exists.
         REF_SOURCES=()
         [[ -f /etc/cron.d/timetiles ]] && REF_SOURCES+=("/etc/cron.d/timetiles")
         for unit in /etc/systemd/system/timetiles.service /etc/systemd/system/timescrape-runner.service; do
@@ -1538,14 +1506,12 @@ EOF
         # recreated, so their new images are in use and survive the prune; only
         # superseded versions are removed, and named volumes are never touched.
         # Registry images can be re-pulled if you roll back. Without this, each
-        # version bump leaves the previous image behind and the disk creeps up
-        # (a 48G staging host reached 85% from ~21 stale images).
+        # version bump leaves the previous image behind and the disk creeps up.
         echo -e "${YELLOW}Pruning images orphaned by this update...${NC}"
         docker image prune -af >/dev/null 2>&1 || true
         # Reclaim orphaned ANONYMOUS volumes too. A container started from an
         # image with an image-level VOLUME (e.g. the all-in-one's /data) strands
-        # one anonymous volume per recreate; a health-check restart loop on an
-        # unhealthy app once stranded ~1150 empty ones on a staging host.
+        # one anonymous volume per recreate, which a restart loop multiplies.
         # `volume prune` (no --all) removes only anonymous volumes not attached
         # to any container, so the named data volumes in use after `up -d` above
         # (postgres, certbot, letsencrypt) are kept.

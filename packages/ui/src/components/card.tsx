@@ -18,7 +18,7 @@ const cardVariants = cva("rounded-sm border transition-all duration-200", {
       elevated: "bg-card text-card-foreground border-border shadow-md hover:shadow-lg hover:-translate-y-1",
       outline: "bg-transparent text-foreground border-border",
       ghost: "bg-muted/50 text-foreground border-transparent",
-      // New variant inspired by logo preview cards
+      // Variant inspired by logo preview cards
       showcase:
         "bg-background dark:bg-card text-card-foreground border-2 border-primary dark:border-border shadow-sm hover:shadow-lg hover:-translate-y-1",
     },

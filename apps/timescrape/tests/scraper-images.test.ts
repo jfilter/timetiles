@@ -1,9 +1,9 @@
 /**
  * Guards that the scraper runtime images ship the SDKs from this repository.
  *
- * Installing the SDK from PyPI or npm shipped releases that predated fixes in
- * packages/python and packages/scraper, so every build path must use the
- * repository root as context and copy the workspace sources.
+ * A published PyPI or npm release can lag behind packages/python and
+ * packages/scraper, so every build path must use the repository root as
+ * context and copy the workspace sources.
  *
  * @module
  * @category Tests

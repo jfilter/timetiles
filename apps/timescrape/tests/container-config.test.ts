@@ -37,9 +37,8 @@ describe("buildPodmanArgs", () => {
   });
 
   it("keeps the stop grace period small and independent of the run timeout", () => {
-    // --stop-timeout is the SIGTERM->SIGKILL grace, not a run budget. Deriving
-    // it from timeoutSecs (up to 3600s) made every `podman stop` outlast the
-    // runner's own client timeouts, so a timed-out container was never killed.
+    // --stop-timeout is the SIGTERM->SIGKILL grace, not a run budget: one derived
+    // from timeoutSecs would outlast the runner's own client timeouts.
     const args = buildPodmanArgs(baseConfig);
 
     expect(args).toContain(`--stop-timeout=${CONTAINER_STOP_GRACE_SECS}`);
@@ -80,9 +79,8 @@ describe("buildPodmanArgs", () => {
   );
 
   it("passes the configured output filename to the container", () => {
-    // The runner reads back the manifest's `output:` name. Without telling the
-    // container about it, the SDK always wrote data.csv and any manifest
-    // declaring another name failed with "no output file produced".
+    // The runner reads back the manifest's `output:` name, so the SDK must write
+    // to that name rather than the data.csv default.
     const args = buildPodmanArgs({ ...baseConfig, outputFile: "events.csv" });
 
     expect(args).toContain("-e=TIMESCRAPE_OUTPUT_FILE=events.csv");

@@ -1,18 +1,15 @@
 #!/usr/bin/env bats
 # Integration test for the seam between the web app and the scraper runner.
 #
-# Two halves of this pipeline were already covered and the join between them was
-# not. The web e2e test is API-only and says so in its own header -- it accepts
-# 200 or 409 from the trigger and never checks whether anything ran.
-# scraper-runtime.bats drives Podman directly, proving the container side works
-# in isolation. Neither exercises the path that actually carries a run:
+# The web e2e test is API-only -- it accepts 200 or 409 from the trigger and
+# never checks whether anything ran -- and scraper-runtime.bats drives Podman
+# directly. Neither exercises the path that actually carries a run:
 #
 #   POST /api/scrapers/:id/run  ->  Payload queue  ->  worker-ingest
 #     ->  callRunner()  ->  runner  ->  real container  ->  RunnerResponse
 #     ->  scraper-runs record
 #
-# That path is where this session's three production bugs lived, and it only
-# exists in a full deployment: the trigger runs in the web container while the
+# That path only exists in a full deployment: the trigger runs in the web container while the
 # runner call is made from worker-ingest, so URL, API key and host networking
 # all have to line up there rather than where the request arrived.
 #
@@ -27,7 +24,7 @@
 # has nothing to say about the seam and should skip, but once the capability is
 # there, anything that goes wrong while provisioning is a real failure. Turning
 # both into a skip would let this file report green without ever running a
-# scraper -- exactly the blindness it was written to remove.
+# scraper.
 _fixture_skip() { echo "$1" > "$BATS_FILE_TMPDIR/skip_reason"; }
 _fixture_fail() { echo "$1" > "$BATS_FILE_TMPDIR/fixture_error"; }
 
@@ -57,10 +54,9 @@ setup_file() {
     api_post "/api/globals/settings" \
         "$(jq -c '.featureFlags.enableScrapers = true' <<<"$settings")" >/dev/null
 
-    # A Node scraper with no imports beyond the standard library: no network,
-    # which matters because the sandbox network is --internal, and no git
-    # checkout, which keeps the fixture free of DNS and credentials. Node rather
-    # than Python so this also covers the base image whose user was broken.
+    # A Node scraper with no imports beyond the standard library: no network
+    # access and no git checkout, which keeps the fixture free of DNS and
+    # credentials. Node rather than Python so this also covers the Node image.
     local manifest scraper_js code repo_id
     manifest=$(printf '%s\n' \
         "scrapers:" \
@@ -179,15 +175,13 @@ setup() {
 
 @test "the scraper's output was written to the mount and read back" {
     # One data row proves the whole output path: the container could write into
-    # the bind mount, and the runner could read, validate and count it. This is
-    # the assertion the unwritable-output bug would have failed.
+    # the bind mount, and the runner could read, validate and count it.
     [ "$(jq -r '.docs[0].outputRows' < "$BATS_FILE_TMPDIR/run.json")" = "1" ]
     [ "$(jq -r '.docs[0].outputBytes' < "$BATS_FILE_TMPDIR/run.json")" -gt 0 ]
 }
 
 @test "the run's stdout came back through the runner response" {
     # A language-specific sentinel: it can only appear if the Node image started
-    # and executed the entrypoint, which the broken image user would have
-    # prevented.
+    # and executed the entrypoint.
     jq -r '.docs[0].stdout' < "$BATS_FILE_TMPDIR/run.json" | grep -q "SEAM_SENTINEL_OK"
 }

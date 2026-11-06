@@ -26,9 +26,8 @@ class OutputWriter:
     def __init__(self, output_dir: str | None = None, filename: str | None = None):
         self._rows: list[dict] = []
         self._output_dir = output_dir or os.environ.get("TIMESCRAPE_OUTPUT_DIR", "/output")
-        # The runner looks for the filename the manifest declared. Without
-        # reading it here the SDK always wrote data.csv, so every manifest
-        # declaring another name failed with "no output file produced".
+        # The runner looks for the filename the manifest declared; data.csv is
+        # only the fallback.
         self._filename = filename or os.environ.get("TIMESCRAPE_OUTPUT_FILE", "data.csv")
 
     def write_row(self, row: dict) -> None:

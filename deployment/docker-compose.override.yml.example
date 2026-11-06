@@ -10,10 +10,8 @@
 
 # All four app services must be listed. They only share an image *name* in
 # docker-compose.prod.yml — there is no inheritance from `web` — so overriding
-# web alone left worker-ingest, worker-general and worker-maintenance pinned to
-# ${TIMETILES_IMAGE}:${TIMETILES_VERSION}. A "local build" then ran working-tree
-# code in web and published code in every worker, and `docker compose ps` could
-# not show it because it prints the tag, not the image ID.
+# web alone would leave the workers on the published image while
+# `docker compose ps` (which prints the tag, not the image ID) hides it.
 #
 # pull_policy: never belongs on all of them, web included: without it `up` is
 # free to replace a locally built image with a pulled one. deployment/tests/

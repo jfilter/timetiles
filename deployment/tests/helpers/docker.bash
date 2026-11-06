@@ -91,11 +91,8 @@ skip_if_no_docker() {
 # Guard for tests that need a live deployment.
 #
 # Skipping is right on a developer machine that happens to have Docker but no
-# deployment. It is NOT right in the VM harness, where the whole point is that
-# bootstrap just produced a running stack: there, every integration test would
-# skip, bats would report success, run-all.sh would print "All tests passed!"
-# and run-vm.sh would exit 0 over a completely dead deployment. A green run has
-# to mean something was checked.
+# deployment. It is NOT right in the VM harness, where bootstrap just produced a
+# running stack and a run that skipped everything would still report green.
 #
 # run-integration.sh exports DEPLOYMENT_EXPECTED=1: its stack must be up.
 skip_if_services_not_running() {

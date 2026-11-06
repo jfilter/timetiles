@@ -1,13 +1,11 @@
 #!/usr/bin/env bats
 # Unit tests for bootstrap.sh's step execution contract.
 #
-# Regression under test: steps used to be run as
+# Regression under test: running steps as
 #   if run_step; then mark_completed "$step"
-# Calling a function in an `if` condition disables errexit for that function's
-# ENTIRE body, so only the step's LAST command decided the outcome. Every
-# run_step in steps/ ends on a print_success, so a step whose internal command
-# failed was still recorded as completed — the bootstrap carried on over it and
-# `--resume` skipped it on the next run.
+# disables errexit for the function's ENTIRE body, so a step that failed midway
+# but ended on print_success would be recorded as completed and skipped by
+# `--resume`.
 #
 # The second half of this suite is just as important as the first: the 13 step
 # scripts contain ~14 places that deliberately tolerate a non-zero command
@@ -56,7 +54,7 @@ run_execute_step() {
 
 @test "a step failing internally is not marked completed" {
     # The exact shape of the bug: the failure is mid-body and the final command
-    # succeeds, so the function as a whole used to return 0.
+    # succeeds, so the function as a whole returns 0.
     run_execute_step 'run_step() { false; print_success "misleading success"; }'
 
     [ "$status" -ne 0 ]
@@ -156,17 +154,10 @@ run_execute_step() {
 # =============================================================================
 # die() from inside a subshell
 #
-# Regression under test, observed in a VM run on 2026-07-21: step 09's systemd
-# heredoc is unquoted and its body carried a comment reading
-#     # `timetiles up` no longer returns ...
-# The backticks made bash run `timetiles up` while expanding the heredoc. That
-# is a command substitution, so it runs in a SUBSHELL. errexit tripped there,
-# the inherited ERR trap called die, and die's `exit` left only the subshell.
-# The result in one run:
-#     ✗ Step 09-monitoring failed
-#     ✓ Step 09-monitoring completed
-# and bootstrap continued through steps 10-13 over a step it had already
-# declared failed.
+# Regression under test: backticks inside an unquoted heredoc (e.g. in step 09's
+# systemd unit) run as a command substitution, i.e. in a SUBSHELL. errexit trips
+# there and the inherited ERR trap calls die, whose `exit` must still stop the
+# whole bootstrap rather than only the subshell.
 # =============================================================================
 
 @test "a failure inside a command substitution does not mark the step completed" {

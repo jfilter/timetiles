@@ -9,9 +9,8 @@
 #   - that template pulls in _default/mounts, which mounts all of $HOME
 #   - inheriting its image pin couples this harness to whichever Lima version
 #     Homebrew last installed; template:ubuntu-lts has already moved to 26.04
-# The images below are the pin that template:_images/ubuntu-24.04 carried at
-# the time of writing. Bump them deliberately, the way the Vagrantfile this
-# replaced pinned bento/ubuntu-24.04.
+# The images below are copied from template:_images/ubuntu-24.04. Bump them
+# deliberately.
 
 minimumLimaVersion: 2.0.0
 
@@ -31,17 +30,12 @@ images:
 vmType: vz
 mountType: virtiofs
 
-# CPUs and disk mirror the sizing the Vagrantfile used. The disk needs headroom
-# for the synced monorepo plus local image builds — bootstrap's check_disk_space
-# gate alone wants 10 GB free on /.
+# The disk needs headroom for the synced monorepo plus local image builds —
+# bootstrap's check_disk_space gate alone wants 10 GB free on /.
 #
-# Memory is lower than the Vagrantfile's 12 GiB. A dev machine also runs a
-# browser, an editor and usually a second VM, and the guest's Next.js production
-# build is the peak of the whole run. At 12 GiB that peak pushed a 32 GiB host
-# into swap exhaustion and macOS killed the build — twice, at the same step, so
-# not a fluke. 8 GiB covers the build with room to spare and leaves the host
-# able to breathe. Raise it if a guest OOM ever shows up in a build log; the
-# failure to watch for is inside the VM, not on the host.
+# 8 GiB memory covers the guest's Next.js production build (the peak of the run)
+# while leaving a 32 GiB dev host room; 12 GiB pushed such a host into swap
+# exhaustion. Raise it if a guest OOM shows up in a build log.
 cpus: 4
 memory: "8GiB"
 disk: "60GiB"

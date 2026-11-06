@@ -17,8 +17,7 @@ setup() {
 # Helper: curl HTTPS with the correct domain resolved to 127.0.0.1
 #
 # -f matters: without it curl exits 0 for any response it managed to receive,
-# including a 502 from nginx with no upstream. "HTTPS health endpoint returns
-# 200" was asserting only that the TLS handshake succeeded.
+# including a 502 from nginx with no upstream.
 curl_https() {
     curl -fsk --resolve "${DOMAIN}:443:127.0.0.1" "https://${DOMAIN}$1"
 }

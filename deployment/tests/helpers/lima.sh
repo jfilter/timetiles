@@ -24,13 +24,9 @@ vm_exists() {
 
 # Run a long command in the VM via nohup, polling for completion.
 #
-# limactl holds a persistent SSH connection and is far less prone to the
-# disconnects that forced this pattern under Vagrant, but a detached job still
-# survives host sleep and gives us progress output during multi-minute builds.
-#
-# The payload is shipped as a file rather than interpolated through nested
-# quotes — commands carry their own quoting and the inline form did not
-# survive another layer of escaping.
+# A detached job survives host sleep and SSH disconnects and gives progress
+# output during multi-minute builds. The payload is shipped as a file because
+# commands carry their own quoting and would not survive nested escaping.
 run_in_vm() {
     local desc="$1"
     local cmd="$2"

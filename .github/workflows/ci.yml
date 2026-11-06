@@ -8,24 +8,20 @@ on:
   workflow_dispatch:
 
 jobs:
-  # Run build and quality checks
   build:
     name: Build & Quality Checks
     uses: ./.github/workflows/build.yml
 
-  # Check Payload generated types are in sync
   check-payload-types:
     name: Check Payload Types
     uses: ./.github/workflows/check-payload-types.yml
 
-  # Run unit and integration tests
   test-unit-integration:
     name: Unit & Integration Tests
     needs: [build, check-payload-types]
     uses: ./.github/workflows/test-unit-integration.yml
     secrets: inherit
 
-  # Run E2E tests with Playwright
   test-e2e:
     name: E2E Tests
     needs: [build, check-payload-types]

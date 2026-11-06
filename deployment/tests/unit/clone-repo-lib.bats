@@ -1,11 +1,8 @@
 #!/usr/bin/env bats
 # Unit tests for bootstrap/steps/05-clone-repo.sh
 #
-# Regression coverage for the install-dir layout contract: $INSTALL_DIR must be
-# a symlink into ${INSTALL_DIR}-src/deployment. Between 20c85a51 (2026-04-30)
-# and this suite, step 04 created $INSTALL_DIR as a real directory via
-# `useradd --create-home`, so ensure_symlink died on every fresh bootstrap and
-# nothing caught it.
+# Coverage for the install-dir layout contract: $INSTALL_DIR must be a symlink
+# into ${INSTALL_DIR}-src/deployment, never a real directory created earlier.
 
 setup() {
     load '../helpers/common.bash'
@@ -74,8 +71,7 @@ run_ensure_symlink() {
     [ "$(readlink "$INSTALL_DIR")" = "$SRC_DIR/deployment" ]
 }
 
-# This is the regression that broke fresh installs for three months: anything
-# that materializes $INSTALL_DIR as a real directory before step 05 (useradd
+# Anything that materializes $INSTALL_DIR as a real directory before step 05 (useradd
 # --create-home, a stray mkdir, an rsync into the install dir) is fatal.
 @test "ensure_symlink refuses a pre-existing real directory" {
     mkdir -p "$INSTALL_DIR"

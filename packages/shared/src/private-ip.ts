@@ -25,7 +25,7 @@ export const PRIVATE_IPV4_PATTERNS: readonly RegExp[] = [
  * IPv6 loopback and private patterns.
  *
  * These are matched against hostnames too, so ULA patterns must require a `:`
- * (never present in DNS names): a bare `/^fd/` prefix blocked every public
+ * (never present in DNS names): a bare `/^fd/` prefix would block every public
  * domain starting with "fd" (fda.gov, fdic.gov, ...). The `f[cd]` form also
  * covers the full fc00::/7 ULA range, not just the literal fc00:/fd00: hextets.
  */
