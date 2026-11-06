@@ -43,10 +43,6 @@ export interface PresetConfig {
   description: string;
   /** Collections enabled for this preset */
   enabled: string[];
-  // A preset used to also declare `volume`, `realism`, `performance` and
-  // `debugging`. No code ever read any of them; the actual sizing lives in each
-  // collection's `count` and the generators in its `options`. They are dropped
-  // rather than kept as settings that look meaningful and are not.
   /** Preset-specific overrides for collection configurations */
   overrides?: Record<string, Partial<CollectionConfig>>;
 }
@@ -213,7 +209,7 @@ export const SEED_CONFIG: SeedConfiguration = {
     },
   },
 
-  // Seeding presets - only 3 supported: testing, e2e, development
+  // Seeding presets
   presets: {
     testing: {
       description: "Fast, deterministic data for unit/integration tests",

@@ -1,10 +1,6 @@
 /**
  * Converts a site's admin-authored custom head HTML into React elements.
  *
- * The Sites `customCode.headHtml` field is documented as "injected into
- * `<head>`", but nothing ever rendered it — the setting was stored, shipped to
- * the client via the site context, and dropped on the floor.
- *
  * Injection cannot use `dangerouslySetInnerHTML`: `<head>` is rendered by React
  * (Next.js streams its own metadata into it), and the only wrapper element we
  * could hang raw HTML off is not valid inside `<head>` — browsers would close

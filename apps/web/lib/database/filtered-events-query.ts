@@ -86,11 +86,7 @@ export const buildClusterFilterClause = (
  * Resolve an event's display title the same way the events API does.
  *
  * `extractEventFields` tries the dataset's `interpretationPlan.roles.title` path first, then
- * `title`, then `name`. This used to read `->>'title'` alone, so every dataset whose title
- * role points elsewhere — five of the ten shipped data packages (`event_type`, `description`,
- * `name`, `source_headline`) — showed the correct title in the list and a bare
- * "Event 12345" in map popups and cluster previews.
- *
+ * `title`, then `name`, so map popups and cluster previews must follow the same order.
  * The role holds a dot path, so it resolves through {@link jsonTextAtPathOrKey} — literal key
  * first, then traversal, the same order `getByPathOrKey` uses on the row.
  */

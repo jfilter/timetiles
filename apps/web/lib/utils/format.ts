@@ -51,9 +51,8 @@ export const formatCompactNumber = (n: number, locale?: string): string => {
   const formatDecimal = (value: number): string =>
     value.toLocaleString(locale, { minimumFractionDigits: 0, maximumFractionDigits: 1 });
 
-  // Thresholds are compared against the ROUNDED value, not the raw one. Comparing the raw
-  // value let a number round up across its own unit boundary and print in the unit it had
-  // just left — 999_999 rendered as "1000k" instead of "1.0M".
+  // Thresholds are compared against the ROUNDED value, so a number that rounds up across
+  // a unit boundary prints in the next unit (999_999 → "1.0M", not "1000k").
   if (Math.round(n / 1000) < 1000) {
     return n < 10_000 ? `${formatDecimal(n / 1000)}k` : `${Math.round(n / 1000)}k`;
   }

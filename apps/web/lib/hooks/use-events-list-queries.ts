@@ -107,11 +107,8 @@ export const useEventsTotalQuery = (filters: FilterState, enabled: boolean = tru
     ...QUERY_PRESETS.standard,
   });
 
-// Infinite query hook for paginated events list.
-//
-// `clusterFilter` is not optional in practice: the map, charts and the list description all
-// honour a clicked H3 cell, and without it here the list underneath kept showing every event
-// of the base filters — two contradictory counts on one screen.
+// Infinite query hook for paginated events list. `clusterFilter` must be passed whenever
+// a cell is selected: the map and charts honour it, so the list has to match.
 export const useEventsInfiniteQuery = (
   filters: FilterState,
   bounds: BoundsType,

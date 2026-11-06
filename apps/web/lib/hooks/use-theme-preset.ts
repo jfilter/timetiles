@@ -109,7 +109,6 @@ const applyPresetClass = (preset: ThemePresetId): void => {
   const targets = [document.documentElement, document.body];
 
   for (const el of targets) {
-    // Remove all theme classes
     for (const p of THEME_PRESETS) {
       if (p.id !== DEFAULT_PRESET) {
         el.classList.remove(`theme-${p.id}`);

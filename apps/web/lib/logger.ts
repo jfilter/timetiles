@@ -12,12 +12,9 @@
  */
 import pino from "pino";
 
-// pino 10 retyped `LogFn` via `ParseLogFnArgs<TMsg>`: a message string with no
-// printf placeholders (`%s`/`%o`/…) now rejects any extra positional args. The
-// entire codebase logs as `logger.info("message", { context })` (message-first),
-// which pino 10 flags even though the RUNTIME behaviour is unchanged from pino 9.
-// Restore pino 9's permissive call signature here (one place) rather than
-// rewriting hundreds of call sites or changing log output during a dep bump.
+// pino 10's `LogFn` rejects extra positional args after a message without printf
+// placeholders. The codebase logs message-first (`logger.info("msg", { context })`),
+// which behaves the same at runtime, so the permissive signature is restored here.
 interface PermissiveLogFn {
   (obj: object, msg?: string, ...args: unknown[]): void;
   (msg: string, ...args: unknown[]): void;
@@ -38,7 +35,6 @@ const isDevelopment = nodeEnv === "development";
 const isTest = nodeEnv === "test";
 const isProduction = nodeEnv === "production";
 
-// Define log level based on environment
 const getLogLevel = () => {
   if (isTest) {
     // In tests, default to silent unless LOG_LEVEL is explicitly set
@@ -48,7 +44,6 @@ const getLogLevel = () => {
   return "debug"; // Show all logs in development
 };
 
-// Create base logger configuration
 const baseConfig: pino.LoggerOptions = {
   level: logLevel ?? getLogLevel(),
   formatters: {
@@ -60,7 +55,6 @@ const baseConfig: pino.LoggerOptions = {
   base: { env: nodeEnv },
 };
 
-// Development configuration with pretty printing
 const developmentConfig: pino.LoggerOptions = {
   ...baseConfig,
   transport: {
@@ -75,8 +69,7 @@ const developmentConfig: pino.LoggerOptions = {
   },
 };
 
-// Create the logger instance
-// When LOG_FILE is set, write to both stdout and the file (for Docker logs + persistent file)
+// JSON to stdout, plus to LOG_FILE when set.
 const createProductionLogger = (): pino.Logger => {
   if (logFile) {
     return pino(baseConfig, pino.multistream([{ stream: process.stdout }, { stream: pino.destination(logFile) }]));
@@ -84,8 +77,7 @@ const createProductionLogger = (): pino.Logger => {
   return pino(baseConfig);
 };
 
-// In development: pretty-print to stdout + optionally write structured JSON to LOG_FILE
-// In production: structured JSON to stdout + optionally to LOG_FILE
+// Pretty-printed stdout, plus structured JSON to LOG_FILE when set.
 const createDevLogger = (): pino.Logger => {
   if (logFile) {
     // Pretty-print to stdout AND structured JSON to file (for post-mortem debugging)
@@ -102,27 +94,22 @@ const createDevLogger = (): pino.Logger => {
 
 export const logger = (isDevelopment && !isTest ? createDevLogger() : createProductionLogger()) as unknown as AppLogger;
 
-// Create child loggers for different modules
 export const createLogger = (module: string) => {
   return logger.child({ module });
 };
 
-// Helper to create request logger
 export const createRequestLogger = (requestId: string, userId?: string | number) => {
   return logger.child({ requestId, userId, type: "request" });
 };
 
-// Helper to create job logger
 export const createJobLogger = (jobId: string | number, taskType: string) => {
   return logger.child({ jobId, taskType, type: "job" });
 };
 
-// Performance logging helper
 export const logPerformance = (operation: string, duration: number, metadata?: Record<string, unknown>) => {
   logger.info({ type: "performance", operation, duration, ...metadata }, `${operation} completed in ${duration}ms`);
 };
 
-// Error logging helper with context
 export const logError = (error: unknown, context: string, metadata?: Record<string, unknown>) => {
   const err = error instanceof Error ? error : new Error(String(error));
   logger.error({ err, context, ...metadata }, `Error in ${context}: ${err.message}`);

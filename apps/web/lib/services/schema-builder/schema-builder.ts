@@ -115,16 +115,13 @@ export class ProgressiveSchemaBuilder {
   processBatch(records: DataRecord[]): { schemaChanged: boolean; changes: SchemaChange[] } {
     const changes: SchemaChange[] = [];
 
-    // Update samples (rotating buffer)
     this.updateSamples(records);
 
-    // Process each record
     for (const record of records) {
       const recordChanges = this.processRecord(record, "");
       changes.push(...recordChanges);
     }
 
-    // Update counts
     this.state.recordCount += records.length;
     this.state.batchCount++;
     this.state.lastUpdated = new Date();
@@ -257,7 +254,6 @@ export class ProgressiveSchemaBuilder {
         changes.push(typeChange);
       }
 
-      // Update field statistics
       updateFieldStats(stats, value, this.config.maxUniqueValues);
 
       // Process nested values
@@ -306,25 +302,18 @@ export class ProgressiveSchemaBuilder {
         return this.buildManualSchema();
       }
 
-      // Quicktype emits every nested object as a named entry in `definitions` and refers to
-      // it by `$ref`. Resolving ONLY the top-level ref and then dropping `definitions` left
-      // dangling refs behind: a nested field like `user` was stored as
-      // `{"$ref": "#/definitions/User"}` with nothing to resolve it against, so its shape
-      // was lost — schema comparison could not see nested fields at all, and a breaking
-      // nested change auto-approved. Inline the whole graph so the stored schema is
-      // self-contained.
+      // Quicktype emits every nested object as a named entry in `definitions` referenced by
+      // `$ref`. Inline the whole graph so the stored schema is self-contained and schema
+      // comparison can see nested fields.
       schema = inlineSchemaRefs(schema);
 
       // Ensure schema has the required top-level structure
       schema.type ??= "object";
       schema.properties ??= {};
 
-      // For first import (no current schema), mark all fields as optional
-      // Only mark fields as required if they appear in 90%+ of records.
-      //
-      // Only TOP-LEVEL names belong here. `fieldStats` is keyed by dot-path, and pushing
-      // "user.name" into the root `required` is invalid JSON Schema — nothing at the root
-      // is named that. Requiredness for nested fields comes from the inlined definitions.
+      // Only fields present in 90%+ of records are required, and only TOP-LEVEL names:
+      // `fieldStats` is keyed by dot-path, and "user.name" in the root `required` is invalid
+      // JSON Schema. Nested requiredness comes from the inlined definitions.
       const required: string[] = [];
       for (const [field, stats] of Object.entries(this.state.fieldStats)) {
         if (!field.includes(".") && stats.occurrences >= this.state.recordCount * 0.9) {
@@ -397,12 +386,9 @@ export class ProgressiveSchemaBuilder {
   /**
    * Step from a schema node into its `properties` map.
    *
-   * Every part of the path except the last one names a container, and the value looked up
-   * for it is the container's schema node (`{type:"object", properties:{…}}`), not the map
-   * of its children. Without this step the next part was searched in the node itself, so
-   * `user.age` never resolved and nested fields silently lost their statistics-derived
-   * `minimum`/`maximum`, enums and date hints. The array branch already descends into
-   * `items.properties`, which is what made the asymmetry an oversight rather than a design.
+   * Every part of the path except the last names a container, whose looked-up value is the
+   * container's schema node (`{type:"object", properties:{…}}`), not the map of its children;
+   * the next part must be searched in that map, as the array branch does via `items.properties`.
    *
    * Returning null (rather than the node) when there is no `properties` map matters: a node
    * like `{type:"object"}` would otherwise let the next part match one of the schema's own

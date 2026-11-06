@@ -139,7 +139,6 @@ export const generateFaviconsHook: GlobalAfterChangeHook = async ({ doc, previou
     const outputDir = faviconDir();
     mkdirSync(outputDir, { recursive: true });
 
-    // Generate light theme favicons
     if (lightChanged && currentLightId) {
       const buffer = await fetchMediaBuffer(req.payload, currentLightId);
       if (buffer) {
@@ -150,7 +149,6 @@ export const generateFaviconsHook: GlobalAfterChangeHook = async ({ doc, previou
       logger.info("Light favicon source removed, keeping existing files");
     }
 
-    // Generate dark theme favicons
     if (darkChanged && currentDarkId) {
       const buffer = await fetchMediaBuffer(req.payload, currentDarkId);
       if (buffer) {

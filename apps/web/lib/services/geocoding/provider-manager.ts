@@ -134,12 +134,10 @@ export class ProviderManager {
     };
   }
 
-  // Helper method to check if provider doc is valid
   private isProviderDocValid(doc: GeocodingProvider): boolean {
     return doc.enabled === true && doc.type != null;
   }
 
-  // Helper method to create provider entry
   private createProviderEntry(
     doc: GeocodingProvider,
     geocoder: GeocodingAdapter,
@@ -159,7 +157,6 @@ export class ProviderManager {
     };
   }
 
-  // Helper method to initialize a single provider
   private initializeSingleProvider(doc: GeocodingProvider): void {
     if (!this.isProviderDocValid(doc)) {
       logger.debug(`Skipping disabled or invalid provider: ${doc.name}`);

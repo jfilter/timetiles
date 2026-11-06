@@ -35,7 +35,6 @@ export class GeocodingService {
     logger.info("Initializing geocoding service");
 
     try {
-      // Load settings from database
       await this.loadSettings();
       logger.info("Settings loaded successfully");
 
@@ -44,7 +43,6 @@ export class GeocodingService {
       this.cacheManager = new CacheManager(this.payload, this.settings);
       this.geocodingOperations = new GeocodingOperations(this.providerManager, this.cacheManager, this.settings);
 
-      // Load and initialize providers from collection
       const providers = await this.providerManager.loadProviders();
       logger.info(`Loaded ${providers.length} providers`);
 

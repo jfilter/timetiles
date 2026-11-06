@@ -126,7 +126,6 @@ export const useTimeRangeSlider = ({
 
     const firstBucket = histogram[0];
     const lastBucket = histogram[histogram.length - 1];
-    // Parse ISO date strings to timestamps
     const min = firstBucket?.date ? new Date(firstBucket.date).getTime() : 0;
     const max = lastBucket?.dateEnd ? new Date(lastBucket.dateEnd).getTime() : 0;
     const maxC = Math.max(...histogram.map((h) => h.count));
@@ -175,8 +174,8 @@ export const useTimeRangeSlider = ({
     const clampedTimestamp = clampTimestamp(timestamp);
 
     if (handle === "start") {
-      // boundOr, not a raw parse: an unparseable opposite bound made every
-      // comparison false and silently froze the handle the user was dragging.
+      // boundOr, not a raw parse: an unparseable opposite bound would make every
+      // comparison false and freeze the handle being dragged.
       const endTs = boundOr(endDate, maxTimestamp);
       if (clampedTimestamp <= endTs) {
         onStartDateChange(formatISODate(clampedTimestamp));
@@ -190,7 +189,6 @@ export const useTimeRangeSlider = ({
     }
   };
 
-  // Convert position (0-1) to timestamp
   const positionToTimestamp = (position: number): number => {
     return minTimestamp + position * (maxTimestamp - minTimestamp);
   };
@@ -253,19 +251,15 @@ export const useTimeRangeSlider = ({
     commitHandleTimestamp(handle, nextValue);
   };
 
-  // Check if a bar is within the selected range
   const isBarInRange = (barStart: number, barEnd: number): boolean => {
     const rangeStart = boundOr(startDate, minTimestamp);
     const rangeEnd = boundOr(endDate, maxTimestamp);
     return barEnd >= rangeStart && barStart <= rangeEnd;
   };
 
-  // Date input handlers. The drag and keyboard paths clamp each handle against
-  // the other through commitHandleTimestamp; the typed inputs bypassed it, so a
-  // start typed after the end (or an end before the start) committed an inverted
-  // range that silently returns zero events. Clamp each side against the other
-  // here too — snapping to the opposing bound, mirroring numeric-range-slider —
-  // while leaving the open-ended and empty-input cases untouched.
+  // Typed dates clamp against the opposing bound like the drag and keyboard paths
+  // (snapping, as numeric-range-slider does), so an inverted range cannot be committed.
+  // Open-ended and empty inputs are left untouched.
   const handleStartDateInputChange = (value: string) => {
     if (!value) {
       onStartDateChange(null);

@@ -86,7 +86,7 @@ export class UrlFetchCache {
     this.maxTTL = urlFetch.maxTtlSeconds;
     this.respectCacheControl = urlFetch.respectCacheControl;
 
-    // Do not reuse legacy entries that conflated paths and reordered query strings.
+    // The "v2" key prefix keeps entries with conflated paths or reordered query strings from being reused.
     this.cache = new Cache(
       new FileSystemCacheStorage({ cacheDir: urlFetch.dir, maxSize: urlFetch.maxSizeBytes }),
       "http:v2:"
@@ -127,13 +127,11 @@ export class UrlFetchCache {
     const remaining = (lifetime: number) => Math.max(0, Math.min(lifetime - currentAge, this.maxTTL));
     const cacheControl = headers["cache-control"];
     if (cacheControl) {
-      // Check for no-store or no-cache
       const directives = parseCacheControl(cacheControl);
       if (directives.has("no-store") || directives.has("no-cache")) {
         return 0; // Don't cache
       }
 
-      // Parse max-age
       const maxAge = this.parseMaxAge(cacheControl);
       if (maxAge !== undefined) {
         // Enforce maximum TTL to prevent indefinite caching

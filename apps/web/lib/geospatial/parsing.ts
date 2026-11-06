@@ -230,10 +230,8 @@ export const parseCoordinate = (value: unknown): number | null => {
     return null;
   }
 
-  // Use normalized string value
   const str = normalized;
 
-  // Try to parse as decimal degrees
   const decimal = tryParseDecimal(str);
   if (decimal !== null) {
     return decimal;
@@ -273,12 +271,10 @@ const validateAndNormalizeInput = (value: unknown): string | null => {
     return null;
   }
 
-  // Handle number type
   if (typeof value === "number") {
     return String(value);
   }
 
-  // Convert to string and clean
   const trimmed = valueToString(value).trim();
   return trimmed.startsWith("'") ? trimmed.slice(1).trim() : trimmed;
 };

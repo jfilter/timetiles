@@ -94,7 +94,6 @@ export const useRequestDataExportMutation = () => {
   return useMutation({
     mutationFn: requestDataExport,
     onSuccess: () => {
-      // Invalidate the exports query to trigger a refetch
       void queryClient.invalidateQueries({ queryKey: dataExportQueryKeys.all });
     },
   });

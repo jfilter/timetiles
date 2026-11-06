@@ -32,9 +32,6 @@ export interface DatabaseClientOptions {
 /**
  * Create a PostgreSQL database client with standard connection parameters.
  *
- * This factory function provides a centralized way to create database clients,
- * eliminating hardcoded connection parameters throughout the codebase.
- *
  * @param options - Connection options
  * @returns Configured PostgreSQL client (not yet connected)
  *

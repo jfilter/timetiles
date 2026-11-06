@@ -73,10 +73,8 @@ export class RateLimitService {
         throw new Error(
           `Refusing to start: RATE_LIMIT_BACKEND=memory with ${workerHint} workers. ` +
             "Per-process counters cannot enforce shared limits. " +
-            // "pg", not "postgresql": factory.ts accepts only "memory" and "pg",
-            // and warns-then-falls-back-to-memory on anything else -- so an
-            // operator following this message word for word ended up exactly
-            // where the error told them not to be.
+            // "pg", not "postgresql": factory.ts accepts only "memory" and "pg" and
+            // falls back to memory on anything else.
             "Set RATE_LIMIT_BACKEND=pg, or run a single worker."
         );
       }
@@ -315,28 +313,17 @@ export const resetRateLimitService = (): void => {
 // ───────────────────────────────────────────────────────────────────────────
 //
 // SECURITY: `X-Forwarded-For` / `X-Real-IP` / `CF-Connecting-IP` are attacker-
-// controlled when the app is reached directly (no proxy in front). If we trust
-// them unconditionally, a client can spoof their IP and defeat per-IP rate
-// limits.
+// controlled when the app is reached directly, so trusting them unconditionally
+// lets a client spoof their IP and defeat per-IP rate limits.
 //
-// Trust contract: the env var `TRUSTED_PROXY_CIDRS` is a comma-separated CIDR
-// allowlist of *upstream hops* the operator controls (reverse proxies, load
-// balancers, CDN egress). When set, we walk `X-Forwarded-For` right-to-left
-// skipping IPs inside those ranges and return the first untrusted one — that
-// is the client as observed by the outermost trusted proxy.
-//
-// Next.js App Router does not expose the raw socket peer on `NextRequest`, so
-// we cannot cross-check that the immediate TCP peer is trusted. The CIDR
-// allowlist is therefore an allowlist of *forwarded-chain segments* rather
-// than of socket peers. This is the simpler of the two modes described in
-// the fix proposal and is safe as long as the operator terminates all traffic
+// `TRUSTED_PROXY_CIDRS` is a CIDR allowlist of upstream hops the operator controls.
+// When set, `X-Forwarded-For` is walked right-to-left skipping those ranges, and the
+// first untrusted IP is the client. Next.js does not expose the socket peer, so this
+// is an allowlist of forwarded-chain segments: safe as long as all traffic passes
 // through one of the listed CIDRs.
 //
-// When the env var is empty (default), production fails closed: forwarded IP
-// headers are ignored because they are client-controlled unless a trusted
-// proxy is explicitly configured. Development/test keep the legacy fallback
-// with a warning to avoid breaking local workflows that still rely on those
-// headers without a full proxy chain.
+// With no allowlist, production ignores forwarded headers (fail closed);
+// development/test still read them, with a warning, for local workflows without a proxy.
 
 interface ParsedCidr {
   address: string;
@@ -477,7 +464,6 @@ const pickClientFromForwardedChain = (forwarded: string): string | null => {
   return hops[0] ?? null;
 };
 
-// Helper function to get client identifier
 export const getClientIdentifier = (request: Request): string => {
   // Try to get IP from various headers
   const forwarded = request.headers.get("x-forwarded-for");

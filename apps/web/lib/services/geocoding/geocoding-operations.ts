@@ -179,8 +179,7 @@ export class GeocodingOperations {
     // Skip the write only when the bias actually reached the provider that
     // produced this result. A string-only provider (Photon/Google/OpenCage)
     // never saw the bias, so its answer is the plain-address answer and belongs
-    // in the address-keyed cache — otherwise every lookup of a biased import
-    // re-hit the provider forever and never populated the cache at all.
+    // in the address-keyed cache.
     if (this.hasBias(bias) && this.providerAppliesBias(result.provider)) {
       return;
     }
@@ -207,18 +206,10 @@ export class GeocodingOperations {
   /**
    * Choose which providers {@link tryProviders} should attempt, in order.
    *
-   * Providers in backoff are skipped only while some other provider can serve
-   * the request. When EVERY provider is backing off we wait instead of
-   * skipping: `waitForSlot` sleeps out the remaining backoff, so the request
-   * still completes a moment later. Skipping them all made `tryProviders`
-   * return null immediately and `geocode` throw ALL_PROVIDERS_FAILED, which
-   * turned a single transient 429 into a permanent failure for every address
-   * in flight during the backoff window (and made geocodeDistributed's
-   * "nothing available → fall back to geocode()" path a no-op, since geocode()
-   * applied the very same filter).
-   *
-   * Only the soonest-available provider is tried in that case, so the wait is
-   * bounded by one backoff window rather than the sum of all of them.
+   * Providers in backoff are skipped only while some other provider can serve the request.
+   * When EVERY provider is backing off, skipping them all would turn one transient 429 into
+   * ALL_PROVIDERS_FAILED for every address in flight, so the soonest-available provider is
+   * tried instead and `waitForSlot` sleeps out its backoff (bounded by one backoff window).
    */
   private selectProvidersToTry(
     enabledProviders: ProviderConfig[],
@@ -648,11 +639,8 @@ export class GeocodingOperations {
     return Math.min(Math.max(confidence, 0), 1);
   }
 
-  // isValidCoordinate additionally rejects NaN and the Null Island region.
-  // Providers do return (0,0) for input they cannot resolve; without this the
-  // bogus point was cached, persisted onto the ingest job and rendered as a
-  // real event in the Gulf of Guinea. Rejecting it here lets the next provider
-  // take the address instead.
+  // isValidCoordinate additionally rejects NaN and the Null Island region: providers
+  // return (0,0) for input they cannot resolve, and rejecting it lets the next provider try.
   private isResultAcceptable(result: GeocodingResult): boolean {
     return (result.confidence ?? 0) >= 0.5 && isValidCoordinate(result.latitude, result.longitude);
   }

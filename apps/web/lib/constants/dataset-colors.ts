@@ -88,14 +88,8 @@ export const getDatasetColors = (datasetId: number): DatasetBadgeColor => {
 /**
  * Get combined badge class string for a dataset.
  *
- * Uses the palette-colored tint as background (for dataset identification)
- * and the neutral foreground color for the text. Previously used
- * `text-palette-X` on `bg-palette-X/10`, which failed WCAG AA contrast
- * because the palette colors are mid-lightness and don't contrast
- * sufficiently against their own 10%-opacity tint.
- *
- * The bg tint alone is enough to visually identify which dataset the
- * badge belongs to; the text stays readable.
+ * The palette-colored tint identifies the dataset; the text uses the neutral foreground,
+ * because mid-lightness palette text on its own 10% tint fails WCAG AA contrast.
  */
 export const getDatasetBadgeClass = (datasetId: number | null): string => {
   const index = datasetId === null ? 0 : safeIndex(datasetId);

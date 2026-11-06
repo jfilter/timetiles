@@ -150,8 +150,6 @@ const buildScheduledIngestData = (
     advancedOptions.jsonApiConfig = manifest.source.jsonApi;
   }
 
-  // preProcessing is a top-level field on ScheduledIngest, not inside advancedOptions
-
   // Data-package imports run unattended, so default the ambiguous
   // coordinate-order and date-order gates to skipped (an ambiguous column yields
   // no points / falls back to the per-row date heuristic rather than stalling the
@@ -388,10 +386,8 @@ const createActivationScheduledIngest = async (
       req,
     });
   } catch (error) {
-    // Roll the orphan dataset back on EVERY failure, not just the lost race. Any
-    // other error (an invalid cron or URL in the manifest, a DB blip) used to leave
-    // the dataset behind, and the retry then hit the (catalog, name) unique index
-    // and reported "already activated" for a package that has no schedule at all.
+    // Roll the orphan dataset back on every failure: a leftover dataset would make the
+    // retry hit the (catalog, name) unique index and report "already activated".
     await deleteOrphanDataset(payload, orphanDatasetId);
 
     if (isUniqueViolation(error)) {
@@ -413,8 +409,8 @@ const createActivationScheduledIngest = async (
 /**
  * Handle a data package that already has an activation row.
  *
- * Deactivation only flips `enabled` and keeps the row, so without this the package was stuck
- * showing "Activated" forever with no way back on — no other code path re-enables it.
+ * Deactivation only flips `enabled` and keeps the row, and no other code path re-enables it,
+ * so reactivation happens here.
  * Re-enabling is owner-only (the rule deactivateDataPackage enforces) and consumes an
  * ACTIVE_SCHEDULES slot exactly like a fresh activation, so it passes the same quota gate.
  */
@@ -579,15 +575,10 @@ export const deactivateDataPackage = async (
     overrideAccess: true,
   });
 
-  // Payload's `like` is a contains match (unescaped ILIKE %value%), so the
-  // prefix query can also return foreign activations whose key merely contains
-  // "<slug>:" (e.g. "city-demo:..." matches slug "demo"). Filter exactly in JS
-  // before acting — otherwise deactivation can disable the wrong package.
-  //
-  // ALL exact matches, not just the first: a parameterized package can hold N
-  // activations under different parameter sets, and the deactivate route never
-  // forwards `parameters`. Acting on a single arbitrary document left the rest
-  // live with no way to reach them through the UI.
+  // Payload's `like` is a contains match (unescaped ILIKE %value%), so the prefix
+  // query can also return foreign activations ("city-demo:..." matches slug "demo").
+  // Filter exactly, and act on ALL matches: a parameterized package can hold several
+  // activations and the deactivate route does not forward `parameters`.
   const matches = result.docs.filter(
     (doc) => doc.dataPackageSlug === slug || doc.dataPackageSlug?.startsWith(`${slug}:`) === true
   );
@@ -595,9 +586,8 @@ export const deactivateDataPackage = async (
     throw new NotFoundError(`Data package "${slug}" is not activated`);
   }
 
-  // Ownership is enforced per document. A non-admin who owns none of the
-  // matches gets the same 403 as before; partial ownership deactivates only
-  // their own activations.
+  // Ownership is enforced per document: a non-admin who owns none of the matches gets
+  // a 403; partial ownership deactivates only their own activations.
   const owned = matches.filter((doc) => user.role === "admin" || extractRelationId(doc.createdBy) === user.id);
   if (owned.length === 0) {
     throw new ForbiddenError("You can only deactivate data packages you activated");
@@ -641,12 +631,7 @@ export const getActivationStatus = async (
   if (slugs.length === 0) return new Map();
 
   // The query stays GLOBAL: dataPackageSlug is uniquely indexed instance-wide, so "is this
-  // package activated" is an instance-wide fact and filtering by owner would tell a second
-  // user "not activated" for something they cannot activate.
-  //
-  // What was actually leaking is the DETAIL. Running with overrideAccess handed every user
-  // the owner's scheduledIngestId/catalogId/datasetId and a Deactivate button that 403s, so
-  // those are now returned only to the owner (see `ownedByCaller` below).
+  // package activated" is an instance-wide fact. Internal ids are returned only to the owner.
   const result = await payload.find({
     collection: COLLECTION_NAMES.SCHEDULED_INGESTS,
     where: {

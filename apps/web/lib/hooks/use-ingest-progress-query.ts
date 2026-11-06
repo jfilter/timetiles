@@ -1,7 +1,6 @@
 /**
  * React Query hook for polling ingest file progress.
  *
- * Replaces hand-rolled setInterval polling in step-processing.tsx.
  * Automatically stops polling when the ingest reaches a terminal state.
  *
  * @module

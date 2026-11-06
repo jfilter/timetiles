@@ -1,8 +1,8 @@
 /**
  * Review reason constants used by both server (job handlers) and client (review panel).
  *
- * Extracted from `lib/jobs/workflows/review-checks.ts` to avoid pulling server-only
- * dependencies (logger, getAppConfig) into the client bundle.
+ * Kept apart from `lib/jobs/workflows/review-checks.ts` so the client bundle does not
+ * pull in server-only dependencies (logger, getAppConfig).
  *
  * @module
  * @category Constants

@@ -77,7 +77,6 @@ const checkUploadsDirectory = async (): Promise<HealthCheckResult> => {
   let currentDir = process.cwd();
   let projectRoot = currentDir;
 
-  // Constants for path matching
   const APPS_WEB_PATH = "/apps/web/";
   const APPS_WEB_SUFFIX = "/apps/web";
   // Walk up directories to find the web app root (where package.json is)
@@ -167,8 +166,7 @@ const summarizeGeocodingProbe = (probe: Record<string, unknown>, enabledCount: n
   const detail = failed.map(([name, outcome]) => `${name}: ${describeProbeError(outcome)}`).join("; ");
 
   // Every provider failing is the state this check exists to catch: an expired
-  // key or upstream outage fails every geocode-batch job, and the old row-count
-  // check stayed green throughout.
+  // key or upstream outage fails every geocode-batch job.
   if (working.length === 0) {
     return {
       status: "error",
@@ -281,7 +279,6 @@ const checkMigrations = async (): Promise<HealthCheckResult> => {
     logger.debug("Getting Payload instance for migrations check");
     const payload = await getPayload({ config });
 
-    // Constants for path matching
     const APPS_WEB_PATH = "/apps/web/";
     const APPS_WEB_SUFFIX = "/apps/web";
 
@@ -423,8 +420,7 @@ const checkEmailConfiguration = async (): Promise<HealthCheckResult> => {
   // A placeholder host is the worst of both worlds: the app treats it as a
   // working mail server, so every send fails with ENOTFOUND. That includes the
   // verification email Payload sends while registering the first admin, which
-  // leaves a fresh deployment with no way to create one. This used to report
-  // "healthy" purely because the variable was set.
+  // leaves a fresh deployment with no way to create one.
   if (hasSmtpHost && isPlaceholderHost(env.EMAIL_SMTP_HOST)) {
     logger.warn("EMAIL_SMTP_HOST is a placeholder", { host: env.EMAIL_SMTP_HOST });
     return {

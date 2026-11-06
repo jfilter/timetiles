@@ -72,13 +72,11 @@ export class SeedingOperations {
   ): Promise<SeedResult | null> {
     logger.debug({ collection: collectionName, config }, `Starting configuration-driven seeding for ${collectionName}`);
 
-    // Validate configuration and get count
     const count = this.dataProcessing.determineCollectionCount(config, environment);
     if (!this.dataProcessing.isValidCount(count, collectionName)) {
       return null;
     }
 
-    // Get base seed data
     const baseSeedData = this.getSeedData(collectionName, environment, deploymentEnv);
     if (!this.dataProcessing.isValidSeedData(baseSeedData)) {
       logger.warn(`No seed data available for ${collectionName}`);
@@ -92,17 +90,13 @@ export class SeedingOperations {
       ? baseSeedData
       : this.dataProcessing.prepareSeedData(baseSeedData, count, collectionName);
 
-    // Apply data transformations
     const transformedData = this.dataProcessing.applyDataTransformations(preparedData, config, collectionName);
 
-    // Handle global collections. The result is RETURNED, not discarded: a
-    // swallowed global failure meant the deploy bootstrap reported success
-    // after failing to seed settings/footer/main-menu.
+    // Global results are returned so a failed global seed fails the deploy bootstrap.
     if (collectionName === MAIN_MENU_SLUG || collectionName === FOOTER_SLUG || collectionName === SETTINGS_SLUG) {
       return this.seedGlobalCollection(transformedData, collectionName, idempotent, deploymentEnv);
     }
 
-    // Resolve relationships for regular collections
     const relationshipResolver = this.seedManager.relationshipResolverInstance;
     if (!relationshipResolver) {
       throw new Error("RelationshipResolver not initialized");
@@ -112,10 +106,8 @@ export class SeedingOperations {
       collectionName
     );
 
-    // Create collection items
     const result = await this.createCollectionItems(resolvedSeedData, collectionName, environment, config, idempotent);
 
-    // Log summary
     this.logCollectionSummary(collectionName, result, resolvedSeedData.length);
 
     return result;
@@ -234,7 +226,6 @@ export class SeedingOperations {
 
       const batchResult = await this.processBatch(batch, collectionName, environment, config, isCI, idempotent);
 
-      // Accumulate results
       result.created += batchResult.created;
       result.skipped += batchResult.skipped;
       result.failed += batchResult.failed;
@@ -268,7 +259,6 @@ export class SeedingOperations {
       `Seeded ${collectionName}: ${created} created, ${skipped} skipped, ${failed} failed (${totalAttempted} total)`
     );
 
-    // Log error summary if there are failures
     if (errors.length > 0) {
       // Group errors by type
       const errorsByType = errors.reduce(
@@ -414,15 +404,8 @@ export class SeedingOperations {
 
   /**
    * `environment` here is the PRESET name (testing | e2e | development |
-   * deploy), not NODE_ENV.
-   *
-   * This used to branch on `environment === "test"` to rewrite slugs into
-   * per-run unique ones. No caller can pass "test" — it is not a preset — so
-   * the branch was unreachable and `generateTestSlug` was dead with it. Rather
-   * than re-point it at "testing" (which would give the testing preset a fresh
-   * random slug on every run, breaking every fixture that looks a seed up by
-   * slug), it is removed: `findExistingItem` below already handles re-runs by
-   * skipping records that are already there.
+   * deploy), not NODE_ENV. Re-runs are handled by `findExistingItem`, which
+   * skips records that already exist, so slugs stay stable for fixtures.
    */
   private async createSingleItem(
     resolvedItem: Record<string, unknown>,
@@ -592,8 +575,7 @@ export class SeedingOperations {
 /**
  * Per-global emptiness check used by the idempotent deploy path: if the
  * global already has meaningful data, skip the seed so admin edits and
- * earlier deploys are never clobbered. Mirrors the legacy bootstrap rules
- * (apps/web/lib/services/bootstrap/core-content.ts pre-refactor).
+ * earlier deploys are never clobbered.
  */
 const isGlobalEmpty = (slug: string, doc: Record<string, unknown>): boolean => {
   const hasItems = (value: unknown): boolean => Array.isArray(value) && value.length > 0;

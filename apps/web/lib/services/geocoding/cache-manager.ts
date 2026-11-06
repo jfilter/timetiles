@@ -31,20 +31,12 @@ const logger = createLogger("geocoding-cache-manager");
  *
  * Lowercases, trims, collapses whitespace, and strips special characters
  * so that variants like "123 Main St", "  123 main st  ", and "123 MAIN ST"
- * map to the same cache key.
+ * map to the same cache key. The result is also what gets SENT to the providers.
  *
- * The strip class is Unicode-aware (\p{L}/\p{N}, not ASCII \w): the
- * normalized string is also what gets SENT to the geocoding providers, so an
- * ASCII-only class mangled every non-ASCII address ("Müllerstraße 12, Köln"
- * → "mllerstrae 12, kln"), emptied fully non-Latin addresses out of the
- * geocode set entirely, and collided cache keys for addresses differing only
- * in non-ASCII letters.
- *
- * Slashes separate address parts ("12/1 Main St", "Apt 3/B") and become a space rather than
- * being dropped: dropping them fused the parts into a different house number, so "12/1 Main
- * St" normalized to "121 main st" — the same key as the genuinely different "121 Main St",
- * and, because this string is also what gets sent to the provider, the wrong lookup. Other
- * punctuation keeps being dropped, which is what an apostrophe ("O'Brien" → "obrien") wants.
+ * The strip class is Unicode-aware (\p{L}/\p{N}, not ASCII \w), so non-ASCII addresses
+ * ("Müllerstraße 12, Köln") survive intact. Slashes separate address parts ("12/1 Main St")
+ * and become a space, so they never fuse into a different house number ("121 main st").
+ * Other punctuation is dropped, which is what an apostrophe ("O'Brien" → "obrien") wants.
  */
 export const normalizeGeocodingAddress = (address: string): string =>
   address

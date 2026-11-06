@@ -71,7 +71,6 @@ export class SystemUserService {
    * @returns The system user record
    */
   async getOrCreateSystemUser(): Promise<User> {
-    // Try to find existing system user
     const existing = await this.payload.find({
       collection: "users",
       where: { email: { equals: SYSTEM_USER_EMAIL } },
@@ -85,7 +84,6 @@ export class SystemUserService {
       return user;
     }
 
-    // Create system user
     logger.info("Creating system user");
     const user = await this.createSystemUser();
 

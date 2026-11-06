@@ -105,10 +105,8 @@ const authenticateRequest = async (
     }
   }
 
-  // A deactivated account must not authenticate anywhere, not just at login. `isActive` was
-  // enforced only in the beforeLogin hook, so an already-issued token kept working. Applied
-  // for every auth mode, including "optional", so a deactivated user is treated as anonymous
-  // rather than silently retaining their identity.
+  // A deactivated account must not authenticate anywhere: beforeLogin alone would let an
+  // already-issued token keep working. In "optional" mode the user is treated as anonymous.
   if (authReq.user?.isActive === false) {
     authReq.user = undefined;
     if (authMode === "required" || authMode === "admin") {

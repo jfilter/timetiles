@@ -53,7 +53,6 @@ export interface FocusedCluster {
   h3Resolution: number;
 }
 
-// Define the shape of our UI state (non-URL state)
 interface UIState {
   isFilterDrawerOpen: boolean;
   mapBounds: MapBounds | null;
@@ -91,7 +90,6 @@ export interface HeldMapPosition {
   zoom: number;
 }
 
-// Define the shape of our UI-only store
 interface UIStore {
   ui: UIState;
 
@@ -114,7 +112,6 @@ interface UIStore {
   endViewSwitch: () => void;
 }
 
-// Helper function to create UI state setters
 const createUIStateSetter =
   <T>(set: (fn: (state: UIStore) => UIStore) => void, key: keyof UIState) =>
   (value: T) =>

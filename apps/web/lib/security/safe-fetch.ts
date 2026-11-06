@@ -206,18 +206,14 @@ const stripBody = <T extends { headers?: HeadersInit; body?: unknown }>(init: T)
 /**
  * Rewrite the next hop per RFC 9110 §15.4, plus a cross-origin body guard.
  *
- * Two separate problems, both fixed here:
- *
- * 1. Because we use `redirect: 'manual'` and re-issue each hop ourselves, the
- *    method/body conversion the platform normally performs is disabled. HTTP
- *    requires 303 — and, by universal practice, 301/302 on a POST — to become a
- *    bodiless GET. Replaying the body was simply wrong.
+ * 1. With `redirect: 'manual'` each hop is re-issued here, so the platform's method/body
+ *    conversion is disabled: 303 — and, by universal practice, 301/302 on a POST — must
+ *    become a bodiless GET.
  * 2. `stripSensitiveHeaders` keeps credentials out of cross-origin HEADERS, but
  *    the request BODY can carry them too: `fetchOAuthToken` POSTs a
  *    `client_id`/`username`/`password` form to a user-controlled `oauthTokenUrl`.
  *    A 307/308 to an attacker origin preserves method and body by definition, so
- *    the body must be dropped on any cross-origin hop regardless of status —
- *    otherwise the header allowlist protects nothing.
+ *    the body must be dropped on any cross-origin hop regardless of status.
  */
 const rewriteForRedirect = <T extends { method?: string; headers?: HeadersInit; body?: unknown }>(
   init: T,

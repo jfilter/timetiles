@@ -205,14 +205,10 @@ export const resolveWebhookToken = async (payload: Payload, token: string): Prom
  * Uses a single SQL UPDATE with a WHERE guard so that PostgreSQL row-level
  * locking prevents two concurrent callers from both succeeding.
  *
- * `lastRunAt` is stamped here, at claim time, because that is what every
- * consumer already assumes it means: stuck-detection.ts documents it as "when
- * the resource was queued (trigger time)". It used to be written only once the
- * execution job started (scraper-execution-job.ts), so for the whole queued
- * window `lastRunStatus` said "running" while `lastRunAt` still held the
- * PREVIOUS run's finish time — or null. The stuck reaper compares the two, so a
- * healthy run that had merely been claimed looked hours stale and was killed on
- * the spot. Matches triggerScheduledIngest, which sets `last_run` at claim time.
+ * `lastRunAt` is stamped at claim time, as stuck-detection.ts expects ("when the resource
+ * was queued"): the stuck reaper compares it with `lastRunStatus`, so a claimed run still
+ * carrying the previous run's timestamp would look stale and be killed. Matches
+ * triggerScheduledIngest, which sets `last_run` at claim time.
  */
 export const claimScraperRunning = async (
   payload: Payload,

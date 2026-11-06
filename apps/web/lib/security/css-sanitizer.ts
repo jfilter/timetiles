@@ -3,8 +3,8 @@
  *
  * Per ADR 0038: parse incoming CSS with PostCSS, drop rules, declarations,
  * and at-rules that don't fit an allowlist, and serialize the cleaned tree
- * back out. Replaces the previous regex-based stripper which was too easy
- * to bypass with whitespace and escape-sequence variations.
+ * back out. A regex-based stripper is too easy to bypass with whitespace
+ * and escape-sequence variations.
  *
  * This sanitizer is a safety net for an admin-only feature; the primary
  * theming path is the structured Branding/tokens system. We stay on the

@@ -61,21 +61,9 @@ export const RELATIONSHIP_CONFIG: Record<string, RelationshipConfig[]> = {
     { field: "catalog", targetCollection: "catalogs", searchField: "name", fallbackSearch: "slug", required: true },
   ],
 
-  // Events depend on datasets.
-  //
-  // Resolved by SLUG, which is the only identifier that is actually unique.
-  // Dataset slugs are `${catalog.slug}-${template.slug}` (seeds/datasets.ts),
-  // while `name` comes straight from the shared template — so every catalog of
-  // the same type produces datasets with IDENTICAL names ("Research Study
-  // Results" exists under academic-research-portal, historical-records AND
-  // health-medical-data). Searching by name with limit:1 therefore resolved all
-  // of them to whichever was created last, and events seeded for one catalog
-  // silently landed in another catalog's dataset.
-  //
-  // Event seeds already carry the full slug (`dataset: config.slug` in
-  // seeds/events.ts), so the slug→name transform table this used to apply was
-  // converting a unique key into an ambiguous one. It is gone; `name` remains
-  // only as a fallback for any seed that still references a dataset by title.
+  // Events resolve datasets by SLUG: dataset names come from shared templates and repeat
+  // across catalogs, so a name lookup would attach events to another catalog's dataset.
+  // `name` remains only as a fallback for seeds that reference a dataset by title.
   events: [
     { field: "dataset", targetCollection: "datasets", searchField: "slug", fallbackSearch: "name", required: true },
   ],

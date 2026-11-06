@@ -194,8 +194,7 @@ export class QuotaService {
         .returning();
 
       if (inserted.length > 0 && inserted[0]) {
-        // Freshly created — re-fetch via Payload to return a fully hydrated
-        // doc (matches the previous return shape).
+        // Freshly created — re-fetch via Payload to return a fully hydrated doc.
         const id = (inserted[0] as { id: number }).id;
         return await this.payload.findByID({
           collection: USER_USAGE_COLLECTION,
@@ -305,11 +304,9 @@ export class QuotaService {
   ): Promise<QuotaCheckResult> {
     const desc = QUOTAS[quotaKey];
 
-    // Get effective quotas
     const quotas = this.getEffectiveQuotas(user);
     const limit = quotas[desc.limitField];
 
-    // Check if unlimited (-1)
     if (limit === -1) {
       return { allowed: true, current: 0, limit: -1, remaining: -1, quotaKey };
     }

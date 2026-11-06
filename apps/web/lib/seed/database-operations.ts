@@ -157,7 +157,6 @@ export class DatabaseOperations {
       return { deletedCount: fallbackResult.successful, errors: fallbackResult.errors };
     }
 
-    // Use individual deletes
     const result = await this.deleteItemsIndividually(items, collection);
     return { deletedCount: result.successful, errors: result.errors };
   }

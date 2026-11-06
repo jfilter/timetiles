@@ -25,18 +25,11 @@ interface DisposalContext {
 /**
  * Delete a private catalog, or hand it to the system user when something still lives in it.
  *
- * Transfer and deletion are both scoped by the entity's OWN `isPublic`, and two kinds of
- * dataset fall between them: a public dataset inside a private catalog (allowed — only the
- * reverse is rejected, see validateDatasetVisibility) is transferred and therefore survives,
- * and a dataset another user created in this catalog is neither transferred nor deleted.
- * Deleting the catalog underneath either of them set `datasets.catalog_id` to NULL, because
- * that is the FK's ON DELETE action — leaving a surviving dataset with no catalog at all,
- * which the field declares `required`, so every later update of it fails validation.
- *
- * Keeping the catalog is the non-destructive resolution: it stays private, so nothing
- * becomes newly visible, and the data the user was promised would be preserved keeps a
- * valid parent. Deleting the leftovers instead would destroy public events this very run
- * counted as "transferred" in the user's confirmation email.
+ * Transfer and deletion are both scoped by the entity's OWN `isPublic`, so two kinds of
+ * dataset survive in a private catalog: a public dataset (transferred) and a dataset another
+ * user created there (untouched). Deleting the catalog would null their `catalog_id` via the
+ * FK's ON DELETE SET NULL, breaking the required field. Keeping the catalog private is the
+ * non-destructive resolution: nothing becomes newly visible and the survivors keep a parent.
  */
 export const disposeOfPrivateCatalog = async (
   payload: Payload,

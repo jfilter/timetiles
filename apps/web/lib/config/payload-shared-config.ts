@@ -9,7 +9,6 @@
  * @category Configuration
  */
 
-// Import all collections
 import AuditLog from "@/lib/collections/audit-log";
 import Catalogs from "@/lib/collections/catalogs";
 import DataExports from "@/lib/collections/data-exports";
@@ -33,12 +32,10 @@ import UserUsage from "@/lib/collections/user-usage";
 import Users from "@/lib/collections/users";
 import Views from "@/lib/collections/views";
 import { getEnv } from "@/lib/config/env";
-// Import globals
 import { Branding } from "@/lib/globals/branding";
 import { Footer } from "@/lib/globals/footer";
 import { MainMenu } from "@/lib/globals/main-menu";
 import { Settings } from "@/lib/globals/settings";
-// Import migrations
 import { migrations } from "@/migrations";
 
 // Collection registry for easy access
@@ -76,7 +73,6 @@ export const ALL_GLOBALS = [MainMenu, Footer, Branding, Settings];
 // the maxFileSizeMB quotas so it matches the 100 MB file-size limit the quotas endpoint advertises.
 export const MAX_UPLOAD_FILE_BYTES = 100 * 1024 * 1024;
 
-// Common upload configuration
 export const DEFAULT_UPLOAD_CONFIG = {
   // busboy aborts once a file reaches `fileSize`, so the largest accepted file is one byte below it.
   limits: { fileSize: MAX_UPLOAD_FILE_BYTES + 1 },
@@ -90,7 +86,6 @@ export const DEFAULT_UPLOAD_CONFIG = {
   preserveExtension: 4,
 };
 
-// Common database configuration
 export const DEFAULT_DB_CONFIG = {
   push: false,
   schemaName: "payload",
@@ -99,5 +94,4 @@ export const DEFAULT_DB_CONFIG = {
   transactionOptions: { isolationLevel: "read committed" as const },
 };
 
-// TypeScript configuration
 export const DEFAULT_TYPESCRIPT_CONFIG = { outputFile: "./payload-types.ts" };

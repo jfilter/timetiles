@@ -17,7 +17,6 @@ import { QUERY_PRESETS } from "./query-presets";
 
 const logger = createLogger("EventsQueries");
 
-// Fetch function for single event by ID
 const fetchEventById = async (eventId: number, signal?: AbortSignal): Promise<Event> => {
   logger.debug("Fetching event by ID", { eventId });
 

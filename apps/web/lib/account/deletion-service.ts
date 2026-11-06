@@ -65,17 +65,14 @@ export class AccountDeletionService {
       return { allowed: false, reason: USER_NOT_FOUND, reasonCode: "userNotFound" };
     }
 
-    // Cannot delete system user
     if (user.email === SYSTEM_USER_EMAIL) {
       return { allowed: false, reason: "System user cannot be deleted", reasonCode: "systemUser" };
     }
 
-    // Cannot delete if already deleted
     if (user.deletionStatus === "deleted") {
       return { allowed: false, reason: "User is already deleted", reasonCode: "alreadyDeleted" };
     }
 
-    // Cannot delete the last admin
     if (user.role === "admin") {
       const adminCount = await this.payload.count({
         collection: "users",
@@ -95,14 +92,8 @@ export class AccountDeletionService {
       }
     }
 
-    // Check for active import jobs.
-    //
-    // NEEDS_REVIEW counts as terminal here. It is not in-flight work — it is a job parked
-    // waiting for a human, and several review reasons (FILE_TOO_LARGE among them) can never
-    // be approved or resumed at all, while /reset and /retry both require FAILED. Treating
-    // it as active made one such job block erasure permanently: scheduleDeletion threw
-    // forever and every nightly execute-account-deletion run aborted on the same check, so
-    // the user could not delete their account without an admin.
+    // NEEDS_REVIEW counts as terminal: the job is parked for a human, and some review
+    // reasons (FILE_TOO_LARGE) can never be resumed, so it must not block erasure forever.
     const activeJobs = await this.payload.find({
       collection: "ingest-jobs",
       req,
@@ -142,10 +133,7 @@ export class AccountDeletionService {
       countUserDocs(this.payload, "datasets", userId, { extraWhere: isPrivateFilter }),
     ]);
 
-    // Count events in public vs private datasets
-    // First get all dataset IDs for this user
-    // No limit: findUserDocs only sets `pagination: false` when none is given, so a cap here
-    // silently understated the event counts shown in the preview and the completion email.
+    // No limit: findUserDocs only disables pagination when no limit is given.
     const userDatasets = await findUserDocs(this.payload, "datasets", userId);
 
     const publicDatasetIds = userDatasets.filter((d) => d.isPublic).map((d) => d.id);
@@ -323,24 +311,18 @@ export class AccountDeletionService {
         const canDelete = await this.canDeleteUser(userId, req);
         if (!canDelete.allowed) throw new Error(`Deletion aborted: ${canDelete.reason}`);
 
-        // Transfer public data to system user
         await this.transferPublicData(userId, systemUser.id, user.email, result, req);
 
-        // Delete private data
         await this.deletePrivateData(userId, systemUser.id, result, req);
 
-        // Delete user resources (scheduled ingests, import files)
         await this.deleteUserResources(userId, result, req, pendingUnlinks, pendingMediaDeletes);
 
-        // Finalize user deletion and create audit log
         await this.finalizeAndAudit(userId, user, deletedBy, deletionType, ipAddress, result, req);
 
-        // Commit the transaction (only if we own it)
         if (ownsTransaction) {
           await commitTransaction(req);
         }
       } catch (error) {
-        // Roll back on any failure
         if (ownsTransaction) {
           await killTransaction(req);
         }
@@ -537,18 +519,9 @@ export class AccountDeletionService {
       result.dataDeleted.scheduledIngests++;
     }
 
-    // Delete scraper repos. Each repo's beforeDelete cascades its scrapers
-    // (and their runs and webhook tokens) — without this, a deleted user's
-    // code kept executing on schedule and their webhook URLs stayed live.
-    //
-    // Release any "running" claim first. The scrapers beforeDelete hook refuses
-    // to delete a running scraper with a 409, and scraper-repos re-raises it at
-    // repo level — so a single scraper wedged in "running" (a worker killed
-    // mid-scrape leaves the claim with nothing to clear it) aborted this whole
-    // transaction and rolled the account deletion back, permanently. Account
-    // deletion must not be hostage to a stuck background job: the user asked to
-    // be erased, and every one of these scrapers is being destroyed anyway, so
-    // an in-flight run is moot rather than something to protect.
+    // Each repo's beforeDelete cascades its scrapers, runs and webhook tokens. Running
+    // claims are released first: the scrapers hook refuses to delete a running scraper,
+    // and a claim wedged by a killed worker would otherwise roll back the whole deletion.
     await this.releaseRunningScraperClaims(userId, req);
 
     const scraperRepos = await findUserDocs(this.payload, "scraper-repos", userId);
@@ -566,18 +539,10 @@ export class AccountDeletionService {
       result.dataDeleted.importFiles++;
     }
 
-    // Uploaded media is counted in the deletion SUMMARY the user is shown but was never
-    // actually deleted: finalizeAndAudit only anonymizes the users row, so every media row
-    // survived pointing at a tombstoned user — and the media collection's read access is
-    // public, so the files stayed publicly served after an erasure request.
-    //
-    // Deferred to after the commit for the same reason as the export ZIPs: Payload's upload
-    // adapter unlinks the original and its generated sizes as part of the delete, and an
-    // irreversible filesystem effect must not run inside a transaction that can still roll
-    // back. Collected here so the count is known while the query context is at hand.
-    // Counted here, not in the post-commit loop: finalizeAndAudit serializes `dataDeleted`
-    // into the audit row INSIDE the transaction, so incrementing later left the GDPR erasure
-    // record permanently claiming zero media. The loop decrements if a delete actually fails.
+    // finalizeAndAudit only anonymizes the user row, and media is publicly readable, so
+    // media is deleted explicitly. Payload's upload adapter unlinks files on delete, so the
+    // deletes run post-commit; they are counted here because the audit row is written inside
+    // the transaction. The post-commit loop decrements if a delete fails.
     const mediaDocs = await findUserDocs(this.payload, "media", userId);
     for (const item of mediaDocs) {
       pendingMediaDeletes.push(item.id);
@@ -671,10 +636,8 @@ export class AccountDeletionService {
       req,
     });
 
-    // Invalidate all sessions
     await this.invalidateAllSessions(userId, req);
 
-    // Create audit log entry
     await auditLog(
       this.payload,
       {

@@ -18,13 +18,10 @@ export const MAX_FIELD_KEY_LENGTH = 64;
  * Pattern for valid field key segments (Unicode letters/digits, underscores,
  * hyphens), dot-separated.
  *
- * The class is Unicode-aware (`\p{L}`/`\p{N}`, not ASCII `[a-zA-Z0-9]`): field
- * keys are raw CSV/JSON column headers stored verbatim in `transformed_data`, so
- * an ASCII-only class silently dropped every non-ASCII-named field ("Größe",
- * "категория", "種別") from filters, sort, and group-by — the same ASCII-vs-Unicode
- * trap fixed in `normalizeGeocodingAddress`. Widening stays injection-safe because
- * every consumer passes the key as a BOUND parameter to `string_to_array(key,'.')`,
- * and the class still excludes quotes, separators, and whitespace.
+ * Unicode-aware (`\p{L}`/`\p{N}`): field keys are raw CSV/JSON column headers stored
+ * verbatim in `transformed_data`, so an ASCII class would drop non-ASCII fields ("Größe")
+ * from filters, sort and group-by. It stays injection-safe because every consumer binds the
+ * key as a parameter to `string_to_array(key,'.')`, and quotes/separators/whitespace are excluded.
  */
 // eslint-disable-next-line security/detect-unsafe-regex -- input bounded to MAX_FIELD_KEY_LENGTH before match, so nested quantifier can't ReDoS
 export const VALID_FIELD_KEY_PATTERN = /^[\p{L}\p{N}_-]+(\.[\p{L}\p{N}_-]+)*$/u;

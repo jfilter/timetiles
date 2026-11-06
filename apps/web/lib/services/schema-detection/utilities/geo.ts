@@ -124,10 +124,9 @@ export const detectPatterns = (
 /**
  * Whether arrays are the dominant shape of a column.
  *
- * Tag detection replaces the column's enum values with the elements found
- * inside its arrays, so a single stray array row in an otherwise scalar column
- * used to erase every scalar value from the filter options and mark the column
- * as a tag field. Require a majority of the non-null values to be arrays.
+ * Tag detection replaces the column's enum values with the elements found inside its
+ * arrays, so a single stray array row must not turn a scalar column into a tag field.
+ * Requires a majority of the non-null values to be arrays.
  */
 const isArrayDominant = (stats: FieldStatistics): boolean => {
   const arrayCount = stats.typeDistribution["array"] ?? 0;

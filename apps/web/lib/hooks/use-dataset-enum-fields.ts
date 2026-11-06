@@ -68,7 +68,6 @@ export const useDatasetEnumFieldsQuery = (
     queryKey: datasetEnumFieldsKeys.byDataset(datasetId, filters, bounds),
     queryFn: () => {
       const params = filters ? buildBaseEventParams(filters, {}) : new URLSearchParams();
-      // Add bounds if available
       if (bounds) {
         params.set("bounds", JSON.stringify(bounds));
       }

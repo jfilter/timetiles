@@ -88,7 +88,6 @@ export class SeedManager extends SeedManagerBase {
     }
 
     if (collections.length === 0) {
-      // Truncate all tables
       logger.info("Truncating all tables");
 
       const tableCount = await truncateTables(dbUrl, { schema: "payload", excludePatterns: ["payload_migrations%"] });

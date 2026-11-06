@@ -64,24 +64,11 @@ export const checkRateLimit = async (
   const rateLimitService = getRateLimitService(payload);
   const clientId = getClientIdentifier(request);
 
-  // Resolve the rate limit key.
-  //
-  // For authenticated requests prefer a user-scoped key: without it two users
-  // behind the same egress IP (office NAT, carrier-grade NAT, shared cloud
-  // egress, or the parallel browsers of a CI runner) share one bucket and
-  // throttle each other. IP-only keys remain the fallback for anonymous
-  // traffic and are still honored when the caller supplies an explicit
-  // `keyPrefix`.
-  //
-  // The default (non-`keyPrefix`) key MUST be namespaced by the endpoint's
-  // rate-limit config: the storage key is only `${key}:${windowName}`, so two
-  // endpoints that fall back to the same IP/user key and share a window name
-  // (e.g. "burst") would otherwise collide into ONE bucket — login requests
-  // would eat forgot-password's budget, and in production every anonymous
-  // client collapses to the single `unknown:burst` bucket. Explicit `keyPrefix`
-  // callers already own a unique namespace, so leave those untouched (this also
-  // keeps a collection hook that reuses the same explicit prefix, e.g.
-  // `scraper-sync:<id>`, sharing the endpoint's bucket on purpose).
+  // Authenticated requests get a user-scoped key so users behind one egress IP (NAT,
+  // CI runners) do not share a bucket; anonymous traffic falls back to the IP.
+  // The default key is namespaced by the endpoint config because the storage key is only
+  // `${key}:${windowName}` — otherwise endpoints sharing a window name ("burst") would share
+  // one bucket. Explicit `keyPrefix` callers own their namespace and may share it on purpose.
   const namespace = options.configName ?? options.type ?? "api";
   let key: string;
   if (typeof options.keyPrefix === "function") {
@@ -94,10 +81,8 @@ export const checkRateLimit = async (
     key = `${namespace}:${clientId}`;
   }
 
-  // Resolve the rate limit config
   const rateLimitConfig = options.config ?? (options.configName ? RATE_LIMITS[options.configName] : undefined);
 
-  // Check rate limit based on configuration
   const rateLimitCheck = rateLimitConfig
     ? await rateLimitService.checkConfiguredRateLimit(key, rateLimitConfig)
     : await rateLimitService.checkTrustLevelRateLimit(key, user, options.type ?? "API_GENERAL");

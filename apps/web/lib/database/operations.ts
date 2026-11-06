@@ -306,7 +306,6 @@ export const truncateTables = async (
   try {
     await client.connect();
 
-    // Build WHERE clause for excluded patterns
     const excludeConditions = excludePatterns.map((_, index) => `table_name NOT LIKE $${index + 2}`).join(" AND ");
 
     const query = `

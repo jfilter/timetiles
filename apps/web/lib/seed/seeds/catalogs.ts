@@ -12,7 +12,6 @@ import type { Catalog } from "@/payload-types";
 // Use Payload type with specific omissions for seed data
 export type CatalogSeed = Omit<Catalog, "id" | "createdAt" | "updatedAt">;
 
-// Helper function to create rich text description
 const createDescription = (text: string) => ({
   root: {
     type: "root",
@@ -24,7 +23,6 @@ const createDescription = (text: string) => ({
   },
 });
 
-// Helper function to create catalog entry
 const createCatalog = (
   name: string,
   description: string,

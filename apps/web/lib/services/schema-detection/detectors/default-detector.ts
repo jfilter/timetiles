@@ -20,17 +20,16 @@ import { detectFieldMappings } from "../utilities/patterns";
 /**
  * Creates a default schema detector with optional detection overrides.
  *
- * When called without options, produces the same behavior as the original
- * `defaultDetector` constant. Options allow customizing language detection,
- * field patterns, scoring weights, validators, coordinate detection, and
- * pipeline stages.
+ * When called without options, behaves like the `defaultDetector` constant.
+ * Options allow customizing language detection, field patterns, scoring weights,
+ * validators, coordinate detection, and pipeline stages.
  *
  * @param options - Optional detection options for customizing behavior
  * @returns A SchemaDetector instance
  *
  * @example
  * ```typescript
- * // No options — identical to the original defaultDetector
+ * // No options — identical to defaultDetector
  * const detector = createDefaultDetector();
  *
  * // Force German language, skip enum detection

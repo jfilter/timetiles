@@ -40,7 +40,6 @@ export class RelationshipResolver {
   private readonly stats = new Map<string, ResolutionStats>();
 
   constructor(private readonly payload: Payload) {
-    // Validate configuration on initialization
     validateRelationshipConfig();
   }
 
@@ -402,12 +401,8 @@ export class RelationshipResolver {
       const result = await this.payload.find({
         collection: collectionSlug,
         where: { [field]: { equals: value } },
-        // limit 2 + an explicit sort so a non-unique search field is both
-        // DETECTABLE and DETERMINISTIC. With limit:1 and Payload's default
-        // `-createdAt` sort, an ambiguous lookup silently returned whichever
-        // document happened to be created last and looked like a clean hit —
-        // which is how seeded events ended up attached to another catalog's
-        // identically-named dataset.
+        // limit 2 + an explicit sort make a non-unique search field both detectable and
+        // deterministic; with limit 1 an ambiguous lookup would look like a clean hit.
         limit: 2,
         sort: "id",
         depth: 0, // Minimal depth for performance

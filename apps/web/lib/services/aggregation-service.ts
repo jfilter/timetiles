@@ -121,7 +121,6 @@ export const executeAggregationQuery = async (
   // Convert map to array, sorted by count descending (0-count items at the end)
   const items = Array.from(resultMap.values()).toSorted((a, b) => b.count - a.count);
 
-  // Calculate total events
   const total = items.reduce((sum, item) => sum + item.count, 0);
 
   logger.info({ groupBy, itemCount: items.length, totalEvents: total }, "Aggregation query executed");

@@ -41,30 +41,23 @@ import {
 } from "./payload-shared-config";
 
 export interface PayloadConfigOptions {
-  // Environment type
   environment?: "production" | "test" | "development";
 
-  // Database configuration
   databaseUrl?: string;
 
-  // Server configuration
   secret?: string;
   serverURL?: string;
 
-  // Feature flags
   disableAdmin?: boolean;
   disableGraphQL?: boolean;
 
   // Collections to include (defaults to all)
   collections?: CollectionName[];
 
-  // Database pool configuration
   poolConfig?: { max?: number; connectionString?: string };
 
-  // Logging configuration
   logLevel?: "debug" | "info" | "warn" | "error" | "fatal" | "silent";
 
-  // Migration configuration
   runMigrations?: boolean;
 
   // Additional plugins (schema detection is always included)
@@ -147,7 +140,6 @@ const getEtherealTransport = async () => {
   }
 };
 
-// Helper to get logger configuration
 const getLogger = (logLevel: string | undefined, environment: string) => {
   if (logLevel === "silent" || environment === "test") {
     return { options: { level: "fatal" as const } };
@@ -158,7 +150,6 @@ const getLogger = (logLevel: string | undefined, environment: string) => {
   return undefined;
 };
 
-// Helper to create database adapter
 const createDbAdapter = (
   databaseUrl: string | undefined,
   environment: string,
@@ -188,7 +179,6 @@ const createDbAdapter = (
     prodMigrations: runMigrations ? DEFAULT_DB_CONFIG.prodMigrations : undefined,
   });
 
-// Helper to configure production-specific settings
 const configureProduction = (config: Config, serverURL: string) => {
   config.serverURL = serverURL;
   config.cors = [serverURL];
@@ -330,7 +320,6 @@ export const buildConfigWithDefaults = async (options: PayloadConfigOptions = {}
     plugins = [],
   } = options;
 
-  // Build configuration
   // SECURITY: `secret` originates from `getEnv().PAYLOAD_SECRET`, which Zod-validates
   // at runtime and errors if missing. We intentionally do NOT fall back to a
   // guessable string here — a missing secret must hard-fail, never silently
@@ -374,7 +363,6 @@ export const buildConfigWithDefaults = async (options: PayloadConfigOptions = {}
 
   await configureEmail(config, env, environment);
 
-  // Add production-specific configuration
   if (environment === "production" && serverURL) {
     configureProduction(config, serverURL);
   }

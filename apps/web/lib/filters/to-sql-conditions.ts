@@ -298,14 +298,8 @@ const buildH3ColumnSql = (h3Resolution: number): SqlFragment => {
 /**
  * Filter events by pre-computed H3 cell column at the given resolution.
  *
- * `null` means "no filter was asked for" and nothing is added to the query. It
- * must NOT also mean "a filter was asked for but every cell was invalid" —
- * that conflation made the filter fail OPEN: a request carrying only malformed
- * cells silently returned the whole result set instead of nothing. Callers add
- * the returned fragment or skip it, so they cannot tell the two apart.
- *
- * An asked-for filter that matches no valid cell therefore yields FALSE, the
- * same shape cluster-summary already used.
+ * `null` means "no filter was asked for". A filter that was asked for but has no valid
+ * cell yields FALSE instead, so malformed cells can never fail open to the full result set.
  */
 export const buildH3CellSqlCondition = (clusterCells?: string[], h3Resolution?: number): SqlFragment | null => {
   if (!clusterCells || clusterCells.length === 0 || h3Resolution == null) return null;

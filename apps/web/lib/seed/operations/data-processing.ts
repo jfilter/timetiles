@@ -100,7 +100,6 @@ export class DataProcessing {
       const baseItem = itemsArray[i % itemsArray.length];
       const newItem = structuredClone(baseItem) as Record<string, unknown>;
 
-      // Apply collection-specific variations
       this.applyCollectionSpecificVariations(newItem, i, collectionName);
 
       additional.push(newItem);
@@ -230,14 +229,9 @@ export class DataProcessing {
    * Vary a cloned user seed — and strip everything that must not be cloned.
    *
    * Padding a collection to its configured count round-robins `structuredClone`
-   * over the base seeds, and the first of those is the ADMIN. Varying only the
-   * email and first name meant every clone of it kept `role: "admin"`, an
-   * UNLIMITED trust level, and — worst — the admin's literal `apiKey` value. The
-   * development preset seeds 15 users from 6 base seeds, so a normal `pnpm seed`
-   * minted extra administrators that all authenticated with the same API key.
-   *
-   * A clone is a filler account: it gets the ordinary user role and default
-   * trust, and no API credentials at all.
+   * over the base seeds, the first of which is the ADMIN. A clone is a filler
+   * account: it gets the ordinary user role and default trust, and no API
+   * credentials, so it never inherits the admin's role or literal `apiKey`.
    */
   private applyUserVariations(newItem: Record<string, unknown>, index: number): void {
     if (this.isStringField(newItem, "email")) {

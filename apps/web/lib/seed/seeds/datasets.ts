@@ -17,7 +17,6 @@ export type DatasetSeed = Omit<Dataset, "id" | "createdAt" | "updatedAt" | "cata
   catalog: string; // This will be resolved to catalog ID during seeding
 };
 
-// Helper function to create rich text description
 const createDescription = (text: string) => ({
   root: {
     type: "root",
@@ -151,7 +150,6 @@ const deriveNumberFields = (schema: { [k: string]: unknown } | null): string[] =
     .map(([field]) => field);
 };
 
-// Create dataset from template
 const createDatasetFromTemplate = (
   template: { name: string; description: string; slug: string },
   catalog: { slug: string; type: string },

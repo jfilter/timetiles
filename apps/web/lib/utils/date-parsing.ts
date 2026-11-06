@@ -212,8 +212,7 @@ const inferDayMonthOrder = (
  * Resolve the day/month part order for a separated date.
  *
  * When the column's order is known (`dayMonthOrder`, decided once per column by
- * the schema detector), use it directly — this is the per-column fix that avoids
- * re-guessing each row. Otherwise fall back to the legacy per-row heuristic.
+ * the schema detector), use it directly; otherwise fall back to the per-row heuristic.
  */
 const resolveSeparatedOrder = (
   first: number,
@@ -314,8 +313,7 @@ const parseIsoDate = (value: string): Date | null => {
  *
  * When `dayMonthOrder` is supplied (the column's order decided once by schema
  * detection), separated dates use it instead of the per-row `inferDayMonthOrder`
- * heuristic — the per-column fix for the silent DD/MM-vs-MM/DD bug. Omitting it
- * preserves the exact legacy behavior.
+ * heuristic, which is used when it is omitted.
  */
 export const parseImportDate = (value: ImportDateInput, dayMonthOrder?: DayMonthOrder): Date | null => {
   if (value == null) return null;
@@ -407,12 +405,11 @@ const calendarPartsIn = (date: Date, timeZone?: string): { year: number; month: 
 /**
  * Render a date in one of the DATE_FORMAT_OPTIONS patterns.
  *
- * Counterpart to `parseImportDateWithFormat` — the transform editor offers nine output
- * formats, and every one of them except ISO 8601 used to come out as `YYYY-MM-DD`.
+ * Counterpart to `parseImportDateWithFormat`.
  *
  * `timeZone` is the zone whose calendar date is meant. It matters for date-only output:
  * the instant for "2024-06-15 in Asia/Tokyo" is 2024-06-14T15:00Z, so reading the parts off
- * UTC moved the date a day back for every zone east of Greenwich.
+ * UTC would move the date a day back for every zone east of Greenwich.
  *
  * An unknown pattern falls back to `YYYY-MM-DD`.
  */

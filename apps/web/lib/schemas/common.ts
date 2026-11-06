@@ -156,11 +156,8 @@ const wrapLongitude = (lng: number): number =>
 /**
  * Normalize map-viewport bounds before validation.
  *
- * A fully zoomed-out or antimeridian-crossing map viewport is a legitimate
- * state, not malformed input: MapLibre's `getBounds()` reports *unwrapped*
- * longitudes (e.g. `west: -197.4` on the world view, or `east: 185` after
- * panning across the dateline). Rejecting those made `/api/v1/events/geo`
- * return 400 on the initial world view. Instead:
+ * A fully zoomed-out or antimeridian-crossing viewport is legitimate: MapLibre's
+ * `getBounds()` reports *unwrapped* longitudes (e.g. `west: -197.4` on the world view).
  *
  * - spans ≥ 360° collapse to the full world,
  * - out-of-range longitudes are wrapped into [-180, 180]; the result may have
@@ -190,13 +187,8 @@ const normalizeBoundsObject = (parsed: Record<string, unknown>): Record<string, 
   let normSouth = Number.isFinite(south) ? Math.max(south, -90) : south;
 
   // A zero-height viewport is degenerate, not malformed: /api/v1/events/bounds returns raw
-  // MIN/MAX with no padding, so a single event — or a filter narrowing to one latitude —
-  // yields north === south, and the mobile explorer seeds the viewport straight from it.
-  // Validation requires north > south, so without this widening those users would get a 422
-  // on every bounded query instead of seeing their one event.
-  // Only exact equality is widened. An INVERTED range (north < south) stays invalid — that is
-  // a caller error, not a viewport, and silently repairing it would filter by something the
-  // caller never asked for.
+  // MIN/MAX, so a single event yields north === south, which validation (north > south)
+  // would reject with a 422. Only exact equality is widened; an inverted range stays invalid.
   if (typeof normNorth === "number" && typeof normSouth === "number" && normNorth === normSouth) {
     normNorth = Math.min(90, normSouth + DEGENERATE_BOUNDS_EPSILON);
     if (normNorth <= normSouth) normSouth = Math.max(-90, normNorth - DEGENERATE_BOUNDS_EPSILON);
@@ -217,8 +209,7 @@ const normalizeBoundsObject = (parsed: Record<string, unknown>): Record<string, 
  *
  * An absent (or empty) parameter yields `undefined` — no spatial filter. A parameter that is
  * PRESENT but malformed is returned unchanged so the schema rejects it, for the same reason
- * `ff`/`rf` do: silently dropping it made a broken viewport return every event worldwide with
- * HTTP 200, which reads as "there is nothing here" rather than "your filter was invalid".
+ * `ff`/`rf` do: silently dropping it would return every event worldwide with HTTP 200.
  */
 export const parseBoundsString = (val: unknown): unknown => {
   if (typeof val !== "string" || !val) return undefined;

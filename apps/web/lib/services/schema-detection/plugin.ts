@@ -115,10 +115,8 @@ export const schemaDetectionPlugin = (options: SchemaDetectionPluginOptions = {}
     // Create the detection service with all detectors
     const service = new SchemaDetectionService(detectors);
 
-    // Start building the modified config
     const config: Config = { ...incomingConfig };
 
-    // Add the schema-detectors collection
     config.collections = [...(config.collections ?? []), createSchemaDetectorsCollection(collectionSlug)];
 
     // Optionally extend the Datasets collection

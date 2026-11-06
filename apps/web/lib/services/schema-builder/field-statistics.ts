@@ -145,10 +145,8 @@ export const updateFieldStats = (stats: FieldStatistics, value: unknown, maxUniq
     }
   }
 
-  // Update unique count
   stats.uniqueValues = stats.uniqueSamples.length;
 
-  // Update last seen
   stats.lastSeen = new Date();
 };
 

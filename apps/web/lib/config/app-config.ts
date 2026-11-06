@@ -107,21 +107,16 @@ const RATE_LIMIT_ENDPOINTS = [
 /**
  * All rate limit endpoint names.
  *
- * Derived from {@link RATE_LIMIT_ENDPOINTS}: restating the list as a hand-written
- * union let the two drift — a new endpoint validated at runtime was still a type
- * error at the route that used it.
+ * Derived from {@link RATE_LIMIT_ENDPOINTS} so the runtime list and the type cannot drift.
  */
 export type RateLimitName = (typeof RATE_LIMIT_ENDPOINTS)[number];
 
 /**
  * Reject record keys outside a known set.
  *
- * `z.record(z.string(), …)` accepts any key, and the merge step in
- * `buildConfig` then drops keys it does not recognise. A misspelled trust level
- * or endpoint therefore used to load "successfully" while silently applying the
- * defaults the operator meant to override. (A keyed `z.record` is not usable
- * here: zod 4 makes an enum-keyed record exhaustive, which would force every
- * key to be present.)
+ * `z.record(z.string(), …)` accepts any key and `buildConfig` drops keys it does not
+ * recognise, so a misspelled trust level or endpoint would silently apply the defaults.
+ * (An enum-keyed `z.record` is exhaustive in zod 4, forcing every key to be present.)
  */
 const rejectUnknownKeys = (allowedKeys: readonly string[], label: string) => (value: object, ctx: z.RefinementCtx) => {
   for (const key of Object.keys(value)) {
@@ -181,7 +176,7 @@ const yamlConfigSchema = z
   .strict();
 
 // ---------------------------------------------------------------------------
-// Default values (extracted from current constants files)
+// Default values
 // ---------------------------------------------------------------------------
 
 const DEFAULT_RATE_LIMITS = {

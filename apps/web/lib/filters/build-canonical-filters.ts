@@ -32,9 +32,6 @@ export interface BuildCanonicalFiltersOptions {
 
 /**
  * Build canonical event filters with access control and normalization.
- *
- * Consolidates logic previously spread across event-filters.ts,
- * aggregation-filters.ts, event-sql-filters.ts, and events/route.ts.
  */
 export const buildCanonicalFilters = ({
   parameters,
@@ -84,12 +81,8 @@ export const buildCanonicalFilters = ({
   // Field + numeric range filters (validate keys/bounds at construction time)
   applyDataFieldFilters(filters, parameters);
 
-  // H3 cell filter (precise spatial constraint).
-  //
-  // Cells that cannot be applied must deny, never fall through to "no spatial filter":
-  // `?clusterCells=8a2a...` with no `h3Resolution` used to return the whole dataset with
-  // HTTP 200. This mirrors buildH3CellSqlCondition, which emits FALSE when cells were
-  // requested but none survive validation.
+  // H3 cell filter. Cells that cannot be applied must deny, never fall through to
+  // "no spatial filter" — mirrors buildH3CellSqlCondition, which emits FALSE.
   if (parameters.clusterCells != null) {
     const cells = parameters.clusterCells.split(",").filter(Boolean);
     if (cells.length === 0 || parameters.h3Resolution == null) {
@@ -114,11 +107,9 @@ export const buildCanonicalFilters = ({
  * plan in resolveEventQueryContext, which also enforces the single-dataset gate.
  */
 const applyDataFieldFilters = (filters: CanonicalEventFilters, parameters: EventQueryParams): void => {
-  // A dropped filter must never degrade into "no filter". Sanitizing silently meant an
-  // unusable key (too long, invalid characters, too deep a path, empty value list) produced
-  // HTTP 200 with the FULL result set — the caller asked to narrow the data and got all of it.
-  // An unusable KEY is a client error — reject it. An entry with no constraint
-  // (empty value list, both bounds null) is benign and is still dropped silently.
+  // A dropped filter must never degrade into "no filter" (HTTP 200 with the full result
+  // set). An unusable KEY is a client error and is rejected; an entry with no constraint
+  // (empty value list, both bounds null) is benign and is dropped.
   const invalidFieldKeys = Object.keys(parameters.ff).filter((key) => !isValidFieldKey(key));
   if (invalidFieldKeys.length > 0) {
     throw new ValidationError(`Invalid field filter key(s): ${invalidFieldKeys.join(", ")}`);
@@ -145,10 +136,9 @@ const applyDataFieldFilters = (filters: CanonicalEventFilters, parameters: Event
 /**
  * Apply the start/end date range, expanding date-only ends to the full UTC day.
  *
- * An inverted pair (start after end) describes an EMPTY interval, so it must match nothing.
- * Dropping both bounds instead made the request fail OPEN: `?startDate=2026-06-01&
- * endDate=2026-01-01` returned every accessible event with HTTP 200, while the UI still
- * showed the date range as an active filter. `denyResults` is the established idiom here
+ * An inverted pair (start after end) describes an EMPTY interval, so it must match nothing;
+ * dropping both bounds would fail OPEN and return every accessible event with HTTP 200.
+ * `denyResults` is the established idiom here
  * for "these filters are well-formed but can match no row" (see applyScopeConstraints).
  */
 const applyDateRange = (filters: CanonicalEventFilters, parameters: EventQueryParams): void => {

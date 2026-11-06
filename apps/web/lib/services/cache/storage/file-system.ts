@@ -152,7 +152,6 @@ export class FileSystemCacheStorage {
     const filePath = this.getCacheFilePath(key);
     const fileDir = path.dirname(filePath);
 
-    // Ensure subdirectory exists
     await fs.mkdir(fileDir, { recursive: true });
 
     const now = new Date();
@@ -194,7 +193,6 @@ export class FileSystemCacheStorage {
 
     await this.saveIndex();
 
-    // Check if cleanup needed
     if (this.stats.totalSize > this.maxSize) {
       await this.cleanup();
     }
@@ -250,7 +248,6 @@ export class FileSystemCacheStorage {
 
     let cleaned = 0;
 
-    // Remove expired entries
     cleaned += await this.cleanupExpiredEntries();
 
     // If still over size limit, remove least recently used
@@ -286,8 +283,7 @@ export class FileSystemCacheStorage {
     let cleaned = 0;
     const entries: Array<{ key: string; lastAccessed: number }> = [];
 
-    // Access times come from the index — reading every payload here loaded the whole cache
-    // into memory just to sort it.
+    // Access times come from the index so eviction never reads cache payloads.
     for (const [key, indexEntry] of this.index) {
       entries.push({ key, lastAccessed: indexEntry.lastAccessedAt ?? indexEntry.createdAt ?? 0 });
     }

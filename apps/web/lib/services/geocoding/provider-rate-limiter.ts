@@ -74,16 +74,10 @@ export class ProviderRateLimiter {
   async waitForSlot(providerName: string): Promise<void> {
     const state = this.getOrCreateState(providerName);
 
-    // Chain: this caller waits for the previous slot and per-request interval,
-    // then honors any active backoff before proceeding. The async IIFE preserves
-    // synchronous chain assignment while avoiding a TOCTOU race between
-    // concurrent callers.
-    //
-    // The backoff is evaluated *inside* the chain (not before joining it) and
-    // re-read in a loop: a throttle reported by an earlier in-flight request
-    // must be observed by callers already queued, and reportThrottle can
-    // extend backoffUntil while we sleep. Otherwise queued callers would skip
-    // the backoff and burst the moment the first one's wait elapses.
+    // Chain: each caller waits for the previous slot and the per-request interval. The
+    // async IIFE keeps the chain assignment synchronous, avoiding a TOCTOU race. Backoff is
+    // re-read in a loop inside the chain, so callers already queued observe a throttle
+    // reported (or extended by reportThrottle) after they joined, instead of bursting.
     const minInterval = 1000 / state.requestsPerSecond;
     const previousSlot = state.lastSlotPromise;
     const mySlot = (async () => {

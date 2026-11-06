@@ -54,11 +54,9 @@ export abstract class SeedManagerBase {
       this.payload = await getPayload({ config: await buildConfigWithDefaults() });
       logger.debug("Payload instance initialized successfully");
 
-      // Initialize relationship resolver
       this.relationshipResolver = new RelationshipResolver(this.payload);
       logger.debug("RelationshipResolver initialized");
 
-      // Initialize database operations
       this.databaseOperations = new DatabaseOperations(this.payload);
       logger.debug("DatabaseOperations initialized");
     }
@@ -110,7 +108,6 @@ export abstract class SeedManagerBase {
       this.closeDrizzleConnections();
     }
 
-    // Clean up Payload instance
     this.cleanupPayloadInstance();
   }
 

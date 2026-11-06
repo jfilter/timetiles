@@ -178,11 +178,9 @@ export const revokeOtherSessions = async (
 /**
  * Change a password AND revoke the other sessions, atomically.
  *
- * Both writes commit together or not at all. Committing the password first and
- * treating the session wipe as best-effort meant a transient failure there left
- * every stolen session alive while the caller was told the password had changed
- * — the one thing a password change is supposed to stop. Same reasoning and
- * shape as {@link resetPasswordAndClearSessions}.
+ * Both writes commit together or not at all: with a best-effort session wipe, a
+ * transient failure would leave every stolen session alive while the caller is told
+ * the password changed. Same shape as {@link resetPasswordAndRevokeSessions}.
  */
 export const changePasswordAndRevokeOtherSessions = async (
   payload: Payload,
@@ -211,19 +209,11 @@ export const changePasswordAndRevokeOtherSessions = async (
 /**
  * Reset a user's password AND clear every session, atomically.
  *
- * A password reset is finalized from an unauthenticated request with only an
- * emailed token, so — unlike an in-session password change (which keeps the
- * current device via {@link revokeOtherSessions}) — there is no session to
- * preserve, and the reset is precisely the moment to lock out any pre-existing
- * (possibly attacker) session. Payload's built-in resetPassword commits the new
- * password AND mints a fresh session on its own; wiping sessions as a separate,
- * best-effort write meant a transient failure there left the old + new sessions
- * alive while the caller still returned success.
- *
- * Running both inside ONE transaction fixes that: the password change and the
- * `sessions: []` wipe commit together or roll back together. A rollback also
- * un-consumes the reset token (resetPassword's expiry reset is undone), so the
- * emailed link stays usable for a retry rather than being silently burned.
+ * A reset is finalized from an unauthenticated request, so there is no session to keep
+ * (unlike {@link revokeOtherSessions}), and it is the moment to lock out any pre-existing
+ * session. Payload's resetPassword commits the password and mints a session itself; running
+ * it and the `sessions: []` wipe in ONE transaction makes them commit or roll back together.
+ * A rollback also un-consumes the reset token, so the emailed link stays usable for a retry.
  *
  * @returns the reset user, or undefined if resetPassword returned none.
  * @throws if the token is invalid/expired or the transaction fails.

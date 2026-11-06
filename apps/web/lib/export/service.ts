@@ -245,7 +245,6 @@ export class DataExportService {
       yield events;
       lastId = result.docs.at(-1)?.id ?? lastId;
 
-      // If we got fewer than the batch size, we're done
       if (result.docs.length < EVENTS_PER_CHUNK) break;
     }
   }
@@ -544,7 +543,6 @@ export class DataExportService {
     baseData: Omit<ExportData, "events">,
     signal: AbortSignal
   ): Promise<void> {
-    // Get dataset IDs for events
     const datasetIds = baseData.datasets.map((d) => d.id);
 
     // Add events in chunks
@@ -578,7 +576,6 @@ export class DataExportService {
    * Execute the full export process.
    */
   async executeExport(exportId: number): Promise<ExecuteExportResult> {
-    // Fetch export record
     const exportRecord = await this.payload.findByID({
       collection: "data-exports",
       id: exportId,
@@ -593,13 +590,10 @@ export class DataExportService {
 
     logger.info({ exportId, userId }, "Starting data export");
 
-    // Fetch all user data
     const baseData = await this.fetchAllUserData(userId);
 
-    // Get summary for manifest
     const summary = await this.getExportSummary(userId);
 
-    // Create archive
     const { filePath, fileSize } = await this.createArchive(exportId, userId, baseData, summary);
 
     logger.info({ exportId, userId, filePath, fileSize }, "Data export completed");

@@ -127,10 +127,8 @@ export const applyRealisticPatterns = (events: unknown[], options: RealisticPatt
     const varied: Record<string, unknown> = { ...event };
     const originalEvent = event as Record<string, unknown>;
 
-    // Apply temporal patterns
     applyRealisticTemporal(varied, originalEvent, rng, { temporalDistribution, weekdayBias, businessHoursBias });
 
-    // Apply geographic patterns
     applyRealisticGeo(varied, rng, { useGeographicClustering, clusterCenters });
 
     // Vary title

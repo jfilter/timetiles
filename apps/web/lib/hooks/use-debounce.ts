@@ -37,18 +37,9 @@ import { useEffect, useRef, useState } from "react";
  */
 export const useDebounce = <T>(value: T, delay: number): T => {
   const [debouncedValue, setDebouncedValue] = useState<T>(value);
-  // The initial value is available immediately (via `useState(value)`), so first
-  // render pays no artificial `delay` latency. The mount-time effect run below is
-  // a no-op pass-through that simply marks the first render as handled — it must
-  // NOT schedule a timer, otherwise the very first paint would flash the initial
-  // value and then re-set it `delay` ms later. Every subsequent value change is
-  // trailing-debounced: rapid sequential updates collapse into a single update
-  // that fires `delay` ms after the last change.
-  //
-  // Note: this is intentionally trailing-on-change (not leading). Leading-edge on
-  // the first change would fire e.g. a search request on the first keystroke,
-  // which is the opposite of what these inputs want. The unit tests in
-  // use-debounce.test.ts encode this trailing contract.
+  // The first render returns `value` immediately; the mount-time effect must not schedule
+  // a timer, or the first paint would re-set the value `delay` ms later. Later changes are
+  // trailing-debounced (not leading), so e.g. a search does not fire on the first keystroke.
   const hasFiredRef = useRef(false);
 
   useEffect(() => {

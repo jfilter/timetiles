@@ -77,16 +77,6 @@ const findCoordinateField = (
   return bestMatch;
 };
 
-/**
- * Check if samples contain comma-separated coordinates and determine lat/lng order.
- *
- * When samples don't unambiguously imply one order (common for mid-latitude
- * clusters where both values fit inside [-90, 90]), returns
- * `format: "ambiguous"` with a reduced confidence — the caller must then ask
- * the user rather than silently picking a default. Silently defaulting to
- * "lat,lng" was the bug M3 is fixing: mid-latitude "lng,lat" data rendered on
- * the wrong continent with no warning.
- */
 const MIN_SAMPLES_FOR_ORDER_DECISION = 3;
 
 const tallyCommaSample = (
@@ -105,6 +95,14 @@ const tallyCommaSample = (
   else if (looksLngLat && !looksLatLng) counts.lngLatOnly++;
 };
 
+/**
+ * Check if samples contain comma-separated coordinates and determine lat/lng order.
+ *
+ * When samples don't unambiguously imply one order (common for mid-latitude
+ * clusters where both values fit inside [-90, 90]), returns
+ * `format: "ambiguous"` with a reduced confidence — the caller must then ask
+ * the user: a silent "lat,lng" default would put "lng,lat" data on the wrong continent.
+ */
 const checkCommaFormat = (
   samples: unknown[]
 ): { format: "lat,lng" | "lng,lat" | "ambiguous"; confidence: number } | null => {

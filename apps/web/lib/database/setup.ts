@@ -120,10 +120,8 @@ export const enablePostGIS = async (databaseName: string): Promise<void> => {
   try {
     await client.connect();
 
-    // Create PostGIS extension
     await client.query("CREATE EXTENSION IF NOT EXISTS postgis");
 
-    // Create PostGIS topology extension
     await client.query("CREATE EXTENSION IF NOT EXISTS postgis_topology");
 
     logger.debug(`PostGIS enabled for database: ${databaseName}`);
@@ -180,6 +178,52 @@ export const runMigrations = (connectionString: string): void => {
   }
 };
 
+const resolveDatabaseConnection = (
+  databaseName: string,
+  connectionString?: string
+): { dbName: string; connString: string } => {
+  if (connectionString) {
+    const parsed = parseDatabaseUrl(connectionString);
+    return { dbName: parsed.database, connString: connectionString };
+  }
+
+  const baseUrl = getEnv().DATABASE_URL;
+  if (!baseUrl) {
+    throw new Error("DATABASE_URL environment variable is required");
+  }
+
+  const connString = withDatabaseName(baseUrl, databaseName);
+
+  return { dbName: databaseName, connString };
+};
+
+const logVerbose = (verbose: boolean, message: string): void => {
+  if (verbose) {
+    logger.info(message);
+  }
+};
+
+const shouldSkipSetup = async (
+  dbName: string,
+  skipIfExists: boolean,
+  dropIfExists: boolean,
+  verbose: boolean
+): Promise<boolean> => {
+  const exists = await databaseExists(dbName);
+
+  if (exists && skipIfExists && !dropIfExists) {
+    logVerbose(verbose, `Database ${dbName} already exists, skipping setup`);
+    return true;
+  }
+
+  if (dropIfExists && exists) {
+    logVerbose(verbose, `Dropping existing database: ${dbName}`);
+    await dropDatabase(dbName, { ifExists: true });
+  }
+
+  return false;
+};
+
 /**
  * Setup a database with standard configuration.
  *
@@ -217,56 +261,6 @@ export const runMigrations = (connectionString: string): void => {
  * });
  * ```
  */
-// Helper to resolve database name and connection string
-const resolveDatabaseConnection = (
-  databaseName: string,
-  connectionString?: string
-): { dbName: string; connString: string } => {
-  if (connectionString) {
-    const parsed = parseDatabaseUrl(connectionString);
-    return { dbName: parsed.database, connString: connectionString };
-  }
-
-  const baseUrl = getEnv().DATABASE_URL;
-  if (!baseUrl) {
-    throw new Error("DATABASE_URL environment variable is required");
-  }
-
-  const connString = withDatabaseName(baseUrl, databaseName);
-
-  return { dbName: databaseName, connString };
-};
-
-// Helper to log if verbose mode is enabled
-const logVerbose = (verbose: boolean, message: string): void => {
-  if (verbose) {
-    logger.info(message);
-  }
-};
-
-// Helper to handle existing database check
-const shouldSkipSetup = async (
-  dbName: string,
-  skipIfExists: boolean,
-  dropIfExists: boolean,
-  verbose: boolean
-): Promise<boolean> => {
-  const exists = await databaseExists(dbName);
-
-  if (exists && skipIfExists && !dropIfExists) {
-    logVerbose(verbose, `Database ${dbName} already exists, skipping setup`);
-    return true;
-  }
-
-  // Drop database if it exists and dropIfExists is true
-  if (dropIfExists && exists) {
-    logVerbose(verbose, `Dropping existing database: ${dbName}`);
-    await dropDatabase(dbName, { ifExists: true });
-  }
-
-  return false;
-};
-
 export const setupDatabase = async (options: DatabaseSetupOptions): Promise<void> => {
   const {
     databaseName,
@@ -281,30 +275,24 @@ export const setupDatabase = async (options: DatabaseSetupOptions): Promise<void
 
   logVerbose(verbose, `Setting up database: ${databaseName}`);
 
-  // Resolve database name and connection string
   const { dbName, connString } = resolveDatabaseConnection(databaseName, connectionString);
 
-  // Check if we should skip setup
   const skip = await shouldSkipSetup(dbName, skipIfExists, dropIfExists, verbose);
   if (skip) return;
 
-  // Create database
   logVerbose(verbose, `Creating database: ${dbName}`);
   await createDatabase(dbName, { ifNotExists: true });
 
-  // Enable PostGIS if requested
   if (enablePostGISOption) {
     logVerbose(verbose, "Enabling PostGIS extension...");
     await enablePostGIS(dbName);
   }
 
-  // Create payload schema if requested
   if (createPayloadSchemaOption) {
     logVerbose(verbose, "Creating payload schema...");
     await createPayloadSchema(dbName);
   }
 
-  // Run migrations if requested
   if (runMigrationsOption) {
     logVerbose(verbose, "Running migrations...");
     runMigrations(connString);

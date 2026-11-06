@@ -73,11 +73,12 @@ export const resolveEventQueryContext = async ({
 };
 
 /**
- * Resolve dataset-level field semantics for active field/range filters.
+ * Resolve dataset-scoped filter context (tag-field containment + number formats
+ * for range filters) onto `filters`. Exported so the per-dataset stats routes
+ * (enum-stats / numeric-stats) apply the SAME resolution as the main event endpoints.
  *
- * Both resolutions are SINGLE-DATASET only (confirmed decision — the explore
- * UI offers categorical and range filters only with exactly one dataset
- * selected), so the dataset document is loaded ONCE for both:
+ * Both resolutions are SINGLE-DATASET only (the explore UI offers categorical and
+ * range filters only with exactly one dataset selected), so the dataset is loaded ONCE:
  *
  * - Tag fields: field-filter keys whose {@link FieldStatistics.isTagField} is
  *   set are collected into `filters.tagFields`, switching the SQL builders and
@@ -86,14 +87,7 @@ export const resolveEventQueryContext = async ({
  * - Range formats: each range key's number-kind column policy is projected to
  *   a {@link NumberFormat}. A range key with no number column policy is
  *   denied: without a known format we cannot safely normalize stored text to
- *   `::numeric`. Range filters also require exactly one dataset.
- */
-/**
- * Resolve dataset-scoped filter context (tag-field containment + number formats
- * for range filters) onto `filters`. Exported so the per-dataset stats routes
- * (enum-stats / numeric-stats) apply the SAME resolution as the main event
- * endpoints; without it a tag filter takes the scalar SQL branch (zeroing rows)
- * and range filters are silently dropped.
+ *   `::numeric`.
  */
 export const resolveDatasetFieldContext = async (
   filters: CanonicalEventFilters,

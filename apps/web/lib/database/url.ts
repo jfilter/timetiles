@@ -85,10 +85,8 @@ export const deriveDatabaseUrl = (baseUrl: string, options: DeriveDatabaseUrlOpt
   // eslint-disable-next-line security/detect-unsafe-regex -- Simple bounded regex for database name cleanup
   baseName = baseName.replace(/_test(_\d+)?$/, "");
 
-  // Add _test suffix
   const testBaseName = `${baseName}_test`;
 
-  // Add worker ID if provided
   const derivedName = options.workerId ? `${testBaseName}_${options.workerId}` : testBaseName;
 
   return withDatabaseName(baseUrl, derivedName);

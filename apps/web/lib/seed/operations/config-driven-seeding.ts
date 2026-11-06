@@ -141,9 +141,7 @@ export class ConfigDrivenSeeding {
       }
 
       // randomSeed reaches the generators only through a collection's `options`
-      // (that is where applyDataTransformations reads it from), so it has to be
-      // merged in here. Without this the --seed/--random flags were parsed and
-      // then dropped, and "deterministic random data" was never deterministic.
+      // (read by applyDataTransformations), so the --seed/--random overrides merge it in here.
       const withOverrides = this.applyConfigOverrides(config, configOverrides, collectionName);
       const finalConfig =
         randomSeed === undefined
@@ -166,7 +164,6 @@ export class ConfigDrivenSeeding {
           overallResults.totalFailed += result.failed;
           overallResults.collectionsProcessed++;
 
-          // Track collections with failures
           if (result.failed > 0) {
             overallResults.collectionsFailed.push(collectionName);
           }
@@ -282,7 +279,6 @@ export class ConfigDrivenSeeding {
   ): void {
     const duration = Date.now() - startTime;
 
-    // Log overall summary
     logger.info(
       {
         duration,
@@ -295,7 +291,6 @@ export class ConfigDrivenSeeding {
       `Seed completed in ${(duration / 1000).toFixed(1)}s: ${overallResults.totalCreated} created, ${overallResults.totalSkipped} skipped, ${overallResults.totalFailed} failed`
     );
 
-    // Warn about collections with failures
     if (overallResults.collectionsFailed.length > 0) {
       logger.warn(
         { failedCollections: overallResults.collectionsFailed },
