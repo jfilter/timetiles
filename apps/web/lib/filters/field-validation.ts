@@ -23,7 +23,7 @@ export const MAX_FIELD_KEY_LENGTH = 64;
  * from filters, sort and group-by. It stays injection-safe because every consumer binds the
  * key as a parameter to `string_to_array(key,'.')`, and quotes/separators/whitespace are excluded.
  */
-// eslint-disable-next-line security/detect-unsafe-regex -- input bounded to MAX_FIELD_KEY_LENGTH before match, so nested quantifier can't ReDoS
+// oxlint-disable-next-line security/detect-unsafe-regex -- input bounded to MAX_FIELD_KEY_LENGTH before match, so nested quantifier can't ReDoS
 export const VALID_FIELD_KEY_PATTERN = /^[\p{L}\p{N}_-]+(\.[\p{L}\p{N}_-]+)*$/u;
 
 /**

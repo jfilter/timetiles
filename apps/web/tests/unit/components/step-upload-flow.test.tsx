@@ -59,9 +59,7 @@ const resetStore = (overrides?: Partial<WizardState>) => {
 // ---------------------------------------------------------------------------
 let fetchMock: ReturnType<typeof vi.fn<typeof globalThis.fetch>>;
 
-// eslint-disable promise/prefer-await-to-then -- Mock response factory
 const jsonResponse = (data: unknown, ok = true) => Promise.resolve(Response.json(data, { status: ok ? 200 : 400 }));
-// eslint-enable promise/prefer-await-to-then
 
 const apiSuccess = {
   sheets: [{ index: 0, name: "Sheet1", rowCount: 42, headers: ["col1", "col2"], sampleData: [] }],

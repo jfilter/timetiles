@@ -120,7 +120,6 @@ packages/
   assets/           Logos and static assets
   shared/           Logic shared by web and timescrape
   scraper/          Scraper SDK
-  eslint-config/    Shared ESLint config
   typescript-config/ Shared TypeScript config
 ```
 

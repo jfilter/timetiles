@@ -27,7 +27,7 @@ jobs:
         # 'in' operator to search for 'importer' in undefined".
         run: pnpm exec oxfmt --check --threads=1 .
 
-      - name: Lint code (oxlint + ESLint)
+      - name: Lint code (oxlint)
         timeout-minutes: 5
         run: pnpm lint --filter=!docs
 

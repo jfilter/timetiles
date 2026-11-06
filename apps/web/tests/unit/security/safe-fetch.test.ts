@@ -1,4 +1,4 @@
-/* eslint-disable sonarjs/no-hardcoded-ip -- IP addresses are intentional test values for SSRF validation */
+/* oxlint-disable sonarjs/no-hardcoded-ip -- IP addresses are intentional test values for SSRF validation */
 /**
  * Unit tests for SSRF-safe fetch wrapper.
  *

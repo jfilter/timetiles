@@ -76,7 +76,7 @@ export default async function globalSetup(): Promise<void> {
   // Start the geocoding stub before seeding so the seed can point a geocoding-providers row
   // at it. It runs in-process on an ephemeral port and is released when the runner exits.
   const stub = await startGeocodingStubServer();
-  // eslint-disable-next-line turbo/no-undeclared-env-vars -- E2E-only env var
+  // oxlint-disable-next-line turbo/no-undeclared-env-vars -- E2E-only env var
   process.env.E2E_GEOCODING_STUB_URL = stub.url;
   console.log(`🗺️ Geocoding stub server listening at ${stub.url}`);
 
@@ -84,7 +84,7 @@ export default async function globalSetup(): Promise<void> {
   await cleanupStaleE2EDatabases(dbPrefix, databaseName);
 
   // Teardown must know the exact database even if migrations or startup fail.
-  // eslint-disable-next-line turbo/no-undeclared-env-vars -- E2E teardown ownership
+  // oxlint-disable-next-line turbo/no-undeclared-env-vars -- E2E teardown ownership
   process.env.E2E_DATABASE_NAME = databaseName;
 
   await setupDatabase({
@@ -146,10 +146,10 @@ export default async function globalSetup(): Promise<void> {
   });
 
   // Register ownership before readiness checks can fail.
-  /* eslint-disable turbo/no-undeclared-env-vars -- E2E teardown metadata */
+  /* oxlint-disable turbo/no-undeclared-env-vars -- E2E teardown metadata */
   process.env.E2E_SERVER_PORT = String(serverPort);
   process.env.E2E_SERVER_PID = String(serverProcess.pid ?? "");
-  /* eslint-enable turbo/no-undeclared-env-vars */
+  /* oxlint-enable turbo/no-undeclared-env-vars */
 
   if (serverProcess) {
     serverProcess.stdout?.on("data", (data: Buffer) => {
@@ -182,7 +182,7 @@ export default async function globalSetup(): Promise<void> {
     cwd: webDir,
   });
 
-  // eslint-disable-next-line turbo/no-undeclared-env-vars -- E2E teardown metadata
+  // oxlint-disable-next-line turbo/no-undeclared-env-vars -- E2E teardown metadata
   process.env.E2E_WORKER_PID = String(wp.pid ?? "");
 
   wp.stdout?.on("data", (data: Buffer) => {
@@ -203,7 +203,7 @@ export default async function globalSetup(): Promise<void> {
   console.log(`✅ Job worker started`);
 
   // Publish the ready server URL to test workers.
-  /* eslint-disable turbo/no-undeclared-env-vars -- E2E test environment variables set dynamically */
+  /* oxlint-disable turbo/no-undeclared-env-vars -- E2E test environment variables set dynamically */
   process.env.E2E_BASE_URL = baseURL;
-  /* eslint-enable turbo/no-undeclared-env-vars */
+  /* oxlint-enable turbo/no-undeclared-env-vars */
 }

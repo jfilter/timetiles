@@ -1,8 +1,12 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
-
-import { Hono } from "hono";
-
+/**
+ * Tests for the runner HTTP API.
+ *
+ * @module
+ * @category Tests
+ */
 import { SCRAPER_TIMEOUT_MIN_SECONDS } from "@timetiles/shared";
+import { Hono } from "hono";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createApiKeyAuth } from "../src/lib/auth-middleware.js";
 import { AuthError, ConcurrencyError, RunnerError } from "../src/lib/errors.js";
@@ -46,7 +50,7 @@ const TEST_API_KEY = "test-api-key-long-enough-for-validation";
  * Build a Hono app wired like src/index.ts — the REAL auth middleware, so the
  * constant-time comparison is exercised rather than a look-alike.
  */
-function createTestApp(): Hono {
+const createTestApp = (): Hono => {
   const app = new Hono();
 
   app.use("*", createApiKeyAuth(TEST_API_KEY));
@@ -61,7 +65,7 @@ function createTestApp(): Hono {
 
   app.route("/", runRoutes);
   return app;
-}
+};
 
 const VALID_RUN_BODY = {
   run_id: "550e8400-e29b-41d4-a716-446655440000",

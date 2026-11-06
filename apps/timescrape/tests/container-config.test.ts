@@ -1,3 +1,9 @@
+/**
+ * Tests for the podman arguments built for a scraper container.
+ *
+ * @module
+ * @category Tests
+ */
 import { describe, expect, it } from "vitest";
 
 import { RunnerError } from "../src/lib/errors.js";

@@ -1,3 +1,9 @@
+/**
+ * Tests for CSV record and data row counting.
+ *
+ * @module
+ * @category Tests
+ */
 import { describe, expect, it } from "vitest";
 
 import { countCsvDataRows, countCsvRecords } from "../src/lib/csv.js";

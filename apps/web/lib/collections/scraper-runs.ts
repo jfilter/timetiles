@@ -22,7 +22,6 @@ const ScraperRuns: CollectionConfig = {
     group: "Scrapers",
   },
   access: {
-    // eslint-disable-next-line sonarjs/function-return-type -- Payload access control returns boolean | Where by design
     read: ({ req: { user } }): boolean | Where => {
       if (isPrivileged(user)) return true;
       if (!user) return false;

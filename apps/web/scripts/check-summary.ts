@@ -2,8 +2,7 @@
 /**
  * Combined code quality check summary script.
  *
- * Runs oxlint (fast native rules), ESLint (specialized plugins), and
- * TypeScript compiler checks, then displays a unified summary.
+ * Runs oxlint and TypeScript compiler checks, then displays a unified summary.
  *
  * @module
  * @category Scripts
@@ -12,27 +11,8 @@ import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 
-import { localBin, rootScriptCommand, WORKSPACE_ROOT } from "../../../scripts/shared/local-bin";
+import { localBin } from "../../../scripts/shared/local-bin";
 import { parseTscOutput } from "../../../scripts/shared/typecheck-utils";
-
-interface LintMessage {
-  ruleId: string | null;
-  severity: number;
-  message: string;
-  line: number;
-  column: number;
-  fix?: { range: [number, number]; text: string };
-}
-
-interface LintResult {
-  filePath: string;
-  messages: LintMessage[];
-  errorCount: number;
-  warningCount: number;
-  fatalErrorCount: number;
-  fixableErrorCount: number;
-  fixableWarningCount: number;
-}
 
 interface TypeScriptError {
   file: string;
@@ -69,15 +49,6 @@ interface OxlintResults {
 
 interface CheckResults {
   oxlint: OxlintResults;
-  lint: {
-    success: boolean;
-    errorCount: number;
-    warningCount: number;
-    fixableCount: number;
-    filesWithIssues: number;
-    topRules: Array<[string, number]>;
-    errors: LintResult[];
-  };
   typecheck: { success: boolean; errorCount: number; errors: TypeScriptError[] };
 }
 
@@ -130,89 +101,6 @@ const runOxlintCheck = (): OxlintResults => {
       return { success: false, errorCount: 1, warningCount: 0, filesChecked: 0, rulesChecked: 0, diagnostics: [] };
     }
   }
-};
-
-const runLintCheck = (): CheckResults["lint"] => {
-  const historyDir = path.join(process.cwd(), ".lint-results");
-  fs.mkdirSync(historyDir, { recursive: true });
-  const ts = new Date()
-    .toISOString()
-    .replaceAll(":", "-")
-    .replace(/\.\d+Z$/, "");
-  const resultsPath = path.join(historyDir, `${ts}.json`);
-
-  try {
-    // The root `lint:eslint` script, run from the workspace root so SonarJS can resolve pnpm catalogs.
-    const eslint = rootScriptCommand("lint:eslint");
-    execFileSync(
-      eslint.bin,
-      [
-        ...eslint.args,
-        "apps/web",
-        "--ext",
-        ".ts,.tsx,.js,.jsx",
-        "--cache",
-        "--cache-location",
-        "apps/web/.eslintcache",
-        "--format",
-        "json",
-        "--output-file",
-        resultsPath,
-      ],
-      { cwd: WORKSPACE_ROOT, stdio: "pipe" }
-    );
-  } catch {
-    // ESLint exits with non-zero on errors, that's expected
-  }
-
-  if (!fs.existsSync(resultsPath)) {
-    return {
-      success: false,
-      errorCount: 0,
-      warningCount: 0,
-      fixableCount: 0,
-      filesWithIssues: 0,
-      topRules: [],
-      errors: [],
-    };
-  }
-
-  const results = JSON.parse(fs.readFileSync(resultsPath, "utf-8")) as LintResult[];
-
-  let totalErrors = 0;
-  let totalWarnings = 0;
-  let totalFixable = 0;
-  let filesWithIssues = 0;
-  const ruleViolations = new Map<string, number>();
-
-  results.forEach((file) => {
-    if (file.messages.length > 0) {
-      filesWithIssues++;
-      totalErrors += file.errorCount;
-      totalWarnings += file.warningCount;
-      totalFixable += file.fixableErrorCount + file.fixableWarningCount;
-
-      file.messages.forEach((msg) => {
-        if (msg.ruleId) {
-          ruleViolations.set(msg.ruleId, (ruleViolations.get(msg.ruleId) ?? 0) + 1);
-        }
-      });
-    }
-  });
-
-  const topRules = Array.from(ruleViolations.entries())
-    .toSorted((a, b) => b[1] - a[1])
-    .slice(0, 5);
-
-  return {
-    success: totalErrors === 0,
-    errorCount: totalErrors,
-    warningCount: totalWarnings,
-    fixableCount: totalFixable,
-    filesWithIssues,
-    topRules,
-    errors: results.filter((f) => f.errorCount > 0).slice(0, 10),
-  };
 };
 
 const runTypeCheck = (): CheckResults["typecheck"] => {
@@ -284,12 +172,11 @@ console.log("=".repeat(50));
 console.log("\n📋 Running checks...");
 
 const oxlintResults = runOxlintCheck();
-const lintResults = runLintCheck();
 const typecheckResults = runTypeCheck();
 
 // Overall status
-const allPassed = oxlintResults.success && lintResults.success && typecheckResults.success;
-const totalWarnings = oxlintResults.warningCount + lintResults.warningCount;
+const allPassed = oxlintResults.success && typecheckResults.success;
+const totalWarnings = oxlintResults.warningCount;
 
 if (allPassed && totalWarnings === 0) {
   console.log("\n✅ ALL CHECKS PASSED - NO ISSUES FOUND");
@@ -325,49 +212,6 @@ if (oxlintResults.errorCount === 0 && oxlintResults.warningCount === 0) {
   }
 }
 
-// ESLint results
-console.log("\n" + "-".repeat(50));
-console.log("ESLINT RESULTS:");
-console.log("-".repeat(50));
-
-if (lintResults.errorCount === 0 && lintResults.warningCount === 0) {
-  console.log("✅ No ESLint issues");
-} else {
-  console.log(`Files checked: ${lintResults.filesWithIssues} with issues`);
-  console.log(`  ✗ Errors: ${lintResults.errorCount}`);
-  console.log(`  ⚠ Warnings: ${lintResults.warningCount}`);
-  if (lintResults.fixableCount > 0) {
-    console.log(`  🔧 Auto-fixable: ${lintResults.fixableCount}`);
-  }
-
-  if (lintResults.topRules.length > 0) {
-    console.log("\nTop violations:");
-    lintResults.topRules.forEach(([rule, count]) => {
-      console.log(`  ${count}x ${rule}`);
-    });
-  }
-
-  if (lintResults.errors.length > 0) {
-    console.log("\nFiles with errors (first 3 per file):");
-    lintResults.errors.slice(0, 3).forEach((file) => {
-      const relPath = path.relative(process.cwd(), file.filePath);
-      console.log(`  📁 ${relPath}`);
-
-      file.messages
-        .filter((msg) => msg.severity === 2)
-        .slice(0, 2)
-        .forEach((msg) => {
-          const rule = msg.ruleId ? ` (${msg.ruleId})` : "";
-          console.log(`     Line ${msg.line}:${msg.column} - ${msg.message.substring(0, 60)}...${rule}`);
-        });
-    });
-
-    if (lintResults.errors.length > 3) {
-      console.log(`  ... and ${lintResults.errors.length - 3} more files`);
-    }
-  }
-}
-
 // TypeScript results
 console.log("\n" + "-".repeat(50));
 console.log("TYPESCRIPT RESULTS:");
@@ -396,7 +240,6 @@ if (typecheckResults.success) {
 console.log("\n" + "=".repeat(50));
 console.log("SUMMARY:");
 console.log(`  oxlint: ${oxlintResults.errorCount} errors, ${oxlintResults.warningCount} warnings`);
-console.log(`  ESLint: ${lintResults.errorCount} errors, ${lintResults.warningCount} warnings`);
 console.log(`  TypeScript: ${typecheckResults.errorCount} errors`);
 console.log("\nResults saved to:");
 console.log("  .lint-results/");
@@ -404,5 +247,5 @@ console.log("  .typecheck-results/");
 console.log("=".repeat(50) + "\n");
 
 // Exit with appropriate code
-const hasErrors = oxlintResults.errorCount > 0 || lintResults.errorCount > 0 || typecheckResults.errorCount > 0;
+const hasErrors = oxlintResults.errorCount > 0 || typecheckResults.errorCount > 0;
 process.exit(hasErrors ? 1 : 0);

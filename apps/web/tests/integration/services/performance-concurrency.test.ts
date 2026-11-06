@@ -85,7 +85,7 @@ describe("Performance and Concurrency Tests", () => {
       await testServer.stop();
     }
     const { TestServer } = await import("@/tests/setup/integration/http-server");
-    // eslint-disable-next-line require-atomic-updates -- Sequential test setup, no race condition
+    // oxlint-disable-next-line core/require-atomic-updates -- Sequential test setup, no race condition
     testServer = new TestServer();
     testServerUrl = await testServer.start();
   });

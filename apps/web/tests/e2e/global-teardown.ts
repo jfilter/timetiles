@@ -22,13 +22,13 @@ import { getWorktreeBasePort } from "./utils/worktree-id";
  * Playwright global teardown function.
  */
 export default async function globalTeardown(): Promise<void> {
-  // eslint-disable-next-line turbo/no-undeclared-env-vars -- E2E test environment variable set by global-setup
+  // oxlint-disable-next-line turbo/no-undeclared-env-vars -- E2E test environment variable set by global-setup
   const serverPid = process.env.E2E_SERVER_PID;
-  // eslint-disable-next-line turbo/no-undeclared-env-vars -- E2E test environment variable set by global-setup
+  // oxlint-disable-next-line turbo/no-undeclared-env-vars -- E2E test environment variable set by global-setup
   const workerPid = process.env.E2E_WORKER_PID;
-  // eslint-disable-next-line turbo/no-undeclared-env-vars -- E2E test environment variable set by global-setup
+  // oxlint-disable-next-line turbo/no-undeclared-env-vars -- E2E test environment variable set by global-setup
   const databaseName = process.env.E2E_DATABASE_NAME;
-  // eslint-disable-next-line turbo/no-undeclared-env-vars -- E2E test environment variable set by global-setup
+  // oxlint-disable-next-line turbo/no-undeclared-env-vars -- E2E test environment variable set by global-setup
   const serverPort = Number(process.env.E2E_SERVER_PORT ?? getWorktreeBasePort());
 
   // Note: the geocoding stub server (in-process http.Server started by

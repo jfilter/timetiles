@@ -27,7 +27,7 @@ import type { Page } from "@playwright/test";
 import { expect, test } from "../fixtures";
 import { ExplorePage } from "../pages/explore.page";
 
-// eslint-disable-next-line turbo/no-undeclared-env-vars -- test-only opt-in flag
+// oxlint-disable-next-line turbo/no-undeclared-env-vars -- test-only opt-in flag
 const RUN_VISUAL_REGRESSION = process.env.E2E_VISUAL_REGRESSION === "true";
 
 const waitForExploreScreenshotReady = async (page: Page) => {

@@ -128,7 +128,7 @@ const FooterTagline = ({ className, children, ref, ...props }: React.ComponentPr
 );
 FooterTagline.displayName = "FooterTagline";
 
-// eslint-disable-next-line sonarjs/no-identical-functions -- mirrors FooterColumn; kept distinct for semantic naming in consumer JSX
+// oxlint-disable-next-line sonarjs/no-identical-functions -- mirrors FooterColumn; kept distinct for semantic naming in consumer JSX
 const FooterSection = ({ className, children, ref, ...props }: React.ComponentProps<"div">) => (
   <div ref={ref} className={cn(className)} {...props}>
     {children}

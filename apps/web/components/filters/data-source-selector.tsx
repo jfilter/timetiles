@@ -168,7 +168,6 @@ const CatalogGroupHeader = ({
   return (
     <div className="flex items-start gap-2 py-1">
       <Checkbox
-        // eslint-disable-next-line i18next/no-literal-string -- Radix Checkbox prop value
         checked={{ all: true, some: "indeterminate" as const, none: false }[checkState]}
         onCheckedChange={onToggleCheck}
         aria-label={t(checkState === "none" ? "selectAllInCatalog" : "deselectAllInCatalog", {

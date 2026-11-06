@@ -1,3 +1,9 @@
+/**
+ * MDX component mapping for the documentation site.
+ *
+ * @module
+ * @category Components
+ */
 import { useMDXComponents as getDocsMDXComponents } from "nextra-theme-docs";
 import type { ComponentType, ReactNode } from "react";
 

@@ -501,7 +501,7 @@ const DEFAULT_BATCH_SIZES = {
 
 const DEFAULT_CACHE = {
   urlFetch: {
-    // eslint-disable-next-line sonarjs/publicly-writable-directories -- configurable default, overridden in production
+    // oxlint-disable-next-line sonarjs/publicly-writable-directories -- configurable default, overridden in production
     dir: "/tmp/url-fetch-cache",
     maxSizeBytes: 104_857_600,
     defaultTtlSeconds: 3600,

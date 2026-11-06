@@ -48,7 +48,7 @@ const setScraperRunStatusFixture = async (
 ): Promise<void> => {
   // global-setup only exports the database *name* to workers; the base
   // DATABASE_URL still points at the developer's own database.
-  // eslint-disable-next-line turbo/no-undeclared-env-vars -- E2E-only env vars
+  // oxlint-disable-next-line turbo/no-undeclared-env-vars -- E2E-only env vars
   const { DATABASE_URL: baseUrl, E2E_DATABASE_NAME: databaseName } = process.env;
   if (baseUrl == null || databaseName == null) {
     throw new Error("setScraperRunStatus requires DATABASE_URL and E2E_DATABASE_NAME");
@@ -131,7 +131,7 @@ export const test = base.extend<{
 
   // oxlint-disable-next-line no-empty-pattern -- Playwright fixtures require destructured first arg
   baseURL: async ({}, use) => {
-    // eslint-disable-next-line turbo/no-undeclared-env-vars -- E2E test-only env var
+    // oxlint-disable-next-line turbo/no-undeclared-env-vars -- E2E test-only env var
     const baseURL = process.env.E2E_BASE_URL ?? `http://localhost:${getWorktreeBasePort()}`;
     await use(baseURL);
   },

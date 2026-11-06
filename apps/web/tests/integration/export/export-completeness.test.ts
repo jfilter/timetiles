@@ -262,7 +262,7 @@ describe("GDPR Export Completeness", () => {
           userId: users.testUser.id,
           userEmailHash: "testhash",
           timestamp: new Date().toISOString(),
-          ipAddress: "192.168.1.1", // eslint-disable-line sonarjs/no-hardcoded-ip -- test data
+          ipAddress: "192.168.1.1", // oxlint-disable-line sonarjs/no-hardcoded-ip -- test data
           details: { oldEmail: "old@test.com", newEmail: "new@test.com" },
         },
         overrideAccess: true,

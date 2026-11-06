@@ -1,3 +1,9 @@
+/**
+ * Tests for scraper output validation.
+ *
+ * @module
+ * @category Tests
+ */
 import { describe, expect, it } from "vitest";
 
 import { validateOutput } from "../src/services/output-validator.js";

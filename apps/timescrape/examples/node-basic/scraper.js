@@ -1,9 +1,12 @@
 /**
  * Example TimeScrape scraper — fetches events from a public API.
+ *
+ * @module
+ * @category Examples
  */
 
-import axios from "axios";
 import { output } from "@timetiles/scraper";
+import axios from "axios";
 
 const response = await axios.get("https://date.nager.at/api/v3/PublicHolidays/2026/AT", { timeout: 30_000 });
 

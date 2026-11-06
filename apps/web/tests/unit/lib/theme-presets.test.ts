@@ -19,7 +19,7 @@ describe("theme preset initialization", () => {
       const getItem = vi.fn(() => stored);
 
       // Execute only our static application script, never user-provided code.
-      // eslint-disable-next-line sonarjs/code-eval
+      // oxlint-disable-next-line sonarjs/code-eval
       runInNewContext(THEME_PRESET_INIT_SCRIPT, {
         localStorage: { getItem },
         document: { documentElement: html, body },
@@ -37,7 +37,7 @@ describe("theme preset initialization", () => {
   );
 
   it("tolerates unavailable browser storage", () => {
-    // eslint-disable-next-line sonarjs/code-eval -- Executes the static application script only.
+    // oxlint-disable-next-line sonarjs/code-eval -- Executes the static application script only.
     expect(() => runInNewContext(THEME_PRESET_INIT_SCRIPT, {})).not.toThrow();
   });
 });

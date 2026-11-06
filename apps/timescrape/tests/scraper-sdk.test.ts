@@ -1,3 +1,9 @@
+/**
+ * Tests for the Node scraper SDK as scrapers load it.
+ *
+ * @module
+ * @category Tests
+ */
 import { spawnSync } from "node:child_process";
 import { mkdtempSync, readdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";

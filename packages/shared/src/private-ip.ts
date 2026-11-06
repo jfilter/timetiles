@@ -60,7 +60,7 @@ export const PRIVATE_IPV6_PATTERNS: readonly RegExp[] = [
  * alternatives overlap, which backtracks — `security/detect-unsafe-regex` flags
  * it, rightly. Longest first, so `::ffff:` is not swallowed by the bare `::`.
  */
-// eslint-disable-next-line sonarjs/no-hardcoded-ip -- these are the reserved IANA prefixes themselves, not addresses of any host
+// oxlint-disable-next-line sonarjs/no-hardcoded-ip -- these are the reserved IANA prefixes themselves, not addresses of any host
 const IPV4_EMBEDDED_PREFIXES = ["64:ff9b::", "::ffff:", "::"];
 
 /** A dotted quad, as a human writes the mapped form. */

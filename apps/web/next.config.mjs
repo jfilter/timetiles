@@ -11,7 +11,6 @@ import createNextIntlPlugin from "next-intl/plugin";
 
 const withNextIntl = createNextIntlPlugin("./i18n/request.ts");
 
-/* eslint-disable no-undef */
 const isProduction = process.env.NODE_ENV === "production";
 const SECURITY_HEADERS = [
   { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },

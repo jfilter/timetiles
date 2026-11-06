@@ -1,3 +1,9 @@
+/**
+ * Tests for the repository size limit during clone.
+ *
+ * @module
+ * @category Tests
+ */
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";

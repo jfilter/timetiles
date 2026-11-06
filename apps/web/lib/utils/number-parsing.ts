@@ -159,7 +159,7 @@ export const parseLocaleNumber = (raw: string, format: NumberFormat): number | n
   }
 
   // Canonical US form only: integer with optional single fractional part.
-  // eslint-disable-next-line security/detect-unsafe-regex -- Simple numeric pattern, false positive
+  // oxlint-disable-next-line security/detect-unsafe-regex -- Simple numeric pattern, false positive
   if (!/^\d+(\.\d+)?$/.test(normalized)) return null;
 
   const parsed = Number(normalized);

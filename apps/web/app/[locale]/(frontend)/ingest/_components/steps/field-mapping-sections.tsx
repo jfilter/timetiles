@@ -259,7 +259,7 @@ export const DataPreviewSection = ({ fields, sampleData }: Readonly<DataPreviewS
             </TableHeader>
             <TableBody>
               {sampleData.slice(0, 3).map((row, i) => (
-                // eslint-disable-next-line @eslint-react/no-array-index-key -- sample data rows have no unique ID
+                // oxlint-disable-next-line react/no-array-index-key -- sample data rows have no unique ID
                 <TableRow key={`preview-row-${i}`} className="border-primary/5 last:border-0">
                   {fields.map((f) => (
                     <TableCell

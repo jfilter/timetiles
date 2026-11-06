@@ -82,7 +82,7 @@ describe("/api/newsletter/subscribe", () => {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        // eslint-disable-next-line sonarjs/no-hardcoded-ip -- Test IP address
+        // oxlint-disable-next-line sonarjs/no-hardcoded-ip -- Test IP address
         "x-forwarded-for": "192.168.1.1", // Unique IP for this test
       },
       body: JSON.stringify({ email: "test@example.com" }),
@@ -146,7 +146,7 @@ describe("/api/newsletter/subscribe", () => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          // eslint-disable-next-line sonarjs/no-hardcoded-ip -- Test IP address
+          // oxlint-disable-next-line sonarjs/no-hardcoded-ip -- Test IP address
           "x-forwarded-for": "192.168.1.100", // Same IP for all requests
         },
         body: JSON.stringify({ email }),
@@ -187,14 +187,14 @@ describe("/api/newsletter/subscribe", () => {
       );
 
     try {
-      // eslint-disable-next-line sonarjs/no-hardcoded-ip -- Test IP address
+      // oxlint-disable-next-line sonarjs/no-hardcoded-ip -- Test IP address
       expect((await subscribe("logged-success@example.com", "192.168.1.201")).status).toBe(200);
 
       await payload.updateGlobal({
         slug: "settings",
         data: { newsletter: { serviceUrl: `${mockServerUrl}/subscribe-fail` } },
       });
-      // eslint-disable-next-line sonarjs/no-hardcoded-ip -- Test IP address
+      // oxlint-disable-next-line sonarjs/no-hardcoded-ip -- Test IP address
       expect((await subscribe("logged-failure@example.com", "192.168.1.202")).status).toBe(500);
 
       const logged = JSON.stringify([...info.mock.calls, ...error.mock.calls]);
@@ -222,7 +222,7 @@ describe("/api/newsletter/subscribe", () => {
       const response = await POST(
         new NextRequest("http://localhost:3000/api/newsletter/subscribe", {
           method: "POST",
-          // eslint-disable-next-line sonarjs/no-hardcoded-ip -- Test IP address
+          // oxlint-disable-next-line sonarjs/no-hardcoded-ip -- Test IP address
           headers: { "Content-Type": "application/json", "x-forwarded-for": "192.168.1.203" },
           body: JSON.stringify({ email: "service-error@example.com" }),
         }),

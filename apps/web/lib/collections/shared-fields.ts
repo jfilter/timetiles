@@ -135,7 +135,6 @@ export const publishedOrPrivileged: Access = ({ req: { user } }) => isPrivileged
  */
 export const denyPendingDeletion =
   (inner: Access): Access =>
-  // eslint-disable-next-line sonarjs/function-return-type -- wrapping Access inherently returns mixed types
   (args) => {
     const user = args.req.user as { deletionStatus?: string; deletionScheduledAt?: string | null } | null;
     // deletionScheduledAt is checked too: legacy or admin-edited rows can carry a schedule
@@ -166,7 +165,6 @@ export const createFeatureFlaggedCreateAccess = (flag: keyof FeatureFlags): Acce
  */
 export const createOwnershipAccess = (ownerField: string = "createdBy"): Access => {
   // Payload Access functions legitimately return boolean | Where
-  // eslint-disable-next-line sonarjs/function-return-type
   return ({ req: { user } }): boolean | Where => {
     if (isPrivileged(user)) return true;
     if (!user) return false;
@@ -183,7 +181,6 @@ export const createPublicReadAccess = (
   publicWhere: Where,
   buildOwnerWhere: (userId: string | number) => Where
 ): Access => {
-  // eslint-disable-next-line sonarjs/function-return-type -- Payload access control returns boolean | Where by design
   return ({ req: { user } }): boolean | Where => {
     if (isPrivileged(user)) return true;
     if (user) {

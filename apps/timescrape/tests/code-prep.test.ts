@@ -1,3 +1,9 @@
+/**
+ * Tests for preparing scraper code from a repository or inline source.
+ *
+ * @module
+ * @category Tests
+ */
 import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { createServer } from "node:http";
 import type { AddressInfo } from "node:net";

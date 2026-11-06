@@ -29,7 +29,7 @@ const SCOPES = [
   "docs", // Documentation site (apps/docs)
   "ui", // Shared UI components package
   "assets", // Shared assets package (logos, images)
-  "config", // Configuration changes (Payload, ESLint, TypeScript, Prettier packages, etc.)
+  "config", // Configuration changes (Payload, oxlint, TypeScript, Prettier packages, etc.)
   "scraper", // TimeScrape runner and scraper system (apps/timescrape)
 
   // Core features
@@ -247,7 +247,7 @@ export default {
           docs: "Documentation site",
           ui: "Shared UI components",
           assets: "Shared assets (logos, images)",
-          config: "Configuration changes (Payload, ESLint, TypeScript, Prettier)",
+          config: "Configuration changes (Payload, oxlint, TypeScript, Prettier)",
 
           scraper: "TimeScrape runner and scraper system",
 

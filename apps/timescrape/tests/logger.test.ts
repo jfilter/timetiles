@@ -3,6 +3,9 @@
  *
  * `LOG_FILE` is one deployment-level contract shared with apps/web: set it, and the process
  * writes to stdout AND the file, in development too.
+ *
+ * @module
+ * @category Tests
  */
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";

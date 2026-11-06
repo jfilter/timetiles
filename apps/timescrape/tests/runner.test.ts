@@ -1,12 +1,17 @@
+/**
+ * Tests for scraper run execution and stale run data cleanup.
+ *
+ * @module
+ * @category Tests
+ */
 import { spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-
 import { SCRAPER_RUNNER_OVERHEAD_SECONDS } from "@timetiles/shared";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ConcurrencyError } from "../src/lib/errors.js";
 import type { RunRequest } from "../src/types.js";

@@ -1,3 +1,9 @@
+/**
+ * Storybook configuration for the UI package.
+ *
+ * @module
+ * @category Config
+ */
 import path from "node:path";
 
 import type { StorybookConfig } from "@storybook/react-vite";
@@ -7,7 +13,7 @@ const config: StorybookConfig = {
   framework: "@storybook/react-vite",
   stories: ["../src/**/*.stories.@(ts|tsx)"],
   addons: ["@storybook/addon-docs", "@storybook/addon-themes", "@storybook/addon-a11y"],
-  viteFinal(config) {
+  viteFinal: (config) => {
     config.resolve ??= {};
     config.resolve.alias = { ...config.resolve.alias, "@timetiles/ui": path.resolve(import.meta.dirname, "../src") };
 

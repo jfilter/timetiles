@@ -8,7 +8,7 @@
  * @module
  * @category Hooks
  */
-/* eslint-disable sonarjs/max-lines-per-function -- Hook consolidates all slider state/handlers from the component */
+/* oxlint-disable sonarjs/max-lines-per-function -- Hook consolidates all slider state/handlers from the component */
 import type React from "react";
 import { useMemo, useRef, useState } from "react";
 

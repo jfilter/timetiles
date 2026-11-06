@@ -9,8 +9,8 @@
  * - Providing predefined schemas and geographic regions to ensure consistency.
  *
  * Note: This file exceeds the standard line limit because it contains extensive
- * seed data definitions that are more maintainable when co-located. Rules are disabled
- * via eslint.config.js for seed files.
+ * seed data definitions that are more maintainable when co-located. Rules are relaxed
+ * for seed files in .oxlintrc.json.
  *
  * @module
  */

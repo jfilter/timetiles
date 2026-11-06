@@ -53,7 +53,7 @@ Both formats include `env` (NODE_ENV) in the base context of every log line.
 
 ### No console.log
 
-The `no-console` ESLint rule is set to `error` in the shared config (`packages/eslint-config/base.js`) and enforced by oxlint (`.oxlintrc.json`). All logging must go through the logger module. The rule is relaxed only for CLI scripts and test files.
+The `no-console` rule is set to `error` and enforced by oxlint (`.oxlintrc.json`). All logging must go through the logger module. The rule is relaxed only for CLI scripts and test files.
 
 ### Health Check as Observability
 

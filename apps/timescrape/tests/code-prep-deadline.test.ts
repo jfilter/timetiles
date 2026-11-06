@@ -1,3 +1,9 @@
+/**
+ * Tests for the clone deadline.
+ *
+ * @module
+ * @category Tests
+ */
 import { mkdtempSync, rmSync } from "node:fs";
 import { createServer } from "node:http";
 import type { AddressInfo } from "node:net";

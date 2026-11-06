@@ -1,4 +1,11 @@
+/**
+ * Next.js configuration for the documentation site.
+ *
+ * @module
+ * @category Config
+ */
 import { createRequire } from "node:module";
+
 import nextra from "nextra";
 
 const require = createRequire(import.meta.url);

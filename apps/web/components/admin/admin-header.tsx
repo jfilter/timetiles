@@ -83,7 +83,6 @@ const AdminHeader = () => {
       <div style={styles.leftSection}>
         <Image src={logo} alt="TimeTiles" width={32} height={32} style={styles.logoImage} />
         <span style={styles.brandText}>
-          {/* eslint-disable-next-line i18next/no-literal-string -- brand name */}
           {"TimeTiles "}
           <span style={styles.dashboardBadge}>{tCommon("dashboard")}</span>
         </span>

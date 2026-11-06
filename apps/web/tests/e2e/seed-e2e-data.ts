@@ -23,7 +23,7 @@ export const seedE2ETestData = async (databaseUrl: string): Promise<void> => {
   // The e2e geocoding provider row stores the stub server's URL, so it can only be written while
   // that server is alive. The standalone setup script has no stub; Playwright's global setup
   // re-seeds with the live stub, so skipping it here loses nothing.
-  // eslint-disable-next-line turbo/no-undeclared-env-vars -- E2E-only env var set by global-setup
+  // oxlint-disable-next-line turbo/no-undeclared-env-vars -- E2E-only env var set by global-setup
   const hasGeocodingStub = Boolean(process.env.E2E_GEOCODING_STUB_URL);
   const collections = E2E_SEED_COLLECTIONS.filter(
     (collection) => hasGeocodingStub || collection !== "geocoding-providers"

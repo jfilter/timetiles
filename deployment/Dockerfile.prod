@@ -64,7 +64,7 @@ WORKDIR /app/apps/web
 RUN export PAYLOAD_SECRET=dummy_secret_for_build_only \
  && pnpm exec payload generate:importmap && pnpm exec next build --experimental-build-mode compile
 
-# Remove dev dependencies (eslint, vitest, storybook, etc.) to reduce image size
+# Remove dev dependencies (oxlint, vitest, storybook, etc.) to reduce image size
 # and eliminate dev-only CVEs like handlebars. CI=true suppresses pnpm's
 # interactive "recreate modules?" prompt (Docker buildx exposes a pseudo-TTY).
 RUN CI=true pnpm prune --prod --ignore-scripts

@@ -77,7 +77,6 @@ azure-pipelines.yml
 .husky
 .commitlintrc*
 .prettierrc*
-.eslintrc*
 .stylelintrc*
 .editorconfig
 renovate.json

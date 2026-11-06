@@ -2,6 +2,9 @@
  * Stand-in for the podman CLI in runner tests. `run` behaves like the scraper
  * container, driven by the `-e=STUB_*` variables of the request; every call is
  * appended to `$STUB_STATE_DIR/calls.log`.
+ *
+ * @module
+ * @category Tests
  */
 import { execFileSync } from "node:child_process";
 import {

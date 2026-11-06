@@ -33,7 +33,7 @@ export const validatePasswords = (
     throw new Error(messages.tooShort);
   }
 
-  // eslint-disable-next-line security/detect-possible-timing-attacks -- Client-side form validation, not cryptographic comparison
+  // oxlint-disable-next-line security/detect-possible-timing-attacks -- Client-side form validation, not cryptographic comparison
   if (password !== confirmPassword) {
     throw new Error(messages.mismatch);
   }

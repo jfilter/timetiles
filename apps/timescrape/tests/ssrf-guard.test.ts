@@ -1,3 +1,9 @@
+/**
+ * Tests for the git clone SSRF guard.
+ *
+ * @module
+ * @category Tests
+ */
 import { describe, expect, it } from "vitest";
 
 import { assertGitTargetIsPublic } from "../src/lib/ssrf-guard.js";

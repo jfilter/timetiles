@@ -114,7 +114,7 @@ describe("GraphQL endpoint access control", () => {
     editorUser = users.gqlEditor;
     adminUser = users.gqlAdmin;
 
-    // eslint-disable-next-line require-atomic-updates -- Sequential test setup, no race condition
+    // oxlint-disable-next-line core/require-atomic-updates -- Sequential test setup, no race condition
     testEnv = await withCatalog(testEnv, { name: "GraphQL Private Catalog", isPublic: false, user: ownerUser });
     privateCatalog = testEnv.catalog;
 

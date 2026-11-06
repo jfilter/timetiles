@@ -69,15 +69,7 @@
     // The repo-root scripts/ belong to no package, so every lint and typecheck run
     // also checks them through these root tasks.
     "//#lint:scripts": {
-      "inputs": [
-        "scripts/**/*.ts",
-        ".oxlintrc.json",
-        "eslint.config.mjs",
-        "packages/eslint-config/*.js",
-        "turbo.json",
-        "package.json",
-        "pnpm-workspace.yaml"
-      ]
+      "inputs": ["scripts/**/*.{ts,mjs}", ".oxlintrc.json", "turbo.json", "package.json", "pnpm-workspace.yaml"]
     },
     "//#typecheck:scripts": {
       "inputs": [
@@ -92,14 +84,10 @@
     "lint": {
       "dependsOn": ["transit", "//#lint:scripts"],
       "inputs": [
-        "**/*.{ts,tsx,js,jsx}",
+        "**/*.{ts,tsx,js,jsx,mjs,cjs}",
         "content/**/*.{md,mdx}",
-        "scripts/**/*.ts",
-        "eslint.config.js",
-        ".eslintrc*",
-        ".eslintignore",
         "../../.oxlintrc.json",
-        "../../eslint.config.mjs",
+        "../../scripts/oxlint/*.mjs",
         "../../package.json",
         "../../pnpm-workspace.yaml"
       ]

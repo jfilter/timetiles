@@ -1,15 +1,21 @@
-import type { Preview } from "@storybook/react-vite";
-import { withThemeByClassName } from "@storybook/addon-themes";
-import * as React from "react";
-
-import { UIProvider } from "../src/provider";
-
+/**
+ * Storybook preview: global styles, themes and decorators.
+ *
+ * @module
+ * @category Config
+ */
 import "../src/styles/globals.css";
 // Theme CSS must be imported directly here because the @import inside
 // globals.css is silently dropped by Vite (CSS spec requires @import
 // before all other statements, but Tailwind v4's @source precedes it).
 import "../src/themes/cartographic.css";
 import "../src/themes/modern.css";
+
+import { withThemeByClassName } from "@storybook/addon-themes";
+import type { Preview } from "@storybook/react-vite";
+import * as React from "react";
+
+import { UIProvider } from "../src/provider";
 
 const preview: Preview = {
   decorators: [

@@ -96,7 +96,6 @@ mise.toml
 .github/chatmodes
 CLAUDE.md
 .claude
-.eslintcache
 uploads/
 .exports/
 scripts/gce/

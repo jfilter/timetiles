@@ -7,7 +7,7 @@
  * @module
  * @category Assets
  */
-import { mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join, relative, resolve } from "node:path";
 
 import sharp from "sharp";

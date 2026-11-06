@@ -1,3 +1,9 @@
+/**
+ * Tests for scraper runs interrupted by a shutdown.
+ *
+ * @module
+ * @category Tests
+ */
 import { randomUUID } from "node:crypto";
 import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";

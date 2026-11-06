@@ -34,13 +34,13 @@ See [Quick Start](/quick-start) for prerequisites and database mode options.
 | `make fresh`             | Full reset: database + migrate + seed   |
 | `make status`            | Check environment health                |
 
-`make format` and `pnpm format` run only the formatter, without lint autofixes. Prefer named files to avoid unrelated formatting changes. Avoid broad `eslint --fix` runs: they can strip suppressions for oxlint-owned rules. `make check-ai` reports whole-tree formatting failures even when other checks are scoped.
+`make format` and `pnpm format` run only the formatter, without lint autofixes. Prefer named files to avoid unrelated formatting changes. `make check-ai` reports whole-tree formatting failures even when other checks are scoped.
 
 `make clean` deletes the development database; `make fresh` does the same and then migrates and reseeds it. Back up any data you need before using either command. Docker cleanup is limited to this project's Compose resources; it does not prune other projects' resources.
 
-`make check-ai` without arguments runs fast Oxlint and TypeScript checks across the packages, including Shared and the scraper SDK. It does not run ESLint; use `pnpm lint` for the full workspace lint gate. `PACKAGE=web` also runs ESLint, while `FILES="..."` uses Oxlint and filters TypeScript diagnostics to the requested files. Package selectors are `web`, `docs`, `ui`, and `timescrape`; the legacy `scraper` alias selects the TimeScrape runner, not the SDK.
+`make check-ai` without arguments runs Oxlint and TypeScript checks across the packages, including Shared and the scraper SDK. `FILES="..."` lints only the requested files and filters TypeScript diagnostics to them. Package selectors are `web`, `docs`, `ui`, and `timescrape`; the legacy `scraper` alias selects the TimeScrape runner, not the SDK.
 
-ESLint runs from the repository root so SonarJS can resolve dependency versions from `pnpm-workspace.yaml`. The shared `pnpm -w lint:eslint <root-relative paths>` command uses ESLint's file-based configuration lookup, preserving each package's rules and ignores. Package lint scripts keep separate cache files; use those scripts or `pnpm lint` for normal checks. The Oxlint bridge resolves its configuration relative to the repository, not the current working directory.
+All packages lint with the root `.oxlintrc.json`. ESLint plugins without a native Oxlint port (SonarJS, security, JSDoc, boundaries and others) run inside Oxlint as JS plugins; the local wrappers in `scripts/oxlint/` supply configuration that plain JSON cannot express, such as absolute paths for the boundaries resolver.
 
 ### Database Seeding
 
@@ -88,7 +88,7 @@ Layer 3 — Application
   api/, hooks/, jobs/, config/, context/, globals/, openapi/, seed/, data-packages/, metadata/
 ```
 
-Each layer can only import from the same layer or below. `packages/eslint-config/base.js` enforces this and declares per-file exceptions, including foundation configuration helpers and the Payload composition root.
+Each layer can only import from the same layer or below. `scripts/oxlint/boundaries.mjs` enforces this and declares per-file exceptions, including foundation configuration helpers and the Payload composition root.
 
 ## Migrations
 

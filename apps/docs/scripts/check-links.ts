@@ -29,9 +29,6 @@ const REPO_IGNORED_PATHS = ["**/node_modules/**", "**/dist/**", "**/out/**", "**
 // Regular expressions to match different link types
 const linkPatterns = [
   // Markdown links: [text](url)
-  // Build-time link checker over this repo's own content/ files; it never sees untrusted
-  // input, so the quadratic worst case is unreachable.
-  // eslint-disable-next-line sonarjs/super-linear-regex -- see above
   /\[([^\]]+)\]\((<[^>\n]+>|[^)]+)\)/g,
   // MDX imports
   /import\s+\S[^\n]*?from\s+['"]([^'"]+)['"]/g,

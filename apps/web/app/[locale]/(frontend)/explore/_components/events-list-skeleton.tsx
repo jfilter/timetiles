@@ -22,7 +22,7 @@ export const EventsListSkeleton = ({ count = 6, multiColumn = false }: EventsLis
       className={multiColumn ? "grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3" : "space-y-2"}
     >
       {Array.from({ length: count }).map((_, index) => (
-        // eslint-disable-next-line @eslint-react/no-array-index-key -- static skeleton placeholders have no unique ID
+        // oxlint-disable-next-line react/no-array-index-key -- static skeleton placeholders have no unique ID
         <Card key={`skeleton-${index}`} className="border-border bg-background border p-3">
           {/* Dataset badge skeleton */}
           <div className="bg-muted h-5 w-20 animate-pulse rounded-sm" />

@@ -1,3 +1,9 @@
+/**
+ * Tests for the graceful shutdown handler.
+ *
+ * @module
+ * @category Tests
+ */
 import { describe, expect, it, vi } from "vitest";
 
 import { createShutdownHandler } from "../src/lib/shutdown.js";

@@ -8,7 +8,7 @@
  * @category Tests
  */
 // Import centralized logger mock FIRST (before anything that uses @/lib/logger)
-// eslint-disable-next-line simple-import-sort/imports -- mock side-effect must load before handler
+// oxlint-disable-next-line simple-import-sort/imports -- mock side-effect must load before handler
 import { mockLogger } from "@/tests/mocks/services/logger";
 
 import { JobCancelledError } from "payload";

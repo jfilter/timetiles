@@ -35,7 +35,7 @@ describe("denyPendingDeletion Access Control", () => {
     });
 
     // Refresh user object to include the updated deletionStatus
-    // eslint-disable-next-line require-atomic-updates -- sequential test setup, no race
+    // oxlint-disable-next-line core/require-atomic-updates -- sequential test setup, no race
     pendingDeletionUser = await testEnv.payload.findByID({
       collection: "users",
       id: pendingDeletionUser.id,

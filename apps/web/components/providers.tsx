@@ -42,7 +42,6 @@ const UIBridge = ({ children }: Readonly<{ children: ReactNode }>) => {
 
   return (
     <UIProvider
-      // eslint-disable-next-line i18next/no-literal-string -- technical theme value, not user-facing
       resolveTheme={() => resolvedTheme ?? "light"}
       lightChartTheme={presetConfig?.light}
       darkChartTheme={presetConfig?.dark}

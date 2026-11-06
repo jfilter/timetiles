@@ -23,7 +23,7 @@ import {
 /**
  * Check if a field contains valid coordinate values.
  */
-// eslint-disable-next-line sonarjs/cognitive-complexity -- Coordinate validation requires checking multiple conditions
+// oxlint-disable-next-line sonarjs/cognitive-complexity -- Coordinate validation requires checking multiple conditions
 const isValidCoordinateField = (stats: FieldStatistics, bounds: { min: number; max: number }): boolean => {
   const hasNumericType = (stats.typeDistribution["number"] ?? 0) > 0 || (stats.typeDistribution["integer"] ?? 0) > 0;
 

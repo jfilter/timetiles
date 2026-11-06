@@ -44,7 +44,7 @@ export const tryParseDecimal = (str: string): number | null => {
 
   // Quick validation: must match numeric pattern
   // Allows: 123, -123, 123.456, -123.456, .5, -.5, 1.5e2, 1.5e-2
-  // eslint-disable-next-line security/detect-unsafe-regex -- Well-bounded regex for decimal parsing
+  // oxlint-disable-next-line security/detect-unsafe-regex -- Well-bounded regex for decimal parsing
   const numericRegex = /^-?(?:\d+(?:\.\d+)?|\.\d+)([eE][+-]?\d+)?$/;
   if (numericRegex.test(trimmed)) {
     const decimal = Number.parseFloat(trimmed);
@@ -55,7 +55,7 @@ export const tryParseDecimal = (str: string): number | null => {
   // thousands separator, so a single comma with no dot is unambiguously a
   // decimal separator here — unlike free-form numeric columns, which route
   // through decideNumberFormat/parseLocaleNumber for that ambiguity.
-  // eslint-disable-next-line security/detect-unsafe-regex -- Well-bounded regex for decimal parsing
+  // oxlint-disable-next-line security/detect-unsafe-regex -- Well-bounded regex for decimal parsing
   const euCommaRegex = /^-?(?:\d+,\d+|,\d+)([eE][+-]?\d+)?$/;
   if (euCommaRegex.test(trimmed)) {
     const decimal = Number.parseFloat(trimmed.replace(",", "."));

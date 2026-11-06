@@ -26,7 +26,6 @@ timetiles/
 │   ├── shared/                       # Code shared by web and timescrape
 │   ├── scraper/                      # Node.js scraper SDK and CLI
 │   ├── python/                       # Python scraper SDK
-│   ├── eslint-config/                # Shared ESLint configuration
 │   └── typescript-config/            # Shared TypeScript configuration
 ├── pnpm-workspace.yaml               # Workspace definition
 ├── turbo.json                        # Task pipeline configuration
@@ -46,7 +45,6 @@ timetiles/
 | `packages/shared`            | `@timetiles/shared`            | SSRF address classification and the scraper run contract    | `web`, `timescrape`             |
 | `packages/scraper`           | `@timetiles/scraper`           | Node.js scraper output SDK and `timetiles-scraper init` CLI | Published to npm                |
 | `packages/python`            | `timetiles`                    | Python scraper output SDK                                   | Published to PyPI               |
-| `packages/eslint-config`     | `@timetiles/eslint-config`     | ESLint flat configs                                         | All JavaScript packages         |
 | `packages/typescript-config` | `@timetiles/typescript-config` | Shared `tsconfig.json` base files                           | All JavaScript packages         |
 
 ### Why pnpm + Turborepo
@@ -133,7 +131,7 @@ GitHub Actions workflows are organized as reusable workflows composed by a top-l
 ci.yml (push to main, PRs)
 ├── build.yml          Build & Quality Checks
 │   ├── Generate API docs (TypeDoc)
-│   ├── Lint (ESLint full, all packages except docs)
+│   ├── Lint (oxlint, all packages)
 │   ├── Typecheck (tsgo full, all packages)
 │   ├── Lint infrastructure (actionlint, hadolint, checkmake, shellcheck)
 │   └── Build web app (next build --experimental-build-mode compile)
@@ -171,7 +169,7 @@ The build artifact (`.next` directory) is shared between the build job and E2E t
 
 - All packages share a single `pnpm-lock.yaml`, ensuring consistent dependency resolution across the monorepo
 - Adding a new package requires only creating a directory under `apps/` or `packages/` and adding a `package.json` -- Turborepo discovers it automatically via the pnpm workspace globs
-- The two configuration packages (`eslint-config`, `typescript-config`) keep lint and compiler settings consistent without per-package duplication; formatting is a single root oxfmt configuration (ADR 0014)
+- The `typescript-config` package keeps compiler settings consistent without per-package duplication; linting is a single root `.oxlintrc.json` and formatting a single root oxfmt configuration (ADR 0014)
 - CI runs lint and typecheck across all packages in a single job, catching cross-package breakages early
 - The `catalog:` version pinning means upgrading React or Next.js is a single-line change in `pnpm-workspace.yaml` rather than editing every `package.json`
 - Turborepo's caching means incremental builds and test runs are fast, but the cache can occasionally serve stale results -- `turbo run build --force` bypasses it when needed

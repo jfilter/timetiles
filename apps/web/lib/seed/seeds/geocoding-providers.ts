@@ -19,7 +19,7 @@ export const geocodingProviderSeeds = (environment: string): GeocodingProviderSe
   // path (provider selection, HTTP request, response parsing) under test
   // while isolating the suite from external network dependencies.
   if (environment === "e2e") {
-    // eslint-disable-next-line turbo/no-undeclared-env-vars -- E2E-only env var set by global-setup
+    // oxlint-disable-next-line turbo/no-undeclared-env-vars -- E2E-only env var set by global-setup
     const stubUrl = process.env.E2E_GEOCODING_STUB_URL;
     if (!stubUrl) {
       throw new Error(

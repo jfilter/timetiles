@@ -8,8 +8,8 @@
  *   tsx scripts/check-ai.ts --files <pkg> <file...>  lint + typecheck the files only
  *   tsx scripts/check-ai.ts --format [path ...]      format check only
  *
- * `--files` lints the files with oxlint (no ESLint) and typechecks the whole
- * package, filtering diagnostics to the files.
+ * `--files` lints the files with oxlint and typechecks the whole package,
+ * filtering diagnostics to the files.
  *
  * @module
  * @category Scripts
@@ -105,7 +105,6 @@ const PACKAGES = [
   { name: "packages/shared", hasLint: true, hasTypecheck: true },
   { name: "packages/scraper", hasLint: true, hasTypecheck: true },
   { name: "apps/timescrape", hasLint: true, hasTypecheck: true },
-  { name: "packages/eslint-config", hasLint: true, hasTypecheck: false },
 ];
 
 const MAX_SAMPLE_ERRORS = 10;

@@ -193,7 +193,7 @@ const configureEmail = async (config: Config, env: ReturnType<typeof getEnv>, en
     config.email = nodemailerAdapter({
       defaultFromAddress: env.EMAIL_FROM_ADDRESS,
       defaultFromName: env.EMAIL_FROM_NAME,
-      // eslint-disable-next-line sonarjs/no-clear-text-protocols -- JSON transport is in-memory and test-only
+      // oxlint-disable-next-line sonarjs/no-clear-text-protocols -- JSON transport is in-memory and test-only
       transport: createTransport({ jsonTransport: true }),
       skipVerify: true,
     });
@@ -229,10 +229,6 @@ const configureEmail = async (config: Config, env: ReturnType<typeof getEnv>, en
   // the operator out of a fresh deployment entirely.
   if (environment === "production") {
     // The logger is not built yet at config time, so this has to be console.
-    // The directive is oxlint's, not eslint's: only oxlint enforces no-console
-    // here, and eslint reports an `eslint-disable` for it as an unused
-    // directive -- one comment cannot satisfy both, and it must sit directly
-    // above the statement or "next line" lands on a comment.
     // oxlint-disable-next-line no-console
     console.warn(
       "EMAIL_SMTP_HOST is not set — outgoing email is disabled. " +
@@ -241,7 +237,7 @@ const configureEmail = async (config: Config, env: ReturnType<typeof getEnv>, en
     config.email = nodemailerAdapter({
       defaultFromAddress: env.EMAIL_FROM_ADDRESS,
       defaultFromName: env.EMAIL_FROM_NAME,
-      // eslint-disable-next-line sonarjs/no-clear-text-protocols -- JSON transport is in-memory; nothing is sent over the wire
+      // oxlint-disable-next-line sonarjs/no-clear-text-protocols -- JSON transport is in-memory; nothing is sent over the wire
       transport: createTransport({ jsonTransport: true }),
       skipVerify: true,
     });

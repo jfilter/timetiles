@@ -8,7 +8,7 @@
     "dev": "tsx watch src/index.ts",
     "build": "tsup src/index.ts --format esm --dts && cp src/security/seccomp-profile.json dist/seccomp-profile.json",
     "start": "node dist/index.js",
-    "lint": "oxlint --config ../../.oxlintrc.json . --ignore-pattern 'examples/**' && pnpm -w lint:eslint apps/timescrape --cache --cache-location apps/timescrape/.eslintcache",
+    "lint": "oxlint --config ../../.oxlintrc.json . --ignore-pattern 'examples/**'",
     "typecheck": "tsgo --noEmit",
     "test": "vitest run",
     "test:ai": "vitest run --reporter=json --outputFile=.test-results/latest.json"
@@ -22,10 +22,8 @@
     "zod": "4.6.7"
   },
   "devDependencies": {
-    "@timetiles/eslint-config": "workspace:*",
     "@timetiles/typescript-config": "workspace:*",
     "@types/node": "catalog:",
-    "eslint": "catalog:",
     "pino-pretty": "^13.2.0",
     "tsup": "catalog:",
     "tsx": "^4.23.15",

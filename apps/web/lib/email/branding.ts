@@ -49,7 +49,7 @@ export const getEmailBranding = async (payload: Payload): Promise<EmailBranding>
 
   const data: EmailBranding = { siteName: sanitizedSiteName, logoUrl: logo?.url ? `${baseUrl}${logo.url}` : null };
 
-  // eslint-disable-next-line require-atomic-updates -- intentional: worst case is a harmless double-load
+  // oxlint-disable-next-line core/require-atomic-updates -- intentional: worst case is a harmless double-load
   cache = { data, expiry: Date.now() + CACHE_TTL };
   return data;
 };

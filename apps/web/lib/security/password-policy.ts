@@ -63,7 +63,7 @@ const isPasswordCompromised = async (password: string): Promise<boolean> => {
     return false;
   }
 
-  // eslint-disable-next-line sonarjs/hashing -- HIBP's k-anonymity range API requires a SHA-1 prefix (not used for password storage)
+  // oxlint-disable-next-line sonarjs/hashing -- HIBP's k-anonymity range API requires a SHA-1 prefix (not used for password storage)
   const hash = createHash("sha1").update(password).digest("hex").toUpperCase();
   const prefix = hash.slice(0, 5);
   const suffix = hash.slice(5);

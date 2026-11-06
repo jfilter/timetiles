@@ -1,3 +1,9 @@
+/**
+ * Build configuration for the scraper SDK.
+ *
+ * @module
+ * @category Config
+ */
 import { defineConfig } from "tsup";
 
 export default defineConfig({

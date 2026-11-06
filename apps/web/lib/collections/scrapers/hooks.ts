@@ -108,7 +108,7 @@ export const resetNextRunOnScheduleChange: CollectionBeforeChangeHook = ({ data,
  * which is exactly the case the events hook's cross-dataset guard exempts. The policy
  * itself lives in `validateDatasetCatalogOwnership`, shared with scheduled-ingests.
  */
-// eslint-disable-next-line sonarjs/no-invariant-returns -- Payload hook pattern requires returning data
+// oxlint-disable-next-line sonarjs/no-invariant-returns -- Payload hook pattern requires returning data
 export const validateTargetDatasetAccess: CollectionBeforeChangeHook = async ({ data, req, originalDoc }) => {
   if (!data) return data;
   if (req.context?.seed) return data;

@@ -1,4 +1,4 @@
-/* eslint-disable sonarjs/publicly-writable-directories */
+/* oxlint-disable sonarjs/publicly-writable-directories */
 /**
  * Unit tests for the dataset detection job handler.
  *
@@ -9,7 +9,7 @@
  * @category Tests
  */
 // Import centralized logger mock FIRST (before anything that uses @/lib/logger)
-// eslint-disable-next-line simple-import-sort/imports -- mock side-effect must load before handler
+// oxlint-disable-next-line simple-import-sort/imports -- mock side-effect must load before handler
 import { mockLogger } from "@/tests/mocks/services/logger";
 
 import { Readable } from "node:stream";
@@ -199,7 +199,6 @@ describe("DatasetDetectionJob Handler", () => {
 
       let datasetCounter = 1;
       let jobCounter = 1;
-      // eslint-disable promise/prefer-await-to-then -- Conditional mock return values
       mockPayload.create.mockImplementation((params: any) => {
         if (params.collection === "datasets") {
           return Promise.resolve({ id: `dataset-${datasetCounter++}` });
@@ -208,7 +207,6 @@ describe("DatasetDetectionJob Handler", () => {
         }
         return Promise.resolve({ id: "test-id" });
       });
-      // eslint-enable promise/prefer-await-to-then
 
       await datasetDetectionJob.handler(mockContext);
 
@@ -334,11 +332,9 @@ describe("DatasetDetectionJob Handler", () => {
 
         mockPayload.findByID.mockResolvedValueOnce(mockIngestFile).mockResolvedValueOnce({ id: 456, name: "Catalog" });
         mockPayload.find.mockResolvedValue({ docs: [] });
-        // eslint-disable promise/prefer-await-to-then -- Conditional mock
         mockPayload.create.mockImplementation(({ collection }: { collection: string }) =>
           Promise.resolve({ id: collection === "datasets" ? "dataset-1" : "import-job-1" })
         );
-        // eslint-enable promise/prefer-await-to-then
 
         await expect(datasetDetectionJob.handler(mockContext)).rejects.toThrow("Invalid import file ID");
 
@@ -369,11 +365,9 @@ describe("DatasetDetectionJob Handler", () => {
       mockPayload.findByID.mockResolvedValueOnce(mockIngestFile);
       mockPayload.find.mockResolvedValue({ docs: [] });
 
-      // eslint-disable promise/prefer-await-to-then -- Conditional mock
       mockPayload.create.mockImplementation(({ collection }: { collection: string }) =>
         Promise.resolve({ id: collection === "datasets" ? "dataset-1" : "import-job-1" })
       );
-      // eslint-enable promise/prefer-await-to-then
 
       await expect(datasetDetectionJob.handler(mockContext)).rejects.toThrow("Invalid catalog ID");
 

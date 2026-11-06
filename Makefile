@@ -231,8 +231,7 @@ kill-dev:
 build:
 	pnpm build
 
-# Run linting (oxlint + ESLint)
-# oxlint handles native rules (~3s), ESLint handles specialized plugins
+# Run linting (oxlint with native rules and ESLint plugins as JS plugins)
 lint:
 	pnpm lint
 
@@ -580,7 +579,7 @@ help:
 		'  reset       - Reset database (wipe db + migrate + seed)' \
 		'  build       - Build the project' '' \
 		'🔍 Code Quality:' \
-		'  lint        - Run linting (oxlint + ESLint)' \
+		'  lint        - Run linting (oxlint)' \
 		'  typecheck   - Run tsgo (~15s on the current repo)' \
 		'  check       - Run lint + typecheck' \
 		'  check-ai    - Run code quality checks with AI-friendly output' \

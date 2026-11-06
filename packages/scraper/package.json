@@ -41,14 +41,12 @@
   "scripts": {
     "build": "tsup",
     "typecheck": "tsgo --noEmit",
-    "lint": "oxlint --config ../../.oxlintrc.json . && pnpm -w lint:eslint packages/scraper --cache --cache-location packages/scraper/.eslintcache",
+    "lint": "oxlint --config ../../.oxlintrc.json .",
     "prepublishOnly": "tsup"
   },
   "devDependencies": {
-    "@timetiles/eslint-config": "workspace:*",
     "@timetiles/typescript-config": "workspace:*",
     "@types/node": "catalog:",
-    "eslint": "catalog:",
     "tsup": "catalog:",
     "typescript": "catalog:"
   }

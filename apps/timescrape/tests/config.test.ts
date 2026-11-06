@@ -1,3 +1,9 @@
+/**
+ * Tests for runner configuration loaded from the environment.
+ *
+ * @module
+ * @category Tests
+ */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 describe("config", () => {

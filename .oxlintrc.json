@@ -2,7 +2,7 @@
   "$schema": "./node_modules/oxlint/configuration_schema.json",
   "plugins": ["typescript", "promise", "import", "unicorn", "jsdoc", "vitest", "jsx-a11y"],
   "categories": { "correctness": "off" },
-  "options": { "typeAware": true },
+  "options": { "typeAware": true, "reportUnusedDisableDirectives": "warn" },
   "env": { "browser": true, "node": true, "es2024": true },
   "ignorePatterns": [
     "**/node_modules/**",
@@ -11,7 +11,6 @@
     "**/coverage/**",
     "**/.turbo/**",
     "**/payload-types.ts",
-    "**/.eslintcache",
     "**/*.d.ts",
     "**/*.d.ts.map",
     "**/.worktrees/**",
@@ -114,6 +113,17 @@
     "promise/param-names": "error",
     "promise/prefer-await-to-then": "warn",
     "promise/valid-params": "error",
+    "getter-return": "error",
+    "no-unreachable": "error",
+    "no-labels": "error",
+    "no-nested-ternary": "error",
+    "no-new-wrappers": "error",
+    "default-case-last": "error",
+    "no-new": "error",
+    "array-callback-return": "error",
+    "no-useless-assignment": "error",
+    "promise/no-return-in-finally": "error",
+    "unicorn/prefer-export-from": ["error", { "checkUsedVariables": false }],
     "import/no-cycle": "error",
     "import/no-self-import": "error",
     "unicorn/filename-case": [
@@ -196,7 +206,6 @@
     "preserve-caught-error": "error",
     "no-useless-concat": "error",
     "no-unneeded-ternary": "error",
-    "no-new": "error",
     "no-useless-call": "error",
     "unicorn/no-array-sort": "error",
     "unicorn/no-array-reverse": "error",
@@ -206,7 +215,164 @@
     "import/no-named-as-default-member": "error",
     "@typescript-eslint/no-extraneous-class": "error",
     "vitest/no-standalone-expect": "error",
-    "vitest/valid-title": ["error", { "allowArguments": true }]
+    "vitest/valid-title": ["error", { "allowArguments": true }],
+    "prefer-arrow-functions/prefer-arrow-functions": [
+      "error",
+      {
+        "classPropertiesAllowed": false,
+        "disallowPrototype": false,
+        "returnStyle": "unchanged",
+        "singleReturnOnly": false,
+        "allowedNames": [],
+        "allowNamedFunctions": false,
+        "allowObjectProperties": false
+      }
+    ],
+    "regexp/no-empty-capturing-group": "error",
+    "regexp/no-potentially-useless-backreference": "error",
+    "regexp/no-super-linear-backtracking": "error",
+    "regexp/no-useless-escape": "error",
+    "regexp/optimal-quantifier-concatenation": "error",
+    "security/detect-buffer-noassert": "error",
+    "security/detect-child-process": "error",
+    "security/detect-disable-mustache-escape": "error",
+    "security/detect-eval-with-expression": "error",
+    "security/detect-no-csrf-before-method-override": "error",
+    "security/detect-possible-timing-attacks": "warn",
+    "security/detect-pseudoRandomBytes": "error",
+    "security/detect-unsafe-regex": "error",
+    "simple-import-sort/exports": "error",
+    "simple-import-sort/imports": "error",
+    "sonarjs/block-scoped-var": "error",
+    "sonarjs/class-name": ["error", { "format": "^\\$?[A-Z][a-zA-Z0-9]*$" }],
+    "sonarjs/code-eval": "error",
+    "sonarjs/cognitive-complexity": ["error", 20],
+    "sonarjs/comma-or-logical-or-case": "error",
+    "sonarjs/content-length": ["error", { "fileUploadSizeLimit": 8000000, "standardSizeLimit": 2000000 }],
+    "sonarjs/content-security-policy": "error",
+    "sonarjs/cookie-no-httponly": "error",
+    "sonarjs/cors": "error",
+    "sonarjs/csrf": "error",
+    "sonarjs/dynamically-constructed-templates": "error",
+    "sonarjs/encryption-secure-mode": "error",
+    "sonarjs/file-permissions": "error",
+    "sonarjs/file-uploads": "error",
+    "sonarjs/fixme-tag": "error",
+    "sonarjs/function-inside-loop": "error",
+    "sonarjs/future-reserved-words": "error",
+    "sonarjs/hardcoded-secret-signatures": "error",
+    "sonarjs/hashing": "error",
+    "sonarjs/hooks-before-test-cases": "error",
+    "sonarjs/inconsistent-function-call": "error",
+    "sonarjs/insecure-cookie": "error",
+    "sonarjs/insecure-jwt-token": "error",
+    "sonarjs/inverted-assertion-arguments": "error",
+    "sonarjs/link-with-target-blank": "error",
+    "sonarjs/max-lines": ["error", { "maximum": 500 }],
+    "sonarjs/max-lines-per-function": ["error", { "maximum": 100 }],
+    "sonarjs/max-switch-cases": ["error", 30],
+    "sonarjs/misplaced-loop-counter": "error",
+    "sonarjs/no-all-duplicated-branches": "error",
+    "sonarjs/no-clear-text-protocols": "error",
+    "sonarjs/no-code-after-done": "error",
+    "sonarjs/no-collapsible-if": "error",
+    "sonarjs/no-debug-commands-in-ui-tests": "error",
+    "sonarjs/no-default-utility-imports": "error",
+    "sonarjs/no-delete-var": "error",
+    "sonarjs/no-duplicate-in-composite": "error",
+    "sonarjs/no-duplicate-string": ["error", { "threshold": 5, "ignoreStrings": "application/json" }],
+    "sonarjs/no-duplicated-branches": "error",
+    "sonarjs/no-element-overwrite": "error",
+    "sonarjs/no-empty-collection": "error",
+    "sonarjs/no-empty-test-file": "error",
+    "sonarjs/no-equals-in-for-termination": "error",
+    "sonarjs/no-extra-arguments": "error",
+    "sonarjs/no-fixed-wait-in-tests": "error",
+    "sonarjs/no-global-this": "error",
+    "sonarjs/no-gratuitous-expressions": "error",
+    "sonarjs/no-hardcoded-ip": "error",
+    "sonarjs/no-hardcoded-passwords": ["error", { "passwordWords": ["password", "pwd", "passwd", "passphrase"] }],
+    "sonarjs/no-hardcoded-secrets": [
+      "error",
+      { "secretWords": "api[_.-]?key,auth,credential,secret,token", "randomnessSensibility": 5 }
+    ],
+    "sonarjs/no-identical-expressions": "error",
+    "sonarjs/no-identical-functions": ["error", 3],
+    "sonarjs/no-ignored-exceptions": "error",
+    "sonarjs/no-implicit-global": "error",
+    "sonarjs/no-incomplete-assertions": "error",
+    "sonarjs/no-internal-api-use": "error",
+    "sonarjs/no-invariant-returns": "error",
+    "sonarjs/no-inverted-boolean-check": "error",
+    "sonarjs/no-literal-call": "error",
+    "sonarjs/no-mime-sniff": "error",
+    "sonarjs/no-nested-assignment": "error",
+    "sonarjs/no-nested-functions": ["error", { "threshold": 5 }],
+    "sonarjs/no-nested-switch": "error",
+    "sonarjs/no-nested-template-literals": "error",
+    "sonarjs/no-os-command-from-path": "error",
+    "sonarjs/no-parameter-reassignment": "error",
+    "sonarjs/no-redundant-assignments": "error",
+    "sonarjs/no-redundant-boolean": "error",
+    "sonarjs/no-redundant-jump": "error",
+    "sonarjs/no-referrer-policy": "error",
+    "sonarjs/no-same-line-conditional": "error",
+    "sonarjs/no-session-cookies-on-static-assets": "error",
+    "sonarjs/no-skipped-tests": "error",
+    "sonarjs/no-table-as-layout": "error",
+    "sonarjs/no-unenclosed-multiline-block": "error",
+    "sonarjs/no-uniq-key": "error",
+    "sonarjs/no-unthrown-error": "error",
+    "sonarjs/no-unused-collection": "error",
+    "sonarjs/no-use-of-empty-return-value": "error",
+    "sonarjs/no-useless-increment": "error",
+    "sonarjs/no-useless-react-setstate": "error",
+    "sonarjs/no-weak-cipher": "error",
+    "sonarjs/no-weak-keys": "error",
+    "sonarjs/non-existent-operator": "error",
+    "sonarjs/object-alt-content": "error",
+    "sonarjs/prefer-object-literal": "error",
+    "sonarjs/prefer-promise-shorthand": "error",
+    "sonarjs/prefer-single-boolean-return": "error",
+    "sonarjs/prefer-type-guard": "error",
+    "sonarjs/prefer-while": "error",
+    "sonarjs/production-debug": "error",
+    "sonarjs/pseudo-random": "error",
+    "sonarjs/public-static-readonly": "error",
+    "sonarjs/publicly-writable-directories": "error",
+    "sonarjs/redundant-type-aliases": "error",
+    "sonarjs/review-blockchain-mnemonic": "error",
+    "sonarjs/session-regeneration": "error",
+    "sonarjs/stable-tests": "error",
+    "sonarjs/stateful-regex": "error",
+    "sonarjs/strict-transport-security": "error",
+    "sonarjs/table-header": "error",
+    "sonarjs/table-header-reference": "error",
+    "sonarjs/test-check-exception": "error",
+    "sonarjs/unverified-certificate": "error",
+    "sonarjs/unverified-hostname": "error",
+    "sonarjs/updated-loop-counter": "error",
+    "sonarjs/use-type-alias": "error",
+    "sonarjs/weak-ssl": "error",
+    "sonarjs/x-powered-by": "error",
+    "sonarjs/xml-parser-xxe": "error",
+    "turbo/no-undeclared-env-vars": "error",
+    "unused-imports/no-unused-imports": "error",
+    "boundaries/dependencies": "error",
+    "core/require-atomic-updates": "error",
+    "core/no-restricted-syntax": [
+      "error",
+      {
+        "selector": "CallExpression[callee.type='MemberExpression'][callee.object.type='MemberExpression'][callee.object.object.object.name='Object'][callee.object.object.property.name='hasOwnProperty'][callee.object.property.name='call']",
+        "message": "Use Object.hasOwn() instead of Object.prototype.hasOwnProperty.call()"
+      }
+    ],
+    "jsdoc-js/require-file-overview": [
+      "error",
+      { "tags": { "module": { "initialCommentsOnly": true, "mustExist": true, "preventDuplicates": true } } }
+    ],
+    "sonarjs/no-floating-point-equality": "error",
+    "sonarjs/parameterized-tests": "error"
   },
   "settings": { "react": { "version": "999.999.999" } },
   "overrides": [
@@ -270,15 +436,35 @@
         "@typescript-eslint/prefer-optional-chain": "error",
         "@typescript-eslint/prefer-readonly": "error",
         "@typescript-eslint/prefer-regexp-exec": "error",
+        "@typescript-eslint/no-deprecated": [
+          "error",
+          { "allow": [{ "from": "package", "package": "payload", "name": "operation" }] }
+        ],
+        "@typescript-eslint/require-array-sort-compare": ["error", { "ignoreStringArrays": false }],
         "@typescript-eslint/no-useless-empty-export": "error",
         "@typescript-eslint/no-unnecessary-parameter-property-assignment": "error"
       }
     },
     {
-      "files": ["**/*.ts", "**/*.tsx"],
+      "files": ["**/*.ts", "**/*.tsx", "**/*.jsx"],
       "rules": {
         "react-hooks/rules-of-hooks": "error",
         "react-hooks/exhaustive-deps": "error",
+        "react/static-components": "error",
+        "react/use-memo": "error",
+        "react/void-use-memo": "error",
+        "react/preserve-manual-memoization": "error",
+        "react/incompatible-library": "warn",
+        "react/immutability": "error",
+        "react/globals": "error",
+        "react/refs": "error",
+        "react/set-state-in-effect": "error",
+        "react/error-boundaries": "error",
+        "react/purity": "error",
+        "react/set-state-in-render": "error",
+        "react/unsupported-syntax": "warn",
+        "react/require-render-return": "error",
+        "react/no-redundant-should-component-update": "error",
         "react/react-in-jsx-scope": "off",
         "react/display-name": "warn",
         "react/jsx-boolean-value": ["error", "never"],
@@ -295,7 +481,12 @@
         "react/no-is-mounted": "error",
         "react/no-render-return-value": "error",
         "react/no-unknown-property": "error",
-        "react/no-unsafe": "warn",
+        "react/no-unsafe": ["error", { "checkAliases": true }],
+        "react/no-array-index-key": "warn",
+        "react/no-react-children": "warn",
+        "react/jsx-no-comment-textnodes": "error",
+        "react/no-unstable-nested-components": ["error", { "allowAsProps": true }],
+        "react/no-did-update-set-state": "warn",
         "react/no-unescaped-entities": "error",
         "react/no-children-prop": "error",
         "react/forward-ref-uses-ref": "error",
@@ -355,7 +546,26 @@
       "rules": { "react/display-name": "off", "react-hooks/exhaustive-deps": "off" },
       "plugins": ["react"]
     },
+    {
+      "files": ["**/*.test.ts", "**/*.test.tsx", "**/*.spec.ts", "**/*.spec.tsx"],
+      "rules": { "react/no-array-index-key": "off", "react/no-unstable-nested-components": "off" },
+      "plugins": ["react"]
+    },
     { "files": ["apps/docs/scripts/**/*.ts"], "rules": { "@typescript-eslint/prefer-regexp-exec": "off" } },
+    {
+      "files": ["apps/web/tests/unit/i18n/request-config.test.ts"],
+      "rules": {
+        "@typescript-eslint/no-deprecated": [
+          "error",
+          {
+            "allow": [
+              { "from": "package", "package": "payload", "name": "operation" },
+              { "from": "package", "package": "next-intl", "name": "requestLocale" }
+            ]
+          }
+        ]
+      }
+    },
     { "files": ["**/tests/e2e/**/*.ts"], "rules": { "react-hooks/rules-of-hooks": "off" }, "plugins": ["react"] },
     {
       "files": ["**/*.ts", "**/*.tsx"],
@@ -439,6 +649,13 @@
         "@typescript-eslint/require-await": "off"
       }
     },
+    {
+      "files": ["apps/web/scripts/**/*.ts", "apps/web/**/scripts/**/*.ts"],
+      "rules": {
+        "@typescript-eslint/no-unsafe-assignment": "warn",
+        "@typescript-eslint/no-unsafe-member-access": "warn"
+      }
+    },
     { "files": ["**/cli/**/*.ts", "**/examples/**/*.{js,ts}"], "rules": { "no-console": "off" } },
     {
       "files": ["**/tests/**/*.{ts,tsx}", "**/*.test.{ts,tsx}"],
@@ -511,6 +728,214 @@
           }
         ]
       }
+    },
+    {
+      "files": ["apps/web/**"],
+      "rules": {
+        "@tanstack/query/exhaustive-deps": "error",
+        "@tanstack/query/infinite-query-property-order": "error",
+        "@tanstack/query/mutation-property-order": "error",
+        "@tanstack/query/no-unstable-deps": "error",
+        "@tanstack/query/stable-query-client": "error"
+      }
+    },
+    {
+      "files": ["apps/web/migrations/**/*.ts", "apps/web/**/migrations/**/*.ts"],
+      "rules": {
+        "sonarjs/max-lines-per-function": "off",
+        "sonarjs/max-lines": "off",
+        "sonarjs/no-duplicate-string": "off",
+        "prefer-arrow-functions/prefer-arrow-functions": "off",
+        "simple-import-sort/imports": "off"
+      }
+    },
+    {
+      "files": [
+        "apps/web/**/payload-types.ts",
+        "apps/web/**/payload-generated-schema.ts",
+        "apps/web/**/*-generated.ts"
+      ],
+      "rules": {
+        "sonarjs/max-lines": "off",
+        "sonarjs/max-lines-per-function": "off",
+        "sonarjs/no-duplicate-string": "off"
+      }
+    },
+    {
+      "files": [
+        "apps/web/**/*.config.{ts,js}",
+        "apps/web/**/playwright.config.ts",
+        "apps/web/**/vitest.config.ts",
+        "apps/web/**/eslint.config.js"
+      ],
+      "rules": {
+        "turbo/no-undeclared-env-vars": "off",
+        "sonarjs/no-all-duplicated-branches": "off",
+        "sonarjs/no-hardcoded-passwords": "off",
+        "sonarjs/no-duplicate-string": "off"
+      }
+    },
+    {
+      "files": ["apps/web/**/seed/**/*.ts", "apps/web/**/seeds/**/*.ts"],
+      "rules": {
+        "sonarjs/max-lines": "off",
+        "sonarjs/max-lines-per-function": "off",
+        "sonarjs/pseudo-random": "off",
+        "sonarjs/no-duplicate-string": "off",
+        "sonarjs/no-hardcoded-passwords": "off"
+      }
+    },
+    {
+      "files": ["apps/web/scripts/**/*.ts", "apps/web/**/scripts/**/*.ts"],
+      "rules": {
+        "sonarjs/max-lines-per-function": ["error", { "maximum": 150 }],
+        "sonarjs/no-hardcoded-passwords": "off",
+        "turbo/no-undeclared-env-vars": "off"
+      }
+    },
+    {
+      "files": ["apps/web/tests/**/*.{ts,tsx}", "apps/web/**/*.test.{ts,tsx}", "apps/timescrape/tests/**/*.{ts,mjs}"],
+      "rules": {
+        "sonarjs/max-lines": ["error", { "maximum": 1000 }],
+        "sonarjs/max-lines-per-function": ["error", { "maximum": 1000 }],
+        "sonarjs/cognitive-complexity": ["error", 30],
+        "sonarjs/no-nested-functions": "off",
+        "sonarjs/pseudo-random": "off",
+        "sonarjs/no-identical-functions": "off",
+        "sonarjs/no-hardcoded-passwords": "off",
+        "sonarjs/no-duplicate-string": "off",
+        "sonarjs/no-clear-text-protocols": "off",
+        "sonarjs/no-floating-point-equality": "off",
+        "sonarjs/parameterized-tests": "off"
+      }
+    },
+    { "files": ["apps/web/tests/unit/jobs/url-fetch-job.test.ts"], "rules": { "sonarjs/max-lines": "off" } },
+    {
+      "files": [
+        "apps/web/**/ingest/_components/transforms/transform-editor.tsx",
+        "apps/web/lib/collections/scheduled-ingests/fields/runtime-fields.ts",
+        "apps/web/lib/config/app-config.ts"
+      ],
+      "rules": { "sonarjs/max-lines": "off" }
+    },
+    { "files": ["apps/web/components/maps/clustered-map.tsx"], "rules": { "sonarjs/max-lines-per-function": "off" } },
+    {
+      "files": ["apps/docs/scripts/**/*.ts"],
+      "rules": {
+        "regexp/no-super-linear-backtracking": "off",
+        "sonarjs/cognitive-complexity": "off",
+        "sonarjs/no-ignored-exceptions": "off",
+        "sonarjs/updated-loop-counter": "off",
+        "regexp/no-useless-escape": "off"
+      }
+    },
+    {
+      "files": ["apps/timescrape/tests/**/*.{ts,mjs}"],
+      "rules": {
+        "turbo/no-undeclared-env-vars": "off",
+        "sonarjs/publicly-writable-directories": "off",
+        "sonarjs/no-os-command-from-path": "off"
+      }
+    },
+    {
+      "files": ["apps/web/**/*.{ts,tsx}", "packages/ui/**/*.{ts,tsx}"],
+      "rules": {
+        "react-js/no-deprecated": "error",
+        "@eslint-react/no-forward-ref": "error",
+        "@eslint-react/no-access-state-in-setstate": "error",
+        "@eslint-react/no-clone-element": "warn",
+        "@eslint-react/no-create-ref": "warn",
+        "@eslint-react/no-unused-class-component-members": "warn"
+      }
+    },
+    {
+      "files": ["apps/web/**/*.{ts,tsx}"],
+      "rules": {
+        "next-js/no-location-assign-relative-destination": "warn",
+        "core/no-restricted-syntax": [
+          "error",
+          {
+            "selector": "CallExpression[callee.object.name='sql'][callee.property.name='raw'] > TemplateLiteral[expressions.length>0]",
+            "message": "Do not pass interpolated template literals to sql.raw() — use parameterized sql`` template tags instead to prevent SQL injection."
+          },
+          {
+            "selector": "CallExpression[callee.object.name='sql'][callee.property.name='raw'] > BinaryExpression[operator='+']",
+            "message": "Do not pass string concatenation to sql.raw() — use parameterized sql`` template tags instead to prevent SQL injection."
+          }
+        ]
+      }
+    },
+    {
+      "files": ["apps/web/app/api/**/*.ts", "apps/web/lib/services/**/*.ts"],
+      "rules": {
+        "core/no-restricted-syntax": [
+          "error",
+          {
+            "selector": "CallExpression[callee.object.name='sql'][callee.property.name='raw'] > TemplateLiteral[expressions.length>0]",
+            "message": "Do not pass interpolated template literals to sql.raw() — use parameterized sql`` template tags instead to prevent SQL injection."
+          },
+          {
+            "selector": "CallExpression[callee.object.name='sql'][callee.property.name='raw'] > BinaryExpression[operator='+']",
+            "message": "Do not pass string concatenation to sql.raw() — use parameterized sql`` template tags instead to prevent SQL injection."
+          },
+          {
+            "selector": "BinaryExpression[operator=/^[!=]==$/] MemberExpression[property.name='NODE_ENV'][object.property.name='env']",
+            "message": "Do not compare process.env.NODE_ENV at runtime in server code — next build inlines it and next start forces \"production\", so the comparison is a compile-time constant. Use a custom env var via bracket notation (see lib/utils/is-e2e.ts and lib/security/url-validation.ts:78-80)."
+          }
+        ]
+      }
+    },
+    {
+      "files": ["apps/web/migrations/**/*.ts", "apps/web/**/migrations/**/*.ts"],
+      "rules": { "core/no-restricted-syntax": "off", "jsdoc-js/require-file-overview": "off" }
+    },
+    {
+      "files": [
+        "apps/web/**/payload-types.ts",
+        "apps/web/**/payload-generated-schema.ts",
+        "apps/web/**/*-generated.ts"
+      ],
+      "rules": { "jsdoc-js/require-file-overview": "off" }
+    },
+    { "files": ["apps/docs/**/_meta.js"], "rules": { "jsdoc-js/require-file-overview": "off" } },
+    { "files": ["apps/web/scripts/**/*.ts", "apps/web/**/scripts/**/*.ts"], "rules": { "sonarjs/os-command": "warn" } },
+    {
+      "files": ["apps/web/tests/e2e/**/*.ts"],
+      "rules": { "sonarjs/no-duplicate-test-title": "error", "sonarjs/no-exclusive-tests": "error" }
+    },
+    {
+      "files": ["apps/docs/scripts/**/*.js"],
+      "rules": {
+        "core/no-restricted-syntax": [
+          "error",
+          {
+            "selector": "Program",
+            "message": "JavaScript files are not allowed in the scripts directory. Please use TypeScript (.ts) files instead."
+          }
+        ]
+      }
+    },
+    { "files": ["**/*.{js,jsx,mjs,cjs}"], "rules": { "no-undef": "error" } },
+    { "files": ["**/*.{ts,tsx}"], "rules": { "core/interface-name": "error" } },
+    {
+      "files": ["apps/web/tests/e2e/global-setup.ts", "apps/web/tests/e2e/seed-e2e-data.ts"],
+      "rules": { "core/require-atomic-updates": ["error", { "allowProperties": true }] }
     }
+  ],
+  "jsPlugins": [
+    { "name": "sonarjs", "specifier": "eslint-plugin-sonarjs" },
+    { "name": "security", "specifier": "eslint-plugin-security" },
+    { "name": "regexp", "specifier": "eslint-plugin-regexp" },
+    { "name": "simple-import-sort", "specifier": "eslint-plugin-simple-import-sort" },
+    { "name": "prefer-arrow-functions", "specifier": "eslint-plugin-prefer-arrow-functions" },
+    { "name": "turbo", "specifier": "eslint-plugin-turbo" },
+    { "name": "unused-imports", "specifier": "eslint-plugin-unused-imports" },
+    { "name": "@tanstack/query", "specifier": "@tanstack/eslint-plugin-query" },
+    { "name": "boundaries", "specifier": "./scripts/oxlint/boundaries.mjs" },
+    { "name": "core", "specifier": "./scripts/oxlint/core.mjs" },
+    { "name": "jsdoc-js", "specifier": "eslint-plugin-jsdoc" },
+    { "name": "@eslint-react", "specifier": "@eslint-react/eslint-plugin" },
+    { "name": "react-js", "specifier": "eslint-plugin-react" },
+    { "name": "next-js", "specifier": "@next/eslint-plugin-next" }
   ]
 }

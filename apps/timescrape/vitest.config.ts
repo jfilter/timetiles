@@ -1,3 +1,9 @@
+/**
+ * Vitest configuration for the scraper runner.
+ *
+ * @module
+ * @category Config
+ */
 import path from "node:path";
 
 import { defineConfig } from "vitest/config";

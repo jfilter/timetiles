@@ -8,8 +8,7 @@
     "build": "turbo run build",
     "dev": "turbo run dev",
     "lint": "turbo run lint",
-    "lint:eslint": "eslint --flag v10_config_lookup_from_file",
-    "lint:scripts": "oxlint --config .oxlintrc.json scripts && pnpm lint:eslint scripts",
+    "lint:scripts": "oxlint --config .oxlintrc.json scripts",
     "lint:devops": "actionlint -shellcheck= && find . -name 'Dockerfile*' ! -name '*.dockerignore' -type f | grep -v node_modules | grep -v .worktrees | grep -v .claude | xargs hadolint && find . \\( -name 'Makefile' -o -name '*.mk' \\) -type f | grep -v node_modules | grep -v .worktrees | grep -v .claude | xargs checkmake --config=.checkmake && find . -name '*.sh' -type f | grep -v node_modules | grep -v .worktrees | grep -v .claude | xargs shellcheck --exclude=SC1091,SC2016",
     "test": "turbo run test",
     "test:coverage": "turbo run test:coverage",
@@ -26,12 +25,24 @@
   "devDependencies": {
     "@commitlint/cli": "^21.2.4",
     "@commitlint/config-conventional": "^21.2.4",
-    "@timetiles/eslint-config": "workspace:*",
+    "@eslint-react/eslint-plugin": "^5.28.2",
+    "@next/eslint-plugin-next": "^16.4.3",
+    "@tanstack/eslint-plugin-query": "^5.104.4",
     "@timetiles/typescript-config": "workspace:*",
     "@types/node": "catalog:",
     "@typescript/native-preview": "beta",
     "eslint": "catalog:",
-    "eslint-plugin-oxlint": "^1.90.0",
+    "eslint-import-resolver-typescript": "^4.4.5",
+    "eslint-plugin-boundaries": "^7.4.0",
+    "eslint-plugin-jsdoc": "^65.3.2",
+    "eslint-plugin-prefer-arrow-functions": "^3.10.2",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-regexp": "^3.3.2",
+    "eslint-plugin-security": "^4.2.0",
+    "eslint-plugin-simple-import-sort": "^14.0.0",
+    "eslint-plugin-sonarjs": "^4.2.2",
+    "eslint-plugin-turbo": "^2.11.9",
+    "eslint-plugin-unused-imports": "^4.4.1",
     "glob": "^13.0.6",
     "husky": "^9.1.7",
     "nyc": "^18.0.0",
@@ -76,13 +87,6 @@
       "yaml@2": "^2.8.3",
       "@lexical/headless>happy-dom": "^21.0.4",
       "handlebars": "^4.7.10"
-    },
-    "packageExtensions": {
-      "eslint-mdx@3.8.2": {
-        "dependencies": {
-          "tslib": "^2.8.0"
-        }
-      }
     },
     "onlyBuiltDependencies": [
       "esbuild",

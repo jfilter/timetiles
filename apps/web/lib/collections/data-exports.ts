@@ -24,7 +24,6 @@ const DataExports: CollectionConfig = {
   },
   access: {
     // Users can only read their own exports, admins can read all
-    // eslint-disable-next-line sonarjs/function-return-type
     read: ({ req: { user } }) => {
       if (!user) {
         return false;

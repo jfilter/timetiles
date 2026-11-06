@@ -9,7 +9,6 @@ import { createFeatureFlaggedCreateAccess, isEditorOrAdmin, isPrivileged } from 
 
 export const ingestJobsAccess = {
   // Import jobs can be read by the import file owner, editors, or admins
-  // eslint-disable-next-line sonarjs/function-return-type -- Payload access functions intentionally return boolean or where filters
   read: (({ req }) => {
     const { user } = req;
     if (isPrivileged(user)) return true;

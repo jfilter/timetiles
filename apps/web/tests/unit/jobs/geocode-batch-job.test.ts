@@ -8,7 +8,7 @@
  * @category Tests
  */
 // Import centralized logger mock FIRST (before anything that uses @/lib/logger)
-// eslint-disable-next-line simple-import-sort/imports -- mock side-effect must load before handler
+// oxlint-disable-next-line simple-import-sort/imports -- mock side-effect must load before handler
 import { mockLogger } from "@/tests/mocks/services/logger";
 
 import { JobCancelledError } from "payload";
@@ -611,7 +611,7 @@ describe("GeocodeBatchJob Handler", () => {
 
       // Make streamBatchesFromFile throw a transient error (matches transient patterns)
       mocks.streamBatchesFromFile.mockImplementation(function* () {
-        yield []; // eslint requires at least one yield in generators
+        yield []; // require-yield needs at least one yield in generators
         throw new Error("Connection timeout");
       });
 
@@ -652,7 +652,7 @@ describe("GeocodeBatchJob Handler", () => {
 
       // Make streamBatchesFromFile throw an error (permanent, not matching transient patterns)
       mocks.streamBatchesFromFile.mockImplementation(function* () {
-        yield []; // eslint requires at least one yield in generators
+        yield []; // require-yield needs at least one yield in generators
         throw new Error("File read error");
       });
 

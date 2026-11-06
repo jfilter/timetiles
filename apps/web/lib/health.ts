@@ -241,7 +241,7 @@ const checkGeocodingService = async (): Promise<HealthCheckResult> => {
     // run a probe and store an equally fresh verdict, so there is nothing to
     // lose. The memo exists to bound how often the provider is touched, not
     // to serialise callers.
-    // eslint-disable-next-line require-atomic-updates -- see above
+    // oxlint-disable-next-line core/require-atomic-updates -- see above
     geocodingProbeCache = { at: Date.now(), result };
 
     logger.debug("Geocoding service check complete", { status: result.status, totalProviders: providers.totalDocs });

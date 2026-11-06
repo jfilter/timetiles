@@ -13,7 +13,6 @@
  */
 export const createActivePollingInterval =
   <T>(predicate: (doc: T) => boolean, intervalMs: number) =>
-  // eslint-disable-next-line sonarjs/function-return-type -- React Query refetchInterval API requires false | number
   (query: { state: { data: T[] | undefined } }): number | false => {
     const docs = query.state.data;
     if (!docs?.length) return false;

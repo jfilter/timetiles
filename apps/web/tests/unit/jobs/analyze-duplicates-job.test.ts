@@ -2,7 +2,7 @@
  * @module
  */
 // Import centralized mocks FIRST (before anything that uses @/lib/logger)
-// eslint-disable-next-line simple-import-sort/imports -- mock side-effect must load before handler
+// oxlint-disable-next-line simple-import-sort/imports -- mock side-effect must load before handler
 import { mockLogger } from "@/tests/mocks/services/logger";
 
 import { beforeEach, describe, expect, it, vi } from "vitest";

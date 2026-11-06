@@ -106,7 +106,7 @@ const basePreviewMeta = {
   previewId: VALID_UUID,
   userId: 1,
   originalName: "events.csv",
-  // eslint-disable-next-line sonarjs/publicly-writable-directories
+  // oxlint-disable-next-line sonarjs/publicly-writable-directories
   filePath: "/tmp/timetiles-wizard-preview/test-file.csv",
   mimeType: "text/csv",
   fileSize: 1024,
@@ -163,7 +163,6 @@ const setupPreviewMetadata = (meta: Record<string, unknown> | null) => {
   }
   // existsSync is consulted for the meta file, the data file and during cleanup
   mocks.mockExistsSync.mockReturnValue(true);
-  // eslint-disable-next-line sonarjs/function-return-type
   mocks.mockReadFileSync.mockImplementation((filePath: string) => {
     if (typeof filePath === "string" && filePath.endsWith(".meta.json")) {
       return JSON.stringify(meta);

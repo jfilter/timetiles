@@ -1,4 +1,4 @@
-/* eslint-disable sonarjs/no-hardcoded-ip -- trusted proxy CIDRs are intentional test fixtures */
+/* oxlint-disable sonarjs/no-hardcoded-ip -- trusted proxy CIDRs are intentional test fixtures */
 /**
  * Unit tests for rate limit trust-level parsing.
  *

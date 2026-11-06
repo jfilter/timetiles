@@ -8,7 +8,7 @@
  * @category Tests
  */
 // Import centralized mocks FIRST (before anything that uses @/lib/logger)
-// eslint-disable-next-line simple-import-sort/imports -- mock side-effect must load before handler
+// oxlint-disable-next-line simple-import-sort/imports -- mock side-effect must load before handler
 import { mockLogger } from "@/tests/mocks/services/logger";
 
 import { JobCancelledError } from "payload";
@@ -78,7 +78,7 @@ describe("ValidateSchemaJob Handler", () => {
 
     mockSchemaBuilderInstance = { processBatch: vi.fn(), getSchema: vi.fn(), getState: vi.fn() };
 
-    // eslint-disable-next-line prefer-arrow-functions/prefer-arrow-functions -- regular function required: arrow functions cannot be constructors (vitest 4)
+    // oxlint-disable-next-line prefer-arrow-functions/prefer-arrow-functions -- regular function required: arrow functions cannot be constructors (vitest 4)
     mocks.ProgressiveSchemaBuilder.mockImplementation(function () {
       return mockSchemaBuilderInstance;
     });
