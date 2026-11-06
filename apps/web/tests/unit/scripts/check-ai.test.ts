@@ -4,7 +4,7 @@
  * @module
  * @category Tests
  */
-import { resolve } from "node:path";
+import { basename, resolve } from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -93,7 +93,7 @@ describe("quality runner subprocess failures", () => {
 
   it.each(["lint", "typecheck"])("fails if %s exits unsuccessfully despite a clean fresh report", async (check) => {
     mocks.execFileSync.mockImplementation((_command: string, args: string[]) => {
-      if (args[0]?.includes(`${check}-`)) throw new Error("Subprocess failed");
+      if (basename(args[0] ?? "").startsWith(`${check}-`)) throw new Error("Subprocess failed");
     });
     await runCheckAi();
     expect(mocks.exit).toHaveBeenCalledWith(1);
@@ -101,7 +101,7 @@ describe("quality runner subprocess failures", () => {
 
   it.each(["lint", "typecheck"])("counts ordinary %s diagnostics without a duplicate runner failure", async (check) => {
     mocks.execFileSync.mockImplementation((_command: string, args: string[]) => {
-      if (args[0]?.includes(`${check}-`)) throw new Error("Diagnostics found");
+      if (basename(args[0] ?? "").startsWith(`${check}-`)) throw new Error("Diagnostics found");
     });
     mocks.readFileSync.mockImplementation((file: string) =>
       JSON.stringify(
