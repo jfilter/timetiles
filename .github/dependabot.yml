@@ -14,6 +14,11 @@ updates:
     # Cooldown: Wait 7 days for all releases to stabilize before creating PRs
     cooldown:
       default-days: 7
+    # Payload packages pin each other exactly and carry a version-bound patch in patches/,
+    # so they are upgraded by hand as one unit (patch, migration, generated types).
+    ignore:
+      - dependency-name: "payload"
+      - dependency-name: "@payloadcms/*"
     # Group by risk level
     groups:
       # All minor and patch updates together (low-medium risk)
