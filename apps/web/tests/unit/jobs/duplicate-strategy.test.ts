@@ -316,12 +316,9 @@ describe("processEventBatch", () => {
     vi.clearAllMocks();
 
     // Default: bulkInsertEvents commits every event with no failures/conflicts
-    // eslint-disable-next-line @typescript-eslint/require-await
-    mocks.bulkInsertEvents.mockImplementation(async (_p: unknown, events: unknown[]) => ({
-      created: events.length,
-      failures: [],
-      conflicts: [],
-    }));
+    mocks.bulkInsertEvents.mockImplementation((_p: unknown, events: unknown[]) =>
+      Promise.resolve({ created: events.length, failures: [], conflicts: [] })
+    );
 
     mocks.getIngestGeocodingResults.mockReturnValue({});
 

@@ -114,7 +114,7 @@ export const ClusteredMap = ({
   clusterSummaryLoading,
   initialBounds,
   initialViewState,
-  isLoadingBounds,
+  isLoadingBounds = false,
   isDataPending,
   isError,
   scope,
@@ -204,7 +204,6 @@ export const ClusteredMap = ({
     clearFocusedCluster,
   });
 
-  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- intentional: false must also fall through
   const showLoading = !isMapUnavailable && (isLoadingBounds || !isMapPositioned);
 
   return (

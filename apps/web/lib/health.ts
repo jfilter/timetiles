@@ -47,8 +47,7 @@ const getEnvValue = (key: string): string | undefined => {
   return undefined;
 };
 
-// eslint-disable-next-line @typescript-eslint/require-await -- Async for interface compatibility with wrapHealthCheck
-const checkEnvironmentVariables = async (): Promise<HealthCheckResult> => {
+const checkEnvironmentVariables = (): HealthCheckResult => {
   logger.debug("Checking environment variables");
   const requiredVars = ["PAYLOAD_SECRET", "DATABASE_URL"];
   const missingVars = requiredVars.filter((v) => {
@@ -409,8 +408,7 @@ const isPlaceholderHost = (host: string | undefined): boolean => {
   );
 };
 
-// eslint-disable-next-line @typescript-eslint/require-await -- Async for interface compatibility with wrapHealthCheck
-const checkEmailConfiguration = async (): Promise<HealthCheckResult> => {
+const checkEmailConfiguration = (): HealthCheckResult => {
   logger.debug("Checking email configuration");
 
   const env = getEnv();
@@ -540,7 +538,7 @@ const checkScraperRunner = async (): Promise<HealthCheckResult> => {
 };
 
 const wrapHealthCheck = async (
-  checkFn: () => Promise<HealthCheckResult>,
+  checkFn: () => HealthCheckResult | Promise<HealthCheckResult>,
   checkName: string
 ): Promise<HealthCheckResult> => {
   try {

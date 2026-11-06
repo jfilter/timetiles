@@ -17,6 +17,7 @@ import {
 } from "@timetiles/shared";
 
 import { getEnv } from "@/lib/config/env";
+import { defaultIfEmpty } from "@/lib/utils/strings";
 import type { Scraper, ScraperRepo } from "@/payload-types";
 
 export interface ScraperExecutionJobInput {
@@ -162,8 +163,7 @@ export const buildRunnerRequest = (scraper: Scraper, repo: ScraperRepo, runUuid:
     entrypoint: scraper.entrypoint,
     // `||`, not `??`: an outputFile cleared to "" must fall back too — the
     // runner rejects empty filenames with a 400.
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- empty string must fall back, not just null/undefined
-    output_file: scraper.outputFile || SCRAPER_DEFAULT_OUTPUT_FILE,
+    output_file: defaultIfEmpty(scraper.outputFile, SCRAPER_DEFAULT_OUTPUT_FILE),
     env: parseEnvVars(scraper.envVars),
     limits: {
       timeout_secs: scraper.timeoutSecs ?? SCRAPER_TIMEOUT_DEFAULT_SECONDS,

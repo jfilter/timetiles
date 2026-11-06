@@ -7,12 +7,11 @@
  *
  * @module
  */
-/* eslint-disable @typescript-eslint/require-await -- act(async () => ...) is the standard React 19 pattern for flushing state updates */
 import { StepUpload } from "@/app/[locale]/(frontend)/ingest/_components/steps/step-upload";
 import { initialState, type WizardState } from "@/app/[locale]/(frontend)/ingest/_components/wizard-state";
 import { useWizardStore } from "@/app/[locale]/(frontend)/ingest/_components/wizard-store";
 
-import { act, fireEvent, renderWithProviders, screen, waitFor } from "../../setup/unit/react-render";
+import { fireEvent, renderWithProviders, screen, waitFor } from "../../setup/unit/react-render";
 
 // ---------------------------------------------------------------------------
 // Mock use-wizard-effects (useWizardCanProceed depends on useAuthState)
@@ -111,9 +110,7 @@ describe("StepUpload", () => {
       const input = container.querySelector<HTMLInputElement>('input[type="file"]')!;
       expect(input).toBeTruthy();
 
-      await act(async () => {
-        fireEvent.change(input, { target: { files: [createFile()] } });
-      });
+      fireEvent.change(input, { target: { files: [createFile()] } });
 
       await waitFor(() => {
         expect(fetchMock).toHaveBeenCalledWith(
@@ -136,9 +133,7 @@ describe("StepUpload", () => {
       const { container } = renderWithProviders(<StepUpload />);
       const input = container.querySelector<HTMLInputElement>('input[type="file"]')!;
 
-      await act(async () => {
-        fireEvent.change(input, { target: { files: [createFile("data.xlsx", "application/vnd.ms-excel")] } });
-      });
+      fireEvent.change(input, { target: { files: [createFile("data.xlsx", "application/vnd.ms-excel")] } });
 
       await waitFor(() => {
         const [url, options] = fetchMock.mock.calls[0] as [string, RequestInit];
@@ -155,9 +150,7 @@ describe("StepUpload", () => {
       const { container } = renderWithProviders(<StepUpload />);
       const input = container.querySelector<HTMLInputElement>('input[type="file"]')!;
 
-      await act(async () => {
-        fireEvent.change(input, { target: { files: [createFile()] } });
-      });
+      fireEvent.change(input, { target: { files: [createFile()] } });
 
       await waitFor(() => {
         expect(screen.getByText("File too large")).toBeInTheDocument();
@@ -171,9 +164,7 @@ describe("StepUpload", () => {
       const { container } = renderWithProviders(<StepUpload />);
       const input = container.querySelector<HTMLInputElement>('input[type="file"]')!;
 
-      await act(async () => {
-        fireEvent.change(input, { target: { files: [createFile()] } });
-      });
+      fireEvent.change(input, { target: { files: [createFile()] } });
 
       await waitFor(() => {
         expect(screen.getByText("Network failure")).toBeInTheDocument();
@@ -186,9 +177,7 @@ describe("StepUpload", () => {
       const dropText = screen.getByText("Drag and drop your file here");
       const dropZone = dropText.closest("div")!;
 
-      await act(async () => {
-        fireEvent.drop(dropZone, { dataTransfer: { files: [createFile()] } });
-      });
+      fireEvent.drop(dropZone, { dataTransfer: { files: [createFile()] } });
 
       await waitFor(() => {
         expect(fetchMock).toHaveBeenCalledWith(
@@ -222,9 +211,7 @@ describe("StepUpload", () => {
       // User clears pre-filled URL and types a new one
       fireEvent.change(urlInput, { target: { value: "https://example.com/data.csv" } });
 
-      await act(async () => {
-        fireEvent.click(findFetchButton()!);
-      });
+      fireEvent.click(findFetchButton()!);
 
       // Verify the user-typed URL was sent (not the pre-filled one)
       await waitFor(() => {
@@ -254,9 +241,7 @@ describe("StepUpload", () => {
 
       fireEvent.change(urlInput, { target: { value: "https://unreachable.example.com" } });
 
-      await act(async () => {
-        fireEvent.click(findFetchButton()!);
-      });
+      fireEvent.click(findFetchButton()!);
 
       await waitFor(() => {
         expect(screen.getByText("URL not reachable")).toBeInTheDocument();
@@ -273,9 +258,7 @@ describe("StepUpload", () => {
 
       fireEvent.change(urlInput, { target: { value: "https://api.example.com/data" } });
 
-      await act(async () => {
-        fireEvent.click(findFetchButton()!);
-      });
+      fireEvent.click(findFetchButton()!);
 
       await waitFor(() => {
         const [, options] = fetchMock.mock.calls[0] as [string, RequestInit];

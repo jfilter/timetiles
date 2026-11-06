@@ -42,11 +42,10 @@ export const shouldRunNow = (scheduledIngest: ScheduledIngest, currentTime: Date
     return false;
   }
 
-  const hasValidSchedule = Boolean(
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-    (scheduledIngest.scheduleType === "frequency" && scheduledIngest.frequency) ||
-    (scheduledIngest.scheduleType === "cron" && scheduledIngest.cronExpression)
-  );
+  const hasValidSchedule =
+    scheduledIngest.scheduleType === "frequency"
+      ? Boolean(scheduledIngest.frequency)
+      : scheduledIngest.scheduleType === "cron" && Boolean(scheduledIngest.cronExpression);
 
   if (!hasValidSchedule) {
     return false;

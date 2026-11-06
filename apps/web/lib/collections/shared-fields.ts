@@ -156,8 +156,7 @@ export const createFeatureFlaggedCreateAccess = (flag: keyof FeatureFlags): Acce
     if (!user) return false;
 
     const { getFeatureFlagService } = await import("@/lib/services/feature-flag-service");
-    // eslint-disable-next-line @typescript-eslint/return-await -- Returning awaited promise is intentional for async access control
-    return await getFeatureFlagService(payload).isEnabled(flag);
+    return getFeatureFlagService(payload).isEnabled(flag);
   });
 
 /**

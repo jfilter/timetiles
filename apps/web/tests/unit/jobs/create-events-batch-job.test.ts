@@ -156,12 +156,9 @@ describe("CreateEventsBatchJob Handler", () => {
     mocks.completeStage.mockResolvedValue(undefined);
 
     // Default: commit every event, no failures, no conflicts.
-    // eslint-disable-next-line @typescript-eslint/require-await
-    mocks.bulkInsertEvents.mockImplementation(async (_payload: unknown, events: unknown[]) => ({
-      created: events.length,
-      failures: [],
-      conflicts: [],
-    }));
+    mocks.bulkInsertEvents.mockImplementation((_payload: unknown, events: unknown[]) =>
+      Promise.resolve({ created: events.length, failures: [], conflicts: [] })
+    );
 
     // null, not undefined — the real helper never returns undefined, and Payload
     // would drop an undefined owner from the write.

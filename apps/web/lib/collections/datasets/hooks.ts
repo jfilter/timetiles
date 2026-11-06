@@ -466,8 +466,7 @@ export const validateDatasetNameUniqueness: CollectionBeforeChangeHook = async (
  * This covers REST and GraphQL flows; local API callers still receive the
  * underlying PG error and can inspect `error.code === "23505"` if they care.
  */
-// eslint-disable-next-line @typescript-eslint/require-await -- signature is async per Payload's AfterErrorHook contract
-export const handleDatasetUniqueConstraintError: CollectionAfterErrorHook = async ({ error }) => {
+export const handleDatasetUniqueConstraintError: CollectionAfterErrorHook = ({ error }) => {
   const err = error as (Error & { code?: string; constraint?: string; message?: string }) | undefined;
   if (!err) return;
   const message = err.message ?? "";
