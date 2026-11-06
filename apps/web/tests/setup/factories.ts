@@ -324,7 +324,6 @@ export interface MockIngestJobOptions {
 }
 
 export const createMockIngestJob = (options: MockIngestJobOptions = {}) => {
-  // Create a properly initialized stage progress structure
   const createStageProgress = () => ({
     status: "pending" as const,
     startedAt: null,

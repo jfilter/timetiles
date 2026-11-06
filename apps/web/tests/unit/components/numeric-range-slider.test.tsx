@@ -95,19 +95,16 @@ describe("NumericRangeSlider", () => {
     fireEvent.click(within(container).getByRole("button", { name: "0 → 100" }));
     // Two spinbuttons (min, max); the first is the min input.
     const minInput = within(container).getAllByRole("spinbutton")[0]!;
-    // Typed input commits on BLUR, not per keystroke. Committing each keystroke made the min
-    // box unusable whenever the domain floor has more digits than the first character typed:
-    // for [1990, 2025], typing "2" committed 2, which collapses to null (open end) and blanked
-    // the controlled input, so no such minimum could ever be entered.
+    // Typed input commits on BLUR, not per keystroke: for [1990, 2025], committing "2"
+    // would collapse to null and blank the controlled input, so no minimum could be entered.
     fireEvent.change(minInput, { target: { value: "25" } });
     fireEvent.blur(minInput);
     expect(onChange).toHaveBeenCalledWith(25, null);
   });
 
   it("clamps a typed min above the current max instead of inverting the range", () => {
-    // Regression: committing min > max sent an inverted range that failed the
-    // server-side Zod refine — every events/stats/chart request 422ed until
-    // the user fixed the digits.
+    // Regression: min > max must never be committed; the inverted range fails the
+    // server-side Zod refine and every events/stats/chart request answers 422.
     const onChange = vi.fn();
     const { container } = renderWithProviders(
       <NumericRangeSlider

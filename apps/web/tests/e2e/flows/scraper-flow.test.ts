@@ -29,10 +29,8 @@ test.describe("Scraper Flow - API", () => {
   let repoId: number;
   let scraperId: number;
   let baseUrl: string;
-  // Suffix every DB resource this attempt creates. The scraper slug is globally
-  // unique, so a retry after a failed cleanup would otherwise collide with the
-  // previous attempt's leftovers and fail the sync rather than the assertion
-  // under test.
+  // Suffix every DB resource this attempt creates: scraper slugs are globally unique, so a
+  // retry after a failed cleanup would collide with leftovers and fail the sync instead.
   let attemptSuffix: string;
 
   test("should login as admin", async ({ request, baseURL }, testInfo) => {
@@ -89,7 +87,6 @@ test.describe("Scraper Flow - API", () => {
     expect(getResponse.status()).toBe(200);
     const currentSettings = await getResponse.json();
 
-    // Update only the enableScrapers flag
     const updateResponse = await request.post(`${baseUrl}/api/globals/settings`, {
       headers: { Authorization: `JWT ${token}`, "Content-Type": "application/json" },
       data: { ...currentSettings, featureFlags: { ...currentSettings.featureFlags, enableScrapers: true } },
@@ -141,8 +138,7 @@ test.describe("Scraper Flow - API", () => {
   });
 
   test("should auto-sync and create scrapers from manifest", async ({ request }) => {
-    // The afterChange hook on scraper-repos queues a scraper-repo-sync job.
-    // We need to wait for the job to complete. Poll the repo's lastSyncStatus.
+    // The repo's afterChange hook queues a scraper-repo-sync job; poll lastSyncStatus until it ends.
     const maxAttempts = 30;
     const pollIntervalMs = 2000;
     let syncStatus: string | null = null;
@@ -165,13 +161,11 @@ test.describe("Scraper Flow - API", () => {
         break;
       }
 
-      // Wait before polling again
       await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
     }
 
     expect(syncStatus).toBe("success");
 
-    // Verify scrapers were created from the manifest
     const scrapersResponse = await request.get(`${baseUrl}/api/scrapers?where[repo][equals]=${repoId}`, {
       headers: { Authorization: `JWT ${token}` },
       timeout: 10000,
@@ -222,17 +216,10 @@ test.describe("Scraper Flow - API", () => {
     await expect(row).not.toBeVisible();
   });
 
-  // The 409 case runs before the successful trigger, and both set their own
-  // precondition. Neither is negotiable:
-  //
-  // - Deriving "running" from a preceding trigger raced the job worker. With no
-  //   SCRAPER_RUNNER_URL in CI the execution job fails within milliseconds and
-  //   writes "failed", so the second trigger saw an idle scraper, skipped the
-  //   409 branch and fell through to the rate limit — a 429, and the original
-  //   flake.
-  // - Ordering 409 first keeps any queued job out of the way. A preceding
-  //   successful trigger queues an execution job that writes "failed" at an
-  //   arbitrary moment, which can land on top of the status this test sets.
+  // The 409 case runs before the successful trigger, and each sets its own run status. Deriving
+  // "running" from a preceding trigger races the job worker (without SCRAPER_RUNNER_URL the job
+  // writes "failed" within ms, yielding a 429 instead of 409), and a queued execution job from an
+  // earlier success could overwrite the status this test sets.
   test("should return 409 when triggering a run for an already-running scraper", async ({
     request,
     setScraperRunStatus,
@@ -251,9 +238,8 @@ test.describe("Scraper Flow - API", () => {
   });
 
   test("should trigger a manual scraper run via API", async ({ request, setScraperRunStatus }) => {
-    // An idle scraper must be accepted outright. The previous [200, 409]
-    // assertion passed either way and so could not distinguish "queued" from
-    // "refused" — it would have gone green on the very bug above.
+    // An idle scraper must be accepted outright; accepting [200, 409] could not tell "queued"
+    // from "refused".
     await setScraperRunStatus(scraperId, "failed");
 
     const runResponse = await request.post(`${baseUrl}/api/scrapers/${scraperId}/run`, {
@@ -268,11 +254,8 @@ test.describe("Scraper Flow - API", () => {
   });
 
   test("should clean up: delete scrapers and the scraper-repo", async ({ request }) => {
-    // Wait for the execution job queued above to reach a terminal status.
-    // Deleting a running scraper is refused with 409 by design, so this is a
-    // real precondition, not politeness — and it must fail loudly rather than
-    // fall through, or a timeout here would resurface as a confusing 409 on
-    // the delete below.
+    // Wait for the queued execution job to finish: deleting a running scraper is refused with 409,
+    // so a timeout here must fail loudly rather than surface as a confusing 409 on the delete.
     let lastRunStatus: string | null = null;
     for (let attempt = 0; attempt < 30; attempt++) {
       const statusResponse = await request.get(`${baseUrl}/api/scrapers/${scraperId}`, {
@@ -294,7 +277,6 @@ test.describe("Scraper Flow - API", () => {
 
     expect(deleteScraperResponse.status()).toBe(200);
 
-    // Now delete the repo itself
     const deleteResponse = await request.delete(`${baseUrl}/api/scraper-repos/${repoId}`, {
       headers: { Authorization: `JWT ${token}` },
       timeout: 10000,
@@ -302,7 +284,6 @@ test.describe("Scraper Flow - API", () => {
 
     expect(deleteResponse.status()).toBe(200);
 
-    // Verify the repo is gone
     const getResponse = await request.get(`${baseUrl}/api/scraper-repos/${repoId}`, {
       headers: { Authorization: `JWT ${token}` },
       timeout: 10000,

@@ -28,7 +28,6 @@ import {
   withUsers,
 } from "@/tests/setup/integration/environment";
 
-// Type definitions for urlFetchJob output
 interface UrlFetchSuccessOutput {
   ingestFileId: string | number;
   filename: string;
@@ -58,14 +57,12 @@ describe("Performance and Concurrency Tests", () => {
     testServer = envWithServer.testServer;
     testServerUrl = envWithServer.testServerUrl;
 
-    // Create test user
     // Large schedule batches exercise concurrency without an unrelated quota cap.
     const { users } = await withUsers(envWithServer, {
       testUser: { role: "admin", email: TEST_EMAILS.performance, customQuotas: { maxActiveSchedules: -1 } },
     });
     testUser = users.testUser;
 
-    // Create test catalog
     const { catalog } = await withCatalog(testEnv, {
       name: "Performance Test Catalog",
       description: "Catalog for performance tests",
@@ -114,16 +111,13 @@ describe("Performance and Concurrency Tests", () => {
       }
       const csvBuffer = Buffer.from(csvData);
 
-      // Set up test server endpoint
       testServer.respond("/stream.csv", {
         body: csvBuffer,
         headers: { "Content-Type": "text/csv", "Content-Length": String(csvBuffer.length) },
       });
 
-      // Import the job handler
       const { urlFetchJob } = await import("@/lib/jobs/handlers/url-fetch-job");
 
-      // Execute the job
       const result = await urlFetchJob.handler({
         job: { id: "test-job-csv" },
         req: { payload },
@@ -161,7 +155,6 @@ describe("Performance and Concurrency Tests", () => {
       // Create a small Excel-like binary buffer
       const excelData = Buffer.alloc(10 * 1024); // 10KB test file
 
-      // Set up test server endpoint for Excel file
       testServer.respond("/large.xlsx", {
         body: excelData,
         headers: {
@@ -170,10 +163,8 @@ describe("Performance and Concurrency Tests", () => {
         },
       });
 
-      // Import the job handler
       const { urlFetchJob } = await import("@/lib/jobs/handlers/url-fetch-job");
 
-      // Execute the job
       const result = await urlFetchJob.handler({
         job: { id: "test-job-large-excel" },
         req: { payload },
@@ -208,12 +199,10 @@ describe("Performance and Concurrency Tests", () => {
         )
       );
 
-      // Set up test server endpoints for concurrent requests
       schedules.forEach((_, i) => {
         testServer.respondWithCSV(`/concurrent-${i}.csv`, `id,value\n${i},${i * 100}`);
       });
 
-      // Import the job handler
       const { urlFetchJob } = await import("@/lib/jobs/handlers/url-fetch-job");
 
       // Execute all jobs concurrently
@@ -236,7 +225,6 @@ describe("Performance and Concurrency Tests", () => {
       );
       const endTime = Date.now();
 
-      // All should succeed
       results.forEach((result: { output: Record<string, unknown> }) => {
         expect(result.output.ingestFileId).toBeDefined();
       });
@@ -247,7 +235,6 @@ describe("Performance and Concurrency Tests", () => {
     });
 
     it("should handle concurrent schedule manager runs without duplication", async () => {
-      // Use fake timers
       vi.useFakeTimers();
       const baseTime = new Date("2024-01-01T12:00:00.000Z");
       vi.setSystemTime(baseTime);
@@ -262,15 +249,11 @@ describe("Performance and Concurrency Tests", () => {
         },
       });
 
-      // Set up test server endpoint
       testServer.respondWithCSV("/duplicate-test.csv", "test,data\n1,2");
-
-      // Clear any previous test state
 
       // Move to next hour
       vi.setSystemTime(new Date("2024-01-01T13:00:00.000Z"));
 
-      // Import the schedule manager
       const { scheduleManagerJob } = await import("@/lib/jobs/handlers/schedule-manager-job");
 
       // Run schedule manager twice quickly
@@ -282,7 +265,6 @@ describe("Performance and Concurrency Tests", () => {
       const totalTriggered = (run1.output?.triggered ?? 0) + (run2.output?.triggered ?? 0);
       expect(totalTriggered).toBeGreaterThanOrEqual(1);
 
-      // Cleanup
       vi.useRealTimers();
     });
   });
@@ -336,7 +318,6 @@ describe("Performance and Concurrency Tests", () => {
       // Create and process a small batch of schedules
       for (let batch = 0; batch < 1; batch++) {
         // Just one batch for speed
-        // Create schedules
         const schedules = await Promise.all(
           Array.from({ length: 2 }, (_, i) =>
             withScheduledIngest(testEnv, testCatalogId, `${testServerUrl}/memory-${batch}-${i}.csv`, {
@@ -347,12 +328,10 @@ describe("Performance and Concurrency Tests", () => {
           )
         );
 
-        // Set up test server endpoints for memory test
         schedules.forEach((_, i) => {
           testServer.respondWithCSV(`/memory-${batch}-${i}.csv`, "test,data\n1,2");
         });
 
-        // Process them
         const { urlFetchJob } = await import("@/lib/jobs/handlers/url-fetch-job");
         await Promise.all(
           schedules.map((schedule) =>
@@ -380,7 +359,6 @@ describe("Performance and Concurrency Tests", () => {
       const finalMemory = process.memoryUsage();
       const memoryIncrease = finalMemory.heapUsed - initialMemory.heapUsed;
 
-      // Memory increase should be reasonable
       expect(memoryIncrease).toBeLessThan(100 * 1024 * 1024); // Less than 100MB
     });
   });
@@ -420,7 +398,6 @@ describe("Performance and Concurrency Tests", () => {
         }
       });
 
-      // Import the job handler
       const { urlFetchJob } = await import("@/lib/jobs/handlers/url-fetch-job");
 
       const input = {
@@ -458,14 +435,12 @@ describe("Performance and Concurrency Tests", () => {
       });
       expect(scheduledIngest.advancedOptions.timeoutMinutes).toBe(1);
 
-      // Set up test server endpoint with slow response
       testServer.respond("/slow.csv", {
         body: "test,data\n1,2",
         headers: { "Content-Type": "text/csv" },
         delay: 500, // Quick delay for fast test
       });
 
-      // Import the job handler
       const { urlFetchJob } = await import("@/lib/jobs/handlers/url-fetch-job");
 
       const startTime = Date.now();

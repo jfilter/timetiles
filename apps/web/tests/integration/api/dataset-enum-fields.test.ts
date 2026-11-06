@@ -26,7 +26,6 @@ describe("Dataset enum fields", () => {
 
     const { users } = await withUsers(testEnv, { testUser: { role: "admin" } });
 
-    // Create test catalog
     const { catalog } = await withCatalog(testEnv, {
       name: "Enum Fields Test Catalog",
       description: "Test catalog for enum field detection",

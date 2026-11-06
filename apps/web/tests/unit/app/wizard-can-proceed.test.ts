@@ -41,7 +41,7 @@ describe("canProceedFromStep", () => {
     });
 
     it("blocks a new catalog whose name is only whitespace", () => {
-      // " " is truthy, so the server-side guard accepted it and created a catalog named " ".
+      // " " is truthy, so a truthiness guard would create a catalog named " ".
       expect(canProceedFromStep(at({ selectedCatalogId: "new", newCatalogName: "   " }), true, true)).toBe(false);
     });
 
@@ -63,9 +63,8 @@ describe("canProceedFromStep", () => {
     });
 
     it("blocks a cron schedule with an empty expression", () => {
-      // Submitting created the ingest file and STARTED the import, then threw when the
-      // scheduled-ingest failed validation — so the user saw an error for an import that
-      // was actually running, and retrying hit "preview not found".
+      // Submitting would create the ingest file and START the import before the schedule
+      // fails validation: an error for a running import, and a retry hits "preview not found".
       const config = { enabled: true, scheduleType: "cron", cronExpression: "" } as ProceedState["scheduleConfig"];
       expect(canProceedFromStep(step5(config), true, true)).toBe(false);
     });
@@ -86,10 +85,8 @@ describe("canProceedFromStep", () => {
   });
 
   it("does not throw when a field is absent, as an incomplete store slice would leave it", () => {
-    // Regression: the caller passed a slice missing `newCatalogName`/`scheduleConfig` behind
-    // an `as` cast, so the gate read `undefined` — `.trim()` threw during render on step 3,
-    // and the step-5 gate silently never fired. The types now prevent that; this asserts the
-    // gate is also defensive if the shape is ever bypassed at runtime.
+    // Regression: a slice missing `newCatalogName`/`scheduleConfig` must neither throw on
+    // `.trim()` nor silently skip the step-5 gate, even if the types are bypassed at runtime.
     const partial = { ...baseState, selectedCatalogId: "new" as const };
     delete (partial as Partial<ProceedState>).newCatalogName;
 

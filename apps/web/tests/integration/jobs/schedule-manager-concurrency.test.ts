@@ -30,7 +30,6 @@ describe("Schedule Manager Concurrency Updates", () => {
     payload = env.payload;
     cleanup = env.cleanup;
 
-    // Create test data
     const { users } = await withUsers(env, { testUser: { role: "admin" } });
     testUser = users.testUser;
 
@@ -50,7 +49,6 @@ describe("Schedule Manager Concurrency Updates", () => {
   beforeEach(async () => {
     vi.clearAllMocks();
 
-    // Create fresh scheduled ingest for each test
     const { scheduledIngest } = await withScheduledIngest(
       testEnv,
       testCatalog.id,
@@ -93,7 +91,6 @@ describe("Schedule Manager Concurrency Updates", () => {
   });
 
   it("should create test scheduled ingest successfully", () => {
-    // Verify test setup is working
     expect(testImport).toBeDefined();
     expect(testImport.id).toBeDefined();
     // Catalog can be returned as object or ID depending on Payload depth settings
@@ -119,7 +116,6 @@ describe("Schedule Manager Concurrency Updates", () => {
      * that layer 2 alone prevents duplicate triggers.
      */
 
-    // Use fake timers to control execution time
     vi.useFakeTimers();
     const baseTime = new Date("2024-01-15T10:00:00.000Z");
     vi.setSystemTime(baseTime);
@@ -146,7 +142,6 @@ describe("Schedule Manager Concurrency Updates", () => {
     // Setting time to 11:00 AM makes it 2 hours overdue
     vi.setSystemTime(new Date("2024-01-15T11:00:00.000Z"));
 
-    // Import the schedule manager
     const { scheduleManagerJob } = await import("@/lib/jobs/handlers/schedule-manager-job");
 
     // Run two schedule managers concurrently (TRUE parallel execution)
@@ -155,14 +150,11 @@ describe("Schedule Manager Concurrency Updates", () => {
       scheduleManagerJob.handler({ job: { id: "test-schedule-manager-2" }, req: { payload } }),
     ]);
 
-    // Both should complete successfully
     expect(run1.output).toBeDefined();
     expect(run2.output).toBeDefined();
 
-    // Check total triggers
     const totalTriggered = (run1.output?.triggered ?? 0) + (run2.output?.triggered ?? 0);
 
-    // At least one should have triggered the schedule
     expect(totalTriggered).toBeGreaterThanOrEqual(1);
 
     // With the atomic SQL claim, exactly 1 should trigger.
@@ -170,14 +162,12 @@ describe("Schedule Manager Concurrency Updates", () => {
     // so it throws and is counted as an error, not a trigger.
     expect(totalTriggered).toBe(1);
 
-    // Verify the scheduled ingest was updated
     const updatedImport = await payload.findByID({ collection: "scheduled-ingests", id: scheduledIngest.id });
 
     // lastStatus should be "running" (set by one or both managers)
     expect(updatedImport.lastStatus).toBe("running");
     expect(updatedImport.lastRun).toBeDefined();
 
-    // Cleanup
     vi.useRealTimers();
   });
 });

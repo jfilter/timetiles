@@ -9,7 +9,6 @@
  * @module
  */
 
-// Import centralized logger mock
 import "@/tests/mocks/services/logger";
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -36,7 +35,6 @@ interface UrlFetchSuccessOutput {
 
 type _UrlFetchOutput = UrlFetchSuccessOutput;
 
-// Mock dependencies
 vi.mock("fs/promises", () => {
   const mock = { mkdir: vi.fn().mockResolvedValue(undefined), writeFile: vi.fn().mockResolvedValue(undefined) };
   return { ...mock, default: mock };
@@ -66,10 +64,8 @@ vi.mock("@/lib/config/app-config", () => ({
 
 vi.mock("uuid", () => ({ v4: () => "test-uuid-1234" }));
 
-// Mock quota service for unit tests
 vi.mock("@/lib/services/quota-service", () => ({ createQuotaService: () => quotaServiceMocks }));
 
-// Mock fetch globally
 globalThis.fetch = vi.fn();
 
 // Helper to create a proper fetch mock response
@@ -119,7 +115,6 @@ describe("urlFetchJob", () => {
     vi.clearAllMocks();
     vi.restoreAllMocks();
 
-    // Reset environment
     process.env.UPLOAD_DIR = "/tmp/uploads";
 
     quotaServiceMocks.checkQuota.mockResolvedValue({ allowed: true, current: 0, limit: 100, remaining: 100 });
@@ -127,10 +122,8 @@ describe("urlFetchJob", () => {
     quotaServiceMocks.checkAndIncrementUsage.mockResolvedValue(true);
     quotaServiceMocks.decrementUsage.mockResolvedValue(undefined);
 
-    // Reset global fetch mock
     (globalThis.fetch as any) = vi.fn();
 
-    // Setup mock payload with fresh mocks
     mockPayload = {
       find: vi.fn(),
       findByID: vi.fn().mockResolvedValue(null), // Default to no user found
@@ -139,10 +132,8 @@ describe("urlFetchJob", () => {
       jobs: { queue: vi.fn().mockResolvedValue({ id: "dataset-job-123" }) },
     };
 
-    // Setup mock job
     mockJob = { id: "job-123" };
 
-    // Setup mock request
     mockReq = { payload: mockPayload };
   });
 
@@ -151,12 +142,10 @@ describe("urlFetchJob", () => {
       // Mock import file creation + user lookup
       mockHappyPathPayload();
 
-      // Mock fetch response
       const mockCsvData = "id,name,value\n1,test,100\n2,test2,200";
       const mockResponse = createMockResponse(mockCsvData, { contentType: "text/csv" });
       (globalThis.fetch as any).mockResolvedValue(mockResponse);
 
-      // Execute job with direct parameters
       const result = await urlFetchJob.handler({
         input: {
           sourceUrl: "https://example.com/data.csv",
@@ -169,7 +158,6 @@ describe("urlFetchJob", () => {
         req: mockReq,
       });
 
-      // Verify fetch was called correctly
       expect(globalThis.fetch).toHaveBeenCalledWith(
         "https://example.com/data.csv",
         expect.objectContaining({
@@ -178,18 +166,15 @@ describe("urlFetchJob", () => {
         })
       );
 
-      // Verify import file was created
       expect(mockPayload.create).toHaveBeenCalled();
       const ingestFileCall = mockPayload.create.mock.calls.find(
         (call: unknown[]) => (call[0] as Record<string, unknown>).collection === "ingest-files"
       );
       expect(ingestFileCall).toBeDefined();
 
-      // url-fetch no longer queues manual-ingest — the parent workflow
-      // (scheduled-ingest or scraper-ingest) handles dataset-detection directly.
+      // The parent workflow (scheduled-ingest or scraper-ingest) handles dataset-detection directly.
       expect(mockPayload.jobs.queue).not.toHaveBeenCalled();
 
-      // Verify result
       expect(result).toEqual({
         output: {
           ingestFileId: "import-123",
@@ -227,8 +212,7 @@ describe("urlFetchJob", () => {
       ).rejects.toThrow();
 
       // The increment made at the top of this attempt must be refunded so the
-      // retry doesn't leak a URL_FETCHES_PER_DAY unit. The old code skipped
-      // compensation once the fetch had succeeded.
+      // retry doesn't leak a URL_FETCHES_PER_DAY unit.
       expect(quotaServiceMocks.decrementUsage).toHaveBeenCalledWith("user-123", "URL_FETCHES_PER_DAY", 1);
     });
 
@@ -423,7 +407,6 @@ describe("urlFetchJob", () => {
       });
       mockPayload.update.mockResolvedValue({});
 
-      // Mock a timeout error
       (globalThis.fetch as any).mockRejectedValue(new Error("Request timeout after 30000ms"));
 
       await expect(
@@ -628,8 +611,7 @@ describe("urlFetchJob", () => {
       // Add find method to mockPayload if it doesn't exist
       mockPayload.find ??= vi.fn();
 
-      // Mock previous successful import with same content hash
-      // The hash for "data" is:
+      // Previous successful import with the same content hash (SHA-256 of "data")
       const expectedHash = "3a6eb0790f39ac87c94f3856b2dd2c5d110e6811602261a9a923d3bb23adc8b7";
       mockPayload.find.mockResolvedValue({
         docs: [
@@ -706,17 +688,8 @@ describe("urlFetchJob", () => {
     });
 
     it("rejects unsupported file types with a clear error (regression)", async () => {
-      // Regression: previously, bodies with unknown Content-Type but
-      // comma/newline content were silently labeled CSV by a heuristic.
-      // That routed JSON and other formats through the CSV parser, producing
-      // cryptic downstream errors. Now the pipeline surfaces a clear
-      // "Unsupported file type" error from fetch-remote-data instead.
-      //
-      // Note: `advancedOptions.expectedContentType` is declared on FetchOptions
-      // but has no wiring today — it is not consumed by `detectFileTypeFromResponse`
-      // or `fetchRemoteData`. If we later want an explicit-override path for
-      // URLs that serve CSV with `application/octet-stream` Content-Type, that
-      // feature needs a separate implementation.
+      // Regression: an unknown Content-Type with comma/newline content must surface
+      // "Unsupported file type", not be routed through the CSV parser by a heuristic.
       mockPayload.create.mockResolvedValue({ id: "import-123" });
       mockPayload.findByID
         .mockResolvedValueOnce({
@@ -943,8 +916,7 @@ describe("urlFetchJob", () => {
     });
 
     it("should not call logError when scheduled ingest is disabled", async () => {
-      // Bug: loadScheduledIngestConfig throws "disabled" inside try block,
-      // which is caught and logged via logError — treating expected behavior as an error
+      // Regression: a disabled schedule is expected behavior and must not be logged via logError
       mockPayload.findByID.mockResolvedValue({
         id: "scheduled-123",
         enabled: false, // Disabled — this is expected, not an error
@@ -1026,8 +998,8 @@ describe("urlFetchJob", () => {
     });
 
     it("should not dilute averageDuration with zero when duplicate is detected", async () => {
-      // Bug: handleDuplicateCheck calls updateScheduledIngestSuccess with duration=0,
-      // which progressively dilutes the averageDuration toward 0 with each duplicate
+      // Regression: a duplicate hit must record the real duration, not 0, which
+      // would dilute averageDuration toward 0
       mockPayload.findByID.mockResolvedValue({
         id: "scheduled-123",
         enabled: true,
@@ -1043,7 +1015,6 @@ describe("urlFetchJob", () => {
         createdBy: "user-123",
       });
 
-      // Mock existing file with matching hash (hash of "data")
       const expectedHash = "3a6eb0790f39ac87c94f3856b2dd2c5d110e6811602261a9a923d3bb23adc8b7";
       mockPayload.find.mockResolvedValue({
         docs: [
@@ -1073,7 +1044,6 @@ describe("urlFetchJob", () => {
 
       vi.spyOn(Date, "now").mockRestore();
 
-      // Verify that update was called
       expect(mockPayload.update).toHaveBeenCalled();
       const updateCall = mockPayload.update.mock.calls.find((call: any) => call[0]?.collection === "scheduled-ingests");
       expect(updateCall).toBeDefined();
@@ -1084,7 +1054,7 @@ describe("urlFetchJob", () => {
 
       // The averageDuration should incorporate real time, not be diluted by 0
       // Previous: 10000 ms avg over 1 run. With 2000 ms real duration: (10000 + 2000) / 2 = 6000
-      // Bug would give: (10000 + 0) / 2 = 5000
+      // A 0 duration would give: (10000 + 0) / 2 = 5000
       const stats = updateCall[0].data.statistics;
       expect(stats.averageDuration).toBeGreaterThan(5000);
     });
@@ -1209,7 +1179,6 @@ describe("urlFetchJob", () => {
         req: mockReq,
       });
 
-      // Verify the import file was created with dataset mapping metadata
       expect(mockPayload.create).toHaveBeenCalled();
       const createCall = mockPayload.create.mock.calls[0][0];
       expect(createCall.collection).toBe("ingest-files");
@@ -1289,11 +1258,8 @@ describe("urlFetchJob", () => {
     });
 
     it("persists targetDataset as the numeric relation id when scheduledIngest.dataset is populated (regression)", async () => {
-      // Regression: `data.targetDataset = scheduledIngest.dataset` used to
-      // assign whatever Payload returned at whatever depth — either a bare
-      // id or a populated relation object. The ingest-files collection
-      // expects a bare id on create, so the populated-object path was
-      // fragile. Now we route through `extractRelationId` consistently.
+      // Regression: targetDataset must be a bare id even when the scheduled ingest
+      // carries a populated dataset relation (extractRelationId).
       const scheduledIngest = {
         id: "scheduled-123",
         enabled: true,

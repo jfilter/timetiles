@@ -134,7 +134,6 @@ describe("SchemaDetectionService", () => {
           }),
       };
 
-      // Create a custom detector that cannot handle
       const customThatCantHandle = createMockCustomDetector();
       vi.mocked(customThatCantHandle.canHandle).mockReturnValue(false);
 

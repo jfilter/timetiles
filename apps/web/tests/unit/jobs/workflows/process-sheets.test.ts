@@ -223,7 +223,6 @@ describe("processSheets", () => {
     // Sheet 0's analyze takes longer than sheet 1's entire pipeline
     tasks["analyze-duplicates"]
       .mockImplementationOnce(async (id: string) => {
-        // Simulate a delay for sheet 0
         await new Promise((resolve) => setTimeout(resolve, 50));
         callOrder.push(`analyze-${id}`);
         return {};
@@ -274,10 +273,10 @@ describe("processSheets", () => {
     expect(tasks["create-events"]).toHaveBeenCalledTimes(2);
   });
 
-  // ── Review Check Tests (now inside handlers, tested via task return) ──
+  // ── Review checks (inside handlers, tested via task return) ──
 
   it("should pause for review when analyze-duplicates returns needsReview", async () => {
-    // analyze-duplicates handler now performs review checks internally
+    // The analyze-duplicates handler performs review checks internally
     // and returns { needsReview: true } when duplicate rate exceeds 80%
     tasks["analyze-duplicates"].mockResolvedValueOnce({ needsReview: true, totalRows: 100, uniqueRows: 10 });
 
@@ -290,7 +289,7 @@ describe("processSheets", () => {
   });
 
   it("should pause for review when geocode-batch returns needsReview", async () => {
-    // geocode-batch handler now performs review checks internally
+    // The geocode-batch handler performs review checks internally
     tasks["geocode-batch"].mockResolvedValueOnce({ needsReview: true, geocoded: 30, failed: 70 });
 
     const sheets: SheetInfo[] = [makeSheet(0, "j0")];

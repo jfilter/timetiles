@@ -18,7 +18,6 @@ import { createSchemaVersionJob } from "@/lib/jobs/handlers/create-schema-versio
 import type { JobHandlerContext } from "@/lib/jobs/utils/job-context";
 import { createMockDataset, createMockIngestJob } from "@/tests/setup/factories";
 
-// Use vi.hoisted to create mocks that can be used in vi.mock factories
 const mocks = vi.hoisted(() => {
   return {
     createSchemaVersion: vi.fn(),
@@ -29,7 +28,6 @@ const mocks = vi.hoisted(() => {
   };
 });
 
-// Mock external dependencies
 vi.mock("@/lib/ingest/schema-versioning", () => ({
   SchemaVersioningService: { createSchemaVersion: mocks.createSchemaVersion },
 }));
@@ -68,11 +66,10 @@ describe("CreateSchemaVersionJob Handler", () => {
   let mockDrizzleSet: any;
 
   beforeEach(() => {
-    // Reset all mocks
     vi.clearAllMocks();
 
-    // Mock payload — `find` resolves empty by default (no prior schema
-    // version), so the handler takes the create path unless a test overrides it.
+    // `find` resolves empty by default (no prior schema version), so the handler
+    // takes the create path unless a test overrides it.
     mockDrizzleSet = vi.fn(() => ({ where: vi.fn().mockResolvedValue(undefined) }));
     mockPayload = {
       findByID: vi.fn(),
@@ -81,7 +78,6 @@ describe("CreateSchemaVersionJob Handler", () => {
       db: { drizzle: { update: vi.fn(() => ({ set: mockDrizzleSet })) } },
     };
 
-    // Mock context
     mockContext = {
       req: { payload: mockPayload },
       job: { id: "test-job-1", taskStatus: "running" } as any,
@@ -91,7 +87,7 @@ describe("CreateSchemaVersionJob Handler", () => {
 
   describe("Success Cases", () => {
     it("should create schema version successfully", async () => {
-      // Mock import job with manually approved schema
+      // Manually approved schema
       const schema = { title: { type: "string" }, date: { type: "date" } };
       const mockIngestJob = createMockIngestJob({
         progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
@@ -120,16 +116,12 @@ describe("CreateSchemaVersionJob Handler", () => {
         },
       });
 
-      // Mock dataset
       const mockDataset = createMockDataset();
 
-      // Mock field stats
       const mockFieldStats = { title: { uniqueCount: 100, nullCount: 0 }, date: { uniqueCount: 95, nullCount: 5 } };
 
-      // Mock created schema version
       const mockSchemaVersion = { id: "schema-version-101", dataset: "dataset-456", schema };
 
-      // Setup payload mock responses
       mockPayload.findByID
         .mockResolvedValueOnce(mockIngestJob) // First call returns import job
         .mockResolvedValueOnce(mockDataset); // Second call returns dataset
@@ -139,18 +131,14 @@ describe("CreateSchemaVersionJob Handler", () => {
       mocks.getFieldStats.mockReturnValue(mockFieldStats);
       mocks.createSchemaVersion.mockResolvedValue(mockSchemaVersion);
 
-      // Execute job
       const result = await createSchemaVersionJob.handler(mockContext);
 
-      // Verify result — includes versionNumber, schemaVersionId
       expect(result).toEqual({ output: { versionNumber: undefined, schemaVersionId: "schema-version-101" } });
 
-      // Verify payload calls
       expect(mockPayload.findByID).toHaveBeenCalledTimes(2);
       expect(mockPayload.findByID).toHaveBeenNthCalledWith(1, { collection: "ingest-jobs", id: "import-123" });
       expect(mockPayload.findByID).toHaveBeenNthCalledWith(2, { collection: "datasets", id: "dataset-456" });
 
-      // Verify schema version creation
       expect(mocks.createSchemaVersion).toHaveBeenCalledWith(mockPayload, {
         dataset: "dataset-456",
         schema,
@@ -167,7 +155,7 @@ describe("CreateSchemaVersionJob Handler", () => {
         ingestSources: [],
       });
 
-      // Verify stage tracking update at start + schema version update (no stage transition)
+      // Stage tracking update at start + schema version update (no stage transition)
       expect(mockPayload.update).toHaveBeenCalledWith({
         collection: "ingest-jobs",
         id: "import-123",
@@ -189,8 +177,8 @@ describe("CreateSchemaVersionJob Handler", () => {
     });
 
     it("should reuse the latest version when the schema is unchanged", async () => {
-      // Stable scheduled feeds previously appended an identical
-      // dataset-schemas row on EVERY successful import.
+      // A stable scheduled feed must not append an identical dataset-schemas row
+      // on every successful import.
       const schema = { title: { type: "string" }, date: { type: "date" } };
       const mockIngestJob = createMockIngestJob({
         progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
@@ -222,7 +210,7 @@ describe("CreateSchemaVersionJob Handler", () => {
     });
 
     it("should skip when schema version already exists", async () => {
-      // Mock import job with existing schema version
+      // Job already has a schema version
       const mockIngestJob = createMockIngestJob({
         progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
         overrides: {
@@ -234,13 +222,11 @@ describe("CreateSchemaVersionJob Handler", () => {
 
       mockPayload.findByID.mockResolvedValueOnce(mockIngestJob);
 
-      // Execute job
       const result = await createSchemaVersionJob.handler(mockContext);
 
-      // Verify result — skip path
+      // Skip path
       expect(result).toEqual({ output: { skipped: true } });
 
-      // Verify no schema version creation was attempted
       expect(mocks.createSchemaVersion).not.toHaveBeenCalled();
 
       // Stage tracking update at start (no stage transition to next stage)
@@ -252,7 +238,7 @@ describe("CreateSchemaVersionJob Handler", () => {
     });
 
     it("should skip when schema is not approved", async () => {
-      // Mock import job with manual approval required but not yet approved
+      // Manual approval required but not yet approved
       const mockIngestJob = createMockIngestJob({
         progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
         overrides: {
@@ -266,19 +252,17 @@ describe("CreateSchemaVersionJob Handler", () => {
 
       mockPayload.findByID.mockResolvedValueOnce(mockIngestJob);
 
-      // Execute job
       const result = await createSchemaVersionJob.handler(mockContext);
 
-      // Verify result — skip path. needsReview stops the pipeline: an unapproved
-      // schema must not reach geocode/create-events through an admin reset.
+      // needsReview stops the pipeline: an unapproved schema must not reach
+      // geocode/create-events through an admin reset.
       expect(result).toEqual({ output: { skipped: true, needsReview: true } });
 
-      // Verify no schema version creation was attempted
       expect(mocks.createSchemaVersion).not.toHaveBeenCalled();
     });
 
     it("should handle dataset as object reference", async () => {
-      // Mock import job with dataset as object
+      // Dataset populated as an object on the job
       const mockDataset = createMockDataset();
 
       const mockIngestJob = createMockIngestJob({
@@ -302,18 +286,16 @@ describe("CreateSchemaVersionJob Handler", () => {
       mocks.getFieldStats.mockReturnValue({});
       mocks.createSchemaVersion.mockResolvedValue(mockSchemaVersion);
 
-      // Execute job
       const result = await createSchemaVersionJob.handler(mockContext);
 
-      // Verify result — includes versionNumber, schemaVersionId
       expect(result).toEqual({ output: { versionNumber: undefined, schemaVersionId: "schema-version-101" } });
 
-      // Verify only one findByID call (no separate dataset fetch needed)
+      // No separate dataset fetch needed
       expect(mockPayload.findByID).toHaveBeenCalledTimes(1);
     });
 
     it("should handle approvedBy as object reference", async () => {
-      // Mock import job with approvedBy as object
+      // approvedBy populated as an object
       const schema = { title: { type: "string" } };
       const mockIngestJob = createMockIngestJob({
         progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
@@ -337,10 +319,8 @@ describe("CreateSchemaVersionJob Handler", () => {
       mocks.getFieldStats.mockReturnValue({});
       mocks.createSchemaVersion.mockResolvedValue(mockSchemaVersion);
 
-      // Execute job
       await createSchemaVersionJob.handler(mockContext);
 
-      // Verify schema version creation with correct approvedBy ID
       expect(mocks.createSchemaVersion).toHaveBeenCalledWith(mockPayload, {
         dataset: "dataset-456",
         schema,

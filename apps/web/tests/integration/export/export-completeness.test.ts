@@ -3,8 +3,8 @@
  * Integration tests for GDPR export completeness.
  *
  * Verifies that `getExportSummary()` and `fetchAllUserData()` include ALL
- * user-owned collections, particularly the 5 that were previously missing:
- * dataset-schemas, audit-log, scraper-repos, scrapers, scraper-runs.
+ * user-owned collections, including dataset-schemas, audit-log, scraper-repos,
+ * scrapers and scraper-runs.
  *
  * Tests use unique user IDs to avoid cross-test interference, so no
  * collection truncation is needed.
@@ -168,7 +168,6 @@ describe("GDPR Export Completeness", () => {
       const catalog = await createCatalogForUser(users.testUser.id);
       const dataset = await createDatasetForUser(users.testUser.id, catalog.id);
 
-      // Create a dataset schema version
       await payload.create({
         collection: "dataset-schemas",
         data: {
@@ -190,7 +189,6 @@ describe("GDPR Export Completeness", () => {
     it("should not count audit-log entries belonging to other users", async () => {
       const { users } = await withUsers(testEnv, { user1: { role: "user" }, user2: { role: "user" } });
 
-      // Create audit entry for user1
       await payload.create({
         collection: "audit-log",
         data: {
@@ -202,7 +200,6 @@ describe("GDPR Export Completeness", () => {
         overrideAccess: true,
       });
 
-      // Create audit entry for user2
       await payload.create({
         collection: "audit-log",
         data: {
@@ -240,7 +237,7 @@ describe("GDPR Export Completeness", () => {
 
       const data = await exportService.fetchAllUserData(users.testUser.id);
 
-      // Verify all collection arrays exist (including the previously missing ones)
+      // Verify all collection arrays exist
       expect(data).toHaveProperty("datasetSchemas");
       expect(data).toHaveProperty("auditLog");
       expect(data).toHaveProperty("scraperRepos");
@@ -258,7 +255,6 @@ describe("GDPR Export Completeness", () => {
     it("should fetch audit-log entries with sanitized fields (no IP addresses)", async () => {
       const { users } = await withUsers(testEnv, { testUser: { role: "user" } });
 
-      // Create an audit-log entry with an IP address
       await payload.create({
         collection: "audit-log",
         data: {
@@ -289,7 +285,6 @@ describe("GDPR Export Completeness", () => {
       const catalog = await createCatalogForUser(users.testUser.id);
       const dataset = await createDatasetForUser(users.testUser.id, catalog.id);
 
-      // Create two schema versions
       await payload.create({
         collection: "dataset-schemas",
         data: {

@@ -123,10 +123,7 @@ describe("Configuration System", () => {
 
   it("should provide preset-specific settings", () => {
     // Presets are distinguished by which collections they enable and by their
-    // per-collection overrides. (They used to also carry volume/realism/
-    // performance/debugging, which this test asserted — but nothing in the
-    // seeding code ever read those, so the assertions only proved the constants
-    // still held the values the constants held. Both are gone.)
+    // per-collection overrides.
     const devPreset = SEED_CONFIG.presets.development!;
     expect(devPreset.enabled).toContain("events");
     expect(getCollectionConfig("events", "development")?.customGenerator).toBe("realistic-temporal-spatial-patterns");

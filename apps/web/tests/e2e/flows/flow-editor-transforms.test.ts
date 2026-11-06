@@ -53,21 +53,17 @@ test.describe("Flow Editor Transforms", () => {
     const fieldMappingHeading = page.getByRole("heading", { name: /map your fields/i });
     await expect(fieldMappingHeading).toBeVisible({ timeout: 10000 });
 
-    // Open the flow editor
     const visualEditorButton = page.getByRole("button", { name: /open visual editor/i });
     await expect(visualEditorButton).toBeVisible({ timeout: 15000 });
     await visualEditorButton.click();
 
-    // Wait for flow editor to load
     await expect(page.getByText("Visual Field Mapping")).toBeVisible({ timeout: 10000 });
 
     // Verify source column nodes are visible (from valid-events.csv: title, description, date, location, category)
     await expect(page.getByText("Source Column").first()).toBeVisible({ timeout: 5000 });
 
-    // Verify target field nodes are visible
     await expect(page.getByText("Title").first()).toBeVisible();
 
-    // Verify the palette is visible with draggable transform items
     await expect(page.getByText("Transforms")).toBeVisible();
     await expect(page.locator('[data-testid="palette-item-rename"]')).toBeVisible();
     await expect(page.locator('[data-testid="palette-item-date-parse"]')).toBeVisible();
@@ -75,22 +71,17 @@ test.describe("Flow Editor Transforms", () => {
     await expect(page.locator('[data-testid="palette-item-concatenate"]')).toBeVisible();
     await expect(page.locator('[data-testid="palette-item-split"]')).toBeVisible();
 
-    // Verify palette items are draggable
     const renameItem = page.locator('[data-testid="palette-item-rename"]');
     await expect(renameItem).toHaveAttribute("draggable", "true");
 
-    // Click "Apply & Return" to save mappings and go back to wizard
     const saveButton = page.getByRole("button", { name: /apply.*return/i });
     await expect(saveButton).toBeVisible();
     await saveButton.click();
 
-    // Should redirect back to import wizard at step 4
     await expect(page).toHaveURL(/\/ingest/, { timeout: 10000 });
 
-    // The wizard should be on the field mapping step
     await expect(page.getByRole("heading", { name: /map your fields/i })).toBeVisible({ timeout: 10000 });
 
-    // Click Next to go to review
     await importPage.clickNext();
 
     // Step 5: Review
@@ -99,7 +90,6 @@ test.describe("Flow Editor Transforms", () => {
 
     await expect(page.getByText(catalogName)).toBeVisible();
 
-    // Start the import
     const responsePromise = page.waitForResponse((response) => response.url().includes("/api/ingest/configure"), {
       timeout: 10000,
     });
@@ -123,7 +113,6 @@ test.describe("Flow Editor Transforms", () => {
     const completionIndicator = page.getByText(/import complete/i);
     await expect(completionIndicator).toBeVisible({ timeout: 120000 });
 
-    // Verify events were created
     const successMessage = page.getByText(/import complete/i);
     await expect(successMessage).toBeVisible({ timeout: 5000 });
   });
@@ -159,7 +148,6 @@ test.describe("Flow Editor Transforms", () => {
     await expect(visualEditorButton).toBeVisible({ timeout: 15000 });
     await visualEditorButton.click();
 
-    // Wait for flow editor to load
     await expect(page.getByText("Visual Field Mapping")).toBeVisible({ timeout: 10000 });
     await expect(page.getByText("Source Column").first()).toBeVisible({ timeout: 5000 });
 
@@ -167,7 +155,6 @@ test.describe("Flow Editor Transforms", () => {
     const saveButton = page.getByRole("button", { name: /apply.*return/i });
     await saveButton.click();
 
-    // Wait for redirect back to ingest wizard
     await expect(page).toHaveURL(/\/ingest$/, { timeout: 10000 });
 
     // Verify we're back on the field mapping step with the mappings preserved
@@ -178,7 +165,6 @@ test.describe("Flow Editor Transforms", () => {
     const reviewHeading = page.getByRole("heading", { name: /review your import/i });
     await expect(reviewHeading).toBeVisible({ timeout: 10000 });
 
-    // Start import
     const responsePromise = page.waitForResponse((response) => response.url().includes("/api/ingest/configure"), {
       timeout: 10000,
     });
@@ -189,7 +175,6 @@ test.describe("Flow Editor Transforms", () => {
     const response = await responsePromise;
     expect(response.status()).toBe(200);
 
-    // Wait for completion
     const completionIndicator = page.getByText(/import complete/i);
     await expect(completionIndicator).toBeVisible({ timeout: 120000 });
   });
@@ -219,13 +204,11 @@ test.describe("Flow Editor Transforms", () => {
     // Step 4: Add uppercase transform via the column table UI
     await expect(page.getByRole("heading", { name: /map your fields/i })).toBeVisible({ timeout: 10000 });
 
-    // Find the "title" column row and click its "Add transform" button
     const titleRow = page.locator("tr").filter({ hasText: "title" }).first();
     const addTransformButton = titleRow.getByRole("button", { name: /add transform/i });
     await expect(addTransformButton).toBeVisible({ timeout: 5000 });
     await addTransformButton.click();
 
-    // Select "String Operation" from the dropdown menu
     const stringOpItem = page.getByRole("menuitem", { name: /string operation/i });
     await expect(stringOpItem).toBeVisible({ timeout: 5000 });
     await stringOpItem.click();
@@ -233,7 +216,6 @@ test.describe("Flow Editor Transforms", () => {
     // Default operation is "uppercase" — verify chip shows in the title row
     await expect(titleRow.getByText("Uppercase")).toBeVisible({ timeout: 5000 });
 
-    // Proceed to review step
     await importPage.clickNext();
 
     const reviewHeading = page.getByRole("heading", { name: /review your import/i });
@@ -258,7 +240,6 @@ test.describe("Flow Editor Transforms", () => {
     const response = await responsePromise;
     expect(response.status()).toBe(200);
 
-    // Verify the configure API received the transforms
     expect(capturedRequestBody).not.toBeNull();
     const transforms = capturedRequestBody!.transforms as Array<{ sheetIndex: number; transforms: unknown[] }>;
     expect(transforms).toBeDefined();
@@ -276,7 +257,6 @@ test.describe("Flow Editor Transforms", () => {
     const datasetId = responseBody.datasets?.["0"] as number | undefined;
     expect(datasetId).toBeDefined();
 
-    // Wait for import to complete
     const completionIndicator = page.getByText(/import complete/i);
     await expect(completionIndicator).toBeVisible({ timeout: 120000 });
 
@@ -289,7 +269,6 @@ test.describe("Flow Editor Transforms", () => {
     const eventsData = await eventsResponse.json();
     const events = eventsData.docs as Array<{ transformedData: Record<string, unknown> }>;
 
-    // All events in this dataset should have uppercase titles
     const uppercasedEvents = events.filter(
       (e) =>
         typeof e.transformedData?.title === "string" &&
@@ -330,13 +309,11 @@ test.describe("Flow Editor Transforms", () => {
     // Step 4: Add rename transform via the column table UI
     await expect(page.getByRole("heading", { name: /map your fields/i })).toBeVisible({ timeout: 10000 });
 
-    // Find the "category" column row and click its "Add transform" button
     const categoryRow = page.locator("tr").filter({ hasText: "category" }).first();
     const addTransformButton = categoryRow.getByRole("button", { name: /add transform/i });
     await expect(addTransformButton).toBeVisible({ timeout: 5000 });
     await addTransformButton.click();
 
-    // Select "Rename Field" from the dropdown menu
     const renameItem = page.getByRole("menuitem", { name: /rename field/i });
     await expect(renameItem).toBeVisible({ timeout: 5000 });
     await renameItem.click();
@@ -346,12 +323,10 @@ test.describe("Flow Editor Transforms", () => {
     await expect(renameChip).toBeVisible({ timeout: 5000 });
     await renameChip.click();
 
-    // Fill in the new name in the inline editor
     const toInput = page.locator("#to");
     await expect(toInput).toBeVisible({ timeout: 5000 });
     await toInput.fill("event_type");
 
-    // Save the transform
     const saveTransformButton = page.getByRole("button", { name: /^Save$/i });
     await expect(saveTransformButton).toBeVisible({ timeout: 5000 });
     await saveTransformButton.click();
@@ -361,7 +336,6 @@ test.describe("Flow Editor Transforms", () => {
     const reviewHeading = page.getByRole("heading", { name: /review your import/i });
     await expect(reviewHeading).toBeVisible({ timeout: 10000 });
 
-    // Intercept and verify the configure API call
     const responsePromise = page.waitForResponse((response) => response.url().includes("/api/ingest/configure"), {
       timeout: 10000,
     });
@@ -380,7 +354,6 @@ test.describe("Flow Editor Transforms", () => {
     const response = await responsePromise;
     expect(response.status()).toBe(200);
 
-    // Verify the configure API received the rename transform
     expect(capturedRequestBody).not.toBeNull();
     const transforms = capturedRequestBody!.transforms as Array<{ sheetIndex: number; transforms: unknown[] }>;
     expect(transforms).toBeDefined();
@@ -396,7 +369,6 @@ test.describe("Flow Editor Transforms", () => {
     const datasetId = responseBody.datasets?.["0"] as number | undefined;
     expect(datasetId).toBeDefined();
 
-    // Wait for import to complete
     const completionIndicator = page.getByText(/import complete/i);
     await expect(completionIndicator).toBeVisible({ timeout: 120000 });
 
@@ -409,7 +381,6 @@ test.describe("Flow Editor Transforms", () => {
     const eventsData = await eventsResponse.json();
     const events = eventsData.docs as Array<{ transformedData: Record<string, unknown> }>;
 
-    // Find events with the renamed field
     const renamedEvents = events.filter(
       (e) => typeof e.transformedData?.event_type === "string" && !("category" in e.transformedData)
     );

@@ -77,8 +77,8 @@ describe("buildH3HexData antimeridian handling", () => {
     const ring = ringOf(buildH3HexData("h3", [cluster(STRADDLING_CELL)]), 0);
     const lngs = ring.map(([lng]) => lng);
 
-    // A hexagon is a fraction of a degree wide — before normalization this span
-    // was ~360, which MapLibre drew as a band across the whole map.
+    // A hexagon is a fraction of a degree wide — an unnormalized span is ~360,
+    // which MapLibre draws as a band across the whole map.
     expect(Math.max(...lngs) - Math.min(...lngs)).toBeLessThan(1);
     // Vertices past the antimeridian stay unwrapped (>180); MapLibre wraps them.
     expect(Math.max(...lngs)).toBeGreaterThan(180);

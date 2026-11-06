@@ -157,7 +157,6 @@ Event 3,2024-01-03,Hamburg Germany
       { maxIterations: 50 }
     );
 
-    // Verify the import job is marked as failed
     const importJobs = await payload.find({
       collection: "ingest-jobs",
       where: { ingestFile: { equals: ingestFile.id } },
@@ -170,7 +169,6 @@ Event 3,2024-01-03,Hamburg Germany
     expect(ingestJob.errorLog).toBeDefined();
     // Context is "pipeline" when error is caught by processSheets, or "geocode-batch" when caught by handler
     expect(ingestJob.errorLog.context).toMatch(/pipeline|geocode-batch/);
-    // Error message should indicate geocoding failure
     expect(ingestJob.errorLog.lastError).toMatch(/Geocoding|geocoding/i);
 
     // Verify the import file status (may be "failed" or still "processing" depending on error type)

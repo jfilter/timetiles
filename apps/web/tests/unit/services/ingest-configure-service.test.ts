@@ -189,11 +189,9 @@ describe("import-configure-service", () => {
     });
 
     it("translates flexible mode (same dataset-fallback shape as additive)", () => {
-      // Flexible's mode-specific permissiveness lives in `evaluateSchemaMode`,
-      // not in the dataset-level fallback config. At the dataset config layer,
-      // flexible must look identical to additive — otherwise a missing
-      // `processingOptions.schemaMode` escalates harmlessly compatible runs
-      // to "needs review" via `checkRequiresApproval`.
+      // Flexible's extra permissiveness lives in `evaluateSchemaMode`; at the dataset config
+      // layer it must equal additive, or a missing `processingOptions.schemaMode` escalates
+      // compatible runs to "needs review" via `checkRequiresApproval`.
       expect(translateSchemaMode("flexible")).toEqual({ locked: false, autoGrow: true, autoApproveNonBreaking: true });
     });
 

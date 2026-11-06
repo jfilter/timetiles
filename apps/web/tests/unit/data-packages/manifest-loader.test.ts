@@ -888,10 +888,8 @@ describe("manifest-loader", () => {
 
   describe("fieldMappings", () => {
     it("preserves coordinatePath, coordinateFormat and the timestamp orders", () => {
-      // A non-strict Zod object DROPS undeclared keys. These four are read by
-      // createDatasetFromManifest and typed on DataPackageFieldMappings, so
-      // omitting them from the schema silently discarded them and the package
-      // imported with the wrong geometry/time interpretation.
+      // A non-strict Zod object DROPS undeclared keys. createDatasetFromManifest reads
+      // these four, so dropping them would import with the wrong geometry/time interpretation.
       existsSyncSpy.mockReturnValue(true);
       readdirSyncSpy.mockReturnValue(["package.yml"] as any);
       readFileSyncSpy.mockReturnValue(

@@ -251,8 +251,7 @@ describe("JSON fetch integration", () => {
   // 9. Empty JSON response
   // -------------------------------------------------------------------------
   it("handles empty JSON array gracefully", async () => {
-    // An empty array is a valid "nothing today" answer, not a fault. Rejecting it made every
-    // quiet day a scheduled-ingest failure that consumed a retry.
+    // An empty array is a valid "nothing today" answer, not a fault; rejecting it would fail every quiet scheduled run.
     server.respondWithJSON("/api/empty", []);
 
     const result = await fetchRemoteData({ sourceUrl: server.getUrl("/api/empty"), maxRetries: 0 });
@@ -348,9 +347,7 @@ describe("JSON fetch integration", () => {
   });
 
   it("keeps every column when stripping excluded fields from a ragged native CSV", async () => {
-    // First data row is short, so header-mode parsing yields an object without
-    // `city`/`secret`. Deriving the output header from that first row alone
-    // dropped `city` for every row in the file.
+    // Regression: the first data row is short, so the output header must not come from that row alone.
     server.respond("/api/ragged.csv", {
       body: "title,city,secret\nEvent 1\nEvent 2,Berlin,classified\n",
       headers: { "Content-Type": "text/csv" },

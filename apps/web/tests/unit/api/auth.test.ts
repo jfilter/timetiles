@@ -29,10 +29,8 @@ vi.mock("@payload-config", () => ({ default: {} }));
 vi.mock("@/payload.config", () => ({ default: {} }));
 vi.mock("@/lib/utils/base-url", () => ({ getBaseUrl: vi.fn(() => "https://example.com") }));
 
-// Only the service call is mocked. RATE_LIMITS stays REAL so the tests can
-// assert which configured limit each route actually resolves — stub configs
-// made every configName indistinguishable, so a route wired to the wrong one
-// still looked correct.
+// Only the service call is mocked. RATE_LIMITS stays real so the tests can
+// assert which configured limit each route actually resolves.
 vi.mock("@/lib/services/rate-limit-service", async () => {
   const { RATE_LIMITS } = await import("@/lib/constants/rate-limits");
   return {
@@ -137,15 +135,9 @@ describe("POST /api/auth/register", () => {
   });
 
   it("handles unique-violation race on create by queueing the account-exists email", async () => {
-    // Regression: the try/catch at route.ts:125-150 recovers from a race
-    // where the email passes the pre-flight `find` but `create` fails with
-    // a unique-constraint violation. Without re-queueing the account-exists
-    // email, the request-volume difference between racing/non-racing emails
-    // would become an enumeration side-channel.
-    //
-    // First find: no user (passes the pre-flight check).
-    // payload.create: rejects with a unique-violation error message.
-    // Second find (race re-query): returns the now-existing user row.
+    // Regression: when `create` loses a race with a unique-constraint violation, the
+    // account-exists email must still be queued, or email volume becomes an enumeration
+    // side-channel. find #1: no user; create: unique violation; find #2: existing user.
     mockPayload.find
       .mockResolvedValueOnce({ docs: [] })
       .mockResolvedValueOnce({ docs: [{ id: 42, email: "race@example.com", locale: "en" }] });
@@ -223,11 +215,8 @@ describe("POST /api/auth/forgot-password", () => {
   });
 
   it("resolves the route's limit from the FORGOT_PASSWORD config, not some other endpoint's", async () => {
-    // The route declares `rateLimit: { configName: "FORGOT_PASSWORD" }`, and
-    // the middleware resolves that name against the real RATE_LIMITS table.
-    // Asserting the resolved config *identity* is what makes a mis-wired
-    // configName (e.g. "REGISTRATION") fail here: a scripted allow/deny
-    // sequence alone is satisfied by any configName, or none at all.
+    // Asserting the resolved config *identity* catches a mis-wired configName
+    // (e.g. "REGISTRATION"); a scripted allow/deny sequence alone would not.
     mockCheckRateLimit.mockReset().mockReturnValue({ allowed: true });
     mockPayload.forgotPassword.mockResolvedValue(null);
 
@@ -289,11 +278,8 @@ describe("POST /api/auth/forgot-password", () => {
     const limitedData = await limitedResponse.json();
 
     expect(limitedResponse.status).toBe(429);
-    // Note: the rate-limit middleware returns `{ error: "Too many
-    // requests", retryAfter }` rather than the enumeration-neutral
-    // success message. Body-text uniformity across 200/429 is a separate
-    // concern — this assertion simply pins the current middleware
-    // behavior so future changes don't silently regress it.
+    // The 429 body is the middleware's `{ error, retryAfter }`, not the
+    // enumeration-neutral success message; pinned so changes are deliberate.
     expect(limitedData.error).toContain("Too many requests");
     expect(limitedResponse.headers.get("Retry-After")).not.toBeNull();
 

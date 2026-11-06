@@ -34,7 +34,6 @@ describe("Access Control Edge Cases", () => {
   let payload: any;
   let cleanup: () => Promise<void>;
 
-  // Test users
   let adminUser: User;
   let ownerUser: User;
   let otherUser: User;
@@ -45,7 +44,6 @@ describe("Access Control Edge Cases", () => {
     cleanup = testEnv.cleanup;
     // Upload dir is automatically created and cleaned up by testEnv
 
-    // Create test users using withUsers helper
     const { users } = await withUsers(testEnv, {
       admin: { role: "admin" },
       owner: { role: "user" },
@@ -260,7 +258,6 @@ describe("Access Control Edge Cases", () => {
       });
       console.log(`[TEST] Dataset created: ${dataset.id}`);
 
-      // Create import file as ownerUser using helper
       console.log("[TEST] Creating import file...");
       const csvContent = "name,date\nTest Event,2024-01-01";
       const { ingestFile } = await withIngestFile(testEnv, catalog.id, csvContent, {
@@ -332,7 +329,6 @@ describe("Access Control Edge Cases", () => {
     }, 60000);
 
     it("should handle import file access based on user relationship", async () => {
-      // Create import file as ownerUser using helper
       const csvContent = "name,date\nOwner Event,2024-01-01";
       const { ingestFile } = await withIngestFile(testEnv, null, csvContent, {
         filename: "owner-file.csv",
@@ -409,7 +405,6 @@ describe("Access Control Edge Cases", () => {
 
   describe("Cascading Permission Changes", () => {
     it("should affect access when catalog visibility changes", async () => {
-      // Create public catalog and dataset
       const catalog = await payload.create({
         collection: "catalogs",
         data: { _status: "published", name: "Initially Public Catalog", isPublic: true },
@@ -446,7 +441,6 @@ describe("Access Control Edge Cases", () => {
         overrideAccess: false,
       });
 
-      // Update dataset to private
       await payload.update({
         collection: "datasets",
         id: dataset.id,
@@ -480,7 +474,6 @@ describe("Access Control Edge Cases", () => {
     });
 
     it("should prevent private dataset in public catalog", async () => {
-      // Create public catalog
       const catalog = await payload.create({
         collection: "catalogs",
         data: { _status: "published", name: "Public Catalog for Visibility Test", isPublic: true },
@@ -523,7 +516,6 @@ describe("Access Control Edge Cases", () => {
 
   describe("Concurrent Access Scenarios", () => {
     it("should handle simultaneous reads by multiple users", async () => {
-      // Create public catalog and dataset
       const catalog = await payload.create({
         collection: "catalogs",
         data: { _status: "published", name: "Concurrent Access Catalog", isPublic: true },
@@ -555,7 +547,6 @@ describe("Access Control Edge Cases", () => {
     });
 
     it("should prevent race condition in ownership checks", async () => {
-      // Create private catalog
       const catalog = await payload.create({
         collection: "catalogs",
         data: { _status: "published", name: "Race Condition Test Catalog", isPublic: false },
@@ -627,8 +618,7 @@ describe("Access Control Edge Cases", () => {
       });
       expect(result.id).toBe(catalog.id);
 
-      // But who can update it if no owner?
-      // Only admins should be able to update
+      // Without an owner, only admins can update it
       await expect(
         payload.update({
           collection: "catalogs",
@@ -642,7 +632,6 @@ describe("Access Control Edge Cases", () => {
       const unchanged = await payload.findByID({ collection: "catalogs", id: catalog.id, overrideAccess: true });
       expect(unchanged.name).toBe("System Catalog");
 
-      // Admin should be able to update
       const updated = await payload.update({
         collection: "catalogs",
         id: catalog.id,
@@ -652,9 +641,6 @@ describe("Access Control Edge Cases", () => {
       });
       expect(updated.name).toBe("Admin Updated System Catalog");
     });
-
-    // Note: Session-based unauthenticated uploads are no longer supported.
-    // All import files now require an authenticated user (withIngestFile creates one automatically).
   });
 
   describe("Complex Relationship Chains", () => {

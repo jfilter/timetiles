@@ -181,9 +181,8 @@ describe("mapScheduleToEditData", () => {
     });
 
     it("preserves a configured but disabled pagination block", () => {
-      // Dropping disabled pagination destroyed the stored settings on save:
-      // the update route replaces jsonApiConfig wholesale, so a temporarily
-      // disabled cursor/POST-body config was wiped by editing the schedule.
+      // The update route replaces jsonApiConfig wholesale, so dropping disabled
+      // pagination would wipe a temporarily disabled cursor/POST-body config on save.
       const schedule = {
         ...baseSchedule,
         advancedOptions: {

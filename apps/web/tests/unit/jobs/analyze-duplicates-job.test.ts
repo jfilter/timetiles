@@ -13,7 +13,6 @@ import { getDuplicateRatesForReview } from "@/lib/jobs/utils/resource-loading";
 import type { IngestJob } from "@/payload-types";
 import { createMockIngestFile, createMockIngestJob } from "@/tests/setup/factories";
 
-// Use vi.hoisted to create mocks that can be used in vi.mock factories
 const mocks = vi.hoisted(() => {
   return {
     getFileRowCount: vi.fn(),
@@ -24,7 +23,6 @@ const mocks = vi.hoisted(() => {
   };
 });
 
-// Mock external dependencies
 vi.mock("@/lib/ingest/progress-tracking", () => ({
   ProgressTrackingService: {
     initializeStageProgress: vi.fn().mockResolvedValue(undefined),
@@ -46,8 +44,7 @@ vi.mock("@/lib/ingest/file-readers", () => ({
 
 vi.mock("@/lib/services/id-generation", () => ({ generateUniqueId: mocks.generateUniqueId }));
 
-// Mock cleanupSidecarsForJob directly — with isolate: false, the mock of file-readers
-// doesn't propagate to resource-loading.ts's cached import of cleanupSidecarFiles
+// Mocked at the resource-loading boundary so sidecar cleanup can be asserted directly
 vi.mock("@/lib/jobs/utils/resource-loading", async (importOriginal) => {
   const actual: Record<string, unknown> = await importOriginal();
   return { ...actual, cleanupSidecarsForJob: mocks.cleanupSidecarsForJob };
@@ -135,7 +132,6 @@ describe("AnalyzeDuplicatesJob Handler", () => {
 
     drizzleMock = createDrizzleMock();
 
-    // Mock payload
     mockPayload = {
       findByID: vi.fn(),
       update: vi.fn(),
@@ -144,7 +140,6 @@ describe("AnalyzeDuplicatesJob Handler", () => {
       jobs: { queue: vi.fn().mockResolvedValue({}) },
     };
 
-    // Mock context
     mockContext = {
       req: { payload: mockPayload },
       job: { id: "test-job-1", taskStatus: "running" } as any,
@@ -154,43 +149,35 @@ describe("AnalyzeDuplicatesJob Handler", () => {
 
   describe("Success Cases", () => {
     it("should skip analysis when deduplication is disabled", async () => {
-      // Mock import job
       const mockIngestJob = createMockIngestJob({
         progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
       });
 
-      // Mock dataset with deduplication disabled
       const mockDataset = { id: "dataset-456", deduplicationConfig: { enabled: false } };
 
-      // Mock import file
       const mockIngestFile = createMockIngestFile();
 
-      // Setup payload mock responses
       mockPayload.findByID
         .mockResolvedValueOnce(mockIngestJob) // First call returns import job
         .mockResolvedValueOnce(mockDataset) // Second call returns dataset
         .mockResolvedValueOnce(mockIngestFile) // Third call returns import file
         .mockResolvedValueOnce(mockIngestJob); // Fourth call refetches import job after progress init
 
-      // Mock getFileRowCount for total rows
       mocks.getFileRowCount.mockResolvedValueOnce(100);
 
       mockPayload.update.mockResolvedValueOnce({});
 
-      // Execute job
       const result = await analyzeDuplicatesJob.handler(mockContext);
 
-      // Verify result
       expect(result).toEqual({ output: { skipped: true } });
 
-      // Verify payload calls - includes refetch after progress initialization
+      // Includes the refetch after progress initialization
       expect(mockPayload.findByID).toHaveBeenCalledTimes(4);
       expect(mockPayload.findByID).toHaveBeenNthCalledWith(1, { collection: "ingest-jobs", id: "import-123" });
       expect(mockPayload.findByID).toHaveBeenNthCalledWith(2, { collection: "datasets", id: "dataset-456" });
       expect(mockPayload.findByID).toHaveBeenNthCalledWith(3, { collection: "ingest-files", id: "file-789" });
       expect(mockPayload.findByID).toHaveBeenNthCalledWith(4, { collection: "ingest-jobs", id: "import-123" });
 
-      // Verify update call — no stage transition
       expect(mockPayload.update).toHaveBeenCalledWith({
         collection: "ingest-jobs",
         id: "import-123",
@@ -206,7 +193,6 @@ describe("AnalyzeDuplicatesJob Handler", () => {
     });
 
     it("should process file with no duplicates", async () => {
-      // Mock import job
       const mockIngestJob = createMockIngestJob({
         progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
       });
@@ -220,10 +206,8 @@ describe("AnalyzeDuplicatesJob Handler", () => {
         idStrategy: { type: "external", externalIdPath: "id" },
       };
 
-      // Mock import file
       const mockIngestFile = createMockIngestFile();
 
-      // Mock file data - no duplicates
       const mockFileData = [
         { id: "1", title: "Event 1" },
         { id: "2", title: "Event 2" },
@@ -252,38 +236,29 @@ describe("AnalyzeDuplicatesJob Handler", () => {
 
       mockPayload.update.mockResolvedValueOnce({});
 
-      // Execute job
       const result = await analyzeDuplicatesJob.handler(mockContext);
 
-      // Verify result
       expect(result).toEqual({ output: { totalRows: 3, uniqueRows: 3, internalDuplicates: 0, externalDuplicates: 0 } });
 
-      // Verify getFileRowCount was NOT called (dedup enabled skips pre-scan)
       expect(mocks.getFileRowCount).not.toHaveBeenCalled();
 
-      // Verify streaming was called
       expect(mocks.streamBatchesFromFile).toHaveBeenCalledWith(
         expect.stringContaining("test.csv"),
         expect.objectContaining({ batchSize: expect.any(Number) })
       );
 
-      // Verify unique ID generation
       expect(mocks.generateUniqueId).toHaveBeenCalledTimes(3);
       expect(mocks.generateUniqueId).toHaveBeenCalledWith(
         { id: "1", title: "Event 1" },
         expect.objectContaining({ idStrategy: { type: "external", externalIdPath: "id" } })
       );
 
-      // Verify external duplicate check via Drizzle typed API
       expect(drizzleMock.select).toHaveBeenCalledTimes(1);
     });
 
     it("should apply the full transform chain for content-hash ids so normalized rows hash identically", async () => {
-      // Regression: prior to commit 0496522e, content-hash dedup hashed the RAW
-      // row and missed duplicates that only collapse after lowercase/trim
-      // transforms. The handler now reads the authored ops from the dataset
-      // interpretationPlan for content-hash strategies, feeding the fully
-      // transformed row to generateUniqueId — mirroring create-events-batch-job.
+      // Regression: content-hash ids must be generated from the fully transformed row
+      // (dataset interpretationPlan ops), so rows that only collapse after lowercase/trim are duplicates.
       const mockIngestJob = createMockIngestJob({
         progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
       });
@@ -323,11 +298,8 @@ describe("AnalyzeDuplicatesJob Handler", () => {
         .mockResolvedValue(mockIngestJob);
 
       mocks.streamBatchesFromFile.mockReturnValueOnce(mockAsyncGenerator([mockFileData]));
-      // Because the handler now applies the full transform chain before
-      // calling generateUniqueId, both rows will be lower-cased to the same
-      // value. Returning the SAME uniqueId for both calls simulates a real
-      // content-hash collision on the normalized data — i.e. the fix lets
-      // the second row be flagged as an internal duplicate.
+      // Returning the same uniqueId for both calls simulates a content-hash
+      // collision on the normalized data.
       mocks.generateUniqueId
         .mockReturnValueOnce("dataset-456:hash:abc123")
         .mockReturnValueOnce("dataset-456:hash:abc123");
@@ -340,10 +312,7 @@ describe("AnalyzeDuplicatesJob Handler", () => {
       expect(result).toEqual({ output: { totalRows: 2, uniqueRows: 1, internalDuplicates: 1, externalDuplicates: 0 } });
       expect(mocks.generateUniqueId).toHaveBeenCalledTimes(2);
 
-      // Critical assertion: each invocation received the TRANSFORMED row
-      // (title already lower-cased), not the raw row. If the handler fell
-      // back to `[]` transforms (pre-fix behavior), it would have passed
-      // the raw differing values and the rows would have hashed differently.
+      // Each invocation must receive the transformed (lower-cased) row, not the raw one.
       const firstCallRow = mocks.generateUniqueId.mock.calls[0]?.[0] as Record<string, unknown>;
       const secondCallRow = mocks.generateUniqueId.mock.calls[1]?.[0] as Record<string, unknown>;
       expect(firstCallRow).toEqual({ title: "concert tonight" });
@@ -412,12 +381,10 @@ describe("AnalyzeDuplicatesJob Handler", () => {
     });
 
     it("should identify internal duplicates", async () => {
-      // Mock import job
       const mockIngestJob = createMockIngestJob({
         progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
       });
 
-      // Mock dataset with deduplication enabled
       const mockDataset = {
         id: "dataset-456",
         deduplicationConfig: {
@@ -426,10 +393,8 @@ describe("AnalyzeDuplicatesJob Handler", () => {
         idStrategy: { type: "external", externalIdPath: "id" },
       };
 
-      // Mock import file
       const mockIngestFile = createMockIngestFile();
 
-      // Mock file data with internal duplicate
       const mockFileData = [
         { id: "1", title: "Event 1" },
         { id: "2", title: "Event 2" },
@@ -455,10 +420,8 @@ describe("AnalyzeDuplicatesJob Handler", () => {
       drizzleMock._enqueue([]);
       mockPayload.update.mockResolvedValueOnce({});
 
-      // Execute job
       const result = await analyzeDuplicatesJob.handler(mockContext);
 
-      // Verify result
       expect(result).toEqual({
         output: {
           totalRows: 3,
@@ -470,12 +433,10 @@ describe("AnalyzeDuplicatesJob Handler", () => {
     });
 
     it("should identify external duplicates", async () => {
-      // Mock import job
       const mockIngestJob = createMockIngestJob({
         progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
       });
 
-      // Mock dataset with deduplication enabled
       const mockDataset = {
         id: "dataset-456",
         deduplicationConfig: {
@@ -484,10 +445,8 @@ describe("AnalyzeDuplicatesJob Handler", () => {
         idStrategy: { type: "external", externalIdPath: "id" },
       };
 
-      // Mock import file
       const mockIngestFile = createMockIngestFile();
 
-      // Mock file data
       const mockFileData = [
         { id: "1", title: "Event 1" },
         { id: "2", title: "Event 2" },
@@ -509,10 +468,8 @@ describe("AnalyzeDuplicatesJob Handler", () => {
       drizzleMock._enqueue([{ id: 123, uniqueId: "dataset-456:ext:1" }]);
       mockPayload.update.mockResolvedValueOnce({});
 
-      // Execute job
       const result = await analyzeDuplicatesJob.handler(mockContext);
 
-      // Verify result
       expect(result).toEqual({
         output: {
           totalRows: 2,
@@ -525,9 +482,7 @@ describe("AnalyzeDuplicatesJob Handler", () => {
 
     it('counts external duplicates in uniqueRows when duplicateStrategy is "update"', async () => {
       // Regression: under "update" strategy, external duplicates are re-written
-      // (as updates), so they must count toward uniqueRows and the quota pre-check
-      // rather than being subtracted. Mirrors the test above but with the
-      // "update" strategy configured on the dataset.
+      // (as updates), so they must count toward uniqueRows and the quota pre-check.
       const mockIngestJob = createMockIngestJob({
         progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
       });
@@ -622,7 +577,6 @@ describe("AnalyzeDuplicatesJob Handler", () => {
 
       const mockIngestFile = createMockIngestFile();
 
-      // Use mockImplementation to handle all findByID calls (initial + progress refetch)
       mockPayload.findByID.mockImplementation(({ collection }: { collection: string }) => {
         if (collection === "ingest-jobs") return Promise.resolve(mockIngestJob);
         if (collection === "datasets") return Promise.resolve(mockDataset);
@@ -630,9 +584,6 @@ describe("AnalyzeDuplicatesJob Handler", () => {
         return Promise.resolve(null);
       });
 
-      // No getFileRowCount call when dedup is enabled — totalRows derived from streaming
-
-      // Mock streaming that throws
       mocks.streamBatchesFromFile.mockReturnValueOnce({
         [Symbol.asyncIterator]: () => ({
           next: async () => {
@@ -644,38 +595,30 @@ describe("AnalyzeDuplicatesJob Handler", () => {
 
       await expect(analyzeDuplicatesJob.handler(mockContext)).rejects.toThrow("Corrupt Excel file");
 
-      // Verify sidecar cleanup was called (asserts on cleanupSidecarsForJob, not the
-      // low-level cleanupSidecarFiles, because with isolate:false the file-readers
-      // mock doesn't propagate to resource-loading.ts's cached import)
       expect(mocks.cleanupSidecarsForJob).toHaveBeenCalledWith(mockPayload, "import-123");
     });
   });
 
   describe("File Pre-scan Optimization", () => {
     it("should not pre-scan file when deduplication is enabled", async () => {
-      // Mock import job
       const mockIngestJob = createMockIngestJob({
         progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
       });
 
-      // Mock dataset with deduplication enabled
       const mockDataset = {
         id: "dataset-456",
         deduplicationConfig: { enabled: true },
         idStrategy: { type: "external", externalIdPath: "id" },
       };
 
-      // Mock import file
       const mockIngestFile = createMockIngestFile();
 
-      // Mock file data - 3 rows
       const mockFileData = [
         { id: "1", title: "Event 1" },
         { id: "2", title: "Event 2" },
         { id: "3", title: "Event 3" },
       ];
 
-      // Setup mocks
       mockPayload.findByID
         .mockResolvedValueOnce(mockIngestJob)
         .mockResolvedValueOnce(mockDataset)
@@ -693,13 +636,11 @@ describe("AnalyzeDuplicatesJob Handler", () => {
       drizzleMock._enqueue([]);
       mockPayload.update.mockResolvedValueOnce({});
 
-      // Execute job
       const result = await analyzeDuplicatesJob.handler(mockContext);
 
-      // Verify getFileRowCount was NOT called (dedup enabled skips pre-scan)
       expect(mocks.getFileRowCount).not.toHaveBeenCalled();
 
-      // Verify totalRows was derived from streaming (3 rows processed)
+      // totalRows derived from streaming (3 rows processed)
       expect(result).toEqual({ output: { totalRows: 3, uniqueRows: 3, internalDuplicates: 0, externalDuplicates: 0 } });
     });
   });
@@ -730,13 +671,11 @@ describe("AnalyzeDuplicatesJob Handler", () => {
 
       mockPayload.update.mockResolvedValueOnce({});
 
-      // Execute job
       const result = await analyzeDuplicatesJob.handler(mockContext);
 
-      // Verify result for empty file
       expect(result).toEqual({ output: { totalRows: 0, uniqueRows: 0, internalDuplicates: 0, externalDuplicates: 0 } });
 
-      // Verify no external duplicate check was made (Drizzle select not called for empty file)
+      // No external duplicate check for an empty file
       expect(drizzleMock.select).not.toHaveBeenCalled();
     });
   });
@@ -942,10 +881,9 @@ describe("AnalyzeDuplicatesJob Handler", () => {
 // ---------------------------------------------------------------------------
 // getDuplicateRatesForReview
 //
-// The review gate's input — see regression note in resource-loading.ts and
-// the bug fixed by 13768faf. External duplicates are expected on scheduled
-// re-imports of unchanged URLs and must NOT count toward the duplicate rate
-// the review gate uses; only internal (same-file) duplicates count.
+// The review gate's input (see regression note in resource-loading.ts). External
+// duplicates are expected on scheduled re-imports of unchanged URLs and must NOT
+// count toward the duplicate rate; only internal (same-file) duplicates count.
 // ---------------------------------------------------------------------------
 
 describe("getDuplicateRatesForReview", () => {

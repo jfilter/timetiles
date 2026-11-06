@@ -1,8 +1,8 @@
 /**
  * Integration tests for field filters on aggregation and geo stats endpoints.
  *
- * Verifies deeply nested field paths work on the remaining SQL-backed routes
- * that were not previously covered.
+ * Verifies deeply nested field paths work on the SQL-backed aggregation and
+ * geo stats routes.
  *
  * @module
  * @category Integration Tests

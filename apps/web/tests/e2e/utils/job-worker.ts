@@ -30,7 +30,6 @@ const MAX_JOBS_PER_RUN = 50;
 
 const shutdown = new AbortController();
 
-// Handle graceful shutdown
 for (const signal of ["SIGTERM", "SIGINT"] as const) {
   process.on(signal, () => {
     console.log(`[job-worker] Received ${signal}, shutting down...`);
@@ -40,11 +39,9 @@ for (const signal of ["SIGTERM", "SIGINT"] as const) {
 
 const main = async () => {
   console.log("[job-worker] Starting job worker...");
-  // Log only the database name to verify the correct database is in use — never
-  // the DATABASE_URL itself, which carries credentials. The allowlist test is
-  // what actually guarantees that: on a URL without a path segment (e.g.
-  // "postgres://user:pass@host") `pop()` returns "user:pass@host" and would
-  // otherwise print the password.
+  // Log only the database name, never DATABASE_URL, which carries credentials. The allowlist
+  // test is what guarantees that: on a URL without a path ("postgres://user:pass@host")
+  // `pop()` returns the credentials segment.
   const dbUrl = process.env.DATABASE_URL ?? "";
   const dbNameCandidate = dbUrl.split("/").pop()?.split("?")[0] ?? "";
   const dbName = /^[\w-]+$/.test(dbNameCandidate) ? dbNameCandidate : "unknown";
@@ -63,7 +60,6 @@ const main = async () => {
 
   while (!shutdown.signal.aborted) {
     try {
-      // Check for pending jobs before running
       const pending = await payload.find({
         collection: "payload-jobs",
         where: { completedAt: { exists: false } },

@@ -45,7 +45,7 @@ describe("parseDateInput", () => {
     expect(result!.toISOString()).toBe("2024-06-15T11:30:00.000Z");
   });
 
-  // This is the bug: a bare year like 1898 should be parsed as a year, not milliseconds
+  // A bare year like 1898 must be parsed as a year, not milliseconds
   it("should parse a bare 4-digit year as January 1st of that year", () => {
     const result = parseDateInput(1898);
     expect(result).toBeInstanceOf(Date);

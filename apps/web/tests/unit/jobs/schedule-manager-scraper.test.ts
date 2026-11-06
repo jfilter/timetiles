@@ -12,7 +12,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { scheduleManagerJob } from "@/lib/jobs/handlers/schedule-manager-job";
 import { logger } from "@/lib/logger";
 
-// Mock dependencies
 vi.mock("@/lib/logger", () => ({
   logger: { info: vi.fn(), debug: vi.fn(), warn: vi.fn(), error: vi.fn() },
   createLogger: vi.fn(() => ({ info: vi.fn(), debug: vi.fn(), warn: vi.fn(), error: vi.fn() })),
@@ -237,7 +236,6 @@ describe("scheduleManagerJob — scraper scheduling", () => {
 
     setupScrapersOnly(mockPayload, [errorScraper]);
 
-    // Make the queue call throw
     mockPayload.jobs.queue.mockRejectedValueOnce(new Error("Queue failed"));
 
     const result = await scheduleManagerJob.handler({ job: mockJob, req: mockReq });

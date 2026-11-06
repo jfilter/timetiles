@@ -21,18 +21,15 @@ test.describe("Explore Page - Basic Functionality", () => {
   });
 
   test("should load the explore page with all components", async () => {
-    // Check main components are visible
     await expect(explorePage.map).toBeVisible();
-    // Datasets collapsible section trigger should be visible
     await expect(explorePage.dataSourcesSection).toBeVisible();
 
-    // Dataset/catalog checkboxes should be present (data loaded from API)
     await expect(explorePage.datasetCheckboxes.first()).toBeVisible();
 
     // The map's first software-rendered frame can block the page; switch views once it has loaded.
     await explorePage.waitForMapSettled();
 
-    // Should show events count (now a paragraph with "Showing X events...")
+    // The events count is a "Showing X events..." paragraph in the list view
     await explorePage.show("list");
     await expect(explorePage.eventsCount).toBeVisible();
   });
@@ -40,13 +37,11 @@ test.describe("Explore Page - Basic Functionality", () => {
   test("should load the map properly", async () => {
     await explorePage.waitForMapLoad();
 
-    // Check map container has proper dimensions
     const mapBox = await explorePage.map.boundingBox();
     expect(mapBox).not.toBeNull();
     expect(mapBox!.width).toBeGreaterThan(300);
     expect(mapBox!.height).toBeGreaterThan(300);
 
-    // Check that map has loaded by verifying the map container has proper attributes
     await expect(explorePage.map).toHaveAttribute("role", "region");
     await expect(explorePage.map).toHaveAttribute("aria-label", "Map");
   });
@@ -91,7 +86,7 @@ test.describe("Explore Page - Basic Functionality", () => {
     await page.setViewportSize({ width: 1200, height: 800 });
     await expect(viewTabs).toBeHidden();
 
-    // Map should take roughly 40% of width (adjusted based on actual layout)
+    // Map takes roughly 40% of the width
     await expect.poll(mapWidth).toBeGreaterThanOrEqual(1200 * 0.35);
     expect(await mapWidth()).toBeLessThan(1200 * 0.6);
 
@@ -111,10 +106,8 @@ test.describe("Explore Page - Basic Functionality", () => {
     await explorePage.goto({ globalView: true });
     await explorePage.waitForMapLoad();
 
-    // Select all datasets in a catalog (tri-state checkbox)
     await explorePage.selectAllInCatalog("Environmental Data");
 
-    // URL should have datasets parameter after selecting datasets
     const url = new URL(page.url());
     expect(url.searchParams.has("datasets")).toBe(true);
   });
@@ -186,19 +179,13 @@ test.describe("Explore Page - Basic Functionality", () => {
   });
 
   test("should show loading state while fetching events", async ({ page }) => {
-    // The skeleton is driven by isInitialLoad in map-explorer.tsx, which stays
-    // true until BOTH the events-list query and the map-cluster query have
-    // data. The cluster query is disabled until MapLibre reports bounds, so
-    // when it even starts depends on WebGL map init — measured at ~16s in a CI
-    // container. Any wall-clock budget here would silently encode how fast the
-    // map happens to be, so this test drives both gates explicitly instead.
+    // The skeleton (isInitialLoad in map-explorer.tsx) stays up until BOTH the events-list and the
+    // map-cluster query have data; the cluster query waits for MapLibre bounds (~16s in CI), so the
+    // test drives both gates explicitly instead of encoding the map's speed in a wall-clock budget.
 
-    // Hold the events-list response open rather than delaying it by a fixed
-    // amount, so "while fetching" is a state this test controls, not a race.
-    // Matches useEventsListQuery exactly, which calls /api/v1/events?<params>.
-    // Using a RegExp instead of a glob because Playwright's `?` in globs is a
-    // single-char wildcard — "events?**" also matches /events/bounds?…,
-    // /events/geo?…, /events/temporal?…, and stalls unrelated queries.
+    // Hold the events-list response open so "while fetching" is controlled, not a race. RegExp,
+    // not a glob: Playwright's glob `?` is a single-char wildcard, so "events?**" also matches
+    // /events/geo?…, /events/temporal?… and stalls unrelated queries.
     const eventsListRoute = /\/api\/v1\/events\?[^/]*$/;
     let releaseEventsResponse!: () => void;
     const eventsResponseReleased = new Promise<void>((resolve) => {

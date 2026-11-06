@@ -22,34 +22,27 @@ test.describe("Navbar Authentication", () => {
 
   test.describe("Sign In Flow", () => {
     test("should show Sign In button for unauthenticated users", async ({ page }) => {
-      // Go to home page
       await page.goto("/", { timeout: 10000 });
       await page.waitForLoadState("domcontentloaded");
 
-      // Should see Sign In button in navbar
       const signInButton = await headerSignInLink(page);
       await expect(signInButton).toBeVisible({ timeout: 5000 });
     });
 
     test("should navigate to login page when clicking Sign In", async ({ page }) => {
-      // Go to home page
       await page.goto("/", { timeout: 10000 });
       await page.waitForLoadState("domcontentloaded");
 
-      // Click Sign In button
       const signInButton = await headerSignInLink(page);
       await expect(signInButton).toBeVisible({ timeout: 10000 });
       await signInButton.click();
 
-      // Should navigate to /login
       await page.waitForURL(/\/login/);
       expect(page.url()).toContain("/login");
 
-      // Should see the login page content
       const welcomeHeading = page.getByRole("heading", { name: /welcome back/i });
       await expect(welcomeHeading).toBeVisible({ timeout: 5000 });
 
-      // Should see Sign In and Sign Up tabs
       const signInTab = page.getByRole("tab", { name: /sign in/i });
       const signUpTab = page.getByRole("tab", { name: /sign up/i });
       await expect(signInTab).toBeVisible();
@@ -57,19 +50,15 @@ test.describe("Navbar Authentication", () => {
     });
 
     test("should complete login from navbar and show user menu", async ({ page }) => {
-      // Go to home page
       await page.goto("/", { timeout: 10000 });
       await page.waitForLoadState("domcontentloaded");
 
-      // Click Sign In button
       const signInButton = await headerSignInLink(page);
       await expect(signInButton).toBeVisible({ timeout: 10000 });
       await signInButton.click();
 
-      // Wait for login page
       await page.waitForURL(/\/login/);
 
-      // Fill in login form
       const emailInput = page.locator("#login-email");
       const passwordInput = page.locator("#login-password");
 
@@ -79,14 +68,11 @@ test.describe("Navbar Authentication", () => {
       await emailInput.fill(TEST_EMAILS.admin);
       await passwordInput.fill(TEST_CREDENTIALS.seed.admin);
 
-      // Click Sign In button in form
       const submitButton = page.getByRole("button", { name: /sign in/i });
       await submitButton.click();
 
-      // Note: we don't assert the "Signing in..." loading state here because
-      // against localhost the mutation resolves before React commits the pending
-      // render (React 19 automatic batching). The loading state works on real
-      // networks where latency keeps the button in pending state longer.
+      // No assertion on the "Signing in..." state: against localhost the mutation resolves before
+      // React commits the pending render.
 
       // Wait for redirect away from /login page (this confirms successful login)
       await page.waitForURL((url) => !url.pathname.includes("/login"), { timeout: 5000 });
@@ -102,11 +88,9 @@ test.describe("Navbar Authentication", () => {
     });
 
     test("should show user dropdown menu when clicking user avatar", async ({ page }) => {
-      // Go to home page
       await page.goto("/", { timeout: 10000 });
       await page.waitForLoadState("domcontentloaded");
 
-      // Login first
       const signInButton = await headerSignInLink(page);
       await signInButton.click();
       await page.waitForURL(/\/login/);
@@ -121,10 +105,8 @@ test.describe("Navbar Authentication", () => {
       await page.reload();
       await page.waitForLoadState("domcontentloaded");
 
-      // Open the account menu
       const accountEntry = await openAccountMenu(page, /admin user/i);
 
-      // Should see the account entries
       const importDataItem = accountEntry(/import data/i);
       const dashboardItem = accountEntry(/dashboard/i);
       const signOutItem = accountEntry(/sign out/i);
@@ -135,7 +117,6 @@ test.describe("Navbar Authentication", () => {
     });
 
     test("should sign out user when clicking Sign Out", async ({ page, ownUser }) => {
-      // Go to home page and login
       await page.goto("/", { timeout: 10000 });
       await page.waitForLoadState("domcontentloaded");
 
@@ -153,7 +134,6 @@ test.describe("Navbar Authentication", () => {
       await page.reload();
       await page.waitForLoadState("domcontentloaded");
 
-      // Click Sign Out in the account menu
       const accountEntry = await openAccountMenu(page, ownUser.name);
       await accountEntry(/sign out/i).click();
 
@@ -161,7 +141,6 @@ test.describe("Navbar Authentication", () => {
       await page.waitForURL("/", { timeout: 10000 });
       await page.waitForLoadState("domcontentloaded");
 
-      // Should see Sign In button again
       const signInButtonAfterLogout = await headerSignInLink(page);
       await expect(signInButtonAfterLogout).toBeVisible({ timeout: 5000 });
     });
@@ -188,7 +167,6 @@ test.describe("Navbar Authentication", () => {
       await expect(errorMessage).toBeVisible({ timeout: 5000 });
       await expect(errorMessage).not.toBeEmpty();
 
-      // Should still be on login page
       expect(page.url()).toContain("/login");
     });
 
@@ -223,7 +201,6 @@ test.describe("Navbar Authentication", () => {
       await page.goto("/login", { timeout: 10000 });
       await page.waitForLoadState("domcontentloaded");
 
-      // Both inputs should have required attribute
       const emailInput = page.locator("#login-email");
       const passwordInput = page.locator("#login-password");
 
@@ -234,16 +211,13 @@ test.describe("Navbar Authentication", () => {
 
   test.describe("Redirect After Login", () => {
     test("should redirect to specified page after login", async ({ page }) => {
-      // Go to login with redirect parameter
       await page.goto("/login?redirect=/explore", { timeout: 10000 });
       await page.waitForLoadState("domcontentloaded");
 
-      // Login
       await page.locator("#login-email").fill(TEST_EMAILS.admin);
       await page.locator("#login-password").fill(TEST_CREDENTIALS.seed.admin);
       await page.getByRole("button", { name: /sign in/i }).click();
 
-      // Should redirect to /explore
       await page.waitForURL(/\/explore/, { timeout: 10000 });
       expect(page.url()).toContain("/explore");
     });

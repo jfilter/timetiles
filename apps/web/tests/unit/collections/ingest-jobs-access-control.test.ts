@@ -52,13 +52,9 @@ describe("ingestJobsAccess", () => {
     });
   });
 
-  // Update is restricted to editors/admins (isEditorOrAdmin). Owners deliberately
-  // do NOT get generic REST update access: the pipeline fields (stage,
-  // schemaValidation.approved, dataset, duplicates.summary, ...) have no
-  // field-level write guard, so a forged owner PATCH could force-approve an
-  // import (bypassing the quota check) or reassign the dataset. Every legitimate
-  // owner mutation goes through /approve, /reset, /retry (Local API +
-  // overrideAccess). See lib/collections/ingest-jobs/access-control.ts.
+  // Update is editor/admin only. Pipeline fields have no field-level write guard, so an
+  // owner PATCH could force-approve an import or reassign the dataset; owner mutations
+  // go through /approve, /reset, /retry instead (Local API + overrideAccess).
   describe("update", () => {
     it("should allow editors and admins", async () => {
       mocks.isEditorOrAdmin.mockReturnValue(true);

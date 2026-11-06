@@ -163,11 +163,8 @@ describe("bulkInsertEvents — atomicity", () => {
   });
 
   it("keeps committed sub-batches when a later sub-batch fails", async () => {
-    // Regression: with multiple sub-batches, an earlier sub-batch commits in its
-    // own transaction. A failure in a later sub-batch must NOT discard the
-    // committed rows or report them as failures. Previously bulkInsertEvents
-    // threw after the first commit, so the caller counted 0 created and marked
-    // every row (including the committed ones) as errored.
+    // Regression: with multiple sub-batches an earlier one commits in its own transaction; a failure
+    // in a later sub-batch must not discard those committed rows or report them as failures.
     const prefix = `bulk-partial-${crypto.randomUUID().slice(0, 8)}`;
     const batch = Array.from({ length: 4 }, (_, i) => makeEvent(`${prefix}-${i}`, i));
 

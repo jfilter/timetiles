@@ -2,9 +2,9 @@
  * Integration test for antimeridian-aware event bounds.
  *
  * Regression: plain MIN/MAX longitude returns a near-global box for events
- * clustered around the ±180° dateline. The route now recomputes the tightest
- * extent via the largest-longitude-gap method, returning west > east when the
- * minimal box crosses the antimeridian.
+ * clustered around the ±180° dateline. The route computes the tightest extent
+ * via the largest-longitude-gap method, returning west > east when the minimal
+ * box crosses the antimeridian.
  *
  * @module
  * @category Integration Tests

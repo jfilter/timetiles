@@ -69,14 +69,9 @@ describe("relationship-config", () => {
     });
 
     it("resolves events by the unique dataset slug, with no name transform", () => {
-      // Events must NOT be resolved by dataset `name`. Names come from shared
-      // templates, so several catalogs produce datasets with the same one
-      // ("Research Study Results" exists three times); resolving by name with
-      // limit:1 attached a catalog's events to another catalog's dataset. The
-      // slug is `${catalog.slug}-${template.slug}` and is genuinely unique.
-      //
-      // The transform this used to assert mapped slugs INTO those ambiguous
-      // names — it converted the unique key into the broken one, so it is gone.
+      // Events must NOT be resolved by dataset `name`: names come from shared templates and
+      // repeat across catalogs, so limit:1 would attach events to another catalog's dataset.
+      // The slug `${catalog.slug}-${template.slug}` is unique.
       const config = RELATIONSHIP_CONFIG.events![0]!;
 
       expect(config.searchField).toBe("slug");

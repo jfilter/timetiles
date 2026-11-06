@@ -121,10 +121,8 @@ describe("fetchPaginated", () => {
     expect(mocks.fetchWithRetry).toHaveBeenCalledTimes(1);
   });
 
-  // Regression: page fetches silently dropped cacheOptions, so disabling the
-  // cache (feature flag, useHttpCache: false, bypassCacheOnManual) had no
-  // effect on paginated sources — manual runs served up to an hour of stale
-  // page data.
+  // Regression: page fetches must forward cacheOptions, so disabling the cache
+  // (feature flag, useHttpCache: false, bypassCacheOnManual) applies to paginated sources.
   it("forwards cacheOptions to every page fetch", async () => {
     mocks.fetchWithRetry.mockImplementation(() => ({
       data: Buffer.from(JSON.stringify({ items: [] })),
@@ -186,8 +184,7 @@ describe("fetchPaginated", () => {
     expect(mocks.fetchWithRetry).toHaveBeenCalledTimes(1);
   });
 
-  // Regression: a page was appended in full before the maxRecords check, so a
-  // large page could push totalRecords well past the configured ceiling.
+  // Regression: a large page must not push totalRecords past the configured maxRecords.
   it("truncates a page's records to stay within maxRecords", async () => {
     mocks.fetchWithRetry.mockImplementation(() => ({
       data: Buffer.from(JSON.stringify({ items: Array.from({ length: 10 }, (_, i) => ({ id: i })) })),

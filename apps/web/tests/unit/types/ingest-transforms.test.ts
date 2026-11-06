@@ -9,7 +9,6 @@ import { describe, expect, it, vi } from "vitest";
 import { DATE_FORMAT_OPTIONS, TRANSFORM_DEFINITIONS, TRANSFORM_TYPES } from "@/lib/definitions/transform-registry";
 import { createTransform } from "@/lib/ingest/types/transforms";
 
-// Mock crypto.randomUUID for deterministic tests
 vi.stubGlobal("crypto", { randomUUID: () => "test-uuid" });
 
 describe("import-transforms", () => {

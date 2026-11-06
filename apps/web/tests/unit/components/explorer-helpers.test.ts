@@ -37,7 +37,7 @@ const mockT: TranslateFn = (key, values) => {
   if (values) {
     for (const [k, v] of Object.entries(values)) {
       // Mirror next-intl: numeric ICU args (count/visible/total) are locale-formatted
-      // with grouping (e.g. 8135 -> "8,135"), so the count args are now passed raw.
+      // with grouping (e.g. 8135 -> "8,135"), so the count args are passed raw.
       result = result.replace(`{${k}}`, typeof v === "number" ? v.toLocaleString("en-US") : String(v));
     }
   }
@@ -112,8 +112,8 @@ describe("getFilterLabels dataset fallback", () => {
   const catalogs: DataSourceCatalog[] = [];
 
   it("uses the caller-supplied localized label for an unresolved dataset", () => {
-    // Regression: a hardcoded English "Unknown Dataset" used to leak into the
-    // localized explore description for every locale.
+    // Regression: a hardcoded English "Unknown Dataset" must not leak into the
+    // localized explore description.
     const labels = getFilterLabels(filters, catalogs, [], "Unbekannter Datensatz", "de");
     expect(labels.datasets).toEqual([{ id: "42", name: "Unbekannter Datensatz" }]);
   });

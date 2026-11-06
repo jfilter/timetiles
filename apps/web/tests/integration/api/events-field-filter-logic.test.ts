@@ -32,10 +32,8 @@ describe("/api/v1/events - field filter logic", () => {
     testEnv = await createIntegrationTestEnvironment();
     payload = testEnv.payload;
 
-    // Create test user
     const { users } = await withUsers(testEnv, { testUser: { role: "user" } });
 
-    // Create test catalog
     const { catalog } = await withCatalog(testEnv, {
       name: "Filter Logic Test Catalog",
       description: "Test catalog for filter logic",
@@ -43,7 +41,6 @@ describe("/api/v1/events - field filter logic", () => {
       user: users.testUser,
     });
 
-    // Create test dataset
     const { dataset } = await withDataset(testEnv, catalog.id, { name: "Filter Logic Test Dataset", isPublic: true });
     testDatasetId = dataset.id;
 
@@ -207,7 +204,6 @@ describe("/api/v1/events - field filter logic", () => {
 
     // Should return Music (3) + Sports (2) = 5 events
     expect(data.events).toHaveLength(5);
-    // Should be more than single filter but less than all
     expect(data.events.length).toBeGreaterThan(3);
     expect(data.events.length).toBeLessThan(6);
   });
@@ -244,7 +240,6 @@ describe("/api/v1/events - field filter logic", () => {
     // - Less than all events (6)
     expect(data.events.length).toBeLessThan(5);
     expect(data.events.length).toBeLessThan(6);
-    // And should be at least 1
     expect(data.events.length).toBeGreaterThan(0);
   });
 
@@ -334,13 +329,11 @@ describe("/api/v1/events - field filter logic", () => {
   });
 
   it("should never return more events than without filter", async () => {
-    // Get baseline count
     const baseRequest = new NextRequest(`http://localhost:3000/api/v1/events?datasets=${testDatasetId}`);
     const baseResponse = await GET(baseRequest, { params: Promise.resolve({}) });
     const baseData = await baseResponse.json();
     const baseCount = baseData.events.length;
 
-    // Test with various filter combinations
     const filterCombinations = [
       { category: ["Music"] },
       { status: ["Active"] },
@@ -362,12 +355,8 @@ describe("/api/v1/events - field filter logic", () => {
   });
 
   it("temporal-clusters: should exclude events where the filtered field is missing/null (cluster_events_temporal)", async () => {
-    // Regression for the migration typo (calculate_temporal_clusters vs
-    // cluster_events_temporal) that left the temporal/beeswarm endpoint with
-    // the buggy `WHERE NOT (... = ANY(...))` pattern, which over-includes
-    // events whose filtered field is NULL/missing.
-    //
-    // Guarantee at least one null-status event exists for this dataset.
+    // Regression: temporal clusters (cluster_events_temporal) must exclude events whose filtered
+    // field is NULL/missing, like /events does; a `WHERE NOT (... = ANY(...))` pattern over-includes them.
     await payload.create({
       collection: "events",
       data: {
@@ -383,8 +372,7 @@ describe("/api/v1/events - field filter logic", () => {
 
     const fieldFilters = JSON.stringify({ status: ["Active"] });
 
-    // Ground truth: the /events endpoint (already fixed by 20260401) returns
-    // only the 4 original Active events and excludes every null-status event.
+    // Ground truth: /events returns only the 4 original Active events and excludes every null-status event.
     const eventsReq = new NextRequest(
       `http://localhost:3000/api/v1/events?datasets=${testDatasetId}&ff=${encodeURIComponent(fieldFilters)}`
     );
@@ -402,16 +390,13 @@ describe("/api/v1/events - field filter logic", () => {
     const tcData = await tcRes.json();
 
     expect(tcData.metadata.mode).toBe("individual");
-    // With the bug, the null-status events would be over-included (> 4).
+    // Over-included null-status events would push this above 4.
     expect(tcData.metadata.total).toBe(4);
     expect(tcData.metadata.total).toBe(eventsData.events.length);
   });
 
-  // Regression: nothing ever populated filters.tagFields, so a tag-field
-  // filter compiled to a scalar IN against the array's JSON text and matched
-  // ZERO events on every endpoint (list, map, charts). The producer now
-  // resolves isTagField from the dataset's fieldMetadata and the SQL paths
-  // match via jsonb containment.
+  // Regression: a tag-field filter must match via jsonb containment (isTagField resolved from the
+  // dataset's fieldMetadata), not a scalar IN against the array's JSON text, which matched zero events.
   it("matches tag/array fields via containment on the events list", async () => {
     const fieldFilters = JSON.stringify({ tags: ["music"] });
     const request = new NextRequest(

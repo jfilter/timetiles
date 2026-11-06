@@ -204,7 +204,7 @@ describe("detectGeoFields", () => {
   it("marks combined coordinate field as ambiguous when samples fit either order", () => {
     // Every sample has |first| <= 90 AND |second| <= 90, so the data could
     // be lat,lng (e.g. Berlin 52.52,13.4) or lng,lat (e.g. 52.52°E,13.4°N in
-    // Siberia). Silently picking was the M3 bug; now we flag it.
+    // Siberia), so the detector must flag it instead of silently picking one.
     const fieldStats: Record<string, FieldStatistics> = {
       coordinates: createFieldStats({
         typeDistribution: { string: 100 },
@@ -985,8 +985,7 @@ describe("validateFieldType", () => {
     });
 
     it("returns 0.5 for mid-range location lengths", () => {
-      // This covers the default return path: stats with samples but avgLength in 100-500 range
-      // actually that's covered by 0.8. Let's test the "no unique samples" path
+      // Covers the "no unique samples" path
       const stats = createFieldStats({ occurrences: 100, typeDistribution: { string: 100 } });
       expect(validateFieldType(stats, "location")).toBe(0.5);
     });

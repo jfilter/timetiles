@@ -125,7 +125,6 @@ describe("Catalog validation hooks", () => {
     const createUserWithCatalogQuota = async (key: string, maxCatalogs: number) => {
       const { users } = await withUsers(testEnv, { [key]: { role: "user" } });
       const user = users[key];
-      // Set the catalog quota via customQuotas override
       return payload.update({
         collection: "users",
         id: user.id,
@@ -182,7 +181,6 @@ describe("Catalog validation hooks", () => {
         })
       ).rejects.toThrow(/Maximum catalogs reached/);
 
-      // Delete one catalog
       await payload.delete({ collection: "catalogs", id: cat1.id, overrideAccess: true });
 
       // Now can create again

@@ -13,16 +13,13 @@ import path from "node:path";
 import { resetAppConfig } from "@/lib/config/app-config";
 import { resetEnv } from "@/lib/config/env";
 
-// Set test environment
 if (!process.env.NODE_ENV) {
   (process.env as any).NODE_ENV = "test";
 }
 
-// Disable HIBP password check in unit tests by default: the policy makes a
-// live fetch to api.pwnedpasswords.com, and any string the attacker corpus
-// has ever seen (including ones used in fixtures) would flip a legitimate
-// "valid password" test into a rejection. Tests that specifically exercise
-// the HIBP path can stub this back on.
+// HIBP check off by default: the policy fetches api.pwnedpasswords.com live, and any string
+// in the breach corpus (fixtures included) would reject a valid-password test. Tests of the
+// HIBP path stub it back on.
 process.env.PASSWORD_HIBP_CHECK ??= "false";
 
 // Reset cached config before each test so vi.stubEnv() changes take effect
@@ -31,11 +28,9 @@ beforeEach(() => {
   resetAppConfig();
 });
 
-// Set upload directory environment variables for unit tests
 process.env.UPLOAD_DIR = `/tmp/uploads`;
 process.env.UPLOAD_TEMP_DIR = `/tmp/temp`;
 
-// Ensure upload directories exist for unit tests
 const uploadDirs = [
   `${process.env.UPLOAD_DIR}/media`,
   `${process.env.UPLOAD_DIR}/ingest-files`,

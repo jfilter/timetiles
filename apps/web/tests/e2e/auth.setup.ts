@@ -13,11 +13,8 @@ import { test as setup } from "./fixtures";
 const AUTH_FILE = "test-results/.auth/admin.json";
 
 setup("authenticate as admin", async ({ page, baseURL }) => {
-  // Log in via the API and capture cookies directly into the browser context.
-  // This avoids the UI flow entirely — no `page.goto`, no i18n-middleware
-  // round-trip, no form-fill timing. Using `page.context().request` (rather
-  // than `page.request`) means the Set-Cookie response lands on the browser
-  // context's cookie jar, which is what `storageState()` serializes.
+  // Log in via the API, skipping the UI flow (no i18n-middleware round-trip, no form timing).
+  // `page.context().request` lands Set-Cookie in the context's jar, which storageState() saves.
   const apiLogin = await page
     .context()
     .request.post(`${baseURL}/api/users/login`, {

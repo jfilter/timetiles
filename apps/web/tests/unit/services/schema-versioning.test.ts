@@ -230,7 +230,6 @@ describe("SchemaVersioningService", () => {
     });
 
     it("should create schema version with numeric dataset ID", async () => {
-      // Reset all mocks before this test
       vi.clearAllMocks();
 
       // Latest stored version is 1, so the next one is 2
@@ -272,7 +271,6 @@ describe("SchemaVersioningService", () => {
     });
 
     it("should handle import sources with numeric import IDs", async () => {
-      // Reset all mocks before this test
       vi.clearAllMocks();
 
       // Latest stored version is 1, so the next one is 2
@@ -321,7 +319,6 @@ describe("SchemaVersioningService", () => {
     });
 
     it("should handle null approvedBy value", async () => {
-      // Reset all mocks before this test
       vi.clearAllMocks();
 
       // Latest stored version is 1, so the next one is 2

@@ -25,7 +25,6 @@ import {
   createMockPayload,
 } from "@/tests/setup/factories";
 
-// Use vi.hoisted to create mocks that can be used in vi.mock factories
 const mocks = vi.hoisted(() => {
   return {
     cleanupSidecarFiles: vi.fn(),
@@ -39,15 +38,13 @@ const mocks = vi.hoisted(() => {
   };
 });
 
-// Mock external dependencies
 vi.mock("@/lib/ingest/file-readers", () => ({ cleanupSidecarFiles: mocks.cleanupSidecarFiles }));
 
 vi.mock("@/lib/ingest/upload-path", () => ({
   getIngestFilePath: vi.fn((filename: string) => `/mock/ingest-files/${filename}`),
 }));
 
-// Mock cleanupSidecarsForJob directly — with isolate: false, the mock of file-readers
-// doesn't propagate to resource-loading.ts's cached import of cleanupSidecarFiles
+// Mocked at the resource-loading boundary so sidecar cleanup can be asserted directly
 vi.mock("@/lib/jobs/utils/resource-loading", async (importOriginal) => {
   const actual: Record<string, unknown> = await importOriginal();
   return { ...actual, cleanupSidecarsForJob: mocks.cleanupSidecarsForJob };
@@ -74,17 +71,13 @@ describe("ValidateSchemaJob Handler", () => {
   let mockSchemaBuilderInstance: any;
 
   beforeEach(() => {
-    // Reset all mocks
     vi.clearAllMocks();
 
-    // Create standard mock payload and context using factories
     mockPayload = createMockPayload();
     mockContext = createMockContext(mockPayload, { ingestJobId: "123" });
 
-    // Mock schema builder instance (job-specific)
     mockSchemaBuilderInstance = { processBatch: vi.fn(), getSchema: vi.fn(), getState: vi.fn() };
 
-    // Setup ProgressiveSchemaBuilder mock
     // eslint-disable-next-line prefer-arrow-functions/prefer-arrow-functions -- regular function required: arrow functions cannot be constructors (vitest 4)
     mocks.ProgressiveSchemaBuilder.mockImplementation(function () {
       return mockSchemaBuilderInstance;
@@ -105,28 +98,24 @@ describe("ValidateSchemaJob Handler", () => {
     );
 
     it("should auto-approve schema with only non-breaking changes", async () => {
-      // Create mock data using factories
       const mockIngestJob = createMockIngestJob({ id: 123, progress: { total: 100 } });
       const mockDataset = createMockDataset();
       const mockIngestFile = createMockIngestFile();
 
-      // Mock file data
-
-      // Mock detected schema with new optional field
+      // Detected schema adds a new optional field
       const mockDetectedSchema = {
         type: "object",
         properties: { id: { type: "string" }, title: { type: "string" }, newField: { type: "string" } },
         required: ["id", "title"],
       };
 
-      // Mock current schema without the new field
       const mockCurrentSchema = {
         type: "object",
         properties: { id: { type: "string" }, title: { type: "string" } },
         required: ["id", "title"],
       };
 
-      // Mock schema builder state (cached from schema detection stage)
+      // Schema builder state cached from the schema detection stage
       const mockSchemaBuilderState = {
         fieldStats: {
           id: { occurrences: 100, uniqueValues: 100 },
@@ -136,11 +125,9 @@ describe("ValidateSchemaJob Handler", () => {
         recordCount: 100,
       };
 
-      // Add schema builder state to import job
       (mockIngestJob as unknown as IngestJob & { schemaBuilderState?: unknown }).schemaBuilderState =
         mockSchemaBuilderState;
 
-      // Setup mocks
       mockPayload.findByID
         .mockResolvedValueOnce(mockIngestJob)
         .mockResolvedValueOnce(mockDataset)
@@ -163,17 +150,15 @@ describe("ValidateSchemaJob Handler", () => {
 
       mockPayload.update.mockResolvedValueOnce({});
 
-      // Execute job
       const result = await validateSchemaJob.handler(mockContext);
 
-      // Verify result — success: true, no stage transition (workflow controls it)
+      // No stage transition (workflow controls it)
       expect(result).toEqual({ output: { hasChanges: true, hasBreakingChanges: false, newFields: 1 } });
 
-      // Schema version creation now happens in CREATE_SCHEMA_VERSION stage, not inline
-      // So we should NOT expect createSchemaVersion to be called here
+      // Schema versions are created in the CREATE_SCHEMA_VERSION stage, not here
       expect(mocks.createSchemaVersion).not.toHaveBeenCalled();
 
-      // Verify job was updated with validation data but no stage (workflow controls sequencing)
+      // Validation data saved without a stage (workflow controls sequencing)
       expect(mockPayload.update).toHaveBeenCalledWith({
         collection: "ingest-jobs",
         id: 123,
@@ -192,7 +177,6 @@ describe("ValidateSchemaJob Handler", () => {
     });
 
     it("should require approval for breaking changes", async () => {
-      // Mock import job
       const mockIngestJob = createMockIngestJob({
         id: 123,
         progress: { total: 100 },
@@ -205,12 +189,9 @@ describe("ValidateSchemaJob Handler", () => {
         schemaConfig: { autoGrow: false, autoApproveNonBreaking: false, locked: false },
       };
 
-      // Mock import file
       const mockIngestFile = { id: "file-789", filename: "test.csv" };
 
-      // Mock file data
-
-      // Mock detected schema with breaking change (id: number)
+      // Breaking change: id becomes a number
       const mockDetectedSchema = {
         type: "object",
         properties: {
@@ -220,24 +201,21 @@ describe("ValidateSchemaJob Handler", () => {
         required: ["id", "title"],
       };
 
-      // Mock current schema with id as string
       const mockCurrentSchema = {
         type: "object",
         properties: { id: { type: "string" }, title: { type: "string" } },
         required: ["id", "title"],
       };
 
-      // Mock schema builder state (cached from schema detection stage)
+      // Schema builder state cached from the schema detection stage
       const mockSchemaBuilderState = {
         fieldStats: { id: { occurrences: 100, uniqueValues: 100 }, title: { occurrences: 100, uniqueValues: 95 } },
         recordCount: 100,
       };
 
-      // Add schema builder state to import job
       (mockIngestJob as unknown as IngestJob & { schemaBuilderState?: unknown }).schemaBuilderState =
         mockSchemaBuilderState;
 
-      // Setup mocks
       mockPayload.findByID
         .mockResolvedValueOnce(mockIngestJob)
         .mockResolvedValueOnce(mockDataset)
@@ -257,18 +235,15 @@ describe("ValidateSchemaJob Handler", () => {
 
       mockPayload.update.mockResolvedValueOnce({});
 
-      // Execute job
       const result = await validateSchemaJob.handler(mockContext);
 
-      // Verify result requires approval due to breaking changes
       expect(result).toEqual({
         output: { needsReview: true, requiresApproval: true, hasBreakingChanges: true, newFields: 0 },
       });
 
-      // Verify no schema version was created (needs approval)
       expect(mocks.createSchemaVersion).not.toHaveBeenCalled();
 
-      // Verify job was updated to await approval (stage set for needs-review pause)
+      // Stage set for the needs-review pause
       expect(mockPayload.update).toHaveBeenCalledWith({
         collection: "ingest-jobs",
         id: 123,
@@ -298,7 +273,6 @@ describe("ValidateSchemaJob Handler", () => {
     });
 
     it("should handle locked schema configuration", async () => {
-      // Mock import job
       const mockIngestJob = createMockIngestJob({
         id: 123,
         progress: { total: 100 },
@@ -315,31 +289,26 @@ describe("ValidateSchemaJob Handler", () => {
         },
       };
 
-      // Mock import file
       const mockIngestFile = { id: "file-789", filename: "test.csv" };
 
-      // Mock detected schema with new field
       const mockDetectedSchema = {
         type: "object",
         properties: { id: { type: "string" }, title: { type: "string" }, newField: { type: "string" } },
         required: ["id", "title"],
       };
 
-      // Mock current schema without the new field
       const mockCurrentSchema = {
         type: "object",
         properties: { id: { type: "string" }, title: { type: "string" } },
         required: ["id", "title"],
       };
 
-      // Mock schema builder state (cached from schema detection stage)
+      // Schema builder state cached from the schema detection stage
       const mockSchemaBuilderState = { fieldStats: {}, recordCount: 100 };
 
-      // Add schema builder state to import job
       (mockIngestJob as unknown as IngestJob & { schemaBuilderState?: unknown }).schemaBuilderState =
         mockSchemaBuilderState;
 
-      // Setup mocks
       mockPayload.findByID
         .mockResolvedValueOnce(mockIngestJob)
         .mockResolvedValueOnce(mockDataset)
@@ -359,15 +328,13 @@ describe("ValidateSchemaJob Handler", () => {
 
       mockPayload.update.mockResolvedValueOnce({});
 
-      // Execute job
       const result = await validateSchemaJob.handler(mockContext);
 
-      // Verify result requires approval due to locked schema
       expect(result).toEqual({
         output: { needsReview: true, requiresApproval: true, hasBreakingChanges: false, newFields: 1 },
       });
 
-      // Verify job was updated to await approval (stage set for needs-review pause)
+      // Stage set for the needs-review pause
       expect(mockPayload.update).toHaveBeenCalledWith({
         collection: "ingest-jobs",
         id: 123,
@@ -478,48 +445,37 @@ describe("ValidateSchemaJob Handler", () => {
       expect(error).not.toBeInstanceOf(JobCancelledError);
       expect((error as Error).message).toBe("Connection timeout");
 
-      // Verify sidecar cleanup was called (asserts on cleanupSidecarsForJob, not the
-      // low-level cleanupSidecarFiles, because with isolate:false the file-readers
-      // mock doesn't propagate to resource-loading.ts's cached import)
       expect(mocks.cleanupSidecarsForJob).toHaveBeenCalledWith(mockPayload, 123);
     });
   });
 
   describe("Edge Cases", () => {
     it("should handle no schema changes", async () => {
-      // Mock import job
       const mockIngestJob = createMockIngestJob({
         id: 123,
         progress: { total: 100 },
         overrides: { duplicates: { internal: [], external: [] } },
       });
 
-      // Mock dataset
       const mockDataset = {
         id: "dataset-456",
         schemaConfig: { autoGrow: true, autoApproveNonBreaking: true, locked: false },
       };
 
-      // Mock import file
       const mockIngestFile = { id: "file-789", filename: "test.csv" };
 
-      // Mock file data
-
-      // Mock detected schema (same as current)
       const mockSchema = {
         type: "object",
         properties: { id: { type: "string" }, title: { type: "string" } },
         required: ["id", "title"],
       };
 
-      // Mock schema builder state (cached from schema detection stage)
+      // Schema builder state cached from the schema detection stage
       const mockSchemaBuilderState = { fieldStats: {}, recordCount: 100 };
 
-      // Add schema builder state to import job
       (mockIngestJob as unknown as IngestJob & { schemaBuilderState?: unknown }).schemaBuilderState =
         mockSchemaBuilderState;
 
-      // Setup mocks
       mockPayload.findByID
         .mockResolvedValueOnce(mockIngestJob)
         .mockResolvedValueOnce(mockDataset)
@@ -539,16 +495,13 @@ describe("ValidateSchemaJob Handler", () => {
 
       mockPayload.update.mockResolvedValueOnce({});
 
-      // Execute job
       const result = await validateSchemaJob.handler(mockContext);
 
-      // Verify result - no approval needed, no changes, success
       expect(result).toEqual({ output: { hasChanges: false, hasBreakingChanges: false, newFields: 0 } });
 
-      // Verify no schema version was created (no changes)
       expect(mocks.createSchemaVersion).not.toHaveBeenCalled();
 
-      // Verify job was updated with validation data but no stage (workflow controls sequencing)
+      // Validation data saved without a stage (workflow controls sequencing)
       expect(mockPayload.update).toHaveBeenCalledWith({
         collection: "ingest-jobs",
         id: 123,
@@ -567,40 +520,34 @@ describe("ValidateSchemaJob Handler", () => {
     });
 
     it("should skip duplicate rows during schema validation", async () => {
-      // Mock import job with duplicates
       const mockIngestJob = createMockIngestJob({
         id: 123,
         progress: { total: 100 },
         overrides: { duplicates: { internal: [{ rowNumber: 1 }], external: [{ rowNumber: 2 }] } },
       });
 
-      // Mock dataset
       const mockDataset = {
         id: "dataset-456",
         schemaConfig: { autoGrow: true, autoApproveNonBreaking: true, locked: false },
       };
 
-      // Mock import file
       const mockIngestFile = { id: "file-789", filename: "test.csv" };
 
-      // Mock schema
       const mockSchema = {
         type: "object",
         properties: { id: { type: "string" }, title: { type: "string" } },
         required: ["id", "title"],
       };
 
-      // Mock schema builder state (cached from schema detection stage)
+      // Schema builder state cached from the schema detection stage
       const mockSchemaBuilderState = {
         fieldStats: {},
         recordCount: 1, // Only 1 non-duplicate row processed
       };
 
-      // Add schema builder state to import job
       (mockIngestJob as unknown as IngestJob & { schemaBuilderState?: unknown }).schemaBuilderState =
         mockSchemaBuilderState;
 
-      // Setup mocks
       mockPayload.findByID
         .mockResolvedValueOnce(mockIngestJob)
         .mockResolvedValueOnce(mockDataset)
@@ -619,11 +566,9 @@ describe("ValidateSchemaJob Handler", () => {
 
       mockPayload.update.mockResolvedValueOnce({});
 
-      // Execute job
       await validateSchemaJob.handler(mockContext);
 
-      // Verify schema builder was created with cached state (no batch processing)
-      // The duplicate filtering happened during schema detection stage, not here
+      // Duplicate filtering happened during schema detection; no batch processing here
       expect(mockSchemaBuilderInstance.processBatch).not.toHaveBeenCalled();
     });
   });
@@ -681,7 +626,7 @@ describe("ValidateSchemaJob Handler", () => {
 
       setupSchemaModeTest({ schemaMode: "strict", detectedSchema, currentSchema });
 
-      // Strict-mode violation now throws (Payload retries → onFail marks FAILED)
+      // Strict-mode violation throws (Payload retries → onFail marks FAILED)
       await expect(validateSchemaJob.handler(mockContext)).rejects.toThrow("Schema mismatch in strict mode");
 
       // Verify job was updated to FAILED stage (handler marks it before throwing)

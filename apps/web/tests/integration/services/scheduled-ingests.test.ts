@@ -25,7 +25,6 @@ import {
   withUsers,
 } from "../../setup/integration/environment";
 
-// Type definitions for urlFetchJob output
 interface UrlFetchSuccessOutput {
   ingestFileId: string | number;
   filename: string;
@@ -57,7 +56,6 @@ describe("scheduled ingests Integration", () => {
     testServer = envWithServer.testServer;
     testServerUrl = envWithServer.testServerUrl;
 
-    // Create shared test data once
     const { users } = await withUsers(envWithServer, { testUser: { role: "admin" } });
     testUser = users.testUser;
 
@@ -95,12 +93,10 @@ describe("scheduled ingests Integration", () => {
   });
 
   afterAll(async () => {
-    // Stop test server
     if (testServer) {
       await testServer.stop();
     }
 
-    // Cleanup test environment
     if (cleanup) {
       await cleanup();
     }
@@ -108,7 +104,6 @@ describe("scheduled ingests Integration", () => {
 
   describe("scheduled ingest Creation", () => {
     it("should create a scheduled ingest", async () => {
-      // Set up test server endpoint
       testServer.respondWithCSV("/api/data.csv", "id,name,value\n1,test,100");
 
       const { scheduledIngest } = await withScheduledIngest(testEnv, testCatalog.id, `${testServerUrl}/api/data.csv`, {
@@ -213,7 +208,6 @@ describe("scheduled ingests Integration", () => {
 
   describe("Schedule Manager Job", () => {
     it("should trigger scheduled ingests when due", { timeout: 30000 }, async () => {
-      // Mock current time - use ISO format with Z for UTC
       vi.useFakeTimers();
       vi.setSystemTime(new Date("2024-01-15T00:30:00.000Z")); // 30 minutes after midnight UTC
 
@@ -231,7 +225,6 @@ describe("scheduled ingests Integration", () => {
         user: testUser,
       });
 
-      // Set up test server endpoint
       const mockCsvData = "id,name,value\n1,test,100";
       testServer.respondWithCSV("/test-data.csv", mockCsvData);
 
@@ -240,13 +233,10 @@ describe("scheduled ingests Integration", () => {
       // Current time is 01:00, which is past midnight, so it should trigger
       vi.setSystemTime(new Date("2024-01-15T01:00:00.000Z"));
 
-      // Check the schedule before running
       const scheduleBeforeRun = await payload.findByID({ collection: "scheduled-ingests", id: scheduledIngest.id });
 
-      // Run schedule manager
       const result = await scheduleManagerJob.handler({ job: { id: "test-job" }, req: { payload } });
 
-      // Debug if not triggering
       if (result.output.triggered !== 1) {
         logger.info("Schedule not triggered. Schedule details:", {
           name: scheduleBeforeRun.name,
@@ -265,11 +255,8 @@ describe("scheduled ingests Integration", () => {
       // With fake timers, we need to advance time manually
       await vi.advanceTimersByTimeAsync(100);
 
-      // Note: In this test, we're just verifying the schedule manager triggered the job.
-      // The actual ingest-files record would be created by the url-fetch job, which
-      // runs asynchronously. In a real scenario, the job queue would process it.
+      // Only checks that the manager triggered; the url-fetch job creates the ingest-files record later.
 
-      // Verify scheduled ingest was updated
       const updatedSchedule = await payload.findByID({ collection: "scheduled-ingests", id: scheduledIngest.id });
 
       // Schedule manager runs at 01:00:00 UTC, so lastRun should be that time
@@ -308,7 +295,6 @@ describe("scheduled ingests Integration", () => {
       vi.useFakeTimers();
       vi.setSystemTime(new Date("2024-01-15T10:30:00.000Z"));
 
-      // Create multiple schedules - use ISO format with Z for UTC
       // Explicitly set nextRun so the beforeChange hook doesn't compute it
       // from the current fake time (which would set it in the future).
       await withScheduledIngest(testEnv, testCatalog.id, `${testServerUrl}/schedule1.csv`, {
@@ -347,13 +333,11 @@ describe("scheduled ingests Integration", () => {
         user: testUser,
       });
 
-      // Set up test server endpoints for all URLs
       testServer
         .respondWithCSV("/schedule1.csv", "id,name\n1,data1")
         .respondWithCSV("/schedule2.csv", "id,name\n2,data2")
         .respondWithCSV("/schedule3.csv", "id,name\n3,data3");
 
-      // Before running, check what schedules exist
       const schedulesBeforeRun = await payload.find({
         collection: "scheduled-ingests",
         where: { enabled: { equals: true } },
@@ -365,7 +349,6 @@ describe("scheduled ingests Integration", () => {
 
       const result = await scheduleManagerJob.handler({ job: { id: "test-job" }, req: { payload } });
 
-      // Debug: log what actually happened
       if ((result.output.triggered ?? 0) < 2) {
         logger.info(
           "Unexpected trigger count. Schedules:",
@@ -391,7 +374,6 @@ describe("scheduled ingests Integration", () => {
 
   describe("URL Fetch Job", () => {
     it("should fetch and process URL data", async () => {
-      // Set up test server endpoint
       const mockCsvData = "id,name,value\n1,Product A,100\n2,Product B,200";
       testServer.respondWithAuth(
         "/auth-data.csv",
@@ -416,7 +398,6 @@ describe("scheduled ingests Integration", () => {
         user: testUser,
       });
 
-      // Run URL fetch job
       const result = await urlFetchJob.handler({
         input: {
           sourceUrl: scheduledIngest.sourceUrl,
@@ -440,9 +421,8 @@ describe("scheduled ingests Integration", () => {
 
       // Test server will have validated auth automatically
 
-      // Note: File is now handled by Payload's upload system, not saved directly to disk by url-fetch-job
+      // The file is stored through Payload uploads, not written to disk by url-fetch-job
 
-      // Verify import file was created
       expect(result.output.ingestFileId).toBeDefined();
       const successOutput = result.output as UrlFetchSuccessOutput;
       const importFiles = await payload.find({
@@ -452,18 +432,16 @@ describe("scheduled ingests Integration", () => {
 
       expect(importFiles.docs).toHaveLength(1);
       expect(importFiles.docs[0]).toMatchObject({
-        // URL imports now preserve the url-import- prefix
+        // URL imports keep the url-import- prefix
         filename: expect.stringMatching(/^url-import-.*\.csv$/),
         mimeType: "text/csv",
         filesize: mockCsvData.length,
         status: "pending",
-        // originalName should be what we passed in
         originalName: "test-import.csv",
       });
     });
 
     it("should handle authentication types", async () => {
-      // Set up test server endpoints with different auth types
       testServer
         .respondWithAuth(
           "/api-key-data",
@@ -512,14 +490,13 @@ describe("scheduled ingests Integration", () => {
     });
 
     it("should handle fetch errors", async () => {
-      // Set up test server endpoint that returns 404
       testServer.respond("/missing-data.csv", {
         status: 404,
         body: "Not Found",
         headers: { "Content-Type": "text/plain" },
       });
 
-      // Handler now throws on failure instead of returning { success: false }
+      // Handler throws on failure
       await expect(
         urlFetchJob.handler({
           input: {
@@ -555,10 +532,8 @@ describe("scheduled ingests Integration", () => {
 
       const mockCsvData = "id,name,value\n1,test,100";
 
-      // Set up test server endpoint with duplicate content
       testServer.respondWithCSV("/duplicate-test.csv", mockCsvData);
 
-      // First import
       const result1 = await urlFetchJob.handler({
         input: {
           scheduledIngestId: scheduledIngest.id,
@@ -582,9 +557,7 @@ describe("scheduled ingests Integration", () => {
         data: { status: "completed" },
       });
 
-      // Server will return same content for second request
-
-      // Second import with same content
+      // Second import; the server returns the same content
       const result2 = await urlFetchJob.handler({
         input: {
           scheduledIngestId: scheduledIngest.id,
@@ -600,7 +573,6 @@ describe("scheduled ingests Integration", () => {
       const successOutput2 = result2.output as UrlFetchSuccessOutput;
       expect(successOutput2.isDuplicate).toBe(true);
 
-      // Verify import files
       const importFiles = await payload.find({
         collection: "ingest-files",
         where: { "metadata.scheduledExecution.scheduledIngestId": { equals: scheduledIngest.id } },
@@ -630,10 +602,8 @@ describe("scheduled ingests Integration", () => {
 
       const mockCsvData = "id,name,value\n1,test,100";
 
-      // Set up test server endpoint with duplicate content
       testServer.respondWithCSV("/duplicate-test.csv", mockCsvData);
 
-      // First import
       const result1 = await urlFetchJob.handler({
         input: {
           scheduledIngestId: scheduledIngest.id,
@@ -731,7 +701,7 @@ describe("scheduled ingests Integration", () => {
         headers: { "Content-Type": "text/csv", "Content-Length": String(2 * 1024 * 1024) },
       });
 
-      // Handler now throws on failure
+      // Handler throws on failure
       await expect(
         urlFetchJob.handler({
           input: {
@@ -814,7 +784,6 @@ describe("scheduled ingests Integration", () => {
         user: testUser,
       });
 
-      // Set up test server endpoint with Excel mime type
       testServer.respond("/api/data.xlsx", {
         status: 200,
         body: "mock excel data",
@@ -866,10 +835,8 @@ describe("scheduled ingests Integration", () => {
         user: testUser,
       });
 
-      // Set up test server endpoint with CSV data
       testServer.respondWithCSV("/duration-test.csv", "id,name\n1,test");
 
-      // Mock timing
       const startTime = Date.now();
       vi.spyOn(Date, "now")
         .mockReturnValueOnce(startTime) // Start time
@@ -943,7 +910,6 @@ describe("scheduled ingests Integration", () => {
       // Verify retry succeeded after 3 schedule-level executions
       expect(result.output).toMatchObject({ isDuplicate: false });
 
-      // Verify import file was created successfully
       const successOutput = result.output as UrlFetchSuccessOutput;
       const ingestFile = await payload.findByID({ collection: "ingest-files", id: successOutput.ingestFileId });
 
@@ -978,7 +944,7 @@ describe("scheduled ingests Integration", () => {
         // Set up a slow endpoint that will timeout
         testServer.respond("/timeout-test", { delay: 1000, status: 200, body: "Should timeout" });
 
-        // Handler now throws on timeout
+        // Handler throws on timeout
         await expect(
           urlFetchJob.handler({
             input: {
@@ -1036,7 +1002,6 @@ describe("scheduled ingests Integration", () => {
         user: testUser,
       });
 
-      // Mock successful fetch
       const mockCsvData = "id,name,price\n1,Product A,99.99\n2,Product B,149.99";
       testServer.respondWithCSV("/products.csv", mockCsvData);
 
@@ -1053,7 +1018,6 @@ describe("scheduled ingests Integration", () => {
         | undefined;
       const queueSpy = vi.spyOn(payload.jobs, "queue");
 
-      // Run schedule manager
       try {
         const scheduleResult = await scheduleManagerJob.handler({ job: { id: "schedule-job" }, req: { payload } });
 
@@ -1091,15 +1055,12 @@ describe("scheduled ingests Integration", () => {
 
       expect(fetchResult.output.ingestFileId).toBeDefined();
 
-      // Verify complete state
       const finalSchedule = await payload.findByID({ collection: "scheduled-ingests", id: scheduledIngest.id });
 
-      // The schedule should have been triggered
       expect(finalSchedule.statistics.totalRuns).toBeGreaterThanOrEqual(1);
       expect(finalSchedule.statistics.successfulRuns).toBeGreaterThanOrEqual(1);
       expect(finalSchedule.lastStatus).toBe("success");
 
-      // Verify an import file was created
       const fetchSuccessOutput = fetchResult.output as UrlFetchSuccessOutput;
       const importFiles = await payload.find({
         collection: "ingest-files",

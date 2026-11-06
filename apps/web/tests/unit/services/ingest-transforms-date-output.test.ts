@@ -13,12 +13,9 @@ import type { IngestTransform } from "@/lib/ingest/types/transforms";
 
 describe("date-parse transform output", () => {
   it("honors every output format the transform editor offers, not just ISO", () => {
-    // Two bugs met here. The formatter only special-cased "ISO 8601" and sent everything else
-    // through toISOString(), so eight of the nine offered formats silently produced
-    // YYYY-MM-DD. Fixing that then exposed the round-trip guard below it, which compared the
-    // FORMATTED output against the input: for an ISO input every non-ISO format differs
-    // trivially, so the guard bailed and the transform became a no-op for exactly the most
-    // common case (a CSV of ISO dates).
+    // Every offered format must reach the output, not collapse to YYYY-MM-DD via toISOString().
+    // A round-trip guard comparing FORMATTED output to the input would bail on every non-ISO
+    // format for ISO input, the most common case (a CSV of ISO dates).
     const format = (outputFormat: string): unknown => {
       const transforms: IngestTransform[] = [
         {
@@ -45,8 +42,8 @@ describe("date-parse transform output", () => {
   });
 
   it("keeps the calendar date of the source timezone for date-only output", () => {
-    // "2024-06-15 in Asia/Tokyo" is the instant 2024-06-14T15:00Z; reading the UTC parts off
-    // that moved every imported date a day back for zones east of Greenwich.
+    // "2024-06-15 in Asia/Tokyo" is the instant 2024-06-14T15:00Z; reading its UTC parts
+    // would move every imported date a day back for zones east of Greenwich.
     const withZone = (timezone: string): unknown => {
       const transforms: IngestTransform[] = [
         {

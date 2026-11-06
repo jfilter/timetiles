@@ -11,7 +11,6 @@ import path from "node:path";
 
 import { config as loadEnv } from "dotenv";
 
-// Load environment variables
 loadEnv({ path: path.resolve(process.cwd(), ".env.local") });
 
 import { dropDatabase } from "@/lib/database/operations";
@@ -46,7 +45,6 @@ export default async function globalTeardown(): Promise<void> {
     }
   }
 
-  // Kill server process
   if (serverPid) {
     console.log(`🧹 Stopping server (PID: ${serverPid})...`);
     try {

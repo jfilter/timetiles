@@ -90,21 +90,18 @@ describe("RateLimitService", () => {
     });
 
     it("should track multiple requests correctly", async () => {
-      // Make 3 requests
       for (let i = 0; i < 3; i++) {
         const result = await rateLimitService.checkRateLimit(testIdentifier, limit, windowMs);
         expect(result.allowed).toBe(true);
         expect(result.remaining).toBe(limit - (i + 1));
       }
 
-      // Check final state
       const finalResult = await rateLimitService.checkRateLimit(testIdentifier, limit, windowMs);
       expect(finalResult.allowed).toBe(true);
       expect(finalResult.remaining).toBe(1);
     });
 
     it("should block requests when limit is exceeded", async () => {
-      // Exhaust the limit
       for (let i = 0; i < limit; i++) {
         await rateLimitService.checkRateLimit(testIdentifier, limit, windowMs);
       }
@@ -121,7 +118,6 @@ describe("RateLimitService", () => {
       vi.useFakeTimers({ toFake: ["Date"] });
       const shortWindow = 100; // 100ms
 
-      // Exhaust the limit
       for (let i = 0; i < limit; i++) {
         await rateLimitService.checkRateLimit(testIdentifier, limit, shortWindow);
       }
@@ -130,7 +126,6 @@ describe("RateLimitService", () => {
       let result = await rateLimitService.checkRateLimit(testIdentifier, limit, shortWindow);
       expect(result.allowed).toBe(false);
 
-      // Wait for window to expire
       advanceClock(150);
 
       // Should be allowed again
@@ -143,7 +138,6 @@ describe("RateLimitService", () => {
       const identifier1 = "client-1";
       const identifier2 = "client-2";
 
-      // Exhaust limit for client 1
       for (let i = 0; i < limit; i++) {
         await rateLimitService.checkRateLimit(identifier1, limit, windowMs);
       }
@@ -178,7 +172,6 @@ describe("RateLimitService", () => {
     });
 
     it("should return current status without incrementing", async () => {
-      // Make some requests
       await rateLimitService.checkRateLimit(testIdentifier, limit, windowMs);
       await rateLimitService.checkRateLimit(testIdentifier, limit, windowMs);
 
@@ -200,7 +193,6 @@ describe("RateLimitService", () => {
 
       await rateLimitService.checkRateLimit(testIdentifier, limit, shortWindow);
 
-      // Wait for expiry
       advanceClock(100);
 
       const status = await rateLimitService.getRateLimitStatus(testIdentifier);
@@ -214,7 +206,6 @@ describe("RateLimitService", () => {
     const windowMs = 60 * 1000;
 
     it("should reset rate limit for identifier", async () => {
-      // Exhaust the limit
       for (let i = 0; i < limit; i++) {
         await rateLimitService.checkRateLimit(testIdentifier, limit, windowMs);
       }
@@ -223,7 +214,6 @@ describe("RateLimitService", () => {
       let result = await rateLimitService.checkRateLimit(testIdentifier, limit, windowMs);
       expect(result.allowed).toBe(false);
 
-      // Reset the limit
       await rateLimitService.resetRateLimit(testIdentifier);
 
       // Should be allowed again
@@ -236,11 +226,9 @@ describe("RateLimitService", () => {
       const identifier1 = "reset-client-1";
       const identifier2 = "reset-client-2";
 
-      // Make requests for both clients
       await rateLimitService.checkRateLimit(identifier1, limit, windowMs);
       await rateLimitService.checkRateLimit(identifier2, limit, windowMs);
 
-      // Reset only client 1
       await rateLimitService.resetRateLimit(identifier1);
 
       // Client 1 should be reset
@@ -293,7 +281,6 @@ describe("RateLimitService", () => {
       let result = await rateLimitService.checkRateLimit(testIdentifier, limit, windowMs);
       expect(result.allowed).toBe(false);
 
-      // Wait for block to expire
       advanceClock(150);
 
       // Should be allowed again
@@ -316,7 +303,6 @@ describe("RateLimitService", () => {
     });
 
     it("should return current status headers", async () => {
-      // Make some requests
       await rateLimitService.checkRateLimit(testIdentifier, limit, 60 * 1000);
       await rateLimitService.checkRateLimit(testIdentifier, limit, 60 * 1000);
 
@@ -350,10 +336,8 @@ describe("RateLimitService", () => {
       await rateLimitService.checkRateLimit(identifier1, 5, shortWindow);
       await rateLimitService.checkRateLimit(identifier2, 5, 60 * 1000); // Long window
 
-      // Wait for first entry to expire
       advanceClock(100);
 
-      // Trigger cleanup
       await rateLimitService["cleanup"]();
 
       // First should be gone, second should remain
@@ -368,7 +352,6 @@ describe("RateLimitService", () => {
       const client2 = "stats-client-2";
       const client3 = "stats-client-3";
 
-      // Create some entries
       await rateLimitService.checkRateLimit(client1, 5, 60 * 1000);
       await rateLimitService.checkRateLimit(client2, 5, 60 * 1000);
       await rateLimitService.blockIdentifier(client3, 60 * 1000);
@@ -385,7 +368,6 @@ describe("RateLimitService", () => {
       const shortWindow = 50;
       await rateLimitService.checkRateLimit("expired-client", 5, shortWindow);
 
-      // Wait for expiry
       advanceClock(100);
 
       const stats = await rateLimitService.getStatistics();

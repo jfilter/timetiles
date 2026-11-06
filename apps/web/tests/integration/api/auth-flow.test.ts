@@ -63,9 +63,7 @@ describe("Authentication Flow", () => {
       expect(user.role).toBe("user");
       // Security: Should be forced to BASIC trust level
       expect(user.trustLevel).toBe(`${TRUST_LEVELS.BASIC}`);
-      // Should be marked as self-registered
       expect(user.registrationSource).toBe("self");
-      // Should be active
       expect(user.isActive).toBe(true);
     });
 
@@ -127,7 +125,6 @@ describe("Authentication Flow", () => {
       // They are NOT created immediately on user creation to avoid FK constraint issues
       // (the user transaction hasn't committed yet when afterChange hooks run)
 
-      // Verify no usage record exists yet
       const initialResult = await payload.find({
         collection: "user-usage",
         where: { user: { equals: user.id } },
@@ -148,7 +145,6 @@ describe("Authentication Flow", () => {
       expect(usageRecord.ingestJobsToday).toBe(0);
       expect(usageRecord.totalEventsCreated).toBe(0);
 
-      // Verify record now exists in collection
       const afterResult = await payload.find({
         collection: "user-usage",
         where: { user: { equals: user.id } },
@@ -201,7 +197,6 @@ describe("Authentication Flow", () => {
       const testEmail = `verified-login-${timestamp}@test.com`;
       const testPassword = TEST_CREDENTIALS.auth.secure;
 
-      // Create user
       const user = await payload.create({
         collection: "users",
         data: { email: testEmail, password: testPassword, trustLevel: `${TRUST_LEVELS.BASIC}` },
@@ -232,14 +227,12 @@ describe("Authentication Flow", () => {
       const timestamp = Date.now();
       const testEmail = `wrongpass-${timestamp}@test.com`;
 
-      // Create user
       await payload.create({
         collection: "users",
         data: { email: testEmail, password: TEST_CREDENTIALS.auth.correct, trustLevel: `${TRUST_LEVELS.BASIC}` },
         disableVerificationEmail: true,
       });
 
-      // Attempt login with wrong password
       await expect(
         payload.login({ collection: "users", data: { email: testEmail, password: TEST_CREDENTIALS.auth.wrong } })
       ).rejects.toThrow();
@@ -275,7 +268,6 @@ describe("Authentication Flow", () => {
       // Get the verification token (normally sent via email)
       const userWithToken = await payload.findByID({ collection: "users", id: user.id, showHiddenFields: true });
 
-      // Verify the user using the token
       if (userWithToken._verificationToken) {
         const verifiedUser = await payload.verifyEmail({
           collection: "users",
@@ -284,7 +276,6 @@ describe("Authentication Flow", () => {
 
         expect(verifiedUser).toBe(true);
 
-        // Check user is now verified
         const updatedUser = await payload.findByID({ collection: "users", id: user.id });
 
         expect(updatedUser._verified).toBe(true);
@@ -303,7 +294,6 @@ describe("Authentication Flow", () => {
       const { payload } = testEnv;
       const timestamp = Date.now();
 
-      // First create an admin user
       const adminUser = await payload.create({
         collection: "users",
         data: {
@@ -332,7 +322,6 @@ describe("Authentication Flow", () => {
       // Admin-created user should retain the specified role
       expect(newUser.role).toBe("editor");
       expect(newUser.trustLevel).toBe(`${TRUST_LEVELS.TRUSTED}`);
-      // Admin-created users should be marked as admin-created
       expect(newUser.registrationSource).toBe("admin");
     });
   });
@@ -343,14 +332,12 @@ describe("Authentication Flow", () => {
       const timestamp = Date.now();
       const testEmail = `readown-${timestamp}@test.com`;
 
-      // Create user
       const user = await payload.create({
         collection: "users",
         data: { email: testEmail, password: TEST_CREDENTIALS.auth.secure, trustLevel: `${TRUST_LEVELS.BASIC}` },
         disableVerificationEmail: true,
       });
 
-      // Read own profile with user context
       const ownProfile = await payload.findByID({ collection: "users", id: user.id, user: user });
 
       expect(ownProfile.email).toBe(testEmail);
@@ -360,7 +347,6 @@ describe("Authentication Flow", () => {
       const { payload } = testEnv;
       const timestamp = Date.now();
 
-      // Create two users
       const user1 = await payload.create({
         collection: "users",
         data: {
@@ -385,7 +371,6 @@ describe("Authentication Flow", () => {
       // they should only see their own profile (access control: id.equals user.id)
       const result = await payload.find({ collection: "users", user: user1, overrideAccess: false });
 
-      // User1 should only see their own profile
       expect(result.docs).toHaveLength(1);
       expect(result.docs[0]!.id).toBe(user1.id);
     });
@@ -414,7 +399,6 @@ describe("Authentication Flow", () => {
         overrideAccess: false,
       });
 
-      // Role should remain "user" — field-level access strips the change
       expect(result.role).toBe("user");
     });
 
@@ -422,7 +406,6 @@ describe("Authentication Flow", () => {
       const { payload } = testEnv;
       const timestamp = Date.now();
 
-      // Create admin
       const admin = await payload.create({
         collection: "users",
         data: {
@@ -435,7 +418,6 @@ describe("Authentication Flow", () => {
         disableVerificationEmail: true,
       });
 
-      // Create regular user
       const regularUser = await payload.create({
         collection: "users",
         data: {
@@ -446,7 +428,6 @@ describe("Authentication Flow", () => {
         disableVerificationEmail: true,
       });
 
-      // Admin should be able to read regular user's profile
       const result = await payload.find({
         collection: "users",
         where: { id: { equals: regularUser.id } },
@@ -461,7 +442,6 @@ describe("Authentication Flow", () => {
       const { payload } = testEnv;
       const timestamp = Date.now();
 
-      // Create user
       await payload.create({
         collection: "users",
         data: {

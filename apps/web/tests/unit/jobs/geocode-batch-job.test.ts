@@ -18,16 +18,13 @@ import { geocodeBatchJob } from "@/lib/jobs/handlers/geocode-batch-job";
 import type { JobHandlerContext } from "@/lib/jobs/utils/job-context";
 import { createMockDataset, createMockIngestJob, createMockPayload } from "@/tests/setup/factories";
 
-// Use vi.hoisted to create mocks that can be used in vi.mock factories
 const mocks = vi.hoisted(() => {
   const geocode = vi.fn();
   const MockGeocodingService = class {
     geocode = geocode;
   };
   // A spy, not a plain closure: the handler passes (addresses, batchSize, bias)
-  // and the geocoding bias is only observable through these call args. An
-  // inline arrow that dropped the third parameter made bias regressions
-  // completely invisible to this suite.
+  // and the geocoding bias is only observable through these call args.
   const batchGeocode = vi.fn(async (addresses: string[], _batchSize: number = 10, _bias?: unknown) => {
     const results = new Map();
     const summary = { total: addresses.length, successful: 0, failed: 0, cached: 0 };
@@ -56,7 +53,6 @@ const mocks = vi.hoisted(() => {
   };
 });
 
-// Mock external dependencies
 vi.mock("@/lib/services/geocoding/geocoding-service", () => ({
   GeocodingService: class MockGeocodingService {
     geocode = mocks.geocode;
@@ -80,8 +76,7 @@ vi.mock("@/lib/ingest/file-readers", () => ({
 
 vi.mock("@/lib/ingest/upload-path", () => ({ getIngestFilePath: mocks.getIngestFilePath }));
 
-// Mock cleanupSidecarsForJob directly — with isolate: false, the mock of file-readers
-// doesn't propagate to resource-loading.ts's cached import of cleanupSidecarFiles
+// Mocked at the resource-loading boundary so sidecar cleanup can be asserted directly
 vi.mock("@/lib/jobs/utils/resource-loading", async (importOriginal) => {
   const actual: Record<string, unknown> = await importOriginal();
   return { ...actual, cleanupSidecarsForJob: mocks.cleanupSidecarsForJob };
@@ -155,14 +150,13 @@ describe("GeocodeBatchJob Handler", () => {
         },
       });
 
-      // Mock file with duplicate locations
       mockStreamBatches([
         { id: "1", title: "Event 1", address: "123 Main St" },
         { id: "2", title: "Event 2", address: "456 Oak Ave" },
         { id: "3", title: "Event 3", address: "123 Main St" }, // Duplicate
       ]);
 
-      // Mock findByID to return the job for the initial call and for ProgressTrackingService calls
+      // Returns the job for the initial call and for ProgressTrackingService calls
       mockPayload.findByID.mockResolvedValue(mockIngestJob);
 
       mocks.geocode
@@ -186,7 +180,7 @@ describe("GeocodeBatchJob Handler", () => {
       expect(mocks.geocode).toHaveBeenCalledWith("123 main st");
       expect(mocks.geocode).toHaveBeenCalledWith("456 oak ave");
 
-      // Should store results (no stage transition — workflow controls sequencing)
+      // No stage transition — workflow controls sequencing
       expect(mockPayload.update).toHaveBeenCalledWith({
         collection: "ingest-jobs",
         id: 123,
@@ -206,15 +200,13 @@ describe("GeocodeBatchJob Handler", () => {
         },
       });
 
-      // Should return correct output
       expect(result.output).toEqual({ geocoded: 2, failed: 0, skipped: 0, uniqueLocations: 2 });
     });
 
     it("should forward the file's geocodingBias to batchGeocode", async () => {
       // The bias (country codes / view box) comes from the ingest file's
-      // processingOptions — set by a data package or scheduled ingest — and is
-      // what keeps ambiguous place names resolving inside the expected region.
-      // If the handler stops passing it, geocoding silently goes global.
+      // processingOptions and keeps ambiguous place names inside the expected region;
+      // without it geocoding silently goes global.
       const geocodingBias = {
         countryCodes: ["ua", "pl"],
         viewBox: { minLon: 22.1, minLat: 44.3, maxLon: 40.2, maxLat: 52.4 },
@@ -333,7 +325,6 @@ describe("GeocodeBatchJob Handler", () => {
         },
       });
 
-      // Mock file with missing/empty locations
       mockStreamBatches([
         { id: "1", title: "Event 1", address: "123 Main St" },
         { id: "2", title: "Event 2" }, // No address field
@@ -341,7 +332,6 @@ describe("GeocodeBatchJob Handler", () => {
         { id: "4", title: "Event 4", address: "   " }, // Whitespace only
       ]);
 
-      // Mock findByID to return the job for all calls
       mockPayload.findByID.mockResolvedValue(mockIngestJob);
 
       mocks.geocode.mockResolvedValueOnce({
@@ -378,7 +368,6 @@ describe("GeocodeBatchJob Handler", () => {
         { id: "2", title: "Event 2", address: "Invalid Address XYZ" },
       ]);
 
-      // Mock findByID to return the job for all calls
       mockPayload.findByID.mockResolvedValue(mockIngestJob);
 
       mocks.geocode
@@ -424,7 +413,6 @@ describe("GeocodeBatchJob Handler", () => {
         },
       });
 
-      // Mock findByID to return the job for all calls
       mockPayload.findByID.mockResolvedValue(mockIngestJob);
 
       const result = await geocodeBatchJob.handler(mockContext);
@@ -458,7 +446,6 @@ describe("GeocodeBatchJob Handler", () => {
 
       mockStreamBatches([]);
 
-      // Mock findByID to return the job for all calls
       mockPayload.findByID.mockResolvedValue(mockIngestJob);
 
       const result = await geocodeBatchJob.handler(mockContext);
@@ -478,9 +465,7 @@ describe("GeocodeBatchJob Handler", () => {
     });
 
     it("reports chunk.length (not PROGRESS_CHUNK_SIZE) for partial final chunk", async () => {
-      // Regression: the previous math `Math.min(CHUNK, size - processed + CHUNK)`
-      // always returned CHUNK regardless of remaining work, misreporting the
-      // final partial chunk's size on the progress stage.
+      // Regression: the final partial chunk must report its real size on the progress stage.
       // PROGRESS_CHUNK_SIZE is 50 in the handler — 51 unique locations means
       // one full chunk of 50 followed by a final chunk of 1.
       const addresses = Array.from({ length: 51 }, (_, i) => `${i + 1} Main St`);
@@ -519,7 +504,7 @@ describe("GeocodeBatchJob Handler", () => {
       expect(geocodeProgressCalls[0]?.[3]).toBe(50);
       expect(geocodeProgressCalls[0]?.[4]).toBe(50);
 
-      // Final chunk: processed=51, currentBatchRows=1 (NOT 50 — that was the bug)
+      // Final chunk: processed=51, currentBatchRows=1 (not 50)
       expect(geocodeProgressCalls[1]?.[3]).toBe(51);
       expect(geocodeProgressCalls[1]?.[4]).toBe(1);
     });
@@ -542,7 +527,6 @@ describe("GeocodeBatchJob Handler", () => {
         { id: "2", address: "123 Main St" }, // Should be treated as same location
       ]);
 
-      // Mock findByID to return the job for all calls
       mockPayload.findByID.mockResolvedValue(mockIngestJob);
 
       mocks.geocode.mockResolvedValueOnce({
@@ -623,7 +607,6 @@ describe("GeocodeBatchJob Handler", () => {
         },
       });
 
-      // Mock findByID to return the job for all calls
       mockPayload.findByID.mockResolvedValue(mockIngestJob);
 
       // Make streamBatchesFromFile throw a transient error (matches transient patterns)
@@ -675,9 +658,6 @@ describe("GeocodeBatchJob Handler", () => {
 
       await expect(geocodeBatchJob.handler(mockContext)).rejects.toThrow("File read error");
 
-      // Verify sidecar cleanup was called (asserts on cleanupSidecarsForJob, not the
-      // low-level cleanupSidecarFiles, because with isolate:false the file-readers
-      // mock doesn't propagate to resource-loading.ts's cached import)
       expect(mocks.cleanupSidecarsForJob).toHaveBeenCalledWith(mockPayload, 123);
     });
   });
@@ -703,7 +683,6 @@ describe("GeocodeBatchJob Handler", () => {
         { id: "4", address: { street: "456 Oak" } }, // Object
       ]);
 
-      // Mock findByID to return the job for all calls
       mockPayload.findByID.mockResolvedValue(mockIngestJob);
 
       mocks.geocode.mockResolvedValueOnce({
@@ -741,12 +720,11 @@ describe("GeocodeBatchJob Handler", () => {
         { id: "2", address: "Invalid 2" },
       ]);
 
-      // Mock findByID to return the job for all calls
       mockPayload.findByID.mockResolvedValue(mockIngestJob);
 
       mocks.geocode.mockRejectedValue(new Error("Geocoding failed"));
 
-      // Total geocoding failure now throws — caught by processSheets markSheetFailed
+      // Total geocoding failure throws — caught by processSheets markSheetFailed
       await expect(geocodeBatchJob.handler(mockContext)).rejects.toThrow("Geocoding failed for all");
 
       // File status update is handled by workflow handler's updateIngestFileStatus, not by the task
@@ -772,10 +750,8 @@ describe("GeocodeBatchJob Handler", () => {
       }
       mockStreamBatches(rows);
 
-      // Mock findByID to return the job for all calls
       mockPayload.findByID.mockResolvedValue(mockIngestJob);
 
-      // Mock successful geocoding for all
       mocks.geocode.mockResolvedValue({
         latitude: 40.7128,
         longitude: -74.006,

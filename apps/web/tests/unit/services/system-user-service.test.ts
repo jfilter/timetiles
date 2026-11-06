@@ -21,7 +21,7 @@ describe("SystemUserService", () => {
   describe("getOrCreateSystemUser — concurrent creation", () => {
     // users.email is unique and auto-activation runs from onInit, so a rolling
     // deploy boots several replicas into the same create. An uncaught 23505 there
-    // failed Payload's whole initialization for the losing replica.
+    // would fail Payload's whole initialization for the losing replica.
     it("recovers from a concurrent creator instead of throwing", async () => {
       mockPayload.find
         .mockResolvedValueOnce({ docs: [] })

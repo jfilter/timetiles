@@ -57,29 +57,24 @@ test.describe("Flow Editor Real Transform Interactions", () => {
    * pre-filled with the column name).
    */
   const addUppercaseTransformViaUI = async (page: Page) => {
-    // Find the row for the "title" column and click its add transform button
     const titleRow = page.locator("tr").filter({ hasText: "title" }).first();
     const addButton = titleRow.getByRole("button", { name: /add transform/i });
     await expect(addButton).toBeVisible({ timeout: 5000 });
     await addButton.click();
 
-    // Select "String Operation" from the dropdown menu
     const stringOpItem = page.getByRole("menuitem", { name: /string operation/i });
     await expect(stringOpItem).toBeVisible({ timeout: 5000 });
     await stringOpItem.click();
 
-    // The transform chip appears in the title row (default operation is "uppercase")
-    // Click the chip to expand the inline editor below the row
+    // Default operation is "uppercase"; clicking the chip expands the inline editor
     const transformChip = titleRow.getByText("Uppercase");
     await expect(transformChip).toBeVisible({ timeout: 5000 });
     await transformChip.click();
 
-    // The editor expands below the row — source field is already set to "title"
-    // Verify the operation is "uppercase" (the default)
+    // Source field is preset to "title"; the operation defaults to "uppercase"
     const operationTrigger = page.locator("#operation");
     await expect(operationTrigger).toBeVisible({ timeout: 5000 });
 
-    // Verify the chip shows "Uppercase"
     await expect(titleRow.getByText("Uppercase")).toBeVisible({ timeout: 5000 });
   };
 
@@ -89,30 +84,23 @@ test.describe("Flow Editor Real Transform Interactions", () => {
     const uniqueId = Date.now();
     const catalogName = `E2E Real Transform RT ${uniqueId}`;
 
-    // Navigate to step 4
     await navigateToFieldMapping(page, catalogName);
 
-    // Verify no transform chips in the title column row initially
     const titleRow = page.locator("tr").filter({ hasText: "title" }).first();
     await expect(titleRow.getByText("Uppercase")).not.toBeVisible();
 
-    // Add an uppercase transform via real UI interactions
     await addUppercaseTransformViaUI(page);
 
-    // Open the visual editor
     const visualEditorButton = page.getByRole("button", { name: /open visual editor/i });
     await expect(visualEditorButton).toBeVisible({ timeout: 10000 });
     await visualEditorButton.click();
 
-    // Wait for the flow editor to fully load
     await expect(page.getByText("Visual Field Mapping")).toBeVisible({ timeout: 15000 });
     await expect(page.getByText("Source Column").first()).toBeVisible({ timeout: 10000 });
 
-    // Verify the transform node appears in the flow editor canvas
     const transformNode = page.locator(".react-flow__node-transform");
     await expect(transformNode).toBeVisible({ timeout: 10000 });
 
-    // The transform node should show "uppercase" as the summary text
     await expect(transformNode.getByText("uppercase")).toBeVisible({ timeout: 5000 });
 
     // Verify the transform node is wired with edges (source -> transform -> target)
@@ -122,15 +110,12 @@ test.describe("Flow Editor Real Transform Interactions", () => {
     // At minimum: source->transform edge + transform->target edge + other auto-detected edges
     expect(edgeCount).toBeGreaterThanOrEqual(2);
 
-    // Click "Apply & Return" to go back to the wizard
     const saveButton = page.getByRole("button", { name: /apply.*return/i });
     await expect(saveButton).toBeVisible({ timeout: 5000 });
     await saveButton.click();
 
-    // Should be back on the field mapping step
     await expect(page.getByRole("heading", { name: /map your fields/i })).toBeVisible({ timeout: 10000 });
 
-    // Verify the transform chip is still visible in the title row after the round-trip
     const titleRowAfterRT = page.locator("tr").filter({ hasText: "title" }).first();
     await expect(titleRowAfterRT.getByText("Uppercase")).toBeVisible({ timeout: 5000 });
   });
@@ -141,10 +126,8 @@ test.describe("Flow Editor Real Transform Interactions", () => {
     const uniqueId = Date.now();
     const catalogName = `E2E Real Transform API ${uniqueId}`;
 
-    // Navigate to step 4
     await navigateToFieldMapping(page, catalogName);
 
-    // Add an uppercase transform via real UI interactions
     await addUppercaseTransformViaUI(page);
 
     // Proceed to review step — use the sticky "Continue to Review" button
@@ -168,16 +151,13 @@ test.describe("Flow Editor Real Transform Interactions", () => {
       timeout: 15000,
     });
 
-    // Click "Start Import"
     const startImportButton = page.getByRole("button", { name: /start import/i });
     await expect(startImportButton).toBeVisible({ timeout: 5000 });
     await startImportButton.click();
 
-    // Wait for the configure API response
     const response = await responsePromise;
     expect(response.status()).toBe(200);
 
-    // Verify the transforms payload was sent in the API request
     expect(capturedRequestBody).not.toBeNull();
     const transforms = capturedRequestBody!.transforms as Array<{
       sheetIndex: number;
@@ -188,7 +168,6 @@ test.describe("Flow Editor Real Transform Interactions", () => {
     expect(transforms[0]!.sheetIndex).toBe(0);
     expect(transforms[0]!.transforms).toHaveLength(1);
 
-    // Verify the transform details match what we configured via the UI
     const transform = transforms[0]!.transforms[0]!;
     expect(transform.type).toBe("string-op");
     expect(transform.operation).toBe("uppercase");
@@ -200,7 +179,6 @@ test.describe("Flow Editor Real Transform Interactions", () => {
     const datasetId = responseBody.datasets?.["0"] as number | undefined;
     expect(datasetId).toBeDefined();
 
-    // Wait for import to complete
     const completionIndicator = page.getByText(/import complete/i);
     await expect(completionIndicator).toBeVisible({ timeout: 120000 });
 
@@ -213,7 +191,6 @@ test.describe("Flow Editor Real Transform Interactions", () => {
     const eventsData = await eventsResponse.json();
     const events = eventsData.docs as Array<{ transformedData: Record<string, unknown> }>;
 
-    // All imported events should have uppercase titles
     const uppercasedEvents = events.filter(
       (e) =>
         typeof e.transformedData?.title === "string" &&

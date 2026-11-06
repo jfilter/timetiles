@@ -25,11 +25,9 @@ const switchView = async (page: Page, view: "map" | "list") => {
 
 test.describe("Explore View Switch - Map Position Persistence", () => {
   test("list view preserves URL zoom parameter", async ({ page }) => {
-    // Navigate directly to list view with a specific zoom level
     await page.goto("/explore/list?lat=48.1351&lng=11.5820&zoom=10", { timeout: 30000, waitUntil: "domcontentloaded" });
     await new ExplorePage(page).waitForMapLoad();
 
-    // The zoom parameter should be preserved in the URL
     const url = new URL(page.url());
     const zoom = url.searchParams.get("zoom");
     expect(zoom).toBe("10");

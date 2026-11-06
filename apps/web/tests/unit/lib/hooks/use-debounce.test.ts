@@ -45,13 +45,11 @@ describe("useDebounce", () => {
 
     expect(result.current).toBe("initial");
 
-    // Change value
     rerender({ value: "changed", delay: 500 });
 
     // Value should not update immediately
     expect(result.current).toBe("initial");
 
-    // Advance timers and trigger updates
     act(() => {
       vi.advanceTimersByTime(500);
     });

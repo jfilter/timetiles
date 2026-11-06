@@ -38,7 +38,6 @@ const createMockRequest = (pathname: string) => {
 const { default: middleware } = await import("../../../proxy");
 
 describe("middleware embed headers", () => {
-  // Reset the mock response headers before each test
   const resetHeaders = () => {
     mockIntlResponse.headers = createHeaderStore();
   };

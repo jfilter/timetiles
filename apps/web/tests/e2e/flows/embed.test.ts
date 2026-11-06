@@ -90,7 +90,6 @@ test.describe("Embed Locale Support", () => {
     const html = page.locator("html");
     await expect(html).toHaveAttribute("lang", "de");
 
-    // Attribution should be in German
     const attribution = page.locator("a", { hasText: /Bereitgestellt von TimeTiles/i });
     await expect(attribution).toBeVisible();
   });

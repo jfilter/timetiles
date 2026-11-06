@@ -136,7 +136,7 @@ describe("ReviewPanel", () => {
 
     const { container } = renderWithProviders(<ReviewPanel job={createStartDateOrderJob()} />);
 
-    // The without-order button no longer drops dates; it makes per-row guessing
+    // The without-order button keeps the dates and makes per-row guessing
     // sticky by flipping ambiguityResolution to "best-effort".
     await user.click(within(container).getByRole("button", { name: "Continue, best-guess dates" }));
 

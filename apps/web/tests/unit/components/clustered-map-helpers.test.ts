@@ -64,7 +64,7 @@ describe.each([
   });
 
   it("renders millions with a 'M' suffix using the correct 1,000,000 divisor", () => {
-    // With the old bug (÷100000) these would render as "10M" / "25M".
+    // A ÷100000 divisor would render these as "10M" / "25M".
     expect(labelFor(textField, 1_000_000)).toBe("1M");
     expect(labelFor(textField, 2_500_000)).toBe("3M"); // round(2.5) => 3 (away from zero)
     expect(labelFor(textField, 1_400_000)).toBe("1M");

@@ -43,8 +43,7 @@ const seedDatasetSuggestion = async (request: APIRequestContext, renameTitle = f
         catalog: catalog.id,
         language: "eng",
         isPublic: true,
-        // Canonical interpretation plan (ADR 0040): roles replace the removed
-        // fieldMappingOverrides group. The config-suggestion matcher reads role paths.
+        // Canonical interpretation plan (ADR 0040); the config-suggestion matcher reads role paths.
         interpretationPlan: {
           ops: renameTitle
             ? [
@@ -86,14 +85,11 @@ test.describe("Import Wizard - Dataset Selection Step", () => {
     await importPage.goto();
     await importPage.waitForWizardLoad();
 
-    // Upload CSV
     const csvPath = path.join(FIXTURES_PATH, "valid-events.csv");
     await importPage.uploadFile(csvPath);
 
-    // Navigate to dataset selection (Step 3)
     await importPage.clickNext();
 
-    // Wait for Step 3 to load — either catalog dropdown or name input should appear
     const catalogDropdown = page.locator("#catalog-select");
     const catalogNameInput = page.locator("#new-catalog-name");
     await expect(catalogDropdown.or(catalogNameInput)).toBeVisible({ timeout: 10000 });
@@ -103,14 +99,11 @@ test.describe("Import Wizard - Dataset Selection Step", () => {
     await importPage.goto();
     await importPage.waitForWizardLoad();
 
-    // Upload multi-sheet Excel
     const excelPath = path.join(FIXTURES_PATH, "multi-sheet.xlsx");
     await importPage.uploadFile(excelPath);
 
-    // Navigate to dataset selection (Step 3)
     await importPage.clickNext();
 
-    // Wait for Step 3 to load
     const catalogDropdown = page.locator("#catalog-select");
     const catalogNameInput = page.locator("#new-catalog-name");
     await expect(catalogDropdown.or(catalogNameInput)).toBeVisible({ timeout: 10000 });
@@ -131,16 +124,14 @@ test.describe("Import Wizard - Dataset Selection Step", () => {
     const csvPath = path.join(FIXTURES_PATH, "valid-events.csv");
     await importPage.uploadFile(csvPath);
 
-    // Navigate to dataset selection
     await importPage.clickNext();
 
-    // Wait for form to be ready
     const catalogDropdown = page.locator("#catalog-select");
     const catalogNameInput = page.locator("#new-catalog-name");
     await expect(catalogDropdown.or(catalogNameInput)).toBeVisible({ timeout: 10000 });
 
-    // The applied banner should NEVER be reached without an explicit click —
-    // it is no longer auto-shown when the server returns a match.
+    // The applied banner must never appear without an explicit click, even when the server
+    // returns a match.
     const appliedBanner = page.locator('[data-testid="dataset-suggestion-applied"]');
     await expect(appliedBanner).not.toBeVisible();
 
@@ -162,14 +153,11 @@ test.describe("Import Wizard - Dataset Selection Step", () => {
     const suggestedBanner = page.locator('[data-testid="dataset-suggestion-banner"]');
     await expect(suggestedBanner).toBeVisible({ timeout: 10000 });
 
-    // Click Ignore
     await suggestedBanner.getByRole("button", { name: /ignore/i }).click();
 
-    // Banner should disappear; applied banner should NOT appear
     await expect(suggestedBanner).not.toBeVisible();
     await expect(page.locator('[data-testid="dataset-suggestion-applied"]')).not.toBeVisible();
 
-    // Catalog form (dropdown or name input) should remain visible
     const catalogDropdown = page.locator("#catalog-select");
     const catalogNameInput = page.locator("#new-catalog-name");
     await expect(catalogDropdown.or(catalogNameInput)).toBeVisible();
@@ -189,7 +177,6 @@ test.describe("Import Wizard - Dataset Selection Step", () => {
 
     await suggestedBanner.getByRole("button", { name: /reuse import settings/i }).click();
 
-    // Suggested banner should be replaced by applied banner
     await expect(suggestedBanner).not.toBeVisible();
     const appliedBanner = page.locator('[data-testid="dataset-suggestion-applied"]');
     await expect(appliedBanner).toBeVisible();
@@ -239,15 +226,12 @@ test.describe("Import Wizard - Dataset Selection Step", () => {
     const csvPath = path.join(FIXTURES_PATH, "valid-events.csv");
     await importPage.uploadFile(csvPath);
 
-    // Navigate to Step 3
     await importPage.clickNext();
 
-    // Wait for form
     const catalogDropdown = page.locator("#catalog-select");
     const catalogNameInput = page.locator("#new-catalog-name");
     await expect(catalogDropdown.or(catalogNameInput)).toBeVisible({ timeout: 10000 });
 
-    // Continue button should be visible
     const continueButton = page.getByRole("button", { name: /continue/i });
     await expect(continueButton).toBeVisible();
   });

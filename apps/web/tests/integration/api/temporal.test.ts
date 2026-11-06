@@ -48,7 +48,6 @@ describe("/api/v1/events/temporal", () => {
     // Truncate to avoid data leakage from other test files (isolate: false)
     await testEnv.seedManager.truncate(["events", "datasets", "catalogs"]);
 
-    // Create test user
     const { users } = await withUsers(testEnv, { testUser: { role: "user" } });
     testUser = users.testUser;
 
@@ -149,14 +148,12 @@ describe("/api/v1/events/temporal", () => {
     expect(data).toHaveProperty("metadata");
     expect(Array.isArray(data.histogram)).toBe(true);
 
-    // Check histogram structure
     expect(data.histogram.length).toBeGreaterThan(0);
     const bucket = data.histogram[0];
     expect(bucket).toHaveProperty("date");
     expect(bucket).toHaveProperty("count");
     expect(typeof bucket.count).toBe("number");
 
-    // Check metadata structure
     expect(data.metadata).toHaveProperty("total");
     expect(data.metadata).toHaveProperty("dateRange");
     expect(data.metadata).toHaveProperty("counts");
@@ -177,7 +174,6 @@ describe("/api/v1/events/temporal", () => {
     const bucketsWithData = data.histogram.filter((b: HistogramBucket) => b.count > 0);
     expect(bucketsWithData.length).toBeGreaterThan(0);
 
-    // Metadata should include bucket size information
     expect(data.metadata).toHaveProperty("bucketSizeSeconds");
     expect(data.metadata).toHaveProperty("bucketCount");
     expect(typeof data.metadata.bucketSizeSeconds).toBe("number");
@@ -195,7 +191,6 @@ describe("/api/v1/events/temporal", () => {
     expect(response.status).toBe(200);
     const data = await response.json();
 
-    // Total should include our test events
     expect(data.metadata.total).toBeGreaterThanOrEqual(testEventIds.length);
 
     expect(data.metadata.topDatasets).toEqual([
@@ -235,7 +230,6 @@ describe("/api/v1/events/temporal", () => {
     const monthsWithData = data.histogram.filter((b: HistogramBucket) => b.count > 0);
     expect(monthsWithData.length).toBeGreaterThan(0);
 
-    // Should have some events in range
     const totalInRange = monthsWithData.reduce((sum: number, b: HistogramBucket) => sum + b.count, 0);
     expect(totalInRange).toBeGreaterThan(0);
   });
@@ -268,7 +262,6 @@ describe("/api/v1/events/temporal", () => {
     expect(response.status).toBe(200);
     const data = await response.json();
 
-    // Should have buckets appropriate for the date range
     const bucketsWithData = data.histogram.filter((b: HistogramBucket) => b.count > 0);
     expect(bucketsWithData.length).toBeGreaterThan(0);
 
@@ -284,7 +277,6 @@ describe("/api/v1/events/temporal", () => {
     expect(response.status).toBe(200);
     const data = await response.json();
 
-    // Should have buckets with data
     const bucketsWithData = data.histogram.filter((b: HistogramBucket) => b.count > 0);
     expect(bucketsWithData.length).toBeGreaterThanOrEqual(1);
     expect(bucketsWithData[0].count).toBeGreaterThan(0);
@@ -295,8 +287,8 @@ describe("/api/v1/events/temporal", () => {
   });
 
   it("rejects a malformed bounds parameter instead of ignoring it", async () => {
-    // Bounds is optional here, so dropping a malformed value returned 200 over every event
-    // worldwide — a broken viewport read as "nothing in view". Same reasoning as ff/rf.
+    // Bounds is optional, but ignoring a malformed value would answer 200 over every event
+    // worldwide, so a broken viewport would read as "nothing in view".
     const request = new NextRequest("http://localhost:3000/api/events/histogram?bounds=invalid");
     const response = await GET(request, { params: Promise.resolve({}) });
 
@@ -313,9 +305,8 @@ describe("/api/v1/events/temporal", () => {
     expect(data).toHaveProperty("metadata");
   });
 
-  // Regression: calculate_event_histogram had no clusterCells clause, so the
-  // histogram aggregated the whole viewport while the list/beeswarm honored
-  // the H3 cluster-focus filter (fixed in 20260612_140000).
+  // Regression: calculate_event_histogram must honor the H3 cluster-focus filter (clusterCells)
+  // like the list and beeswarm, not aggregate the whole viewport.
   it("should filter histogram by H3 cluster cells", async () => {
     const { sql } = await import("@payloadcms/db-postgres");
     const cellResult = (await payload.db.drizzle.execute(
@@ -340,9 +331,8 @@ describe("/api/v1/events/temporal", () => {
     expect(totalCount).toBe(topCell.count);
   });
 
-  // Regression: the single-timestamp branch of calculate_event_histogram
-  // re-filtered by catalog/datasets/field filters but dropped the bounds
-  // block, counting same-timestamp events globally (fixed in 20260612_140000).
+  // Regression: the single-timestamp branch of calculate_event_histogram must keep the bounds
+  // filter instead of counting same-timestamp events globally.
   it("should apply bounds when all filtered events share one timestamp", async () => {
     const sharedTimestamp = new Date(2025, 6, 1, 12).toISOString();
     const locations = [
@@ -377,9 +367,8 @@ describe("/api/v1/events/temporal", () => {
     expect(totalCount).toBe(1);
   });
 
-  // Regression: the bucket count was derived as CEIL(range/size) while generate_series is
-  // inclusive of its endpoint and yields FLOOR(range/size)+1 rows. On an exactly divisible
-  // range the two differ by one, so maxBuckets=50 answered with 51 (fixed in 20260731_170000).
+  // Regression: generate_series includes its endpoint and yields FLOOR(range/size)+1 rows, so on an
+  // exactly divisible range a CEIL-derived bucket count answered maxBuckets=50 with 51.
   it("never returns more buckets than maxBuckets on an exactly divisible range", async () => {
     const start = new Date("2027-01-01T00:00:00.000Z");
     const timestamps = [start, new Date(start.getTime() + 100_000)]; // exactly 100 seconds apart
@@ -454,8 +443,8 @@ describe("/api/v1/events/temporal", () => {
     expect(totalCount).toBe(2);
   });
 
-  // The minBuckets branch runs unconditionally after the maxBuckets cap and re-derives the
-  // bucket size, so with min == max it used to undo the cap that had just been applied.
+  // The minBuckets branch runs after the maxBuckets cap and re-derives the bucket size;
+  // with min == max it must not undo the cap.
   it("keeps maxBuckets a hard ceiling when minBuckets equals maxBuckets", async () => {
     const start = new Date("2027-02-01T00:00:00.000Z");
     for (const [i, offset] of [0, 100_000].entries()) {

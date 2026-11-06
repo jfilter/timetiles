@@ -15,7 +15,6 @@ import { parse } from "yaml";
 import { cacheCleanupJob } from "@/lib/jobs/handlers/cache-cleanup-job";
 import { createMockContext, createMockPayload } from "@/tests/setup/factories";
 
-// Mock dependencies
 vi.mock("@/lib/logger", () => ({
   logger: { info: vi.fn(), debug: vi.fn(), warn: vi.fn(), error: vi.fn() },
   createLogger: () => ({ info: vi.fn(), debug: vi.fn(), warn: vi.fn(), error: vi.fn() }),

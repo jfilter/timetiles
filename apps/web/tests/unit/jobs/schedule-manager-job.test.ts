@@ -11,7 +11,6 @@ import { reconcileFailedScheduledIngests } from "@/lib/jobs/handlers/schedule-ma
 import { getNextExecutionTime, shouldRunNow } from "@/lib/jobs/handlers/schedule-manager/schedule-evaluation";
 import { scheduleManagerJob } from "@/lib/jobs/handlers/schedule-manager-job";
 
-// Mock dependencies
 vi.mock("@/lib/jobs/handlers/schedule-manager/reconcile-failed-ingests", () => ({
   reconcileFailedScheduledIngests: vi.fn().mockResolvedValue(0),
 }));
@@ -338,7 +337,6 @@ describe("scheduleManagerJob", () => {
 
       mockPayload.find.mockResolvedValue({ docs: [mockScheduledIngest], totalDocs: 1 });
 
-      // Make job queue throw an error
       mockPayload.jobs.queue.mockRejectedValue(new Error("Queue error"));
 
       const result = await scheduleManagerJob.handler({ job: mockJob, req: mockReq });
@@ -356,10 +354,8 @@ describe("scheduleManagerJob", () => {
     });
 
     it("disables scheduled ingest + audit-logs when schedule config is invalid (regression)", async () => {
-      // Regression: a scheduled ingest with an unparseable cron expression
-      // previously fell through to a silent 24-hour reschedule, making a
-      // broken config look like "runs once per day." The scheduler now
-      // disables the ingest, stamps lastError, and emits an audit entry.
+      // Regression: an unparseable cron expression must not fall through to a silent
+      // 24-hour reschedule; the ingest is disabled, lastError stamped, and an audit entry emitted.
       const { mockPayload, mockJob, mockReq } = createMockContext();
 
       const currentTime = new Date("2024-01-15 10:00:00");
@@ -380,7 +376,6 @@ describe("scheduleManagerJob", () => {
       mockPayload.find.mockResolvedValue({ docs: [mockScheduledIngest], totalDocs: 1 });
       // extractRelationId(7) → 7 → findByID users for the audit log
       mockPayload.findByID.mockResolvedValue({ id: 7, email: "owner@example.com", firstName: "Owner", locale: "en" });
-      // audit log create is a side effect we assert on
       (mockPayload as any).create = vi.fn().mockResolvedValue({ id: "audit-1" });
       // Email infrastructure — the notification path reads Branding and queues
       // the email through Payload jobs rather than calling sendEmail directly.
@@ -404,7 +399,7 @@ describe("scheduleManagerJob", () => {
         }),
       });
 
-      // 2) Audit log entry emitted with the new action type
+      // 2) Audit log entry emitted
       expect((mockPayload as any).create).toHaveBeenCalledWith(
         expect.objectContaining({
           collection: "audit-log",
@@ -690,10 +685,8 @@ describe("scheduleManagerJob", () => {
 
       await scheduleManagerJob.handler({ job: mockJob, req: mockReq });
 
-      // The atomic SQL claim only sets lastStatus, lastRun, currentRetries,
-      // and nextRun. It never touches executionHistory or statistics — those
-      // are managed by the url-fetch job handler on completion.
-      // Verify that no payload.update call includes executionHistory.
+      // The atomic SQL claim never touches executionHistory or statistics —
+      // the url-fetch job handler manages those on completion.
       expect(mockPayload.update).not.toHaveBeenCalledWith(
         expect.objectContaining({ data: expect.objectContaining({ executionHistory: expect.anything() }) })
       );
@@ -868,9 +861,8 @@ describe("schedule-evaluation — direct function tests", () => {
     });
 
     it("throws on invalid schedule configuration (regression)", () => {
-      // Regression: `getNextExecutionTime` used to swallow parse errors and return
-      // `currentTime + 24h`, masking broken cron expressions as "runs once per
-      // day." It now throws so callers can disable the ingest and audit-log.
+      // Regression: a broken cron expression must throw, not return `currentTime + 24h`
+      // ("runs once per day"), so callers can disable the ingest and audit-log.
       const sched: any = {
         id: "test-123",
         scheduleType: "cron",

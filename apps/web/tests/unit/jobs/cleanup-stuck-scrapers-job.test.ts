@@ -142,11 +142,9 @@ describe("cleanupStuckScrapersJob", () => {
     const context = createMockContext({ stuckThresholdHours: 4 });
     await cleanupStuckScrapersJob.handler(context as any);
 
-    // The id must be matched in BOTH representations. Every trigger path
-    // enqueues `input: { scraperId: scraper.id }` as a NUMBER, and Payload's
-    // postgres adapter compiles a string `equals` on a jsonb path into a JSON
-    // *string* comparison — so a string-only clause matched nothing and this
-    // cancellation never fired for any real job.
+    // The id must be matched in BOTH representations: trigger paths enqueue `scraperId`
+    // as a NUMBER, and Payload's postgres adapter compiles a string `equals` on a jsonb
+    // path into a JSON *string* comparison, so a string-only clause matches nothing.
     expect(mockPayload.jobs.cancel).toHaveBeenCalledWith({
       where: {
         and: [

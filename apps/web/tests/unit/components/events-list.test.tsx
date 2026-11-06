@@ -82,10 +82,8 @@ describe("EventsList", () => {
 
     renderWithProviders(<EventsList events={events} />);
 
-    // Should display venue name
     expect(screen.getByText("Bella Center")).toBeInTheDocument();
 
-    // Should display geocoded address
     expect(screen.getByText("Copenhagen, Denmark")).toBeInTheDocument();
 
     // Event with no location should not display location row
@@ -122,7 +120,6 @@ describe("EventsList", () => {
     expect(screen.getAllByText("Event 1")[0]).toBeInTheDocument();
     expect(screen.getAllByText("Event 10")[0]).toBeInTheDocument();
 
-    // Should have proper container structure - now wrapped in relative div
     const innerContainer = container.querySelector(".space-y-2");
     expect(innerContainer).toBeInTheDocument();
   });

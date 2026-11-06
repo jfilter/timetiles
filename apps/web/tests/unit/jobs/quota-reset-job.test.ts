@@ -39,7 +39,6 @@ describe("quotaResetJob", () => {
   it("should call resetAllDailyCounters and return success", async () => {
     const context = createMockContext();
 
-    // Verify no calls before handler
     expect(mockResetAllDailyCounters).toHaveBeenCalledTimes(0);
 
     const result = await quotaResetJobConfig.handler(context as any);

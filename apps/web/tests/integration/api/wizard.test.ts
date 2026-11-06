@@ -66,16 +66,13 @@ describe("Import Wizard API Endpoints", () => {
     });
 
     it("returns catalogs with their datasets", async () => {
-      // Create a catalog
       const { catalog } = await withCatalog(testEnv, { user: testUser });
 
-      // Create a dataset in the catalog
       await payload.create({
         collection: "datasets",
         data: { name: "Test Dataset", slug: `test-dataset-${Date.now()}`, catalog: catalog.id, language: "eng" },
       });
 
-      // Fetch catalogs
       const catalogsResult = await payload.find({
         collection: "catalogs",
         where: { id: { equals: catalog.id } },
@@ -84,7 +81,6 @@ describe("Import Wizard API Endpoints", () => {
 
       expect(catalogsResult.docs).toHaveLength(1);
 
-      // Fetch datasets for the catalog
       const datasetsResult = await payload.find({
         collection: "datasets",
         where: { catalog: { equals: catalog.id } },
@@ -96,7 +92,6 @@ describe("Import Wizard API Endpoints", () => {
     });
 
     it("filters catalogs by name", async () => {
-      // Create catalogs with different names
       const timestamp = Date.now();
       const catalog1 = await payload.create({
         collection: "catalogs",
@@ -122,7 +117,6 @@ describe("Import Wizard API Endpoints", () => {
 
   describe("Schema Preview", () => {
     it("parses CSV file and extracts headers and sample data", async () => {
-      // Read test CSV fixture
       const csvPath = path.join(__dirname, "../../fixtures/valid-events.csv");
       const csvContent = fs.readFileSync(csvPath, "utf-8");
 

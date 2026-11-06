@@ -66,29 +66,23 @@ test.describe("Transform Sync: Inline ↔ Flow Editor", () => {
     const uniqueId = Date.now();
     await navigateToFieldMapping(page, `E2E Sync Inline→Flow ${uniqueId}`);
 
-    // Add uppercase transform on title column via real UI
     await addUppercaseTransformViaUI(page);
 
-    // Open visual editor
     const visualEditorButton = page.getByRole("button", { name: /open visual editor/i });
     await expect(visualEditorButton).toBeVisible({ timeout: 10000 });
     await visualEditorButton.click();
 
-    // Wait for flow editor to fully load
     await expect(page.getByText("Visual Field Mapping")).toBeVisible({ timeout: 15000 });
     await expect(page.getByText("Source Column").first()).toBeVisible({ timeout: 10000 });
 
-    // Verify the transform node appears with correct content
     await expect(page.locator(".react-flow__node-transform")).toBeVisible({ timeout: 15000 });
     await expect(page.locator(".react-flow__node-transform").getByText("uppercase")).toBeVisible({ timeout: 5000 });
 
-    // Verify edges are connected
     const edges = page.locator(".react-flow__edge");
     await expect(edges.first()).toBeVisible({ timeout: 5000 });
     const edgeCount = await edges.count();
     expect(edgeCount).toBeGreaterThanOrEqual(2);
 
-    // Click "Apply & Return"
     const saveButton = page.getByRole("button", { name: /apply.*return/i });
     await saveButton.click();
 
@@ -104,17 +98,14 @@ test.describe("Transform Sync: Inline ↔ Flow Editor", () => {
     const uniqueId = Date.now();
     await navigateToFieldMapping(page, `E2E Sync API ${uniqueId}`);
 
-    // Add uppercase transform via real UI
     await addUppercaseTransformViaUI(page);
 
-    // Proceed to review
     const continueButton = page.getByRole("button", { name: /continue to review/i });
     await continueButton.click();
 
     const reviewHeading = page.getByRole("heading", { name: /review your import/i });
     await expect(reviewHeading).toBeVisible({ timeout: 10000 });
 
-    // Intercept the configure API call
     let capturedRequestBody: Record<string, unknown> | null = null;
     page.on("request", (request) => {
       if (request.url().includes("/api/ingest/configure") && request.method() === "POST") {
@@ -138,7 +129,6 @@ test.describe("Transform Sync: Inline ↔ Flow Editor", () => {
     const datasetId = responseBody.datasets?.["0"] as number | undefined;
     expect(datasetId).toBeDefined();
 
-    // Verify transforms were sent
     expect(capturedRequestBody).not.toBeNull();
     const transforms = capturedRequestBody!.transforms as Array<{ sheetIndex: number; transforms: unknown[] }>;
     expect(transforms).toBeDefined();
@@ -151,7 +141,6 @@ test.describe("Transform Sync: Inline ↔ Flow Editor", () => {
     expect(transform.operation).toBe("uppercase");
     expect(transform.from).toBe("title");
 
-    // Wait for import completion
     const completionIndicator = page.getByText(/import complete/i);
     await expect(completionIndicator).toBeVisible({ timeout: 120000 });
 
@@ -165,7 +154,6 @@ test.describe("Transform Sync: Inline ↔ Flow Editor", () => {
     const events = eventsData.docs as Array<{ transformedData: Record<string, unknown> }>;
     expect(events.length).toBeGreaterThan(0);
 
-    // All events should have uppercase titles (transform was applied)
     const uppercasedEvents = events.filter(
       (e) =>
         typeof e.transformedData?.title === "string" &&

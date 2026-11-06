@@ -201,7 +201,7 @@ export const assertPortAvailable = async (port: number, label: string): Promise<
  * worktree runs in separate lanes, but it can still collide with an unrelated
  * local service (another project's container, a stray dev server). Rather than
  * hard-failing, prefer the base and fall back to the next free port in the same
- * lane, so an external occupant of the base port no longer blocks the whole run.
+ * lane, so an external occupant of the base port does not block the whole run.
  *
  * Scans are sequential and ordered so the lowest free port wins (the await runs
  * one probe at a time on purpose — parallelizing would lose the "prefer base"

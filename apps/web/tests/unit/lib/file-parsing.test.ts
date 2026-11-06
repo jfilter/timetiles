@@ -21,12 +21,10 @@ describe("File Parsing", () => {
   let tempDir: string;
 
   beforeEach(() => {
-    // Create a temporary directory for test files
     tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "file-parsing-test-"));
   });
 
   afterEach(() => {
-    // Clean up temporary directory
     if (fs.existsSync(tempDir)) {
       fs.rmSync(tempDir, { recursive: true, force: true });
     }
@@ -156,9 +154,8 @@ describe("File Parsing", () => {
     });
 
     it("streams Excel rows as objects through the production reader", async () => {
-      // Goes through streamBatchesFromFile — the reader the import jobs use. A local
-      // header/row conversion stood here before and claimed to be "the same logic",
-      // while production converts the sheet to a CSV sidecar and keeps header case.
+      // Goes through streamBatchesFromFile — the reader the import jobs use, which
+      // converts the sheet to a CSV sidecar and keeps header case.
       const workbook = utils.book_new();
       const worksheetData = [
         ["Title", "Description", "Date", "Location"],

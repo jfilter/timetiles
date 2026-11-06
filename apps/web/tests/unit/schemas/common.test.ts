@@ -218,8 +218,8 @@ describe("common schemas", () => {
     });
 
     it("should still reject garbage bounds (north <= south, non-finite values)", () => {
-      // These used to parse successfully to `undefined`, which dropped the spatial filter and
-      // answered 200 over every event worldwide. A present-but-broken viewport is an error.
+      // A present-but-broken viewport is an error; parsing it to `undefined` would drop
+      // the spatial filter and answer 200 over every event worldwide.
       expect(BoundsParamSchema.safeParse('{"north":10,"south":20,"east":10,"west":-10}').success).toBe(false);
       expect(BoundsParamSchema.safeParse('{"north":"x","south":-10,"east":10,"west":-10}').success).toBe(false);
       expect(BoundsParamSchema.safeParse("not-json").success).toBe(false);

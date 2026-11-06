@@ -15,7 +15,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { useSelectedEvent } from "@/lib/hooks/use-filters";
 
-// Wrapper component with NuqsTestingAdapter
 const createWrapper =
   (searchParams?: string) =>
   ({ children }: { children: ReactNode }) => (
@@ -94,7 +93,6 @@ describe("useSelectedEvent", () => {
 
     const { result } = renderHook(() => useSelectedEvent(), { wrapper });
 
-    // Initially should be open
     expect(result.current.selectedEventId).toBe(123);
     expect(result.current.isOpen).toBe(true);
 

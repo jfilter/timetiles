@@ -129,10 +129,8 @@ test.describe("Access Control - User Perspective", () => {
     test("should show only public catalogs in the explore page", async () => {
       await explorePage.goto();
 
-      // Wait for catalogs to load (new UI uses buttons instead of select)
       const catalogs = await explorePage.getAvailableCatalogs();
 
-      // Should have at least one catalog visible
       expect(catalogs.length).toBeGreaterThan(0);
 
       // Note: Without authentication, only public catalogs should be visible.
@@ -153,12 +151,10 @@ test.describe("Access Control - User Perspective", () => {
     });
 
     test("should return 401 when trying to access admin API endpoints", async ({ request }) => {
-      // Try to access admin-only API endpoint
       const response = await request.get("/api/admin/schedule-service", {
         timeout: 10000, // Increase timeout to handle server resource constraints
       });
 
-      // Should be unauthorized (401) or forbidden (403)
       expect([401, 403]).toContain(response.status());
     });
 
@@ -203,7 +199,6 @@ test.describe("Access Control - User Perspective", () => {
       try {
         privateCatalog = await createPrivateCatalog(admin.api, admin.authHeaders, suffix);
 
-        // Unauthenticated request
         const response = await request.get("/api/catalogs");
 
         // Should succeed but only return public catalogs
@@ -230,7 +225,6 @@ test.describe("Access Control - User Perspective", () => {
         privateCatalog = await createPrivateCatalog(admin.api, admin.authHeaders, suffix);
         privateDataset = await createPrivateDataset(admin.api, admin.authHeaders, privateCatalog.id, suffix);
 
-        // Unauthenticated request
         const response = await request.get("/api/datasets");
 
         // Should succeed but only return public datasets (or datasets in public catalogs)
@@ -260,7 +254,6 @@ test.describe("Access Control - User Perspective", () => {
         privateDataset = await createPrivateDataset(admin.api, admin.authHeaders, privateCatalog.id, suffix);
         privateEvent = await createPrivateEvent(admin.api, admin.authHeaders, privateDataset.id, suffix);
 
-        // Unauthenticated request
         const response = await request.get("/api/v1/events");
 
         // Should succeed and return only events from accessible datasets
@@ -280,12 +273,10 @@ test.describe("Access Control - User Perspective", () => {
     });
 
     test("should block create operations without authentication", async ({ request }) => {
-      // Try to create a catalog without authentication
       const createResponse = await request.post("/api/catalogs", {
         data: { name: "Unauthorized Catalog", description: "Should not be created", isPublic: true },
       });
 
-      // Should be unauthorized
       expect([401, 403]).toContain(createResponse.status());
     });
 
@@ -344,16 +335,14 @@ test.describe("Access Control - User Perspective", () => {
 
   test.describe("Import File Access Control", () => {
     test("should not allow accessing other users' import files", async ({ request, playwright, baseURL }) => {
-      // This used to GET /api/ingest-files/1 and accept 404 — an id that "might
-      // exist". When it did not, the 404 meant "no such record", not "access
-      // denied", so the test passed without access control doing anything at
-      // all. Create a real file owned by someone else, then prove it is denied.
+      // Uses a real file owned by someone else: a 404 for an id that might not exist
+      // would pass without access control doing anything.
       const admin = await createAdminApi(playwright, baseURL);
       let ingestFile: ApiDoc | undefined;
 
       try {
         // `ingest-files` is an upload collection, so a create needs an actual file part —
-        // a JSON body can only ever answer 400, which is what this assertion used to hit.
+        // a JSON body can only ever answer 400.
         // The `user` relationship is required, so the owner has to be sent along too.
         const me = await admin.api.get("/api/users/me", { headers: admin.authHeaders });
         expect(me.status()).toBe(200);
@@ -386,7 +375,6 @@ test.describe("Access Control - User Perspective", () => {
     });
 
     test("should require authentication for import file creation", async ({ request }) => {
-      // Unauthenticated uploads are no longer supported - all imports require authentication
       const response = await request.post("/api/ingest-files", {
         data: { originalName: "test-unauthenticated.csv", status: "pending" },
       });
@@ -408,7 +396,6 @@ test.describe("Access Control - User Perspective", () => {
         },
       });
 
-      // Should be unauthorized
       expect([401, 403]).toContain(response.status());
     });
 
@@ -424,7 +411,6 @@ test.describe("Access Control - User Perspective", () => {
     test("should filter catalogs based on visibility", async () => {
       await explorePage.goto();
 
-      // Check that only appropriate catalogs are shown (new UI uses buttons)
       const catalogs = await explorePage.getAvailableCatalogs();
 
       expect(catalogs).toContain("Environmental Data");
@@ -434,7 +420,6 @@ test.describe("Access Control - User Perspective", () => {
       await explorePage.goto();
       await explorePage.waitForEventsToLoad();
 
-      // Check dataset section
       const datasetsSection = page.locator("text=Datasets").first();
       await expect(datasetsSection).toBeVisible();
 
@@ -447,7 +432,6 @@ test.describe("Access Control - User Perspective", () => {
     });
 
     test("should handle empty state when no public data exists", async ({ page }) => {
-      // Mock empty response
       await page.route("**/api/v1/events?*", async (route) => {
         await route.fulfill({
           status: 200,
@@ -471,7 +455,6 @@ test.describe("Access Control - User Perspective", () => {
       await explorePage.goto();
       await explorePage.waitForEventsToLoad();
 
-      // Should show "No events found" message
       await explorePage.show("list");
       await expect(explorePage.noEventsMessage).toBeVisible();
     });
@@ -484,15 +467,12 @@ test.describe("Access Control - User Perspective", () => {
       // Check for security headers (these might vary based on Next.js config)
       const headers = response.headers();
 
-      // Content-Type should be JSON
       expect(headers["content-type"]).toContain("application/json");
     });
 
     test("should handle CORS properly for API endpoints", async ({ request }) => {
-      // Test CORS preflight
       const response = await request.fetch("/api/v1/events/list", { method: "OPTIONS" });
 
-      // Should handle OPTIONS request
       expect([200, 204, 404]).toContain(response.status());
     });
   });
@@ -505,9 +485,8 @@ test.describe("Access Control - Error Handling", () => {
     // Try to navigate to dashboard with increased timeout for JS bundle loading
     await page.goto("/dashboard", { timeout: 10000 });
 
-    // Should redirect to login page - wait for login form to appear
-    // instead of waiting for networkidle (which times out with admin panel JS bundles)
-    // Use .first() to avoid strict mode violation (there are 2 email inputs on the page)
+    // Wait for the login form, not networkidle (times out on the admin JS bundles);
+    // first(): the page has two email inputs
     await page.locator('input[type="email"]').first().waitFor({ timeout: 5000 });
 
     const url = page.url();
@@ -516,13 +495,11 @@ test.describe("Access Control - Error Handling", () => {
     const isOnLogin = url.includes("/login") || url.includes("/auth");
     expect(isOnLogin).toBe(true);
 
-    // Login form should be visible - use .first() to target the first email input
     await expect(page.locator('input[type="email"]').first()).toBeVisible();
     await expect(page.locator('input[type="password"]').first()).toBeVisible();
   });
 
   test("should handle 403 responses gracefully", async ({ page }) => {
-    // Mock 403 response
     await page.route("**/api/catalogs*", async (route) => {
       await route.fulfill({
         status: 403,
@@ -533,13 +510,10 @@ test.describe("Access Control - Error Handling", () => {
 
     await page.goto("/explore");
 
-    // Page should still load without crashing
     await page.waitForLoadState("networkidle");
 
-    // Page should have content (didn't crash)
     const bodyText = await page.locator("body").innerText();
     expect(bodyText.length).toBeGreaterThan(0);
-    // Should not display raw JSON error to the user
     expect(bodyText).not.toContain('"error":"Forbidden"');
   });
 });

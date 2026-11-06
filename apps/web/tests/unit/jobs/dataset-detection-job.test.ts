@@ -30,7 +30,6 @@ const createMockReadStream = (content: string): Readable => {
   });
 };
 
-// Use vi.hoisted to create mocks that can be used in vi.mock factories
 const mocks = vi.hoisted(() => {
   const fsMock = {
     existsSync: vi.fn(),
@@ -46,7 +45,6 @@ const mocks = vi.hoisted(() => {
   return { fs: fsMock };
 });
 
-// Mock external dependencies
 vi.mock("fs", () => ({ ...mocks.fs, default: mocks.fs, promises: { readFile: vi.fn() } }));
 
 // Mock app-config to prevent loadFromYaml from using the mocked fs
@@ -76,10 +74,8 @@ describe("DatasetDetectionJob Handler", () => {
   let mockContext: JobHandlerContext;
 
   beforeEach(() => {
-    // Reset all mocks
     vi.clearAllMocks();
 
-    // Set default mock implementations
     const defaultCsvContent = "id,title,date\n1,Event 1,2024-01-01\n2,Event 2,2024-01-02";
     mocks.fs.existsSync.mockReturnValue(true);
     mocks.fs.readFileSync.mockReturnValue(defaultCsvContent);
@@ -87,13 +83,8 @@ describe("DatasetDetectionJob Handler", () => {
     // createReadStream returns a Readable stream for the streaming CSV parser
     mocks.fs.createReadStream.mockImplementation(() => createMockReadStream(defaultCsvContent));
 
-    // CSV content is already set in readFileSync and createReadStream mocks above
-    // Excel files will need to be handled differently since we removed xlsx mocks
-
-    // Mock payload with required methods
     mockPayload = createMockPayload();
 
-    // Mock context
     mockContext = {
       req: { payload: mockPayload },
       job: { id: "test-job-1", taskStatus: {} },
@@ -130,7 +121,7 @@ describe("DatasetDetectionJob Handler", () => {
 
       await datasetDetectionJob.handler(mockContext);
 
-      // Check that dataset was created first
+      // Dataset is created first
       expect(mockPayload.create).toHaveBeenNthCalledWith(1, {
         collection: "datasets",
         data: expect.objectContaining({
@@ -139,7 +130,7 @@ describe("DatasetDetectionJob Handler", () => {
         }),
       });
 
-      // Check that import job was created second with correct dataset ID
+      // Then the import job, with the dataset's ID
       expect(mockPayload.create).toHaveBeenNthCalledWith(2, {
         collection: "ingest-jobs",
         data: expect.objectContaining({
@@ -154,10 +145,8 @@ describe("DatasetDetectionJob Handler", () => {
     });
 
     it("should process Excel file with multiple sheets", async () => {
-      // Create a real Excel file with multiple sheets using xlsx library
       const XLSX = await import("xlsx");
 
-      // Create workbook with 3 sheets
       const workbook = XLSX.utils.book_new();
 
       // Sheet 1: Events
@@ -190,10 +179,8 @@ describe("DatasetDetectionJob Handler", () => {
       const categoriesSheet = XLSX.utils.aoa_to_sheet(categoriesData);
       XLSX.utils.book_append_sheet(workbook, categoriesSheet, "Categories");
 
-      // Convert workbook to buffer
       const excelBuffer = XLSX.write(workbook, { type: "buffer", bookType: "xlsx" });
 
-      // Mock fs.readFileSync to return the Excel buffer
       mocks.fs.readFileSync.mockReturnValue(excelBuffer);
 
       const mockIngestFile = {
@@ -210,7 +197,6 @@ describe("DatasetDetectionJob Handler", () => {
 
       mockPayload.find.mockResolvedValue({ docs: [] });
 
-      // Mock dataset creation to return unique IDs for each dataset
       let datasetCounter = 1;
       let jobCounter = 1;
       // eslint-disable promise/prefer-await-to-then -- Conditional mock return values
@@ -228,7 +214,6 @@ describe("DatasetDetectionJob Handler", () => {
 
       expect(mockPayload.create).toHaveBeenCalledTimes(6); // 3 datasets + 3 import jobs
 
-      // Check that datasets were created with correct names
       expect(mockPayload.create).toHaveBeenCalledWith({
         collection: "datasets",
         data: expect.objectContaining({ name: "Events", catalog: 456 }),
@@ -244,7 +229,6 @@ describe("DatasetDetectionJob Handler", () => {
         data: expect.objectContaining({ name: "Categories", catalog: 456 }),
       });
 
-      // Check that import jobs were created for each sheet
       expect(mockPayload.create).toHaveBeenCalledWith({
         collection: "ingest-jobs",
         data: expect.objectContaining({
@@ -300,7 +284,6 @@ describe("DatasetDetectionJob Handler", () => {
 
       await datasetDetectionJob.handler(mockContext);
 
-      // Should not create new dataset
       expect(mockPayload.create).toHaveBeenCalledTimes(1); // Only import job
 
       expect(mockPayload.create).toHaveBeenCalledWith({
@@ -409,9 +392,8 @@ describe("DatasetDetectionJob Handler", () => {
       await expect(datasetDetectionJob.handler(mockContext)).rejects.toThrow("Ingest file not found");
     });
 
-    // Replaces a former "should throw when catalog not found" test: resolveOrCreateImportCatalog
-    // never loads the catalog, it only parses the id, so a "missing catalog" cannot be
-    // observed here. The real contract is that the parsed id is used as-is.
+    // resolveOrCreateImportCatalog only parses the id and never loads the catalog,
+    // so the contract is that the parsed id is used as-is.
     it("uses the given catalog id without looking the catalog up", async () => {
       const mockIngestFile = {
         id: 123,
@@ -596,14 +578,13 @@ describe("DatasetDetectionJob Handler", () => {
     });
 
     it("should handle Excel file with empty sheets", async () => {
-      // Create a simple Excel file with truly empty sheets using xlsx library
+      // Workbook with truly empty sheets
       const XLSX = await import("xlsx");
       const emptyWorkbook = XLSX.utils.book_new();
       const emptyWorksheet = XLSX.utils.aoa_to_sheet([]); // Completely empty sheet
       XLSX.utils.book_append_sheet(emptyWorkbook, emptyWorksheet, "EmptySheet");
       const emptyBuffer = XLSX.write(emptyWorkbook, { type: "buffer", bookType: "xlsx" });
 
-      // Mock fs.readFileSync to return the empty Excel content
       mocks.fs.readFileSync.mockReturnValue(emptyBuffer);
 
       const mockIngestFile = {
@@ -718,7 +699,7 @@ describe("DatasetDetectionJob Handler", () => {
       mockPayload.find.mockResolvedValue({ docs: [] });
       mockPayload.create.mockResolvedValue({ id: "test-id" });
 
-      // Mock large CSV dataset (100k rows)
+      // Large CSV dataset (100k rows)
       const headers = "id,title,date\n";
       const rows = [];
       for (let i = 1; i <= 100000; i++) {
@@ -733,7 +714,6 @@ describe("DatasetDetectionJob Handler", () => {
       // Should create 1 dataset and 1 import job for CSV file
       expect(mockPayload.create).toHaveBeenCalledTimes(2);
 
-      // Check that import job was created with correct row count
       expect(mockPayload.create).toHaveBeenCalledWith({
         collection: "ingest-jobs",
         data: expect.objectContaining({ sheetIndex: 0, stage: "analyze-duplicates" }),
@@ -1063,14 +1043,12 @@ describe("DatasetDetectionJob Handler", () => {
       mockPayload.find.mockResolvedValue({ docs: [] });
       mockPayload.create.mockResolvedValue({ id: "test-id" });
 
-      // Mock JSON content
       const jsonContent = JSON.stringify([
         { id: 1, name: "Event 1" },
         { id: 2, name: "Event 2" },
       ]);
       mocks.fs.readFileSync.mockReturnValue(jsonContent);
 
-      // Mock the CSV streaming after conversion
       const csvContent = "id,name\n1,Event 1\n2,Event 2";
       mocks.fs.createReadStream.mockImplementation(() => createMockReadStream(csvContent));
 

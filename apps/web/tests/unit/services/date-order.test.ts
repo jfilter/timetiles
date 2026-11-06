@@ -9,7 +9,7 @@ import { checkDateOrder } from "@/lib/services/schema-detection/utilities/date-o
 
 describe("checkDateOrder", () => {
   it("detects D/M when a sample's first part exceeds 12 (e.g. 13/02)", () => {
-    // The exact bug scenario: a DD/MM column where one row disambiguates the
+    // A DD/MM column where one row disambiguates the
     // whole column, so 01/02 is NOT re-guessed as MM/DD per row.
     const result = checkDateOrder(["13/02/2024", "01/02/2024", "05/06/2024"]);
     expect(result?.order).toBe("D/M");

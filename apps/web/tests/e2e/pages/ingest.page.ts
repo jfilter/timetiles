@@ -9,10 +9,8 @@ import { expect, type Locator, type Page } from "@playwright/test";
 export class IngestPage {
   readonly page: Page;
 
-  // Page header
   readonly pageHeading: Locator;
 
-  // Progress indicator
   readonly progressIndicator: Locator;
   readonly progressSteps: Locator;
 
@@ -65,14 +63,11 @@ export class IngestPage {
   constructor(page: Page) {
     this.page = page;
 
-    // Page header
     this.pageHeading = page.getByRole("heading", { name: /Import|Data Import/i });
 
-    // Progress indicator
     this.progressIndicator = page.locator('[data-testid="wizard-progress"]');
     this.progressSteps = page.locator('[data-testid^="progress-step-"]');
 
-    // Auth step
     this.authStep = page.locator('[data-testid="step-auth"]');
     this.loginTab = page.getByRole("tab", { name: /Login|Sign In/i });
     this.registerTab = page.getByRole("tab", { name: /Register|Sign Up/i });
@@ -82,39 +77,34 @@ export class IngestPage {
     this.loginButton = page.getByRole("button", { name: /Login|Sign In/i });
     this.registerButton = page.getByRole("button", { name: /Register|Sign Up/i });
 
-    // Upload step
     this.uploadStep = page.locator('[data-testid="step-upload"]');
     this.dropZone = page.locator('[data-testid="drop-zone"]');
     this.fileInput = page.locator('input[type="file"]');
     this.uploadedFileName = page.locator('[data-testid="uploaded-file-name"]');
 
-    // Dataset selection step
     this.datasetSelectionStep = page.locator('[data-testid="step-dataset-selection"]');
     this.catalogSelect = page.getByLabel(/Catalog/i);
     this.newCatalogInput = page.getByLabel(/New Catalog Name/i);
     this.datasetSelect = page.getByLabel(/Dataset/i);
     this.newDatasetInput = page.getByLabel(/New Dataset Name/i);
 
-    // Field mapping step
     this.fieldMappingStep = page.getByRole("heading", { name: "Map your fields", exact: true });
     this.titleFieldSelect = page.getByLabel(/Title Field/i);
     this.dateFieldSelect = page.getByLabel(/Date Field/i);
     this.locationFieldSelect = page.getByLabel(/Location/i);
     this.dataPreviewTable = page.locator('[data-testid="data-preview-table"]');
 
-    // Review step
     this.reviewStep = page.locator('[data-testid="step-review"]');
     this.reviewSummary = page.locator('[data-testid="review-summary"]');
     this.geocodingToggle = page.getByLabel(/Geocoding/i);
     this.deduplicationSelect = page.getByLabel(/Deduplication/i);
 
-    // Processing step
     this.processingStep = page.locator('[data-testid="step-processing"]');
     this.progressBar = page.locator('[data-testid="progress-bar"]');
     this.completionMessage = page.getByText(/complete|success/i);
     this.errorMessage = page.locator('[data-testid="error-message"]');
 
-    // Navigation buttons - use data-testid to avoid matching Next.js dev tools
+    // Anchored names keep the Next.js dev tools button from matching
     this.backButton = page.getByRole("button", { name: /^Back/i }).first();
     this.nextButton = page.getByRole("button", { name: /^Continue/i }).first();
     this.startImportButton = page.getByRole("button", { name: /Start Import|Import/i });
@@ -134,7 +124,6 @@ export class IngestPage {
       localStorage.removeItem("timetiles-wizard-v2");
     });
 
-    // Wait for wizard UI to render (auth heading or upload heading)
     const signInHeading = this.page.getByRole("heading", { name: /sign in to continue/i });
     const uploadHeading = this.page.getByRole("heading", { name: /upload your data/i });
     await signInHeading.or(uploadHeading).waitFor({ state: "visible", timeout: 15000 });
@@ -144,7 +133,6 @@ export class IngestPage {
    * Wait for the wizard to be fully loaded.
    */
   async waitForWizardLoad(): Promise<void> {
-    // Wait for the page to be fully interactive
     await this.page.waitForLoadState("domcontentloaded");
     // Wait for wizard UI to be interactive (either auth form or upload form)
     // Use longer timeout to account for i18n middleware processing
@@ -158,11 +146,9 @@ export class IngestPage {
    * After successful login, the page reloads automatically and advances to upload step.
    */
   async login(email: string, password: string): Promise<void> {
-    // Wait for page to fully render and check current state
     const signInHeading = this.page.getByRole("heading", { name: /sign in to continue/i });
     const uploadHeading = this.page.getByRole("heading", { name: /upload your data/i });
 
-    // Wait for either sign-in or upload heading to be visible
     await signInHeading
       .or(uploadHeading)
       .waitFor({ state: "visible", timeout: 10000 })
@@ -181,20 +167,16 @@ export class IngestPage {
 
     await this.page.getByRole("tab", { name: /Sign In/i }).click();
 
-    // Wait for form to be ready
     await this.emailInput.waitFor({ state: "visible", timeout: 5000 });
 
-    // Fill login form
     await this.emailInput.fill(email);
     await this.passwordInput.fill(password);
 
-    // Click login button and wait for API response
     const [response] = await Promise.all([
       this.page.waitForResponse((resp) => resp.url().includes("/api/auth/login"), { timeout: 5000 }),
       this.loginButton.click(),
     ]);
 
-    // Check if login API returned success
     const status = response.status();
     if (status !== 200) {
       const body = await response.text().catch(() => "");
@@ -272,13 +254,9 @@ export class IngestPage {
       if (tagName === "select") {
         await catalogDropdown.selectOption("new");
       } else {
-        // Radix Select: open the dropdown, then keyboard-navigate to the
-        // "+ Create new catalog" item which the component renders first.
-        // Click-targeting Radix options inside a Popper that opens upward
-        // (which happens whenever the trigger is near the bottom of the
-        // viewport with many options) is unreliable — Playwright's
-        // scroll-into-view doesn't always land inside the popper's own
-        // scroll container. Home + Enter is layout-independent.
+        // Radix Select: open it and keyboard-navigate to "+ Create new catalog", rendered first.
+        // Clicking options in a Popper that opens upward is unreliable (scroll-into-view misses
+        // its scroll container); Home + Enter is layout-independent.
         await catalogDropdown.click();
         await this.page
           .getByRole("option", { name: /create new catalog/i })
@@ -289,7 +267,6 @@ export class IngestPage {
       await expect(catalogNameInput).toBeVisible({ timeout: 5000 });
     }
 
-    // The catalog name input should now be visible
     await expect(catalogNameInput).toBeVisible({ timeout: 5000 });
     await catalogNameInput.clear();
     await catalogNameInput.fill(catalogName);

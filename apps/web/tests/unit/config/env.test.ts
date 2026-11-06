@@ -213,7 +213,6 @@ describe("getEnv", () => {
       try {
         expect(() => getEnv()).toThrow(ZodError);
       } finally {
-        // Restore all env vars
         for (const key of Object.keys(process.env)) {
           if (!(key in saved)) delete process.env[key];
         }

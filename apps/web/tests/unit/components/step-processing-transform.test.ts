@@ -67,7 +67,7 @@ describe("transformProgressResponse", () => {
     const result = transformProgressResponse(apiResponse);
     const { datasets } = result;
 
-    // This test documents the fix: we read totalEvents, not eventsCreated
+    // eventsCount comes from results.totalEvents, not eventsCreated
     expect(datasets).toBeDefined();
     expect(datasets?.[0]?.eventsCount).toBe(10);
   });

@@ -77,8 +77,7 @@ export const renderWithProviders = (ui: React.ReactElement, options?: CustomRend
   });
 };
 
-// MapLibre GL is mocked globally in setup-components.ts
+// MapLibre GL is mocked globally in global-setup.ts
 
-// Re-export everything
 export * from "@testing-library/react";
 export { default as userEvent } from "@testing-library/user-event";

@@ -95,8 +95,8 @@ describe("buildCanonicalFilters", () => {
   });
 
   it("rejects invalid field filter keys instead of silently dropping them", () => {
-    // Dropping them meant the request fell through to an UNFILTERED query and returned
-    // HTTP 200 with every event in scope — the opposite of what the caller asked for.
+    // Dropping them would fall through to an UNFILTERED query and return HTTP 200
+    // with every event in scope — the opposite of what the caller asked for.
     const longKey = "a".repeat(100);
 
     expect(() =>

@@ -26,7 +26,6 @@ const mocks = vi.hoisted(() => ({
   extractDenormalizedAccessFields: vi.fn(),
 }));
 
-// Mock external dependencies used by process-batch
 vi.mock("@/lib/ingest/types/geocoding", () => ({ getIngestGeocodingResults: mocks.getIngestGeocodingResults }));
 
 vi.mock("@/lib/jobs/utils/bulk-event-insert", () => ({ bulkInsertEvents: mocks.bulkInsertEvents }));
@@ -162,10 +161,8 @@ describe("getEventCreationDuplicates", () => {
   });
 
   describe("strategy parsing (folded from readDuplicateStrategy)", () => {
-    // The strategy parser used to be exported as `readDuplicateStrategy` and
-    // had its own test file. Now that it's a private helper, we exercise it
-    // through `getEventCreationDuplicates` by checking whether external dupes
-    // route to updateRows (only happens under the "update" strategy).
+    // The strategy parser is private; exercise it through getEventCreationDuplicates:
+    // external dupes route to updateRows only under the "update" strategy.
     const externalDupe = { rowNumber: 1, existingEventId: 42 };
     const dupes = { internal: [], external: [externalDupe] };
 
@@ -268,8 +265,8 @@ describe("getNewEventCountForQuota", () => {
   });
 
   it("returns zero when every row is an in-place update", () => {
-    // Canonical scheduled re-import: all rows match existing events. Charging
-    // these against the lifetime counter is the leak this fix prevents.
+    // Canonical scheduled re-import: all rows match existing events and must not
+    // be charged against the lifetime counter.
     expect(
       getNewEventCountForQuota(buildJob({ uniqueRows: 4, externalDuplicates: 4, duplicateStrategy: "update" }))
     ).toBe(0);
@@ -329,8 +326,7 @@ describe("processEventBatch", () => {
     mocks.getIngestGeocodingResults.mockReturnValue({});
 
     // Stub `db.drizzle.select(...).from(...).where(...)` used by
-    // validateUpdateIdsInDataset. By default returns any id Number()-coerced
-    // from `updateRows` so existing expectations (all updates allowed) hold.
+    // validateUpdateIdsInDataset. By default every id from `updateRows` is allowed.
     const datasetIdAllowlist = new Set<number>();
     const drizzleWhere = vi.fn().mockImplementation(() => Array.from(datasetIdAllowlist).map((id) => ({ id })));
     mockPayload = {
@@ -410,7 +406,6 @@ describe("processEventBatch", () => {
       expect(result.eventsUpdated).toBe(1);
       expect(result.eventsSkipped).toBe(0);
 
-      // Verify payload.update was called with the correct arguments
       expect(mockPayload.update).toHaveBeenCalledTimes(1);
       expect(mockPayload.update).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -476,7 +471,6 @@ describe("processEventBatch", () => {
       expect(updateCall.id).toBe(99);
       expect(updateCall.overrideAccess).toBe(true);
 
-      // Verify the data shape matches the expected update payload
       const { data } = updateCall;
       expect(data).toHaveProperty("transformedData");
       expect(data).toHaveProperty("sourceData");
@@ -648,17 +642,15 @@ describe("processEventBatch", () => {
   });
 
   describe("transformation change entries (regression)", () => {
-    // Regression: when an active transform does not fire on a given row
-    // (e.g. a rename whose `from` field is absent), the resulting change diff
-    // used to emit a spurious { oldValue: null, newValue: null } entry on the
-    // event's `transformations` audit trail. Those must now be filtered out.
+    // Regression: an active transform that does not fire on a row (e.g. a rename whose
+    // `from` field is absent) must not add a { oldValue: null, newValue: null } audit entry.
     it("does not record no-op transformation entries for rows missing the source field", async () => {
       const mockDataset: any = { id: 456, idStrategy: { type: "external", externalIdPath: "id" } };
 
       const ctx: ProcessBatchContext = {
         ...baseCtx,
         dataset: mockDataset,
-        // The rename op now lives in the detection-resolved JOB plan.
+        // The rename op lives in the detection-resolved JOB plan.
         job: {
           ...baseCtx.job,
           interpretationPlan: {
@@ -682,10 +674,8 @@ describe("processEventBatch", () => {
   });
 
   describe("bulk-insert error row numbers (regression)", () => {
-    // Regression: on bulk-insert failure the error array previously reported
-    // positions in the filtered `eventsToInsert` array rather than the source
-    // row numbers, which misled users reading import error reports whenever a
-    // batch contained skipped or updated duplicates.
+    // Regression: on bulk-insert failure, errors must report source row numbers, not
+    // positions in the filtered `eventsToInsert` array.
     it("reports actual source row numbers when a batch containing skips fails to insert", async () => {
       mocks.bulkInsertEvents.mockImplementationOnce(() => {
         throw new Error("simulated bulk insert failure");

@@ -96,7 +96,6 @@ export const verifyDatabaseSchema = async (connectionString: string): Promise<vo
   try {
     await client.connect();
 
-    // Check if payload schema exists
     const schemaResult = await client.query(`
       SELECT schema_name
       FROM information_schema.schemata
@@ -107,7 +106,6 @@ export const verifyDatabaseSchema = async (connectionString: string): Promise<vo
       throw new Error("Payload schema does not exist");
     }
 
-    // Check if critical tables exist
     const requiredTables = [
       "ingest_jobs",
       "ingest_files",

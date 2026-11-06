@@ -213,7 +213,6 @@ quotas:
       const config = getAppConfig();
 
       const basic = config.quotas[1]!;
-      // The overridden value
       expect(basic.maxTotalEvents).toBe(99999);
       // Other fields from defaults are preserved
       expect(basic.maxActiveSchedules).toBe(1);
@@ -232,7 +231,6 @@ cache:
 
       const config = getAppConfig();
 
-      // Overridden
       expect(config.cache.urlFetch.defaultTtlSeconds).toBe(7200);
       // Defaults preserved
       expect(config.cache.urlFetch.maxSizeBytes).toBe(104_857_600);

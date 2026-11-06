@@ -91,10 +91,8 @@ test.describe("Import Wizard - Authentication", () => {
     await importPage.goto();
     await importPage.waitForWizardLoad();
 
-    // Verify we're on the import page
     await expect(page).toHaveURL(/\/ingest/);
 
-    // Should see auth form with sign in heading and email input
     const signInHeading = page.getByRole("heading", { name: /sign in to continue/i });
     await expect(signInHeading).toBeVisible({ timeout: 5000 });
     await expect(page.getByLabel("Email", { exact: true })).toBeVisible({ timeout: 5000 });
@@ -104,15 +102,12 @@ test.describe("Import Wizard - Authentication", () => {
     await importPage.goto();
     await importPage.waitForWizardLoad();
 
-    // Verify we're on the auth step (step 1) by checking for sign in heading
     const signInHeading = page.getByRole("heading", { name: /sign in to continue/i });
     await expect(signInHeading).toBeVisible();
 
-    // Verify the Sign In button exists (we're on auth step)
     const signInButton = page.getByRole("button", { name: /^Sign In$/i });
     await expect(signInButton).toBeVisible({ timeout: 10000 });
 
-    // Wizard header shows current step — verify we're on Step 1 (Sign In)
     await expect(page.getByText(/Step 1 of/)).toBeVisible({ timeout: 5000 });
   });
 
@@ -120,15 +115,12 @@ test.describe("Import Wizard - Authentication", () => {
     await importPage.goto();
     await importPage.waitForWizardLoad();
 
-    // Login with seeded admin user
     await importPage.login("admin@example.com", "admin123");
 
-    // After login, the wizard should advance to step 2 (Upload)
-    // The login() method already waits for the upload heading, so we just verify
+    // login() already waits for the upload heading; this re-asserts it
     const uploadHeading = page.getByRole("heading", { name: /upload your data/i });
     await expect(uploadHeading).toBeVisible({ timeout: 5000 });
 
-    // Verify we're no longer on the auth step
     const signInHeading = page.getByRole("heading", { name: /sign in to continue/i });
     await expect(signInHeading).not.toBeVisible();
   });
@@ -143,14 +135,11 @@ test.describe("Import Wizard - Authentication", () => {
     await importPage.passwordInput.fill(TEST_CREDENTIALS.security.wrong);
     await importPage.loginButton.click();
 
-    // Wait for login API response
     await page.waitForResponse((resp) => resp.url().includes("/api/auth/login"), { timeout: 5000 });
 
-    // Should still be on the auth step — sign in heading should remain visible
     const signInHeading = page.getByRole("heading", { name: /sign in to continue/i });
     await expect(signInHeading).toBeVisible({ timeout: 5000 });
 
-    // Should NOT have advanced to the upload step
     const uploadHeading = page.getByRole("heading", { name: /upload your data/i });
     await expect(uploadHeading).not.toBeVisible();
   });
@@ -167,31 +156,25 @@ test.describe("Import Wizard - File Upload Flow", () => {
   });
 
   test("should display file upload interface after login", async ({ page }) => {
-    // After login, should see upload interface with "Upload your data" heading
     const uploadHeading = page.getByRole("heading", { name: /upload your data/i });
     await expect(uploadHeading).toBeVisible({ timeout: 5000 });
 
-    // Should also see drag and drop text
     const dropText = page.getByText(/drag and drop/i);
     await expect(dropText).toBeVisible();
   });
 
   test("should have file input available", async ({ page }) => {
-    // Look for file input
     const fileInput = page.locator('input[type="file"]');
     const fileInputCount = await fileInput.count();
 
-    // Should have at least one file input
     expect(fileInputCount).toBeGreaterThan(0);
   });
 
   test("should accept CSV file upload", async ({ page }) => {
     const csvPath = path.join(FIXTURES_PATH, "valid-events.csv");
 
-    // Upload file
     await importPage.uploadFile(csvPath);
 
-    // After upload, page should show file name and ready indicator
     await expect(page.getByText("valid-events.csv")).toBeVisible({ timeout: 5000 });
     await expect(page.getByText(/file ready for import/i)).toBeVisible({ timeout: 5000 });
   });
@@ -199,10 +182,8 @@ test.describe("Import Wizard - File Upload Flow", () => {
   test("should accept Excel file upload", async ({ page }) => {
     const excelPath = path.join(FIXTURES_PATH, "events.xlsx");
 
-    // Upload file
     await importPage.uploadFile(excelPath);
 
-    // After upload, page should show file name and ready indicator
     await expect(page.getByText("events.xlsx")).toBeVisible({ timeout: 5000 });
     await expect(page.getByText(/file ready for import/i)).toBeVisible({ timeout: 5000 });
   });
@@ -210,16 +191,13 @@ test.describe("Import Wizard - File Upload Flow", () => {
   test("should enable Next button after file upload", async ({ page }) => {
     const csvPath = path.join(FIXTURES_PATH, "valid-events.csv");
 
-    // Upload file
     await importPage.uploadFile(csvPath);
 
-    // Next button should now be enabled - use the Continue button specifically
-    // (exclude Next.js dev tools button by using exact match or data-testid)
+    // Scoped to the wizard Continue button so the Next.js dev tools button is not matched
     const nextButton = page.locator('[data-testid="wizard-navigation"] button, button:text-is("Continue")').first();
     const nextButtonCount = await nextButton.count();
 
     if (nextButtonCount > 0) {
-      // Check if button is now clickable (not disabled)
       const isDisabled = await nextButton.isDisabled();
       expect(isDisabled).toBe(false);
     }
@@ -238,22 +216,18 @@ test.describe("Import Wizard - Dataset Selection", () => {
     const csvPath = path.join(FIXTURES_PATH, "valid-events.csv");
     await importPage.uploadFile(csvPath);
 
-    // Click Next to go to dataset selection
     await importPage.clickNext();
   });
 
   test("should show catalog selection interface", async ({ page }) => {
-    // Should show the "Select destination" heading on step 3
     const destinationHeading = page.getByRole("heading", { name: /select destination/i });
     await expect(destinationHeading).toBeVisible({ timeout: 10000 });
   });
 
   test("should allow creating new catalog", async ({ page }) => {
-    // Should be on the dataset selection step with catalog UI
     const destinationHeading = page.getByRole("heading", { name: /select destination/i });
     await expect(destinationHeading).toBeVisible({ timeout: 10000 });
 
-    // Should have a catalog dropdown or catalog name input visible
     const catalogDropdown = page.locator("#catalog-select");
     const catalogNameInput = page.locator("#new-catalog-name");
     await expect(catalogDropdown.or(catalogNameInput)).toBeVisible({ timeout: 10000 });
@@ -272,22 +246,18 @@ test.describe("Import Wizard - Field Mapping", () => {
     const csvPath = path.join(FIXTURES_PATH, "valid-events.csv");
     await importPage.uploadFile(csvPath);
 
-    // Navigate through to dataset selection step
     await importPage.clickNext();
   });
 
   test("should show field mapping interface with detected fields", async ({ page }) => {
-    // We're on dataset selection step — verify the heading is visible
     const destinationHeading = page.getByRole("heading", { name: /select destination/i });
     await expect(destinationHeading).toBeVisible({ timeout: 10000 });
   });
 
   test("should show sample data preview", async ({ page }) => {
-    // We're on dataset selection step — should show the destination heading
     const destinationHeading = page.getByRole("heading", { name: /select destination/i });
     await expect(destinationHeading).toBeVisible({ timeout: 10000 });
 
-    // The step should have a table or relevant data preview UI element
     const table = page.locator("table").first();
     const previewText = page.getByText(/preview|sheet|row|sample/i).first();
     await expect(table.or(previewText)).toBeVisible({ timeout: 5000 });
@@ -312,12 +282,10 @@ test.describe("Import Wizard - Multi-Sheet Excel", () => {
 
     await importPage.uploadFile(multiSheetPath);
 
-    // Should detect multiple sheets and display the count
     await expect(page.getByText(/3 sheets/i)).toBeVisible({ timeout: 10000 });
   });
 
   test("should import all sheets from multi-sheet Excel and create 3 datasets", async ({ page }) => {
-    // Increase timeout for full import flow with job processing
     test.setTimeout(300000); // 5 minutes
 
     // Use a unique catalog/dataset name to avoid conflicts
@@ -329,52 +297,39 @@ test.describe("Import Wizard - Multi-Sheet Excel", () => {
     const fileInput = page.locator('input[type="file"]');
     await fileInput.setInputFiles(multiSheetPath);
 
-    // Wait for file processing - should detect 3 sheets
     await expect(page.getByText(/3 sheets/i)).toBeVisible({ timeout: 10000 });
 
-    // Verify all three sheet names are displayed
     await expect(page.getByText("Tech Events")).toBeVisible();
     await expect(page.getByText("Art Exhibitions")).toBeVisible();
     await expect(page.getByText("Sports Events")).toBeVisible();
 
-    // Click Next to go to Dataset Selection (Step 3)
     await importPage.clickNext();
 
     // Step 2: Dataset Selection
-    // Wait for "Select destination" heading
     const destinationHeading = page.getByRole("heading", { name: /select destination/i });
     await expect(destinationHeading).toBeVisible({ timeout: 10000 });
 
-    // Create a new catalog (handles both fresh DB and existing catalogs)
     await importPage.createNewCatalog(catalogName);
 
-    // Wait for multi-sheet dataset mapping section to appear
-    // The multi-sheet view shows each sheet with a dataset name input
+    // Multi-sheet view: one dataset-name section per sheet
     const sheetMappingSections = page.locator('[class*="rounded-sm border p-4"]');
     await expect(sheetMappingSections).toHaveCount(3, { timeout: 10000 });
 
-    // Verify sheet names are shown
     await expect(page.getByText("Tech Events").first()).toBeVisible();
     await expect(page.getByText("Art Exhibitions").first()).toBeVisible();
     await expect(page.getByText("Sports Events").first()).toBeVisible();
 
-    // Click Next to go to Field Mapping (Step 4)
     await importPage.clickNext();
 
     // Step 3: Field Mapping
-    // Wait for field mapping page to appear
     const fieldMappingHeading = page.getByRole("heading", { name: /map your fields/i });
     await expect(fieldMappingHeading).toBeVisible({ timeout: 10000 });
 
-    // Verify 3 sheet tabs visible (multi-sheet mode)
     await expect(page.locator('[data-testid="sheet-tab-0"]')).toBeVisible({ timeout: 10000 });
     await expect(page.locator('[data-testid="sheet-tab-1"]')).toBeVisible({ timeout: 10000 });
     await expect(page.locator('[data-testid="sheet-tab-2"]')).toBeVisible({ timeout: 10000 });
 
-    // Configure field mappings for ALL 3 sheets using the sheet tabs
     // Each sheet has different column names that may or may not be auto-detected
-
-    // Sheet mappings: [sheetIndex, titleCol, dateCol, locationCol]
     const sheetConfigs = [
       { index: 0, title: "title", date: "event_date", location: "venue" }, // Tech Events
       { index: 1, title: "name", date: "date", location: "location" }, // Art Exhibitions
@@ -383,43 +338,34 @@ test.describe("Import Wizard - Multi-Sheet Excel", () => {
 
     await configureSheetFieldMappings(page, importPage, sheetConfigs);
 
-    // Click Next to go to Review (Step 5)
     await importPage.clickNext();
 
     // Step 4: Review
     const reviewHeading = page.getByRole("heading", { name: /review your import/i });
     await expect(reviewHeading).toBeVisible({ timeout: 10000 });
 
-    // Verify summary shows our custom catalog name
     await expect(page.getByText(catalogName)).toBeVisible({ timeout: 5000 });
 
-    // Verify it shows 3 datasets will be created
     await expect(page.getByText(/3 datasets/i)).toBeVisible({ timeout: 5000 });
 
-    // Verify all 3 sheets' field mappings are shown on Review page
-    // Check that field mapping sections exist for all 3 sheets
     for (let sheetIndex = 0; sheetIndex < 3; sheetIndex++) {
       const fieldMappingSection = page.locator(`[data-testid="field-mapping-${sheetIndex}"]`);
       await expect(fieldMappingSection).toBeVisible({ timeout: 5000 });
     }
 
-    // Verify all 3 field mapping sections exist in the review step
     for (let i = 0; i < 3; i++) {
       const section = page.locator(`[data-testid="field-mapping-${i}"]`);
       await expect(section).toBeVisible();
     }
 
-    // Listen for API response
     const responsePromise = page.waitForResponse((response) => response.url().includes("/api/ingest/configure"), {
       timeout: 10000,
     });
 
-    // Click Start Import to begin processing (Step 6)
     const startImportButton = page.getByRole("button", { name: /start import/i });
     await expect(startImportButton).toBeVisible();
     await startImportButton.click();
 
-    // Wait for and check the API response
     const response = await responsePromise;
     const responseStatus = response.status();
 
@@ -431,7 +377,6 @@ test.describe("Import Wizard - Multi-Sheet Excel", () => {
     expect(typeof responseBody.ingestFileId).toBe("number");
     expect(typeof responseBody.catalogId).toBe("number");
 
-    // Verify 3 datasets were created in the response
     // Response should have datasets object with 3 entries (keyed by sheet index)
     expect(responseBody.datasets).not.toBeNull();
     const datasetIds = Object.values(responseBody.datasets);
@@ -441,7 +386,6 @@ test.describe("Import Wizard - Multi-Sheet Excel", () => {
     const processingIndicator = page.getByText(/importing your data/i);
     await expect(processingIndicator).toBeVisible({ timeout: 10000 });
 
-    // Get base URL for API calls
     const baseUrl = page.url().split("/ingest")[0];
 
     // Wait for import to complete. Multi-sheet imports queue 18+ jobs
@@ -457,11 +401,9 @@ test.describe("Import Wizard - Multi-Sheet Excel", () => {
     const successMessage = page.getByText(/import complete/i);
     await expect(successMessage).toBeVisible({ timeout: 10000 });
 
-    // Verify we can navigate to explore page
     const viewOnMapButton = page.getByRole("button", { name: /view on map|explore/i });
     await expect(viewOnMapButton).toBeVisible();
 
-    // Verify the datasets were created by checking the API
     const catalogsResponse = await page.request.get(
       `${baseUrl}/api/catalogs?where[name][equals]=${encodeURIComponent(catalogName)}`
     );
@@ -471,7 +413,6 @@ test.describe("Import Wizard - Multi-Sheet Excel", () => {
 
     const createdCatalogId = catalogsData.docs[0].id;
 
-    // Verify 3 datasets exist in the catalog
     const datasetsResponse = await page.request.get(
       `${baseUrl}/api/datasets?where[catalog][equals]=${createdCatalogId}`
     );
@@ -479,7 +420,6 @@ test.describe("Import Wizard - Multi-Sheet Excel", () => {
     const datasetsData = await datasetsResponse.json();
     expect(datasetsData.docs).toHaveLength(3);
 
-    // Verify dataset names match sheet names
     const datasetNames = datasetsData.docs.map((d: { name: string }) => d.name);
     expect(datasetNames).toContain("Tech Events");
     expect(datasetNames).toContain("Art Exhibitions");
@@ -487,7 +427,6 @@ test.describe("Import Wizard - Multi-Sheet Excel", () => {
   });
 
   test("should import all sheets from multi-sheet ODS and create 3 datasets", async ({ page }) => {
-    // Increase timeout for full import flow with job processing
     test.setTimeout(240000); // 4 minutes
 
     // Use a unique catalog/dataset name to avoid conflicts
@@ -499,52 +438,39 @@ test.describe("Import Wizard - Multi-Sheet Excel", () => {
     const fileInput = page.locator('input[type="file"]');
     await fileInput.setInputFiles(multiSheetPath);
 
-    // Wait for file processing - should detect 3 sheets
     await expect(page.getByText(/3 sheets/i)).toBeVisible({ timeout: 10000 });
 
-    // Verify all three sheet names are displayed
     await expect(page.getByText("Tech Events")).toBeVisible();
     await expect(page.getByText("Art Exhibitions")).toBeVisible();
     await expect(page.getByText("Sports Events")).toBeVisible();
 
-    // Click Next to go to Dataset Selection (Step 3)
     await importPage.clickNext();
 
     // Step 2: Dataset Selection
-    // Wait for "Select destination" heading
     const destinationHeading = page.getByRole("heading", { name: /select destination/i });
     await expect(destinationHeading).toBeVisible({ timeout: 10000 });
 
-    // Create a new catalog (handles both fresh DB and existing catalogs)
     await importPage.createNewCatalog(catalogName);
 
-    // Wait for multi-sheet dataset mapping section to appear
-    // The multi-sheet view shows each sheet with a dataset name input
+    // Multi-sheet view: one dataset-name section per sheet
     const sheetMappingSections = page.locator('[class*="rounded-sm border p-4"]');
     await expect(sheetMappingSections).toHaveCount(3, { timeout: 10000 });
 
-    // Verify sheet names are shown
     await expect(page.getByText("Tech Events").first()).toBeVisible();
     await expect(page.getByText("Art Exhibitions").first()).toBeVisible();
     await expect(page.getByText("Sports Events").first()).toBeVisible();
 
-    // Click Next to go to Field Mapping (Step 4)
     await importPage.clickNext();
 
     // Step 3: Field Mapping
-    // Wait for field mapping page to appear
     const fieldMappingHeading = page.getByRole("heading", { name: /map your fields/i });
     await expect(fieldMappingHeading).toBeVisible({ timeout: 10000 });
 
-    // Verify 3 sheet tabs visible (multi-sheet mode)
     await expect(page.locator('[data-testid="sheet-tab-0"]')).toBeVisible({ timeout: 10000 });
     await expect(page.locator('[data-testid="sheet-tab-1"]')).toBeVisible({ timeout: 10000 });
     await expect(page.locator('[data-testid="sheet-tab-2"]')).toBeVisible({ timeout: 10000 });
 
-    // Configure field mappings for ALL 3 sheets using the sheet tabs
     // Each sheet has different column names that may or may not be auto-detected
-
-    // Sheet mappings: [sheetIndex, titleCol, dateCol, locationCol]
     const sheetConfigs = [
       { index: 0, title: "title", date: "event_date", location: "venue" }, // Tech Events
       { index: 1, title: "name", date: "date", location: "location" }, // Art Exhibitions
@@ -553,43 +479,34 @@ test.describe("Import Wizard - Multi-Sheet Excel", () => {
 
     await configureSheetFieldMappings(page, importPage, sheetConfigs);
 
-    // Click Next to go to Review (Step 5)
     await importPage.clickNext();
 
     // Step 4: Review
     const reviewHeading = page.getByRole("heading", { name: /review your import/i });
     await expect(reviewHeading).toBeVisible({ timeout: 10000 });
 
-    // Verify summary shows our custom catalog name
     await expect(page.getByText(catalogName)).toBeVisible({ timeout: 5000 });
 
-    // Verify it shows 3 datasets will be created
     await expect(page.getByText(/3 datasets/i)).toBeVisible({ timeout: 5000 });
 
-    // Verify all 3 sheets' field mappings are shown on Review page
-    // Check that field mapping sections exist for all 3 sheets
     for (let sheetIndex = 0; sheetIndex < 3; sheetIndex++) {
       const fieldMappingSection = page.locator(`[data-testid="field-mapping-${sheetIndex}"]`);
       await expect(fieldMappingSection).toBeVisible({ timeout: 5000 });
     }
 
-    // Verify all 3 field mapping sections exist in the review step
     for (let i = 0; i < 3; i++) {
       const section = page.locator(`[data-testid="field-mapping-${i}"]`);
       await expect(section).toBeVisible();
     }
 
-    // Listen for API response
     const responsePromise = page.waitForResponse((response) => response.url().includes("/api/ingest/configure"), {
       timeout: 10000,
     });
 
-    // Click Start Import to begin processing (Step 6)
     const startImportButton = page.getByRole("button", { name: /start import/i });
     await expect(startImportButton).toBeVisible();
     await startImportButton.click();
 
-    // Wait for and check the API response
     const response = await responsePromise;
     const responseStatus = response.status();
 
@@ -601,7 +518,6 @@ test.describe("Import Wizard - Multi-Sheet Excel", () => {
     expect(typeof responseBody.ingestFileId).toBe("number");
     expect(typeof responseBody.catalogId).toBe("number");
 
-    // Verify 3 datasets were created in the response
     // Response should have datasets object with 3 entries (keyed by sheet index)
     expect(responseBody.datasets).not.toBeNull();
     const datasetIds = Object.values(responseBody.datasets);
@@ -611,7 +527,6 @@ test.describe("Import Wizard - Multi-Sheet Excel", () => {
     const processingIndicator = page.getByText(/importing your data/i);
     await expect(processingIndicator).toBeVisible({ timeout: 10000 });
 
-    // Get base URL for API calls
     const baseUrl = page.url().split("/ingest")[0];
 
     // Wait for import to complete. Multi-sheet imports queue 18+ jobs
@@ -627,11 +542,9 @@ test.describe("Import Wizard - Multi-Sheet Excel", () => {
     const successMessage = page.getByText(/import complete/i);
     await expect(successMessage).toBeVisible({ timeout: 10000 });
 
-    // Verify we can navigate to explore page
     const viewOnMapButton = page.getByRole("button", { name: /view on map|explore/i });
     await expect(viewOnMapButton).toBeVisible();
 
-    // Verify the datasets were created by checking the API
     const catalogsResponse = await page.request.get(
       `${baseUrl}/api/catalogs?where[name][equals]=${encodeURIComponent(catalogName)}`
     );
@@ -641,7 +554,6 @@ test.describe("Import Wizard - Multi-Sheet Excel", () => {
 
     const createdCatalogId = catalogsData.docs[0].id;
 
-    // Verify 3 datasets exist in the catalog
     const datasetsResponse = await page.request.get(
       `${baseUrl}/api/datasets?where[catalog][equals]=${createdCatalogId}`
     );
@@ -649,7 +561,6 @@ test.describe("Import Wizard - Multi-Sheet Excel", () => {
     const datasetsData = await datasetsResponse.json();
     expect(datasetsData.docs).toHaveLength(3);
 
-    // Verify dataset names match sheet names
     const datasetNames = datasetsData.docs.map((d: { name: string }) => d.name);
     expect(datasetNames).toContain("Tech Events");
     expect(datasetNames).toContain("Art Exhibitions");
@@ -726,11 +637,9 @@ test.describe("Import Wizard - Browser Navigation", () => {
     await importPage.goto();
     await importPage.waitForWizardLoad();
 
-    // Refresh the page (auth provided by storageState)
     await page.reload();
     await importPage.waitForWizardLoad();
 
-    // Page should still be functional — the upload heading should be visible
     const uploadHeading = page.getByRole("heading", { name: /upload your data/i });
     await expect(uploadHeading).toBeVisible({ timeout: 5000 });
   });
@@ -748,7 +657,6 @@ test.describe("Import Wizard - Responsive Design", () => {
     await importPage.goto();
     await importPage.waitForWizardLoad();
 
-    // Wizard heading should be visible at desktop size
     const uploadHeading = page.getByRole("heading", { name: /upload your data/i });
     await expect(uploadHeading).toBeVisible({ timeout: 5000 });
   });
@@ -758,7 +666,6 @@ test.describe("Import Wizard - Responsive Design", () => {
     await importPage.goto();
     await importPage.waitForWizardLoad();
 
-    // Wizard heading should be visible at tablet size
     const uploadHeading = page.getByRole("heading", { name: /upload your data/i });
     await expect(uploadHeading).toBeVisible({ timeout: 5000 });
   });
@@ -768,7 +675,6 @@ test.describe("Import Wizard - Responsive Design", () => {
     await importPage.goto();
     await importPage.waitForWizardLoad();
 
-    // Wizard heading should be visible at mobile size
     const uploadHeading = page.getByRole("heading", { name: /upload your data/i });
     await expect(uploadHeading).toBeVisible({ timeout: 5000 });
   });
@@ -789,12 +695,10 @@ test.describe("Import Wizard - Accessibility", () => {
   });
 
   test("should support keyboard navigation", async ({ page }) => {
-    // Tab through the page
     await page.keyboard.press("Tab");
     await page.keyboard.press("Tab");
     await page.keyboard.press("Tab");
 
-    // Get focused element
     const focusedTag = await page.evaluate(() => document.activeElement?.tagName);
     expect(focusedTag).toBeDefined();
   });
@@ -811,7 +715,6 @@ test.describe("Import Wizard - Full Flow", () => {
   });
 
   test("should complete full import flow and create events", async ({ page }) => {
-    // Increase timeout for job processing
     test.setTimeout(180000); // 3 minutes
 
     // Use a unique catalog name to avoid conflicts
@@ -825,73 +728,55 @@ test.describe("Import Wizard - Full Flow", () => {
     // Step 2: Upload file
     const csvPath = path.join(FIXTURES_PATH, "valid-events.csv");
 
-    // Use file chooser approach for more reliable file upload
     const fileInput = page.locator('input[type="file"]');
     await fileInput.setInputFiles(csvPath);
 
-    // Wait for file processing to complete - look for success indicator
     const fileReady = page.getByText(/File ready for import/i);
     await expect(fileReady).toBeVisible({ timeout: 10000 });
 
-    // Verify file name is shown
     await expect(page.getByText("valid-events.csv")).toBeVisible();
 
-    // Click Next to go to Dataset Selection (Step 3)
     await importPage.clickNext();
 
     // Step 3: Dataset Selection
-    // Wait for "Select destination" heading
     const destinationHeading = page.getByRole("heading", { name: /select destination/i });
     await expect(destinationHeading).toBeVisible({ timeout: 10000 });
 
-    // Create a new catalog (handles both fresh DB and existing catalogs)
     await importPage.createNewCatalog(catalogName);
 
-    // Click Next to go to Field Mapping (Step 4)
     await importPage.clickNext();
 
     // Step 4: Field Mapping
-    // Wait for field mapping page to appear
     const fieldMappingHeading = page.getByRole("heading", { name: /map your fields/i });
     await expect(fieldMappingHeading).toBeVisible({ timeout: 10000 });
 
     // The CSV has: title, description, date, location, category
-    // Column-centric mapping table — auto-detection should pre-fill target fields
-
-    // Wait for column mapping table to be interactive
     await importPage.waitForFieldMappingReady();
 
-    // Verify the column mapping table has rows for our columns
     const titleRow = page.locator("tr").filter({ hasText: "title" }).first();
     await expect(titleRow).toBeVisible({ timeout: 10000 });
 
-    // Click Next to go to Review (Step 5)
     await importPage.clickNext();
 
     // Step 5: Review
-    // Wait for review page to appear
     const reviewHeading = page.getByRole("heading", { name: /review your import/i });
     await expect(reviewHeading).toBeVisible({ timeout: 10000 });
 
-    // Verify summary shows the catalog section (name may be derived from file or user input)
+    // Catalog name may come from the file or user input, so only the section is checked
     const catalogSection = page.locator("text=Catalog").first();
     await expect(catalogSection).toBeVisible({ timeout: 10000 });
 
-    // Listen for API response
     const responsePromise = page.waitForResponse((response) => response.url().includes("/api/ingest/configure"), {
       timeout: 10000,
     });
 
-    // Click Start Import to begin processing (Step 6)
     const startImportButton = page.getByRole("button", { name: /start import/i });
     await expect(startImportButton).toBeVisible();
     await startImportButton.click();
 
-    // Wait for and check the API response
     const response = await responsePromise;
     const responseStatus = response.status();
 
-    // Parse response and verify success
     const responseBody = await response.json();
     if (responseStatus !== 200) {
       throw new Error(`Configure import failed with status ${responseStatus}: ${JSON.stringify(responseBody)}`);
@@ -908,11 +793,9 @@ test.describe("Import Wizard - Full Flow", () => {
     const completionIndicator = page.getByText(/import complete/i);
     await expect(completionIndicator).toBeVisible({ timeout: 120000 });
 
-    // Verify success message shows events were created
     const successMessage = page.getByText(/import complete/i);
     await expect(successMessage).toBeVisible({ timeout: 10000 });
 
-    // Verify we can navigate to explore page
     const viewOnMapButton = page.getByRole("button", { name: /view on map|explore/i });
     await expect(viewOnMapButton).toBeVisible();
   });
@@ -925,13 +808,10 @@ test.describe("Import Wizard - Full Flow", () => {
     const csvPath = path.join(FIXTURES_PATH, "valid-events.csv");
     await importPage.uploadFile(csvPath);
 
-    // Verify file is shown
     await expect(page.getByText("valid-events.csv")).toBeVisible({ timeout: 5000 });
 
-    // Navigate to dataset selection
     await importPage.clickNext();
 
-    // Create a new catalog (handles both fresh DB and existing catalogs)
     await importPage.createNewCatalog("Persistence Test Catalog");
 
     // Refresh the page. The wizard restores the persisted step on reload
@@ -940,7 +820,6 @@ test.describe("Import Wizard - Full Flow", () => {
     await page.reload();
     await page.waitForLoadState("domcontentloaded");
 
-    // Verify state was restored — should show the file name or catalog info
     const fileName = page.getByText("valid-events.csv");
     const catalogInfo = page.getByText(/persistence test catalog/i);
     const destinationHeading = page.getByRole("heading", { name: /select destination/i });

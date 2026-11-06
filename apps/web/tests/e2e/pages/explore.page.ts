@@ -29,18 +29,18 @@ export class ExplorePage {
   constructor(page: Page) {
     this.page = page;
     this.map = page.getByRole("region", { name: "Map" }).first();
-    // "Datasets" collapsible section trigger (renamed from "Data Sources")
+    // "Datasets" collapsible section trigger
     this.dataSourcesSection = page.getByRole("button", { name: /^Datasets/i });
     // Catalog group checkboxes — each has aria-label "Select all datasets in X"
     this.catalogButtons = page.locator('[role="checkbox"][aria-label*="all datasets in"]');
     this.datasetCheckboxes = page.locator('[role="checkbox"]');
-    // New date picker UI uses buttons instead of input fields
+    // The date picker uses buttons, not input fields
     this.startDateInput = page.getByRole("button", { name: /Start date:/i });
     this.endDateInput = page.getByRole("button", { name: /End date:/i });
-    // Clear dates button format changed - now shows date range like "Feb 2024 → Jan 2026"
+    // Its label is the active range, e.g. "Feb 2024 → Jan 2026"
     this.clearDatesButton = page.getByRole("button", { name: /→/ });
     this.eventsList = page.getByTestId("events-list");
-    // Events count format changed to "Showing X of Y events" or "Showing all X events"
+    // "Showing X of Y events" or "Showing all X events"
     this.eventsCount = page
       .locator("p")
       .filter({ hasText: /Showing .* event/ })
@@ -140,11 +140,8 @@ export class ExplorePage {
    */
   async waitForTimelineReady() {
     await this.show("filters");
-    // Wait for either the "Loading timeline..." label to disappear (if present)
-    // or the final timeline UI to render. Skipping the `/api/v1/events/temporal`
-    // waitForResponse — the timeline UI is the user-visible contract; the
-    // response-level wait just races with cache hits and hides real timing
-    // bugs. The downstream waits cover both cached and uncached cases.
+    // Wait for "Loading timeline..." to go and the timeline UI to render. No waitForResponse on
+    // /temporal: it races cache hits, and the UI is the user-visible contract.
     const loadingText = this.page.getByText("Loading timeline...");
     // Don't fail if loadingText isn't present (cached render) — only if it's
     // still visible after timeout, which is a real regression.
@@ -152,12 +149,9 @@ export class ExplorePage {
       if (await loadingText.isVisible().catch(() => false)) throw err;
     });
 
-    // Timeline has three "ready" states: collapsed date-range button (data
-    // state), two date inputs (already-in-edit-mode state), or "No events to
-    // display". The second state appears when the timeline re-renders while
-    // we're already mid-edit (e.g. after setStartDate) — waiting only for the
-    // collapsed-state button would time out because it's not rendered.
-    // If none of these appear within 10s the timeline has failed to render.
+    // Timeline has three ready states: collapsed date-range button, two date inputs (a re-render
+    // while already mid-edit, e.g. after setStartDate, where the button is absent), or
+    // "No events to display". None within 10s means the timeline failed to render.
     const dateRangeButton = this.page
       .locator("button")
       .filter({ hasText: /\w{3} \d{4} → \w{3} \d{4}/ })
@@ -197,7 +191,6 @@ export class ExplorePage {
     // section (its label is the date range) cannot leave it holding a detached handle.
     await dateRangeButton.click({ timeout: 10000 });
 
-    // Wait for edit mode to open (date inputs to appear)
     await dateInputs.first().waitFor({ state: "visible", timeout: 5000 });
   }
 
@@ -341,7 +334,6 @@ export class ExplorePage {
     // Wait for timeline to load first (date range button only appears after timeline loads)
     await this.waitForTimelineReady();
 
-    // Enter edit mode if not already in it
     await this.enterDateEditMode();
 
     // Wait for the date inputs to appear (start date is first date input)
@@ -349,7 +341,6 @@ export class ExplorePage {
     const startDateInput = dateInputs.first();
     await startDateInput.waitFor({ state: "visible", timeout: 3000 });
 
-    // Clear and fill the date input
     await startDateInput.fill(date);
 
     // URL is the canonical source of truth for filter state — if it doesn't
@@ -366,7 +357,6 @@ export class ExplorePage {
     // Wait for timeline to load first (date range button only appears after timeline loads)
     await this.waitForTimelineReady();
 
-    // Enter edit mode if not already in it
     await this.enterDateEditMode();
 
     // Wait for the date inputs to appear (end date is second date input)
@@ -374,7 +364,6 @@ export class ExplorePage {
     const endDateInput = dateInputs.nth(1);
     await endDateInput.waitFor({ state: "visible", timeout: 3000 });
 
-    // Clear and fill the date input
     await endDateInput.fill(date);
 
     await this.page.waitForFunction(
@@ -439,7 +428,6 @@ export class ExplorePage {
 
   async getEventCount(): Promise<number> {
     await this.show("list");
-    // Wait for the events count element to be visible with the expected pattern
     await this.eventsCount.waitFor({ state: "visible", timeout: 5000 });
     const text = await this.eventsCount.textContent({ timeout: 3000 });
 
@@ -448,13 +436,11 @@ export class ExplorePage {
     }
 
     // Match "Showing X of Y events" or "Showing all X events" or "Showing X event(s)"
-    // Use simple pattern - extract the first number after "Showing"
     const matches = /Showing (?:all )?(\d[\d,]*)/.exec(text);
     if (!matches?.[1]) {
       throw new Error(`Events count text does not match expected pattern: "${text}"`);
     }
 
-    // Remove commas from number (e.g., "1,245" -> "1245")
     return Number.parseInt(matches[1].replaceAll(",", ""), 10);
   }
 
@@ -544,7 +530,6 @@ export class ExplorePage {
   }
 
   async waitForEventsToLoad() {
-    // Wait for loading indicator to disappear
     // Use longer timeout to handle server resource constraints
     await expect(this.loadingIndicator).not.toBeVisible({ timeout: 10000 });
   }

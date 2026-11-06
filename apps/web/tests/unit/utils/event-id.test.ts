@@ -57,9 +57,8 @@ describe("event-id utilities", () => {
     });
 
     it("accepts non-ASCII (Unicode) letters and digits", () => {
-      // International datasets supply non-ASCII external IDs; an ASCII \w class
-      // threw on these, failing the row or producing a non-deterministic key
-      // that defeats dedup. The key is stored as plain Postgres text.
+      // International datasets supply non-ASCII external IDs; they must neither fail the
+      // row nor get a non-deterministic key that defeats dedup. Stored as plain Postgres text.
       expect(sanitizeId("Veranstaltung-Köln-2024")).toBe("Veranstaltung-Köln-2024");
       expect(sanitizeId("категория-7")).toBe("категория-7");
       expect(sanitizeId("東京:2024.01")).toBe("東京:2024.01");

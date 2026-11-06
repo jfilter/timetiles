@@ -62,10 +62,8 @@ describe("detectFileTypeFromResponse", () => {
   });
 
   describe("content sniffing (regression)", () => {
-    // Regression: the previous heuristic "if text contains comma/tab/newline,
-    // call it CSV" mis-detected every JSON file as CSV, because any JSON text
-    // includes both. The pipeline then routed JSON through the CSV parser and
-    // failed cryptically downstream.
+    // Regression: text containing comma/tab/newline (which all JSON does) must not be
+    // labeled CSV and routed through the CSV parser.
 
     it("detects a JSON object as application/json", () => {
       const body = Buffer.from('{"a": 1, "b": [2, 3]}');
@@ -94,9 +92,8 @@ describe("detectFileTypeFromResponse", () => {
     });
 
     it("falls back to octet-stream for text that is not JSON or tabular (not CSV)", () => {
-      // Previously: any text with commas/newlines was auto-labeled CSV.
-      // Now: without a mapping signal, we don't guess — surface a clear
-      // downstream "unsupported file type" error instead.
+      // Without a mapping signal, comma/newline text is not guessed as CSV;
+      // downstream surfaces a clear "unsupported file type" error.
       const body = Buffer.from("hello, world\nthis is a letter.\n");
       const result = detectFileTypeFromResponse(undefined, body, URL_NO_EXT);
       expect(result).toEqual({ mimeType: "application/octet-stream", fileExtension: ".bin" });

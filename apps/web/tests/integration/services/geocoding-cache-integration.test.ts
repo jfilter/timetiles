@@ -213,7 +213,6 @@ describe("Geocoding Cache Integration", () => {
       // Create CSV with 15 rows, 10 unique locations (5 duplicates)
       const { ingestFile } = await createIngestFile(fixtureCsvContent, "geocoding-test.csv");
 
-      // Run complete import pipeline
       await runJobsUntilComplete(ingestFile.id);
 
       // Verify location field was detected
@@ -251,7 +250,6 @@ describe("Geocoding Cache Integration", () => {
 
       expect(events.docs).toHaveLength(15);
 
-      // All events should have coordinates
       for (const event of events.docs) {
         expect(event.location).toBeDefined();
         expect(event.location.latitude).toBeTypeOf("number");
@@ -271,12 +269,10 @@ describe("Geocoding Cache Integration", () => {
       // Verify first import called geocoding 10 times
       expect(mockGoogleGeocode).toHaveBeenCalledTimes(10);
 
-      // Get cache state after first import
       const cacheAfterFirst = await payload.find({ collection: "location-cache", limit: 100 });
 
       expect(cacheAfterFirst.docs).toHaveLength(10);
 
-      // Clear mock call count
       vi.clearAllMocks();
 
       // Second import - same CSV, should use cache
@@ -298,7 +294,6 @@ describe("Geocoding Cache Integration", () => {
       }
 
       // Verify events from both imports were created with coordinates
-      // Get datasets for both imports
       const firstImportJobs = await payload.find({
         collection: "ingest-jobs",
         where: { ingestFile: { equals: firstIngestFile.id } },
@@ -339,7 +334,6 @@ describe("Geocoding Cache Integration", () => {
         expect(event.coordinateSource.type).toBe("geocoded");
       }
 
-      // Clear mock call count
       vi.clearAllMocks();
 
       // Third import with 5 cached + 5 new locations
@@ -465,7 +459,6 @@ describe("Geocoding Cache Integration", () => {
         const lat = firstEvent.location.latitude;
         const lng = firstEvent.location.longitude;
 
-        // All events at this location should have same coordinates
         for (const event of eventsAtLocation) {
           expect(event.location.latitude).toBe(lat);
           expect(event.location.longitude).toBe(lng);

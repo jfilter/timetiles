@@ -10,7 +10,6 @@
 import { catalogSeeds } from "../../../lib/seed/seeds/catalogs";
 import { datasetSeeds } from "../../../lib/seed/seeds/datasets";
 import { eventSeeds } from "../../../lib/seed/seeds/events";
-// ingestSeeds removed - ingest jobs are created dynamically, not seeded
 import { userSeeds } from "../../../lib/seed/seeds/users";
 
 describe("Seed Data Validation", () => {
@@ -19,7 +18,6 @@ describe("Seed Data Validation", () => {
       const users = userSeeds("development");
       expect(users.length).toBeGreaterThan(0);
 
-      // Validate email and password exist
       expect(users.every((user) => user.email && user.password)).toBe(true);
 
       // Validate email format
@@ -28,7 +26,6 @@ describe("Seed Data Validation", () => {
         expect(emailRegex.test(user.email)).toBe(true);
       });
 
-      // Validate password is non-empty string
       users.forEach((user) => {
         expect(typeof user.password).toBe("string");
         expect(user.password.length).toBeGreaterThan(0);
@@ -39,7 +36,6 @@ describe("Seed Data Validation", () => {
       const users = userSeeds("production");
       expect(users.length).toBeGreaterThan(0);
 
-      // Validate required fields exist
       expect(users.every((user) => user.role && user.isActive !== undefined)).toBe(true);
 
       // Validate role values are valid
@@ -112,15 +108,12 @@ describe("Seed Data Validation", () => {
     });
   });
 
-  // Ingest Seeds tests removed - ingest jobs are created dynamically, not seeded
-
   describe("Data Consistency", () => {
     it("should generate environment-appropriate amounts of data", () => {
       const devUsers = userSeeds("development");
       const prodUsers = userSeeds("production");
       const testUsers = userSeeds("test");
 
-      // Verify each environment has users
       expect(devUsers.length).toBeGreaterThan(0);
       expect(prodUsers.length).toBeGreaterThan(0);
       expect(testUsers.length).toBeGreaterThan(0);
@@ -154,8 +147,6 @@ describe("Seed Data Validation", () => {
   });
 
   describe("Relationship Validation", () => {
-    // Ingest catalog reference test removed - ingest jobs are created dynamically, not seeded
-
     it("should have valid catalog references in datasets", () => {
       const environments = ["development", "production"];
 

@@ -183,7 +183,6 @@ describe("Cleanup Stuck Imports Job Integration", () => {
     it("should find and reset imports stuck for more than 4 hours", async () => {
       const fiveHoursAgo = new Date(Date.now() - 5 * 60 * 60 * 1000);
 
-      // Create stuck import
       const { scheduledIngest: stuckImport } = await withScheduledIngest(
         testEnv,
         testCatalog.id,
@@ -197,7 +196,6 @@ describe("Cleanup Stuck Imports Job Integration", () => {
         }
       );
 
-      // Run cleanup job
       const result = await cleanupStuckScheduledIngestsJob.handler({
         req: { payload },
         job: { id: "cleanup-job-1", task: "cleanup-stuck-scheduled-ingests" },
@@ -206,7 +204,6 @@ describe("Cleanup Stuck Imports Job Integration", () => {
       expect(result.output.resetCount).toBe(1);
       expect(result.output.totalRunning).toBe(1);
 
-      // Verify import was reset
       const resetImport = await payload.findByID({ collection: "scheduled-ingests", id: stuckImport.id });
 
       expect(resetImport.lastStatus).toBe("failed");
@@ -216,7 +213,6 @@ describe("Cleanup Stuck Imports Job Integration", () => {
     it("should not reset imports running for less than 4 hours", async () => {
       const oneHourAgo = new Date(Date.now() - 1 * 60 * 60 * 1000);
 
-      // Create recent import
       const recentImport = await payload.create({
         collection: "scheduled-ingests",
         data: {
@@ -232,7 +228,6 @@ describe("Cleanup Stuck Imports Job Integration", () => {
         },
       });
 
-      // Run cleanup job
       const result = await cleanupStuckScheduledIngestsJob.handler({
         req: { payload },
         job: { id: "cleanup-job-2", task: "cleanup-stuck-scheduled-ingests" },
@@ -241,7 +236,6 @@ describe("Cleanup Stuck Imports Job Integration", () => {
       expect(result.output.resetCount).toBe(0);
       expect(result.output.totalRunning).toBe(1); // One running import found but not reset
 
-      // Verify import was not changed
       const unchangedImport = await payload.findByID({ collection: "scheduled-ingests", id: recentImport.id });
 
       expect(unchangedImport.lastStatus).toBe("running");
@@ -250,7 +244,6 @@ describe("Cleanup Stuck Imports Job Integration", () => {
 
     it("resets all 105 stuck schedules in one pass", async () => {
       const fourHoursAgo = new Date(Date.now() - 4 * 60 * 60 * 1000);
-      // Create 105 stuck imports
       for (let i = 0; i < 105; i++) {
         await payload.create({
           collection: "scheduled-ingests",
@@ -268,7 +261,6 @@ describe("Cleanup Stuck Imports Job Integration", () => {
         });
       }
 
-      // Run cleanup job
       const result = await cleanupStuckScheduledIngestsJob.handler({
         req: { payload },
         job: { id: "cleanup-job-4", task: "cleanup-stuck-scheduled-ingests" },
@@ -285,7 +277,6 @@ describe("Cleanup Stuck Imports Job Integration", () => {
 
       expect(resetCount.totalDocs).toBe(105);
 
-      // Verify none are still stuck
       const stillStuck = await payload.count({
         collection: "scheduled-ingests",
         where: { lastStatus: { equals: "running" } },
@@ -339,7 +330,6 @@ describe("Cleanup Stuck Imports Job Integration", () => {
     it("should cancel orphaned workflow jobs when resetting stuck import", async () => {
       const fiveHoursAgo = new Date(Date.now() - 5 * 60 * 60 * 1000);
 
-      // Create stuck import
       const stuckImport = await payload.create({
         collection: "scheduled-ingests",
         data: {
@@ -377,7 +367,6 @@ describe("Cleanup Stuck Imports Job Integration", () => {
         } as Record<string, unknown>,
       });
 
-      // Run cleanup job
       const result = await cleanupStuckScheduledIngestsJob.handler({
         req: { payload },
         job: { id: "cleanup-orphan-1", task: "cleanup-stuck-scheduled-ingests" },
@@ -440,7 +429,6 @@ describe("Cleanup Stuck Imports Job Integration", () => {
     it("should not cancel workflow jobs for non-stuck imports", async () => {
       const oneHourAgo = new Date(Date.now() - 1 * 60 * 60 * 1000);
 
-      // Create a recent (not stuck) import
       const recentImport = await payload.create({
         collection: "scheduled-ingests",
         data: {
@@ -456,7 +444,6 @@ describe("Cleanup Stuck Imports Job Integration", () => {
         },
       });
 
-      // Create an active workflow job for it
       const activeJob = await payload.create({
         collection: "payload-jobs" as const,
         data: {
@@ -467,7 +454,6 @@ describe("Cleanup Stuck Imports Job Integration", () => {
         } as Record<string, unknown>,
       });
 
-      // Run cleanup job
       await cleanupStuckScheduledIngestsJob.handler({
         req: { payload },
         job: { id: "cleanup-orphan-2", task: "cleanup-stuck-scheduled-ingests" },
@@ -484,7 +470,6 @@ describe("Cleanup Stuck Imports Job Integration", () => {
     it("should continue processing when individual update fails", async () => {
       const sixHoursAgo = new Date(Date.now() - 6 * 60 * 60 * 1000);
 
-      // Create stuck imports
       const import1 = await payload.create({
         collection: "scheduled-ingests",
         data: {
@@ -518,7 +503,6 @@ describe("Cleanup Stuck Imports Job Integration", () => {
       // Delete the second import to cause an error during processing
       await payload.delete({ collection: "scheduled-ingests", id: import2.id });
 
-      // Run cleanup job
       const result = await cleanupStuckScheduledIngestsJob.handler({
         req: { payload },
         job: { id: "cleanup-job-error", task: "cleanup-stuck-scheduled-ingests" },
@@ -528,7 +512,6 @@ describe("Cleanup Stuck Imports Job Integration", () => {
       expect(result.output.resetCount).toBe(1);
       expect(result.output.totalRunning).toBe(1);
 
-      // Verify first import was reset
       const resetImport = await payload.findByID({ collection: "scheduled-ingests", id: import1.id });
 
       expect(resetImport.lastStatus).toBe("failed");
@@ -556,7 +539,6 @@ describe("Cleanup Stuck Imports Job Integration", () => {
     it("should be idempotent - safe to run multiple times", async () => {
       const sevenHoursAgo = new Date(Date.now() - 7 * 60 * 60 * 1000);
 
-      // Create stuck import
       const stuckImport = await payload.create({
         collection: "scheduled-ingests",
         data: {
@@ -619,7 +601,6 @@ describe("Cleanup Stuck Imports Job Integration", () => {
 
       const webhookToken = stuckImport.webhookToken;
 
-      // Run cleanup job
       const cleanupResult = await cleanupStuckScheduledIngestsJob.handler({
         req: { payload },
         job: { id: "cleanup-job-webhook", task: "cleanup-stuck-scheduled-ingests" },
@@ -648,7 +629,6 @@ describe("Cleanup Stuck Imports Job Integration", () => {
     it("should track cleanup in execution history", async () => {
       const nineHoursAgo = new Date(Date.now() - 9 * 60 * 60 * 1000);
 
-      // Create stuck import with existing history
       const stuckImport = await payload.create({
         collection: "scheduled-ingests",
         data: {
@@ -665,7 +645,6 @@ describe("Cleanup Stuck Imports Job Integration", () => {
         },
       });
 
-      // Run cleanup job
       await cleanupStuckScheduledIngestsJob.handler({
         req: { payload },
         job: { id: "cleanup-job-history", task: "cleanup-stuck-scheduled-ingests" },
@@ -764,11 +743,8 @@ describe("Cleanup Stuck Imports Job Integration", () => {
     });
 
     it("should handle concurrent creates without pool exhaustion", async () => {
-      // Regression test: concurrent payload.create() calls on collections with
-      // afterChange hooks that call quotaService used to exhaust the connection pool
-      // (max 5) because the quota service grabbed separate pool connections outside
-      // the hook's transaction. With the fix, quota operations reuse the hook's
-      // transaction via `req`, so concurrent creates work.
+      // Regression: concurrent payload.create() on collections whose afterChange hooks call quotaService
+      // must not exhaust the pool (max 5); quota operations reuse the hook's transaction via `req`.
       const tenHoursAgo = new Date(Date.now() - 10 * 60 * 60 * 1000);
 
       await Promise.all(

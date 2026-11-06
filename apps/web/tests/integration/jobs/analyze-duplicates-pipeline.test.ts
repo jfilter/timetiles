@@ -67,7 +67,6 @@ describe("Analyze Duplicates Pipeline", () => {
       if (result.noJobsRemaining) break;
     }
 
-    // Check that import-job was created
     const importJobs = await payload.find({
       collection: "ingest-jobs",
       where: { ingestFile: { equals: ingestFile.id } },

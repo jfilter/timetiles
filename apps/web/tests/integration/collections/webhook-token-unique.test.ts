@@ -41,12 +41,8 @@ describe("Webhook token DB unique constraint", () => {
   });
 
   it("rejects a second scheduled_ingest inserted with the same webhook token", async () => {
-    // Use raw SQL inserts for BOTH rows. The webhook lifecycle hook
-    // (`handleWebhookTokenLifecycle`) unconditionally rotates the token on
-    // create when `webhookEnabled` is true, so we can't pin a specific
-    // token value via payload.create and then provoke a collision. The
-    // test's contract is the DB-level unique index, so raw SQL is the
-    // correct level to assert at anyway.
+    // Raw SQL for BOTH rows: handleWebhookTokenLifecycle rotates the token on create when
+    // webhookEnabled is true, so payload.create cannot pin a colliding value. The contract is the DB unique index.
     const token = `dup-tok-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
     await payload.db.drizzle.execute(sql`

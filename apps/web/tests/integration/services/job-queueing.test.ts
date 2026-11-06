@@ -66,7 +66,6 @@ describe("Job Queueing Tests", () => {
       const fixturePath = path.join(__dirname, "../../fixtures/events-german.csv");
       const fileBuffer = fs.readFileSync(fixturePath);
 
-      // Upload CSV file
       const { ingestFile } = await withIngestFile(testEnv, Number.parseInt(testCatalogId, 10), fileBuffer, {
         filename: "events-german.csv",
         mimeType: "text/csv",
@@ -93,7 +92,6 @@ describe("Job Queueing Tests", () => {
       const fixturePath = path.join(__dirname, "../../fixtures/events-german.csv");
       const fileBuffer = fs.readFileSync(fixturePath);
 
-      // Upload CSV file
       const { ingestFile } = await withIngestFile(testEnv, Number.parseInt(testCatalogId, 10), fileBuffer, {
         filename: "events-german.csv",
         mimeType: "text/csv",
@@ -115,7 +113,6 @@ describe("Job Queueing Tests", () => {
 
       expect(schemaDetectionResult.matched).toBe(true);
 
-      // Get import job
       const importJobs = await payload.find({
         collection: "ingest-jobs",
         where: { ingestFile: { equals: ingestFile.id } },
@@ -124,7 +121,6 @@ describe("Job Queueing Tests", () => {
 
       const ingestJob = importJobs.docs[0];
 
-      // Approve schema
       await payload.update({
         collection: "ingest-jobs",
         id: ingestJob.id,
@@ -138,7 +134,6 @@ describe("Job Queueing Tests", () => {
         },
       });
 
-      // Complete the import
       const pipelineResult = await runJobsUntilImportSettled(payload, ingestFile.id);
 
       expect(pipelineResult.settled).toBe(true);
@@ -179,7 +174,6 @@ describe("Job Queueing Tests", () => {
       expect(workflowJobs.docs).toHaveLength(1);
       logger.info("Verified: single manual-ingest workflow queued");
 
-      // Run the workflow to completion
       const pipelineResult = await runJobsUntilImportSettled(payload, ingestFile.id);
       expect(pipelineResult.settled).toBe(true);
 

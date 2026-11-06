@@ -71,7 +71,6 @@ describe("Schema Maintenance Job", () => {
       });
     }
 
-    // Run the job
     const result = await schemaMaintenanceJob.handler({ req: { payload }, input: { datasetIds: [testDatasetId] } });
 
     expect(result.output.success).toBe(true);
@@ -79,7 +78,6 @@ describe("Schema Maintenance Job", () => {
     expect(result.output.schemasGenerated).toBe(1);
     expect(result.output.schemasSkipped).toBe(0);
 
-    // Verify schema was created
     const schemas = await payload.find({
       collection: "dataset-schemas",
       where: { dataset: { equals: testDatasetId } },
@@ -89,7 +87,6 @@ describe("Schema Maintenance Job", () => {
   });
 
   it("skips dataset with fresh schema", async () => {
-    // Create event
     await payload.create({
       collection: "events",
       data: {
@@ -117,7 +114,6 @@ describe("Schema Maintenance Job", () => {
       overrideAccess: true,
     });
 
-    // Run the job
     const result = await schemaMaintenanceJob.handler({ req: { payload }, input: { datasetIds: [testDatasetId] } });
 
     expect(result.output.success).toBe(true);
@@ -155,13 +151,11 @@ describe("Schema Maintenance Job", () => {
       overrideAccess: true,
     });
 
-    // Run the job
     const result = await schemaMaintenanceJob.handler({ req: { payload }, input: { datasetIds: [testDatasetId] } });
 
     expect(result.output.success).toBe(true);
     expect(result.output.schemasGenerated).toBe(1);
 
-    // Verify new schema version created
     const schemas = await payload.find({
       collection: "dataset-schemas",
       where: { dataset: { equals: testDatasetId } },
@@ -244,9 +238,8 @@ describe("Schema Maintenance Job", () => {
   );
 
   /**
-   * The scan used to stop at `maxDatasets` datasets ordered by id, with no cursor and no
-   * rotating order, so anything past that window kept a stale schema forever. The cap now
-   * bounds the regenerations, not the scan.
+   * `maxDatasets` caps the regenerations per run, not the scan: datasets past the first
+   * `maxDatasets` by id must not keep a stale schema forever.
    */
   it("reaches datasets beyond the per-run regeneration limit", async () => {
     const datasetIds = [testDatasetId];
@@ -275,7 +268,7 @@ describe("Schema Maintenance Job", () => {
     const lastDatasetId = datasetIds[datasetIds.length - 1]!;
 
     // One regeneration per run; three runs must reach all three datasets, including the
-    // last one, which the truncated scan could never have seen.
+    // last one past the first `maxDatasets` by id.
     for (let run = 0; run < datasetIds.length; run++) {
       const result = await schemaMaintenanceJob.handler({ req: { payload }, input: { maxDatasets: 1 } });
       expect(result.output.datasetsChecked).toBe(datasetIds.length);

@@ -147,7 +147,6 @@ const analyzeAccessibility = async (testPage: Page, pageConfig: PageConfig, them
 
   await testPage.goto(pageConfig.path, { waitUntil: "domcontentloaded" });
 
-  // Verify theme was applied to <html>
   const hasDarkClass = await testPage.evaluate(() => document.documentElement.classList.contains("dark"));
   if (theme === "dark") {
     expect(hasDarkClass, "Expected .dark class on <html> for dark mode").toBe(true);
@@ -155,14 +154,12 @@ const analyzeAccessibility = async (testPage: Page, pageConfig: PageConfig, them
     expect(hasDarkClass, "Expected no .dark class on <html> for light mode").toBe(false);
   }
 
-  // Wait for page-specific content to render
   if (pageConfig.waitFor) {
     await pageConfig.waitFor(testPage);
   } else {
     await testPage.waitForLoadState("networkidle");
   }
 
-  // Build axe analysis
   let builder = new AxeBuilder({ page: testPage }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]);
 
   // Exclude third-party elements that can't be fixed

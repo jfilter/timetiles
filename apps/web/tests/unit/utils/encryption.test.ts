@@ -25,7 +25,6 @@ describe("encryption", () => {
 
       expect(encrypted1).not.toBe(encrypted2);
 
-      // Both should decrypt to the same value
       expect(decryptField(encrypted1, TEST_SECRET)).toBe(plaintext);
       expect(decryptField(encrypted2, TEST_SECRET)).toBe(plaintext);
     });

@@ -70,7 +70,6 @@ describe("Media Ownership Bypass Vulnerability", () => {
   });
 
   beforeEach(async () => {
-    // Create a media record owned by ownerUser
     ownerMedia = await createMediaForUser(payload, ownerUser, "owner photo");
   });
 

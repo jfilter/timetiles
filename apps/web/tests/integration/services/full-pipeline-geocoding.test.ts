@@ -187,7 +187,6 @@ describe("Full Pipeline with Geocoding", () => {
     const completed = await runJobsUntilComplete(ingestFile.id);
     expect(completed).toBe(true);
 
-    // Verify the ingest file completed
     const completedFile = await payload.findByID({ collection: "ingest-files", id: ingestFile.id });
     expect(completedFile.status).toBe("completed");
 
@@ -201,7 +200,6 @@ describe("Full Pipeline with Geocoding", () => {
     const datasetId =
       typeof importJobs.docs[0].dataset === "object" ? importJobs.docs[0].dataset.id : importJobs.docs[0].dataset;
 
-    // Verify events were created
     const events = await payload.find({ collection: "events", where: { dataset: { equals: datasetId } }, limit: 100 });
     expect(events.docs).toHaveLength(3);
 

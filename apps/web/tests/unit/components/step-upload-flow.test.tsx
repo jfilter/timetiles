@@ -291,7 +291,6 @@ describe("StepUpload", () => {
       const { container } = renderWithProviders(<StepUpload />);
       const urlInput = container.querySelector<HTMLInputElement>('input[type="url"]')!;
 
-      // Clear the pre-filled URL
       fireEvent.change(urlInput, { target: { value: "" } });
 
       const fetchButton = findFetchButton();

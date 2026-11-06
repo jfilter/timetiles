@@ -2,15 +2,13 @@
 /**
  * Regression tests for credential revocation on account deactivation.
  *
- * `isActive: false` used to be enforced ONLY in the `beforeLogin` hook, which runs in the
- * login operation and nowhere else. Everything already issued kept working:
+ * The `beforeLogin` hook runs only in the login operation, so `isActive: false` must also
+ * revoke what was already issued:
  *
- * - an existing session still authenticated every route, and `POST /api/users/refresh-token`
- *   (which does not run `beforeLogin`) re-stamped it and minted a fresh JWT indefinitely, so
- *   deactivation never actually took effect;
- * - an API key was worse — Payload's API-key strategy consults neither `isActive` nor
- *   sessions nor `beforeLogin`, so the key kept granting access under the account's original
- *   role even after a full account deletion.
+ * - existing sessions, which otherwise authenticate every route, and which
+ *   `POST /api/users/refresh-token` (no `beforeLogin`) would renew indefinitely;
+ * - API keys — Payload's API-key strategy consults neither `isActive` nor sessions nor
+ *   `beforeLogin`, so a key would keep the account's original role even after deletion.
  *
  * @module
  */
@@ -70,8 +68,8 @@ describe("Deactivated user credential revocation", () => {
 
     await testEnv.payload.update({ collection: "users", id: user.id, data: { isActive: false }, overrideAccess: true });
 
-    // Without this the already-issued token kept authenticating every route, and
-    // /api/users/refresh-token renewed it indefinitely.
+    // Otherwise the already-issued token keeps authenticating every route, and
+    // /api/users/refresh-token renews it indefinitely.
     expect(await countSessions(user.id)).toBe(0);
   });
 

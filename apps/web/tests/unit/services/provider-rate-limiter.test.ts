@@ -45,11 +45,9 @@ describe("ProviderRateLimiter", () => {
     });
 
     it("should preserve an active backoff when reconfigured", () => {
-      // Regression: the limiter is a process-wide singleton and every
-      // GeocodingService init calls configure(); replacing the state wiped an
-      // active 429 backoff and forked the serialization chain, bursting a
-      // provider that had just throttled us (multi-sheet imports init one
-      // service per sheet in parallel).
+      // Regression: the limiter is a process-wide singleton and every GeocodingService
+      // init calls configure(); that must not wipe an active 429 backoff or fork the
+      // serialization chain (multi-sheet imports init one service per sheet in parallel).
       const rateLimiter = new ProviderRateLimiter();
       rateLimiter.configure("test-provider", 1);
       rateLimiter.reportThrottle("test-provider", 10_000);
@@ -223,11 +221,9 @@ describe("ProviderRateLimiter", () => {
     });
 
     it("ignores a success reported while a backoff is still active", () => {
-      // Regression: batchGeocode runs BATCH_CONCURRENCY lookups at once, so a
-      // request already in flight when a sibling got a 429 lands *after* the
-      // throttle. Clearing the backoff on that stale success erased the
-      // throttle another request had just set and let the whole batch burst
-      // straight back into the provider that had asked us to stop.
+      // Regression: batchGeocode runs BATCH_CONCURRENCY lookups at once, so a success
+      // already in flight when a sibling got a 429 lands *after* the throttle and must
+      // not clear that backoff.
       const rateLimiter = new ProviderRateLimiter();
       rateLimiter.configure("test-provider", 10);
 
@@ -283,10 +279,8 @@ describe("ProviderRateLimiter", () => {
         secondResolved = true;
       })();
 
-      // Throttle reported AFTER both callers already entered waitForSlot. With
-      // the old pre-chain backoff check (a timestamp captured before joining),
-      // both would have skipped the backoff and resolved within ~10-20ms. The
-      // chained, re-read check forces them to wait the full window out.
+      // Throttle reported AFTER both callers entered waitForSlot; the backoff is
+      // re-read inside the chain, so both must wait the full window out.
       rateLimiter.reportThrottle("test-provider", 100); // 100ms backoff
 
       await new Promise((resolve) => setTimeout(resolve, 40));
@@ -331,7 +325,6 @@ describe("ProviderRateLimiter", () => {
       rateLimiter.reportThrottle("provider-a");
       rateLimiter.reportThrottle("provider-b");
 
-      // Reset only provider-a
       rateLimiter.reset("provider-a");
 
       // provider-a is reset (unconfigured now)

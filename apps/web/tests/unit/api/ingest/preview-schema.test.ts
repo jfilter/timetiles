@@ -229,7 +229,6 @@ describe("POST /api/ingest/preview-schema/upload", () => {
       expect(sheet.sampleData).toEqual([csvRow, csvRow, csvRow]);
       expect(sheet.rowCount).toBe(3);
 
-      // Verify suggested mappings were generated
       expect(sheet.suggestedMappings).toBeDefined();
       expect(sheet.suggestedMappings.language).toEqual({ code: "eng", confidence: 0.9 });
       expect(sheet.suggestedMappings.mappings.titlePath.path).toBe("title");
@@ -238,7 +237,6 @@ describe("POST /api/ingest/preview-schema/upload", () => {
       expect(sheet.suggestedMappings.mappings.longitudePath.path).toBe("lng");
       expect(sheet.suggestedMappings.mappings.locationPath.path).toBe("location");
 
-      // Verify file was written to temp directory
       expect(mocks.mockWriteFileSync).toHaveBeenCalled();
     });
 

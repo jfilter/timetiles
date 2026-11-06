@@ -35,7 +35,6 @@ export const getWorktreeId = (): string => {
       stdio: ["pipe", "pipe", "pipe"],
     }).trim();
 
-    // Create short hash of the path
     // MD5 is only a non-cryptographic identifier here.
     const hash = createHash("md5").update(worktreeRoot).digest("hex");
     return hash.slice(0, 5); // e.g., "a1b2c"

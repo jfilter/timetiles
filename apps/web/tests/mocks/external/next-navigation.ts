@@ -12,5 +12,4 @@ export const mockNextNavigation: any = {
   useSearchParams: vi.fn(() => new URLSearchParams()),
 };
 
-// Auto-mock next/navigation
 vi.mock("next/navigation", () => mockNextNavigation);

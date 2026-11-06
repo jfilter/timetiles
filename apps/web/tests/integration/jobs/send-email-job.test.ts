@@ -138,10 +138,8 @@ describe("Send Email Job", () => {
   });
 
   it("cancels malformed input (missing context) on first attempt and does not retry", async () => {
-    // Regression: send-email-job.ts:79 throws JobCancelledError when input
-    // is missing any required field. We assume Payload will halt retries
-    // on JobCancelledError; this test pins that contract — otherwise a
-    // permanently malformed payload would burn all 3 retry attempts.
+    // Regression: send-email-job throws JobCancelledError when input misses a required field; Payload
+    // must halt retries on it so a malformed payload does not burn all 3 attempts.
     const sendEmailSpy = vi.spyOn(payload, "sendEmail");
 
     // Bypass queueEmail's typed signature: queue the task directly with
@@ -163,14 +161,8 @@ describe("Send Email Job", () => {
     // SMTP was never called — validation fails first.
     expect(sendEmailSpy).not.toHaveBeenCalled();
 
-    // Payload honored JobCancelledError: job is marked failed, not queued
-    // for retry (no waitUntil set for backoff), and the error is flagged
-    // as cancelled rather than a transient failure awaiting retry.
-    //
-    // Fallback assertion (per task 4 note): we verify the halt contract
-    // via hasError/cancelled/waitUntil rather than Payload's internal
-    // totalTried counter, which is 0 when the handler cancels without
-    // incrementing the attempt budget.
+    // Payload honored JobCancelledError: the job is failed and cancelled, with no waitUntil backoff.
+    // totalTried stays 0 when the handler cancels, so it cannot show the halt.
     expect(failedJob.hasError).toBe(true);
     expect(failedJob.waitUntil).toBeNull();
     expect(failedJob.error).toMatchObject({
@@ -186,13 +178,8 @@ describe("Send Email Job", () => {
   });
 
   it("cancels unclassifiable SMTP errors via the default-terminal branch without retrying", async () => {
-    // Regression: the classifier in send-email-job.ts defaults to
-    // "terminal" for errors lacking a recognized responseCode or transport
-    // code. The assumption is that an unclassifiable error is almost
-    // always a programming bug (e.g. template rendering) rather than a
-    // transient network blip, so we cancel instead of burning retries.
-    // This test verifies Payload respects the JobCancelledError in that
-    // default path too.
+    // Regression: the classifier treats errors without a recognized responseCode or transport code as
+    // terminal (most likely a programming bug), and Payload must honor that cancel too.
     const unknownError = new Error("Unexpected template rendering failure");
     // No `code`, no `responseCode` — classifier falls through to
     // "terminal" by default.
@@ -217,8 +204,6 @@ describe("Send Email Job", () => {
     const failedJob = await payload.findByID({ collection: "payload-jobs", id: queuedJobId, overrideAccess: true });
 
     // One SMTP attempt, then JobCancelledError halts further retries.
-    // We verify halt via hasError/cancelled/waitUntil rather than
-    // Payload's internal totalTried counter.
     expect(sendEmailSpy).toHaveBeenCalledTimes(1);
     expect(failedJob.hasError).toBe(true);
     expect(failedJob.waitUntil).toBeNull();

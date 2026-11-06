@@ -250,7 +250,7 @@ describe("ingestFilesCleanupJob", () => {
   });
 
   it("clears legacy orphans when no rows reference any file (count 0)", async () => {
-    // The 1031-file scenario: all rows reclaimed already, only orphans remain.
+    // All rows already reclaimed, only orphans remain.
     setupFind({});
     mockPayload.count.mockResolvedValue({ totalDocs: 0 });
     mockReaddir.mockResolvedValue([dirent("a.csv"), dirent("b.csv"), dirent("c.csv")]);

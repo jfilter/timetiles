@@ -411,7 +411,7 @@ describe("database operations", () => {
       expect(listCall[1]).toEqual(["payload", "payload_migrations%"]);
 
       // Session-level SET: outside a transaction block SET LOCAL is a no-op,
-      // so the fail-fast lock timeout never actually applied.
+      // so the fail-fast lock timeout would never apply.
       expect(client.query).toHaveBeenCalledWith("SET lock_timeout = '10s'");
 
       const truncateCall = client.query.mock.calls[2]!;

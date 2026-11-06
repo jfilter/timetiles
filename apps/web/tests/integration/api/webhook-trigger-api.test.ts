@@ -33,7 +33,6 @@ describe("Webhook Trigger API Integration", () => {
   let testScheduledIngest: ScheduledIngest;
   let rateLimitService: RateLimitService;
 
-  // Helper function to call webhook endpoint
   const callWebhook = async (token: string, method: "POST" | "GET" = "POST"): Promise<Response> => {
     const request = new NextRequest(`http://localhost:3000/api/webhooks/trigger/${token}`, { method });
 
@@ -52,10 +51,8 @@ describe("Webhook Trigger API Integration", () => {
     payload = testEnv.payload;
     cleanup = testEnv.cleanup;
 
-    // Create a single rate limit service instance for tests
     rateLimitService = new RateLimitService(payload);
 
-    // Create base test data
     const { users } = await withUsers(testEnv, { webhookTestUser: { role: "admin", trustLevel: "5" } });
     testUser = users.webhookTestUser;
 
@@ -77,7 +74,6 @@ describe("Webhook Trigger API Integration", () => {
     // Re-apply spy each test (global afterEach restores all mocks)
     vi.spyOn(RateLimitModule, "getRateLimitService").mockReturnValue(rateLimitService);
 
-    // Create fresh scheduled ingest for each test
     const { scheduledIngest } = await withScheduledIngest(
       testEnv,
       testCatalog.id,
@@ -86,7 +82,6 @@ describe("Webhook Trigger API Integration", () => {
     );
     testScheduledIngest = scheduledIngest;
 
-    // Clear rate limits for clean test state
     await rateLimitService.resetRateLimit(`webhook:scheduled-ingest:${testScheduledIngest.id}:burst`);
     await rateLimitService.resetRateLimit(`webhook:scheduled-ingest:${testScheduledIngest.id}:hourly`);
     // Clear the pre-resolution per-IP guard too, so a fast run of many tests
@@ -159,7 +154,6 @@ describe("Webhook Trigger API Integration", () => {
         jobId: expect.any(String),
       });
 
-      // Job ID should be returned as a string
       expect(typeof data.jobId).toBe("string");
       expect(data.jobId.length).toBeGreaterThan(0);
     });
@@ -188,7 +182,6 @@ describe("Webhook Trigger API Integration", () => {
     });
 
     it("does not increment run statistics before the queued workflow completes", async () => {
-      // Set initial statistics
       await payload.update({
         collection: "scheduled-ingests",
         id: testScheduledIngest.id,
@@ -220,12 +213,10 @@ describe("Webhook Trigger API Integration", () => {
     });
 
     it("should handle populated relationships", async () => {
-      // Verify webhook works with populated relationships
       const response = await callWebhook(testScheduledIngest.webhookTokenPlaintext!);
       expect(response.status).toBe(200); // First check if request succeeded
       const data = await response.json();
 
-      // Verify the job was created successfully
       expect(data.jobId).toBeDefined();
     });
   });
@@ -247,10 +238,8 @@ describe("Webhook Trigger API Integration", () => {
         data: { webhookEnabled: false },
       });
 
-      // Re-fetch to get the cleared token state
       const updatedImport = await payload.findByID({ collection: "scheduled-ingests", id: testScheduledIngest.id });
 
-      // Token should be null after disabling webhook
       expect(updatedImport.webhookToken).toBeNull();
 
       // Using the old token should return 401 (no distinction from invalid token for security)
@@ -270,16 +259,13 @@ describe("Webhook Trigger API Integration", () => {
     });
 
     it("should skip when import is already running", async () => {
-      // Set import to running state
       const running = await payload.update({
         collection: "scheduled-ingests",
         id: testScheduledIngest.id,
         data: { lastStatus: "running", lastRun: new Date().toISOString() },
       });
 
-      // Use the plaintext captured at creation — webhook tokens are stored
-      // as SHA-256 hashes post-M1, so re-fetching the doc would only give
-      // us the hash. The plaintext is surfaced by the create response once,
+      // Webhook tokens are stored as SHA-256 hashes; only the create response surfaces the plaintext,
       // which is what a real client would have saved.
       const response = await callWebhook(testScheduledIngest.webhookTokenPlaintext ?? "");
 
@@ -305,7 +291,6 @@ describe("Webhook Trigger API Integration", () => {
     it("should handle deleted import gracefully", async () => {
       const webhookToken = testScheduledIngest.webhookTokenPlaintext;
 
-      // Delete the import
       await payload.delete({ collection: "scheduled-ingests", id: testScheduledIngest.id });
 
       const response = await callWebhook(webhookToken!);
@@ -318,7 +303,6 @@ describe("Webhook Trigger API Integration", () => {
 
   describe("Rate Limiting", () => {
     it("should enforce burst window (10 seconds)", async () => {
-      // First request succeeds
       const response1 = await callWebhook(testScheduledIngest.webhookTokenPlaintext!);
       expect(response1.status).toBe(200);
 
@@ -330,9 +314,8 @@ describe("Webhook Trigger API Integration", () => {
       expect(data2).toMatchObject({ success: false, error: "Rate limit exceeded", limitType: "burst" });
       expect(data2.message).toContain("10 seconds");
 
-      // Verify Retry-After header. Post-M7 the reset time is rounded up to
-      // the next 10-second bucket (so exact window boundaries don't leak),
-      // which adds up to ~10s on top of the raw window — cap at 20s.
+      // Retry-After: the reset time is rounded up to the next 10-second bucket (so exact window
+      // boundaries don't leak), adding up to ~10s on top of the raw window — cap at 20s.
       const retryAfter = response2.headers.get("Retry-After");
       expect(retryAfter).toBeDefined();
       expect(Number(retryAfter)).toBeGreaterThan(0);
@@ -369,7 +352,6 @@ describe("Webhook Trigger API Integration", () => {
     });
 
     it("should track rate limits per token", async () => {
-      // Create second import
       const import2 = await payload.create({
         collection: "scheduled-ingests",
         data: {
@@ -455,7 +437,6 @@ describe("Webhook Trigger API Integration", () => {
 
   describe("Execution History Management", () => {
     it("should not modify execution history at trigger time", async () => {
-      // Create initial history
       const initialHistory = Array.from({ length: 10 }, (_, i) => ({
         executedAt: new Date(Date.now() - i * 60000).toISOString(),
         status: "success" as const,
@@ -512,7 +493,6 @@ describe("Webhook Trigger API Integration", () => {
       const updatedImport = await payload.findByID({ collection: "scheduled-ingests", id: invalidImport.id });
 
       expect(updatedImport.lastStatus).toBe("running");
-      // Execution history should be empty since no job has completed yet
       expect(updatedImport.executionHistory ?? []).toHaveLength(0);
     });
   });

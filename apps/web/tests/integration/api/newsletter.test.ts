@@ -29,7 +29,6 @@ describe("/api/newsletter/subscribe", () => {
     testEnv = await createIntegrationTestEnvironment();
     payload = testEnv.payload;
 
-    // Create mock newsletter service server
     mockServer = new TestServer();
 
     // Track all requests received by mock server
@@ -48,7 +47,6 @@ describe("/api/newsletter/subscribe", () => {
           },
         });
 
-        // Return success response
         res.writeHead(200, { "Content-Type": "application/json" });
         res.end(JSON.stringify({ message: "Successfully subscribed!" }));
       });
@@ -74,7 +72,6 @@ describe("/api/newsletter/subscribe", () => {
   });
 
   beforeEach(() => {
-    // Clear received requests before each test
     requestsReceived = [];
     // Reset rate limit service to ensure clean state
     resetRateLimitService();
@@ -94,7 +91,6 @@ describe("/api/newsletter/subscribe", () => {
     const response = await POST(request, {} as any);
     const data = await response.json();
 
-    // Verify API response
     expect(response.status).toBe(200);
     expect(data.message).toContain("subscribed");
 
@@ -131,7 +127,6 @@ describe("/api/newsletter/subscribe", () => {
       // Verify NO HTTP call was made (validation happens first)
       expect(requestsReceived).toHaveLength(0);
 
-      // Reset for next iteration
       requestsReceived = [];
     }
   });
@@ -163,7 +158,6 @@ describe("/api/newsletter/subscribe", () => {
       results.push({ email, status: response.status, data, retryAfter: response.headers.get("Retry-After") });
     }
 
-    // First request should succeed
     expect(results[0]?.status).toBe(200);
 
     // Second and third requests should be rate limited (burst limit: 1 per 10 seconds)

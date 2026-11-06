@@ -12,7 +12,6 @@
 import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-// Mock the query hooks
 vi.mock("@/lib/hooks/use-events-queries", () => ({
   useFullHistogramQuery: vi.fn(),
   useHistogramQuery: vi.fn(() => ({
@@ -160,7 +159,7 @@ describe("useTimeRangeSlider", () => {
     });
 
     // The date params are plain strings in the URL, so a shared or hand-edited
-    // link can carry anything. NaN positions rendered as `left: NaN%`.
+    // link can carry anything; positions must never render as `left: NaN%`.
     it("falls back to the track ends for an unparseable date param", () => {
       const { result } = setupWithRange("garbage", "also-garbage");
 
@@ -177,8 +176,8 @@ describe("useTimeRangeSlider", () => {
       expect(result.current.isBarInRange(bar.date, bar.dateEnd)).toBe(true);
     });
 
-    // The opposite bound is read back when a handle moves. Left unguarded, an
-    // unparseable value made the comparison false and froze the other handle.
+    // The opposite bound is read back when a handle moves; an unparseable value
+    // must not make that comparison false and freeze the other handle.
     it("still lets the start handle move when the end param is unparseable", () => {
       const onStartDateChange = vi.fn();
       const histogram = makeHistogram([

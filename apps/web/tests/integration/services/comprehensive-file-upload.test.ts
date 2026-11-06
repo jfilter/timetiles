@@ -126,7 +126,6 @@ describe("Comprehensive File Upload Tests", () => {
           return;
         }
 
-        // Log progress every 10 iterations
         const jobs = await payload.find({ collection: "ingest-jobs", where: { ingestFile: { equals: ingestFileId } } });
         logger.debug(
           `Iteration ${iteration}: File status=${ingestFile.status}, Jobs:`,
@@ -151,7 +150,7 @@ describe("Comprehensive File Upload Tests", () => {
   };
 
   const simulateSchemaApproval = async (ingestJobId: string, approved: boolean) => {
-    // Create a test user for approval if approved is true
+    // Approvals run as approverUser; rejections run without a user
     let testUser = null;
     let testUserId = null;
     if (approved) {
@@ -159,7 +158,6 @@ describe("Comprehensive File Upload Tests", () => {
       testUserId = testUser.id;
     }
 
-    // Get the current job
     const beforeJob = await payload.findByID({ collection: "ingest-jobs", id: ingestJobId });
 
     logger.debug("Job before approval:", JSON.stringify(beforeJob.schemaValidation, null, 2));
@@ -190,7 +188,6 @@ describe("Comprehensive File Upload Tests", () => {
 
       logger.debug(`✓ Using cached fixture buffer (${multiSheetFixture.length} bytes)`);
 
-      // Use the helper function that properly handles file uploads
       const { ingestFile } = await withIngestFile(testEnv, Number.parseInt(testCatalogId, 10), multiSheetFixture, {
         filename: fileName,
         mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -202,10 +199,8 @@ describe("Comprehensive File Upload Tests", () => {
 
       logger.debug(`✓ Created Excel import file: ${ingestFile.id}`);
 
-      // Run jobs until completion
       const completed = await runJobsUntilComplete(ingestFile.id);
 
-      // Check the final status and debug if needed
       const finalIngestFile = await payload.findByID({ collection: "ingest-files", id: ingestFile.id });
 
       // Verify multiple import jobs were created (one per sheet)
@@ -229,7 +224,6 @@ describe("Comprehensive File Upload Tests", () => {
       expect(importJobs.docs.map((job: IngestJob) => job.sheetIndex).toSorted(), diagnostics).toEqual([0, 1, 2]);
       logger.debug(`✓ Created ${importJobs.docs.length} import jobs for sheets`);
 
-      // Verify jobs completed
       importJobs.docs.forEach((job: IngestJob) => {
         expect(job.stage, diagnostics).toBe(PROCESSING_STAGE.COMPLETED);
       });
@@ -250,7 +244,6 @@ describe("Comprehensive File Upload Tests", () => {
 
       logger.debug(`✓ Using cached ODS fixture buffer (${odsFixture.length} bytes)`);
 
-      // Use the helper function that properly handles file uploads
       const { ingestFile } = await withIngestFile(testEnv, Number.parseInt(testCatalogId, 10), odsFixture, {
         filename: fileName,
         mimeType: "application/vnd.oasis.opendocument.spreadsheet",
@@ -262,13 +255,10 @@ describe("Comprehensive File Upload Tests", () => {
 
       logger.debug(`✓ Created ODS import file: ${ingestFile.id}`);
 
-      // Run jobs until completion
       const completed = await runJobsUntilComplete(ingestFile.id);
 
-      // Check the final status
       const finalIngestFile = await payload.findByID({ collection: "ingest-files", id: ingestFile.id });
 
-      // Verify import jobs were created
       const importJobs = await payload.find({
         collection: "ingest-jobs",
         where: { ingestFile: { equals: ingestFile.id } },
@@ -283,7 +273,6 @@ describe("Comprehensive File Upload Tests", () => {
       expect(importJobs.docs).toHaveLength(1); // ODS file has one sheet
       logger.debug(`✓ Created ${importJobs.docs.length} import job for ODS sheet`);
 
-      // Verify jobs completed
       importJobs.docs.forEach((job: any) => {
         expect(job.stage).toBe(PROCESSING_STAGE.COMPLETED);
       });
@@ -375,7 +364,6 @@ describe("Comprehensive File Upload Tests", () => {
     it("should require approval for locked dataset schema", async () => {
       logger.info("Testing schema approval requirement...");
 
-      // Create dataset with locked schema
       const dataset = await createDatasetWithSchemaConfig({
         locked: true,
         autoGrow: false,
@@ -395,7 +383,6 @@ describe("Comprehensive File Upload Tests", () => {
           triggerWorkflow: true,
         });
 
-        // Verify job is waiting for approval
         const job = await waitForIngestJobStage(ingestFile.id, PROCESSING_STAGE.NEEDS_REVIEW, 30);
 
         const finalJobs = await getIngestJobs(ingestFile.id);
@@ -413,7 +400,6 @@ describe("Comprehensive File Upload Tests", () => {
     it("should continue processing after schema approval", async () => {
       logger.info("Testing schema approval and continuation...");
 
-      // Create dataset requiring approval
       const dataset = await createDatasetWithSchemaConfig({
         locked: false,
         autoGrow: true,
@@ -431,11 +417,10 @@ describe("Comprehensive File Upload Tests", () => {
           triggerWorkflow: true,
         });
 
-        // Get the job requiring approval
         const job = await waitForIngestJobStage(ingestFile.id, PROCESSING_STAGE.NEEDS_REVIEW, 30);
         expect(job.stage).toBe(PROCESSING_STAGE.NEEDS_REVIEW);
 
-        // Approve the schema (this now properly triggers the approval workflow)
+        // Approval lets the workflow continue past NEEDS_REVIEW
         await simulateSchemaApproval(String(job.id), true);
         logger.debug("✓ Schema approval update sent");
 
@@ -451,11 +436,9 @@ describe("Comprehensive File Upload Tests", () => {
           schemaVersionId: resumedJob.ingestJob?.datasetSchemaVersion,
         });
 
-        // Continue processing until completion
         const finalCompleted = await runJobsUntilComplete(ingestFile.id, 100);
         expect(finalCompleted).toBe(true);
 
-        // Verify completion
         const finalIngestFile = await payload.findByID({ collection: "ingest-files", id: ingestFile.id });
         expect(finalIngestFile.status).toBe("completed");
 
@@ -472,7 +455,6 @@ describe("Comprehensive File Upload Tests", () => {
     it("should auto-approve non-breaking schema changes", async () => {
       logger.info("Testing schema auto-approval...");
 
-      // Create dataset with auto-approval enabled
       const dataset = await createDatasetWithSchemaConfig({
         locked: false,
         autoGrow: true,
@@ -503,7 +485,6 @@ describe("Comprehensive File Upload Tests", () => {
       expect(job.stage).toBe(PROCESSING_STAGE.COMPLETED);
       expect(job.schemaValidation?.requiresApproval).toBe(false);
 
-      // Verify final status
       const finalIngestFile = await payload.findByID({ collection: "ingest-files", id: ingestFile.id });
       expect(finalIngestFile.status).toBe("completed");
 
@@ -513,7 +494,6 @@ describe("Comprehensive File Upload Tests", () => {
     it("should handle schema rejection properly", async () => {
       logger.info("Testing schema rejection...");
 
-      // Create dataset requiring approval
       const dataset = await createDatasetWithSchemaConfig({ locked: true, autoApproveNonBreaking: false });
 
       const csvContent = `title,date,location,rejected_field
@@ -535,7 +515,6 @@ describe("Comprehensive File Upload Tests", () => {
         // Continue processing (should fail)
         await payload.jobs.run({ allQueues: true, limit: 10 });
 
-        // Verify job failed
         const rejectedJob = await payload.findByID({ collection: "ingest-jobs", id: job.id });
 
         // Should still be awaiting approval or failed
@@ -593,7 +572,6 @@ describe("Comprehensive File Upload Tests", () => {
         expect(events.docs).toHaveLength(50);
         logger.debug(`✓ Successfully processed ${events.docs.length} events`);
 
-        // Verify final status
         const finalIngestFile = await payload.findByID({ collection: "ingest-files", id: ingestFile.id });
         expect(finalIngestFile.status).toBe("completed");
 

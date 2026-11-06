@@ -33,7 +33,6 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  // Reset store between tests
   useWizardStore.setState({ ...initialState, _initialized: false, _savedAt: 0 });
   vi.restoreAllMocks();
 });

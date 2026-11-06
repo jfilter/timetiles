@@ -15,8 +15,7 @@ import { compareSchemas } from "@/lib/services/schema-builder/schema-comparison"
 
 describe("compareSchemas — nested objects", () => {
   // Detected schemas are nested, not flattened to dot paths. Comparing only the top level
-  // saw a changed child as an unchanged `object` on both sides, so a breaking nested change
-  // produced zero changes and auto-approved.
+  // would see a changed child as an unchanged `object` and auto-approve a breaking change.
   const nested = (child: Record<string, SchemaProperty>, required: string[] = []): SchemaProperty => ({
     type: "object",
     properties: { user: { type: "object", properties: child, required } },
@@ -122,9 +121,8 @@ describe("compareSchemas — nested objects", () => {
 });
 
 // A properties bag is a plain object keyed by source column names, so a column
-// called "toString" or "constructor" hits Object.prototype. With a truthiness
-// membership check every change to such a field vanished from the diff — a
-// removed required column would have been auto-approved.
+// called "toString" or "constructor" hits Object.prototype. A truthiness membership
+// check would drop such fields from the diff and auto-approve their removal.
 describe("compareSchemas — columns named like Object.prototype members", () => {
   const flat = (props: Record<string, SchemaProperty>, required: string[] = []): SchemaProperty => ({
     type: "object",

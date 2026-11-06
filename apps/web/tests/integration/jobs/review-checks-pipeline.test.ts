@@ -245,11 +245,8 @@ describe("Review Checks Pipeline", () => {
   });
 
   it("should NOT pause for ambiguous-date-order under the best-effort dataset policy (guesses per row)", async () => {
-    // Same ambiguous-date CSV as the strict gate test above, but routed to a
-    // pre-created dataset whose sticky policy is best-effort (ADR 0040). The
-    // ambiguous-order gate is suppressed and the parser guesses day/month per row
-    // (inferDayMonthOrder) instead of pausing — the explicit opt-in to per-row
-    // resolution. Contrast with the strict default, which pauses for review.
+    // Same ambiguous-date CSV as the strict gate test above, but on a pre-created best-effort dataset
+    // (ADR 0040): the gate is suppressed and inferDayMonthOrder guesses day/month per row.
     const { dataset } = await withDataset(testEnv, Number.parseInt(testCatalogId, 10), {
       name: "Best-effort ambiguous dates",
       // Match the auto-created-dataset schema policy so the first import's schema
@@ -284,13 +281,9 @@ describe("Review Checks Pipeline", () => {
   });
 
   it("should pause for ambiguous-date-order when the paired heuristic infers an undecided date column", async () => {
-    // The primary detector misses the date columns (`opens_on`/`closes_on` match
-    // no timestamp pattern), so the paired-date heuristic infers them instead.
-    // Every value has both parts ≤ 12, so the re-derived order is "ambiguous".
-    // Without re-deriving order on the heuristic path the column would keep
-    // `timestampOrder === null`, the gate would not fire, and the rows would reach
-    // create-events with no explicit order. A location column is present so the
-    // no-location gate (which runs first) does not fire.
+    // The primary detector misses `opens_on`/`closes_on`, so the paired-date heuristic infers them; every
+    // value has both parts ≤ 12, so the re-derived order must be "ambiguous" and the gate must fire.
+    // A location column keeps the no-location gate (which runs first) quiet.
     const csvContent = [
       "name,opens_on,closes_on,location",
       "A,01/02/2024,03/02/2024,Berlin",

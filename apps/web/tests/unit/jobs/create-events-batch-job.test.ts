@@ -10,7 +10,6 @@ import { createEventsBatchJob } from "@/lib/jobs/handlers/create-events-batch-jo
 import type { JobHandlerContext } from "@/lib/jobs/utils/job-context";
 import { createMockContext, createMockIngestFile, createMockIngestJob } from "@/tests/setup/factories";
 
-// Use vi.hoisted to create mocks that can be used in vi.mock factories
 const mocks = vi.hoisted(() => {
   return {
     streamBatchesFromFile: vi.fn(),
@@ -28,13 +27,12 @@ const mocks = vi.hoisted(() => {
   };
 });
 
-// Mock external dependencies
 vi.mock("@/lib/ingest/file-readers", () => ({
   streamBatchesFromFile: mocks.streamBatchesFromFile,
   cleanupSidecarFiles: mocks.cleanupSidecarFiles,
 }));
 
-// The handler now serializes every import on the per-dataset lease; stub it to a
+// The handler serializes every import on the per-dataset lease; stub it to a
 // no-op (its real behavior is covered in tests/integration/database/dataset-import-lock).
 vi.mock("@/lib/database/dataset-import-lock", () => ({
   acquireDatasetImportLease: vi.fn(() => Promise.resolve({ release: vi.fn() })),
@@ -149,17 +147,15 @@ describe("CreateEventsBatchJob Handler", () => {
   let drizzleMock: ReturnType<typeof createDrizzleMock>;
 
   beforeEach(() => {
-    // Reset all mocks
     vi.clearAllMocks();
 
-    // Setup ProgressTrackingService mocks to return resolved promises
     mocks.startStage.mockResolvedValue(undefined);
     mocks.updateStageProgress.mockResolvedValue(undefined);
     mocks.updateAndCompleteBatch.mockResolvedValue(undefined);
     mocks.completeBatch.mockResolvedValue(undefined);
     mocks.completeStage.mockResolvedValue(undefined);
 
-    // Default mock for bulkInsertEvents: commit every event, no failures, no conflicts.
+    // Default: commit every event, no failures, no conflicts.
     // eslint-disable-next-line @typescript-eslint/require-await
     mocks.bulkInsertEvents.mockImplementation(async (_payload: unknown, events: unknown[]) => ({
       created: events.length,
@@ -167,14 +163,12 @@ describe("CreateEventsBatchJob Handler", () => {
       conflicts: [],
     }));
 
-    // Default mock for extractDenormalizedAccessFields
     // null, not undefined — the real helper never returns undefined, and Payload
     // would drop an undefined owner from the write.
     mocks.extractDenormalizedAccessFields.mockReturnValue({ datasetIsPublic: false, catalogOwnerId: null });
 
     drizzleMock = createDrizzleMock();
 
-    // Mock payload
     mockPayload = {
       findByID: vi.fn(),
       find: vi.fn(),
@@ -188,10 +182,8 @@ describe("CreateEventsBatchJob Handler", () => {
       db: { drizzle: drizzleMock, beginTransaction: vi.fn().mockResolvedValue(null) },
     };
 
-    // By default, cleanupPriorAttempt finds no events (select returns [])
-    // — no enqueue needed since the default is already []
+    // cleanupPriorAttempt finds no events by default (select returns [])
 
-    // Mock context — no batchNumber needed
     mockContext = createMockContext(mockPayload, { ingestJobId: "import-123" });
   });
 
@@ -234,26 +226,22 @@ describe("CreateEventsBatchJob Handler", () => {
     });
 
     it("should create events successfully from streamed data", async () => {
-      // Mock import job - needs to be mutable to track updates (using const with Object.assign)
+      // Mutable so the update mock can track changes
       const mockIngestJob: any = createMockIngestJob({
         progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
         overrides: { duplicates: { internal: [], external: [], summary: { uniqueRows: 2 } } },
       });
 
-      // Mock dataset
       const mockDataset = { id: "dataset-456", idStrategy: { type: "external", externalIdPath: "id" } };
 
-      // Mock import file
       const mockIngestFile = createMockIngestFile();
 
-      // Mock file data
       const mockFileData = [
         { id: "1", title: "Event 1", address: "123 Main St" },
         { id: "2", title: "Event 2", address: "456 Oak Ave" },
       ];
 
-      // Setup mocks - findByID will be called multiple times by ProgressTrackingService
-      // update mock should update the mockIngestJob
+      // The update mock writes changes back into mockIngestJob
       mockPayload.update.mockImplementation(({ collection, data }: any) => {
         if (collection === "ingest-jobs") {
           Object.assign(mockIngestJob, data);
@@ -280,19 +268,16 @@ describe("CreateEventsBatchJob Handler", () => {
       // Mock find for updateIngestFileStatusIfAllJobsComplete - no pending jobs
       mockPayload.find.mockResolvedValue({ docs: [] });
 
-      // Execute job
       const result = await createEventsBatchJob.handler(mockContext);
 
-      // Verify result — workflow-compatible output format
       expect(result).toEqual({ output: { needsReview: false, eventCount: 2, duplicatesSkipped: 0 } });
 
-      // Verify streaming was used
       expect(mocks.streamBatchesFromFile).toHaveBeenCalledWith("/mock/ingest-files/test.csv", {
         sheetIndex: 0,
         batchSize: expect.any(Number),
       });
 
-      // Verify events were bulk-inserted (not created individually)
+      // Bulk-inserted, not created individually
       expect(mocks.bulkInsertEvents).toHaveBeenCalledTimes(1);
       const insertedEvents = getBulkInsertedEvents();
       expect(insertedEvents).toHaveLength(2);
@@ -304,10 +289,8 @@ describe("CreateEventsBatchJob Handler", () => {
         })
       );
 
-      // Verify progress tracking service was called (updates happen via ProgressTrackingService)
       expect(mockPayload.update).toHaveBeenCalled();
 
-      // Verify no batch queuing (single job)
       expect(mockPayload.jobs.queue).not.toHaveBeenCalled();
     });
 
@@ -350,7 +333,6 @@ describe("CreateEventsBatchJob Handler", () => {
     });
 
     it("should skip duplicate rows identified in previous stage", async () => {
-      // Mock import job with duplicates
       const mockIngestJob = createMockIngestJob({
         progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
         overrides: {
@@ -366,7 +348,7 @@ describe("CreateEventsBatchJob Handler", () => {
 
       const mockIngestFile = createMockIngestFile();
 
-      // Mock file data (3 rows, but 2 are duplicates)
+      // 3 rows, 2 of them duplicates
       const mockFileData = [
         { id: "1", title: "Event 1" }, // Will be created
         { id: "2", title: "Event 2" }, // Internal duplicate - skip
@@ -408,7 +390,6 @@ describe("CreateEventsBatchJob Handler", () => {
       expect(mocks.bulkInsertEvents).toHaveBeenCalledTimes(1);
       expect(getBulkInsertedEvents()).toHaveLength(1);
 
-      // Verify progress tracking service was called (updates happen via ProgressTrackingService)
       expect(mockPayload.update).toHaveBeenCalled();
     });
 
@@ -439,7 +420,6 @@ describe("CreateEventsBatchJob Handler", () => {
       ];
       mocks.streamBatchesFromFile.mockReturnValueOnce(mockAsyncGenerator([batch1, batch2]));
 
-      // Mock unique ID generation for all rows
       mocks.generateUniqueId.mockImplementation((row: any) => `dataset-456:ext:${row.id}`);
       mocks.getIngestGeocodingResults.mockReturnValue(new Map());
       mocks.getGeocodingResultForRow.mockReturnValue(null);
@@ -449,7 +429,6 @@ describe("CreateEventsBatchJob Handler", () => {
 
       const result = await createEventsBatchJob.handler(mockContext);
 
-      // Should indicate all batches processed
       expect(result).toEqual({ output: { needsReview: false, eventCount: 4, duplicatesSkipped: 0 } });
 
       // Should bulk-insert events in 2 batches (2 events each)
@@ -503,7 +482,7 @@ describe("CreateEventsBatchJob Handler", () => {
 
       await createEventsBatchJob.handler(mockContext);
 
-      // Should store results (stage transition moved to onSuccess callback)
+      // Stores results; the stage transition happens in the onSuccess callback
       expect(mockPayload.update).toHaveBeenCalledWith({
         collection: "ingest-jobs",
         id: "import-123",
@@ -662,12 +641,10 @@ describe("CreateEventsBatchJob Handler", () => {
 
       const result = await createEventsBatchJob.handler(mockContext);
 
-      // Verify chunked delete was called (Drizzle typed API, not payload.delete)
       // 2 selects (first finds rows, second finds none) + 2 deletes (versions + events)
       expect(drizzleMock.select).toHaveBeenCalledTimes(2);
       expect(drizzleMock.delete).toHaveBeenCalledTimes(2);
 
-      // Verify the handler continued normally and produced a result
       expect(result).toEqual({ output: { needsReview: false, eventCount: 1, duplicatesSkipped: 0 } });
     });
   });
@@ -750,7 +727,6 @@ describe("CreateEventsBatchJob Handler", () => {
 
       const mockDataset = { id: "dataset-456", idStrategy: { type: "external", externalIdPath: "id" } };
       const mockIngestFile = createMockIngestFile();
-      // Add user for quota check path
       (mockIngestFile as any).user = { id: "user-1", role: "user" };
 
       mockPayload.findByID.mockImplementation(({ collection }: { collection: string }) => {
@@ -772,10 +748,9 @@ describe("CreateEventsBatchJob Handler", () => {
       // Should succeed — quota checks uniqueRows (50), not totalRows (1000)
       await createEventsBatchJob.handler(mockContext);
 
-      // Verify startStage was called with totalRows (1000) for progress tracking
+      // startStage uses totalRows (1000) for progress tracking
       expect(mocks.startStage).toHaveBeenCalledWith(mockPayload, "import-123", "create-events", 1000);
 
-      // Verify quota was checked with uniqueRows (50), not totalRows (1000)
       expect(mockCheckQuota).toHaveBeenCalledWith(
         expect.objectContaining({ id: "user-1" }),
         expect.any(String), // "EVENTS_PER_IMPORT"
@@ -810,7 +785,6 @@ describe("CreateEventsBatchJob Handler", () => {
       // Mock find for updateIngestFileStatusIfAllJobsComplete
       mockPayload.find.mockResolvedValue({ docs: [] });
 
-      // Mock empty stream
       mocks.streamBatchesFromFile.mockReturnValueOnce(mockAsyncGenerator([]));
       mocks.getIngestGeocodingResults.mockReturnValue(new Map());
 
@@ -818,7 +792,7 @@ describe("CreateEventsBatchJob Handler", () => {
 
       expect(result).toEqual({ output: { needsReview: false, eventCount: 0, duplicatesSkipped: 0 } });
 
-      // Should store results (stage transition moved to onSuccess callback)
+      // Stores results; the stage transition happens in the onSuccess callback
       expect(mockPayload.update).toHaveBeenCalledWith({
         collection: "ingest-jobs",
         id: "import-123",
@@ -935,7 +909,6 @@ describe("CreateEventsBatchJob Handler", () => {
 
       await createEventsBatchJob.handler(mockContext);
 
-      // Verify transformation was applied via bulk insert
       const insertedEvents = getBulkInsertedEvents();
       expect(insertedEvents[0]).toEqual(
         expect.objectContaining({

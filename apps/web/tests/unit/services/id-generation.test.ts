@@ -165,10 +165,8 @@ describe("id-generation", () => {
       });
 
       it("uses a locale-independent key sort so the hash is stable across environments", () => {
-        // Regression: content-hash keys were sorted with String.prototype.localeCompare,
-        // whose ordering depends on the runtime locale/ICU. The same row could then hash
-        // differently on different machines, silently breaking dedup. The hash must not
-        // depend on localeCompare at all.
+        // Regression: content-hash key order must not depend on localeCompare (runtime
+        // locale/ICU), or the same row hashes differently per machine and breaks dedup.
         const data = { id: 1, _id: 2, Zebra: 3, apple: 4, "user.name": 5 };
 
         const before = generateEventId(data, mockDataset as Dataset).uniqueId;

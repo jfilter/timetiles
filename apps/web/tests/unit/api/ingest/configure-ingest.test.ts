@@ -53,11 +53,8 @@ vi.mock("@/lib/services/feature-flag-service", () => ({
 // Short-circuit it so the actual handler logic (validation, quota, etc.) runs.
 vi.mock("@/lib/middleware/rate-limit", () => ({ checkRateLimit: vi.fn(() => Promise.resolve(null)) }));
 
-// Field-path validation re-parses the preview file. The tests mock fs without
-// providing a real CSV body, so stub `parseFileSheets` to return headers that
-// cover the fields referenced by `baseFieldMapping`. The fields that can be
-// referenced are explicitly those — any test that wants to assert validation
-// rejects an invalid path can override this mock in-test.
+// Field-path validation re-parses the preview file, but fs is mocked without a CSV
+// body: return headers covering `baseFieldMapping`; override in-test to test rejection.
 vi.mock("@/app/api/ingest/preview-schema/helpers", () => ({
   parseFileSheets: vi.fn(() =>
     Promise.resolve([
@@ -164,9 +161,7 @@ const setupPreviewMetadata = (meta: Record<string, unknown> | null) => {
     mocks.mockExistsSync.mockReturnValue(false);
     return;
   }
-  // First call: existsSync for meta file (in loadPreviewMetadata)
-  // Second call: existsSync for actual file (in validateRequest)
-  // Third call: existsSync for cleanup
+  // existsSync is consulted for the meta file, the data file and during cleanup
   mocks.mockExistsSync.mockReturnValue(true);
   // eslint-disable-next-line sonarjs/function-return-type
   mocks.mockReadFileSync.mockImplementation((filePath: string) => {
@@ -184,19 +179,16 @@ describe("POST /api/ingest/configure", () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    // Default: Payload returns mock instance
     mocks.mockGetPayload.mockResolvedValue(mocks.mockPayload);
 
-    // Default: auth returns the default user
     mocks.mockPayload.auth.mockResolvedValue({ user: mockUser });
 
-    // Default: create returns objects with incrementing IDs
     let createId = 100;
     // oxlint-disable-next-line promise/prefer-await-to-then
     mocks.mockPayload.create.mockResolvedValue({ id: createId++ });
     mocks.mockPayload.update.mockResolvedValue({ id: 1 });
 
-    // Default: catalog ownership check passes (Bug 13)
+    // Default: catalog ownership check passes
     mocks.mockPayload.find.mockResolvedValue({ docs: [{ id: 1 }], totalDocs: 1 });
 
     // Default: the targeted dataset lives in the (ownership-checked) request catalog
@@ -205,13 +197,10 @@ describe("POST /api/ingest/configure", () => {
     // Default: dataset has no events (so idStrategy updates proceed)
     mocks.mockPayload.count.mockResolvedValue({ totalDocs: 0 });
 
-    // Default: quota check passes (Bug 15)
     mocks.mockValidateQuota.mockResolvedValue(undefined);
 
-    // Default: import creation feature flag is enabled
     mocks.mockIsFeatureEnabled.mockResolvedValue(true);
 
-    // Default: preview metadata exists and is valid
     setupPreviewMetadata(basePreviewMeta);
   });
 
@@ -356,7 +345,6 @@ describe("POST /api/ingest/configure", () => {
 
       expect(response.status).toBe(200);
 
-      // Verify catalog was created
       expect(mocks.mockPayload.create).toHaveBeenCalledWith(
         expect.objectContaining({
           collection: "catalogs",
@@ -439,7 +427,6 @@ describe("POST /api/ingest/configure", () => {
 
       await POST(req, routeContext);
 
-      // Verify that req was passed to the dataset create call
       const datasetCreateCalls = mocks.mockPayload.create.mock.calls.filter(
         (call: unknown[]) => (call[0] as Record<string, unknown>).collection === "datasets"
       );
@@ -452,7 +439,6 @@ describe("POST /api/ingest/configure", () => {
 
       await POST(req, routeContext);
 
-      // Verify that req was passed to the dataset update call
       const datasetUpdateCalls = mocks.mockPayload.update.mock.calls.filter(
         (call: unknown[]) => (call[0] as Record<string, unknown>).collection === "datasets"
       );
@@ -543,7 +529,6 @@ describe("POST /api/ingest/configure", () => {
       expect(typeof body.datasets).toBe("object");
       expect(body.datasets).not.toBeNull();
 
-      // Verify import file creation
       expect(mocks.mockPayload.create).toHaveBeenCalledWith(
         expect.objectContaining({
           collection: "ingest-files",
@@ -561,7 +546,6 @@ describe("POST /api/ingest/configure", () => {
         })
       );
 
-      // Verify cleanup was called (Bug 26: should clean up data files too)
       expect(mocks.mockUnlinkSync).toHaveBeenCalled();
     });
   });
@@ -641,7 +625,6 @@ describe("POST /api/ingest/configure", () => {
 
         expect(body.scheduledIngestId).toBeDefined();
 
-        // Verify scheduled ingest was created
         expect(mocks.mockPayload.create).toHaveBeenCalledWith(
           expect.objectContaining({
             collection: "scheduled-ingests",
@@ -658,7 +641,6 @@ describe("POST /api/ingest/configure", () => {
           })
         );
 
-        // Verify dataset schema config was updated for schedule
         expect(mocks.mockPayload.update).toHaveBeenCalledWith(
           expect.objectContaining({
             collection: "datasets",
@@ -685,12 +667,10 @@ describe("POST /api/ingest/configure", () => {
 
       await POST(req, routeContext);
 
-      // Verify quota was checked
       expect(mocks.mockValidateQuota).toHaveBeenCalledWith(expect.objectContaining({ id: 1 }), "ACTIVE_SCHEDULES", 1);
     });
 
     it("should return 429 when scheduled ingest quota is exceeded (Bug 15)", async () => {
-      // Import the mock QuotaExceededError from the mocked module
       const { QuotaExceededError } = await import("@/lib/services/quota-service");
       mocks.mockValidateQuota.mockRejectedValue(new QuotaExceededError("ACTIVE_SCHEDULES", 5, 5));
 
@@ -722,7 +702,6 @@ describe("POST /api/ingest/configure", () => {
       expect(response.status).toBe(200);
       expect(body.scheduledIngestId).toBeUndefined();
 
-      // Verify scheduled-ingests was NOT called
       const scheduledIngestCalls = mocks.mockPayload.create.mock.calls.filter(
         (call: unknown[]) => (call[0] as Record<string, unknown>).collection === "scheduled-ingests"
       );
@@ -779,10 +758,8 @@ describe("POST /api/ingest/configure", () => {
 
       await POST(req, routeContext);
 
-      // Flexible shares the dataset-fallback shape with additive — see
-      // translateSchemaMode docs and ingest-configure-service.test.ts.
-      // The mode-specific permissiveness (auto-approve high-confidence
-      // transforms) lives in evaluateSchemaMode, not in this fallback.
+      // Flexible shares the dataset-fallback shape with additive; its extra
+      // permissiveness lives in evaluateSchemaMode, not in this fallback.
       expect(mocks.mockPayload.update).toHaveBeenCalledWith(
         expect.objectContaining({
           collection: "datasets",

@@ -83,7 +83,7 @@ describe("events beforeChange — target dataset ownership", () => {
     expect(result.catalogOwnerId).toBe(OTHER_OWNER_ID);
   });
 
-  // Skipping derivation for a missing dataset kept the row's previous catalogOwnerId/datasetIsPublic,
+  // Skipping derivation for a missing dataset would keep the row's previous catalogOwnerId/datasetIsPublic,
   // leaving the former owner with read access to an event that had moved on.
   it("fails the write when the target dataset cannot be resolved", async () => {
     ownershipMocks.safeFetchRecord.mockResolvedValue(null);

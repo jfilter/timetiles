@@ -229,9 +229,7 @@ describe("Transform detection", () => {
   });
 
   // "string" and ["string","null"] must score as the SAME type, so making a column
-  // nullable never costs a rename its suggestion. The previous version of this test
-  // used a name pair that scores below the 70-point threshold either way and hid the
-  // whole assertion behind `if (suggestion)`, so it proved nothing.
+  // nullable never costs a rename its suggestion.
   it("treats a nullable type as compatible with its base type", () => {
     const oldSchema = { type: "object", properties: { Date: { type: "string" } } };
     const nullableSchema = { type: "object", properties: { date: { type: ["string", "null"] } } };

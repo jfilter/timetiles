@@ -5,7 +5,6 @@
 import type { BasePayload } from "payload";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-// Use vi.hoisted to ensure mock functions are available when vi.mock runs
 const { mockLoggerInfo, mockLoggerWarn, mockLoggerError, mockLoggerDebug, mockLogError } = vi.hoisted(() => ({
   mockLoggerInfo: vi.fn(),
   mockLoggerWarn: vi.fn(),
@@ -48,7 +47,6 @@ describe("Cleanup Stuck scheduled ingests Job", () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    // Mock payload
     mockPayload = { find: vi.fn(), update: vi.fn(), jobs: { cancel: vi.fn().mockResolvedValue(undefined) } };
 
     mockJob = { id: "job-1", input: {} };
@@ -205,7 +203,6 @@ describe("Cleanup Stuck scheduled ingests Job", () => {
 
       mockPayload.find.mockResolvedValueOnce({ docs: stuckImports, totalDocs: 2 }).mockResolvedValue(NO_ACTIVE_JOBS);
 
-      // Make the first update fail
       mockPayload.update.mockRejectedValueOnce(new Error("Update failed")).mockResolvedValueOnce({ id: "import-2" });
 
       const result = await cleanupStuckScheduledIngestsJob.handler({ job: mockJob, req: mockReq });
@@ -246,7 +243,6 @@ describe("Cleanup Stuck scheduled ingests Job", () => {
 
       await cleanupStuckScheduledIngestsJob.handler({ job: mockJob, req: mockReq });
 
-      // Should have initial log and completion log
       expect(mockLoggerInfo).toHaveBeenCalledTimes(3);
       expect(mockLoggerInfo).toHaveBeenCalledWith("Starting cleanup stuck scheduled ingests job", expect.any(Object));
       expect(mockLoggerInfo).toHaveBeenCalledWith(
@@ -478,7 +474,7 @@ describe("Cleanup Stuck scheduled ingests Job", () => {
 
       // Should not update (active job detected)
       expect(mockPayload.update).not.toHaveBeenCalled();
-      // stuckCount should be 0 because it was skipped before incrementing
+      // Skipped before it was counted
       expect(result.output.resetCount).toBe(0);
     });
 

@@ -110,14 +110,12 @@ describe("Database-backed Seed Operations", () => {
         data: { name: `Truncate Test ${Date.now()}`, isPublic: true },
       });
 
-      // Verify it exists
       const before = await payload.findByID({ collection: "catalogs", id: testCatalog.id });
       expect(before).toBeTruthy();
 
       // Truncate catalogs (CASCADE handles FK dependencies)
       await testEnv.seedManager.truncate(["catalogs"]);
 
-      // Verify the catalog no longer exists
       const after = await payload.find({ collection: "catalogs", where: { id: { equals: testCatalog.id } } });
       expect(after.totalDocs).toBe(0);
     }, 90000); // 90 second timeout (increases when running full suite)
@@ -127,7 +125,6 @@ describe("Database-backed Seed Operations", () => {
     it("should handle missing relationships gracefully", async () => {
       await testEnv.seedManager.truncate(seedCollections);
 
-      // Record dataset count before seeding
       const datasetsBefore = await testEnv.seedManager.getCollectionCount("datasets");
 
       // Try to seed datasets without catalogs - should complete without throwing

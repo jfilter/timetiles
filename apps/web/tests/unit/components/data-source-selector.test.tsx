@@ -39,12 +39,10 @@ const createAnonymousAuthState = () => ({
 let mockDataSources: DataSourcesResponse = { catalogs: [], datasets: [] };
 let mockAuthState = createAnonymousAuthState();
 
-// Mock the useDataSourcesQuery hook
 vi.mock("@/lib/hooks/use-data-sources-query", () => ({
   useDataSourcesQuery: () => ({ data: mockDataSources, isLoading: false, error: null }),
 }));
 
-// Mock the auth state hook
 vi.mock("@/lib/hooks/use-auth-queries", () => ({ useAuthState: () => mockAuthState }));
 
 // Mock the view context (no view active, but provider is present)

@@ -28,7 +28,6 @@ import {
   withUsers,
 } from "@/tests/setup/integration/environment";
 
-// Type definitions for urlFetchJob output
 interface UrlFetchSuccessOutput {
   ingestFileId: string | number;
   filename: string;
@@ -163,7 +162,6 @@ describe("Security Validation Tests", () => {
         { user: adminUser, name: "Redirect to Private IP", frequency: "daily" }
       );
 
-      // Import the job handler
       const { urlFetchJob } = await import("@/lib/jobs/handlers/url-fetch-job");
 
       // Handler throws on failure (redirect to non-existent endpoint returns error)
@@ -286,7 +284,6 @@ describe("Security Validation Tests", () => {
         authConfig: { type: "basic", username: TEST_EMAILS.user, password: TEST_CREDENTIALS.basic.strongPassword },
       });
 
-      // Set up test server endpoint with Basic Auth
       testServer.respondWithAuth(
         "/basic-auth.csv",
         "basic",
@@ -295,10 +292,8 @@ describe("Security Validation Tests", () => {
         { status: 401, body: "Unauthorized" }
       );
 
-      // Import the job handler
       const { urlFetchJob } = await import("@/lib/jobs/handlers/url-fetch-job");
 
-      // Execute the job
       const result = await urlFetchJob.handler({
         job: { id: "test-job-basic-auth" },
         req: { payload },
@@ -322,11 +317,9 @@ describe("Security Validation Tests", () => {
         '{{name}} <script>alert("xss")</script>',
         '{{name}}"; DROP TABLE scheduled_ingests; --',
         "{{name}}${process.env.DATABASE_URL}",
-        // Skip null byte test as PostgreSQL doesn't support it
-        // "{{name}}" + "\x00" + "null-byte",
+        // Null bytes are omitted: PostgreSQL text columns reject them
       ];
 
-      // Set up test server endpoints for malicious templates
       testServer.respondWithCSV("/malicious-template.csv", "test,data\n1,2");
 
       for (const template of maliciousTemplates) {
@@ -534,10 +527,8 @@ describe("Security Validation Tests", () => {
       const suspiciousCsv = '=cmd|"/c calc"!A1,@SUM(1+9)*cmd|"/c calc"!A1\n=1+1,normal data';
       testServer.respondWithCSV("/suspicious.csv", suspiciousCsv);
 
-      // Import the job handler
       const { urlFetchJob } = await import("@/lib/jobs/handlers/url-fetch-job");
 
-      // Execute the job
       const result = await urlFetchJob.handler({
         job: { id: "test-job-csv-injection" },
         req: { payload },
@@ -579,7 +570,6 @@ describe("Security Validation Tests", () => {
         headers: { "Content-Type": "text/csv", "Content-Length": String(fullData.length) },
       });
 
-      // Import the job handler
       const { urlFetchJob } = await import("@/lib/jobs/handlers/url-fetch-job");
 
       // Handler throws on file size limit exceeded
@@ -611,7 +601,6 @@ describe("Security Validation Tests", () => {
       // Set up test server endpoint that simulates connection error
       testServer.respond("/error-test.csv", { error: true });
 
-      // Import the job handler
       const { urlFetchJob } = await import("@/lib/jobs/handlers/url-fetch-job");
 
       // Handler throws on failure — catch the error to inspect the message
@@ -629,7 +618,6 @@ describe("Security Validation Tests", () => {
             userId: adminUser.id,
           },
         });
-        // Should not reach here
         expect.unreachable("Expected handler to throw");
       } catch (error) {
         errorMessage = error instanceof Error ? error.message : String(error);

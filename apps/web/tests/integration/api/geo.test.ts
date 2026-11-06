@@ -49,7 +49,6 @@ describe("/api/v1/events/geo", () => {
     });
     testCatalogId = String(catalog.id);
 
-    // Create test dataset
     const dataset = await payload.create({
       collection: "datasets",
       data: {
@@ -169,8 +168,7 @@ describe("/api/v1/events/geo", () => {
     // Tight bounds around SF test events (37.7749-37.7752, -122.4193 to -122.4196)
     const bounds = { north: 37.78, south: 37.77, east: -122.41, west: -122.43 };
 
-    // Through the real route: a hand-rolled copy of its row-to-feature transform
-    // stood here and had already fallen behind the h3Cell / clusterId / root-id rules.
+    // Through the real route, so the h3Cell / clusterId / root-id rules are covered.
     const request = new NextRequest(
       `http://localhost:3000/api/events/map-clusters?bounds=${encodeURIComponent(JSON.stringify(bounds))}&zoom=16&datasets=${testDatasetId}`
     );
@@ -297,9 +295,8 @@ describe("/api/v1/events/geo", () => {
 
     const response = await GET(request, { params: Promise.resolve({}) });
 
-    // A malformed bounds parameter fails schema validation (422) instead of being dropped.
-    // It used to become `undefined`, which this endpoint then reported as "missing" — and on
-    // every endpoint where bounds is optional it meant an unbounded query answered 200.
+    // A malformed bounds parameter fails schema validation (422) instead of being dropped and
+    // reported as "missing".
     expect(response.status).toBe(422);
   });
 
@@ -307,7 +304,6 @@ describe("/api/v1/events/geo", () => {
     // Test that clusters at zoom 10 stay at the same positions when zooming to 11
     const bounds = { north: 38, south: 37.5, east: -122, west: -123 };
 
-    // Get clusters at zoom 10
     const result10 = (await testEnv.payload.db.drizzle.execute(
       sql`
         SELECT * FROM cluster_events(
@@ -346,7 +342,6 @@ describe("/api/v1/events/geo", () => {
     // Test bounds around SF events
     const sfBounds = { north: 37.78, south: 37.77, east: -122.41, west: -122.43 };
 
-    // Test zoom levels 8, 10, 12, 14
     const results: Record<number, any[]> = {};
 
     for (const zoom of [8, 10, 12, 14]) {
@@ -372,13 +367,11 @@ describe("/api/v1/events/geo", () => {
     expect(results[12]!.length).toBeGreaterThanOrEqual(results[10]!.length);
     expect(results[14]!.length).toBeGreaterThanOrEqual(results[12]!.length);
 
-    // Verify we get results at all zoom levels
     expect(results[8]!.length).toBeGreaterThan(0);
     expect(results[10]!.length).toBeGreaterThan(0);
     expect(results[12]!.length).toBeGreaterThan(0);
     expect(results[14]!.length).toBeGreaterThan(0);
 
-    // Verify cluster structure
     const cluster8 = results[8]![0];
     expect(cluster8).toHaveProperty("cluster_id");
     expect(cluster8).toHaveProperty("longitude");
@@ -416,10 +409,8 @@ describe("/api/v1/events/geo", () => {
       `
     )) as { rows: Array<Record<string, unknown>> };
 
-    // Results should be identical
     expect(result1.rows).toHaveLength(result2.rows.length);
 
-    // Cluster IDs should match exactly
     expect(new Set(result1.rows.map((r) => r.cluster_id))).toEqual(new Set(result2.rows.map((r) => r.cluster_id)));
   });
 

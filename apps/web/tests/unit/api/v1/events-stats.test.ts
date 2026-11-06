@@ -106,8 +106,8 @@ describe("GET /api/v1/events/stats", () => {
 
       const response = await GET(req, { params: Promise.resolve({}) });
 
-      // Ignoring it meant this route answered 200 with unrestricted stats for a viewport the
-      // caller believed it had set.
+      // Ignoring it would answer 200 with unrestricted stats for a viewport the caller
+      // believed it had set.
       expect(response.status).toBe(422);
     });
   });

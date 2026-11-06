@@ -107,15 +107,14 @@ describe("preProcessRecords", () => {
 
     const result = preProcessRecords(records, config);
     // Grouping is a MERGE, not a filter. A record with no group key is still a record, so it
-    // passes through un-merged — silently dropping it truncated the import while the run
-    // still reported success.
+    // passes through un-merged instead of silently truncating the import.
     expect(result).toHaveLength(2);
     expect(result.map((r) => r.title)).toEqual(["No UID", "Has UID"]);
   });
 
   it("should group by a nested dot-path", () => {
-    // `groupBy` is a path, like extractFields' `from`. A bare key lookup dropped every
-    // record when the path was nested, producing an empty CSV.
+    // `groupBy` is a path, like extractFields' `from`; a bare key lookup would drop
+    // every record for a nested path and produce an empty CSV.
     const records = [
       { meta: { uid: 1 }, title: "First", startDate: "2024-06-01 10:00:00", endDate: "2024-06-01 12:00:00" },
       { meta: { uid: 1 }, title: "Second", startDate: "2024-06-01 14:00:00", endDate: "2024-06-01 18:00:00" },
@@ -168,8 +167,7 @@ describe("preProcessRecords", () => {
 
   it("should merge European-format numbers using the column's separator convention", () => {
     // The column carries an unambiguous EU value ("12,5"), so the ambiguous
-    // "1.500" is read as EU thousands (1500), not a US decimal (1.5). Under the
-    // old US-only check, "12,5" was rejected and the whole field was skipped.
+    // "1.500" is read as EU thousands (1500), not a US decimal (1.5).
     const records = [
       { uid: 1, amount: "1.500" },
       { uid: 1, amount: "12,5" },

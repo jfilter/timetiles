@@ -166,7 +166,6 @@ describe("Workflow Combinations (Integration)", () => {
     expect(result.settled).toBe(true);
     expect(result.ingestFile.status).toBe("completed");
 
-    // Verify ingest job completed
     const ingestJobs = await payload.find({
       collection: "ingest-jobs",
       where: { ingestFile: { equals: ingestFile.id } },
@@ -233,7 +232,6 @@ describe("Workflow Combinations (Integration)", () => {
     });
     await payload.jobs.queue({ workflow: "manual-ingest", input: { ingestFileId: String(ingestFile.id) } });
 
-    // Run until the ingest job reaches NEEDS_REVIEW
     const reviewResult = await runJobsUntilIngestJobStage(
       payload,
       ingestFile.id,
@@ -275,7 +273,6 @@ describe("Workflow Combinations (Integration)", () => {
     expect(finalResult.settled).toBe(true);
     expect(finalResult.ingestFile.status).toBe("completed");
 
-    // Verify ingest job completed
     const completedJob = await payload.findByID({ collection: "ingest-jobs", id: ingestJobId });
     expect(completedJob.stage).toBe(PROCESSING_STAGE.COMPLETED);
 
@@ -329,7 +326,6 @@ describe("Workflow Combinations (Integration)", () => {
     });
     await payload.jobs.queue({ workflow: "manual-ingest", input: { ingestFileId: String(ingestFile.id) } });
 
-    // Run until NEEDS_REVIEW
     const reviewResult = await runJobsUntilIngestJobStage(
       payload,
       ingestFile.id,
@@ -345,7 +341,6 @@ describe("Workflow Combinations (Integration)", () => {
     await payload.jobs.run({ allQueues: true, limit: 100 });
     await payload.jobs.run({ allQueues: true, limit: 100 });
 
-    // Verify ingest job is still in NEEDS_REVIEW
     const unchangedJob = await payload.findByID({ collection: "ingest-jobs", id: reviewResult.ingestJob!.id });
     expect(unchangedJob.stage).toBe(PROCESSING_STAGE.NEEDS_REVIEW);
 
@@ -359,7 +354,7 @@ describe("Workflow Combinations (Integration)", () => {
     expect(file.datasetsProcessed).toBe(1);
   }, 60000);
 
-  // ── 4. onSuccess callback marks IngestJob as COMPLETED ──
+  // ── 4. create-events marks IngestJob as COMPLETED ──
 
   it("should mark IngestJob as COMPLETED via create-events onSuccess callback", async () => {
     const csvContent = `title,date,location
@@ -373,7 +368,7 @@ describe("Workflow Combinations (Integration)", () => {
     expect(result.settled).toBe(true);
     expect(result.ingestFile.status).toBe("completed");
 
-    // The create-events task's onSuccess callback sets stage to COMPLETED
+    // The create-events handler (finalizeCompletedStage) sets stage to COMPLETED
     const ingestJobs = await payload.find({
       collection: "ingest-jobs",
       where: { ingestFile: { equals: ingestFile.id } },
@@ -452,7 +447,6 @@ describe("Workflow Combinations (Integration)", () => {
     });
     await payload.jobs.queue({ workflow: "manual-ingest", input: { ingestFileId: String(ingestFile.id) } });
 
-    // Run until NEEDS_REVIEW
     const reviewResult = await runJobsUntilIngestJobStage(
       payload,
       ingestFile.id,
@@ -566,7 +560,6 @@ describe("Workflow Combinations (Integration)", () => {
     expect(result2.settled).toBe(true);
     expect(result2.ingestFile.status).toBe("completed");
 
-    // Verify events from second import exist
     const ingestJobs2 = await payload.find({ collection: "ingest-jobs", where: { ingestFile: { equals: file2.id } } });
     const datasetId2 =
       typeof ingestJobs2.docs[0].dataset === "object" ? ingestJobs2.docs[0].dataset.id : ingestJobs2.docs[0].dataset;
@@ -577,7 +570,6 @@ describe("Workflow Combinations (Integration)", () => {
     });
     expect(eventsFromFile2.docs.length).toBeGreaterThanOrEqual(2);
 
-    // Verify both ingest files show completed
     const finalFile1 = await payload.findByID({ collection: "ingest-files", id: file1.id });
     const finalFile2 = await payload.findByID({ collection: "ingest-files", id: file2.id });
     expect(finalFile1.status).toBe("completed");

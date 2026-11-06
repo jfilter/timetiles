@@ -189,8 +189,7 @@ describe("convertJsonToCsv", () => {
 
     it("should return zero records for an empty top-level array", () => {
       // An empty array IS the records array — it just has no records today. Treating it as
-      // "could not find records array" turned a quiet upstream into a scheduled-ingest
-      // failure that consumed a retry and eventually auto-disabled the schedule.
+      // missing would turn a quiet upstream into a failing, eventually auto-disabled schedule.
       const json: unknown[] = [];
 
       const result = convertJsonToCsv(toBuffer(json));

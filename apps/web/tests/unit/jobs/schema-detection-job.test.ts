@@ -26,7 +26,6 @@ import {
   TEST_IDS,
 } from "@/tests/setup/factories";
 
-// Use vi.hoisted to create mocks that can be used in vi.mock factories
 const mocks = vi.hoisted(() => {
   return {
     streamBatchesFromFile: vi.fn(),
@@ -39,7 +38,6 @@ const mocks = vi.hoisted(() => {
   };
 });
 
-// Mock external dependencies
 vi.mock("@/lib/ingest/file-readers", () => ({
   streamBatchesFromFile: mocks.streamBatchesFromFile,
   cleanupSidecarFiles: mocks.cleanupSidecarFiles,
@@ -61,8 +59,7 @@ vi.mock("@/lib/ingest/upload-path", () => ({
   getIngestFilePath: vi.fn((filename: string) => `/mock/ingest-files/${filename}`),
 }));
 
-// Mock cleanupSidecarsForJob directly — with isolate: false, the mock of file-readers
-// doesn't propagate to resource-loading.ts's cached import of cleanupSidecarFiles
+// Mocked at the resource-loading boundary so sidecar cleanup can be asserted directly
 vi.mock("@/lib/jobs/utils/resource-loading", async (importOriginal) => {
   const actual: Record<string, unknown> = await importOriginal();
   return { ...actual, cleanupSidecarsForJob: mocks.cleanupSidecarsForJob };
@@ -70,10 +67,8 @@ vi.mock("@/lib/jobs/utils/resource-loading", async (importOriginal) => {
 
 // Mock review checks — default: no review needed
 vi.mock("@/lib/jobs/workflows/review-checks", async (importOriginal) => {
-  // Keep the real ambiguous-interpretation descriptor table so the handler's
-  // table-driven loop iterates the same entries it does in production; only the
-  // gate predicates / side effects are stubbed below so the success-case tests
-  // don't trip a review.
+  // Keep the real ambiguous-interpretation descriptor table so the handler iterates
+  // the production entries; only gate predicates / side effects are stubbed.
   const actual = await importOriginal<typeof ReviewChecksModule>();
   return {
     AMBIGUOUS_INTERPRETATION_CHECKS: actual.AMBIGUOUS_INTERPRETATION_CHECKS,
@@ -108,14 +103,11 @@ describe("SchemaDetectionJob Handler", () => {
   let mockSchemaBuilderInstance: any;
 
   beforeEach(() => {
-    // Reset all mocks
     vi.clearAllMocks();
 
-    // Create standard mock payload and context using factories
     mockPayload = createMockPayload();
     mockContext = createMockContext(mockPayload, { ingestJobId: TEST_IDS.IMPORT_JOB });
 
-    // Mock schema builder instance (job-specific)
     mockSchemaBuilderInstance = {
       processBatch: vi.fn(),
       detectEnumFields: vi.fn(),
@@ -123,7 +115,6 @@ describe("SchemaDetectionJob Handler", () => {
       getSchema: vi.fn(),
     };
 
-    // Setup ProgressiveSchemaBuilder mock
     // eslint-disable-next-line prefer-arrow-functions/prefer-arrow-functions -- regular function required: arrow functions cannot be constructors (vitest 4)
     mocks.ProgressiveSchemaBuilder.mockImplementation(function () {
       return mockSchemaBuilderInstance;
@@ -132,18 +123,15 @@ describe("SchemaDetectionJob Handler", () => {
 
   describe("Success Cases", () => {
     it("should analyze batch data and detect schema successfully", async () => {
-      // Create mock data using factories
       const mockIngestJob = createMockIngestJob();
       const mockIngestFile = createMockIngestFile();
 
-      // Mock file data
       const mockFileData = [
         { id: "1", title: "Event 1", date: "2024-01-01", status: "active" },
         { id: "2", title: "Event 2", date: "2024-01-02", status: "pending" },
         { id: "3", title: "Event 3", date: "2024-01-03", status: "active" },
       ];
 
-      // Mock schema and state
       const mockSchema = {
         type: "object",
         properties: {
@@ -170,12 +158,11 @@ describe("SchemaDetectionJob Handler", () => {
         recordCount: 3,
       };
 
-      // Setup mocks — use mockImplementation to handle multiple findByID calls (initial + post-processing review checks)
+      // findByID is called again by the post-processing review checks
       mockPayload.findByID.mockImplementation(({ collection }: { collection: string }) => {
         if (collection === "ingest-jobs") return Promise.resolve(mockIngestJob);
         if (collection === "ingest-files") return Promise.resolve(mockIngestFile);
-        // The handler loads the dataset for its frozen transforms and fails the job
-        // when it cannot — returning null here made the stage run without them.
+        // The handler fails the job when it cannot load the dataset (frozen transforms).
         if (collection === "datasets") return Promise.resolve(createMockDataset(TEST_IDS.DATASET));
         return Promise.resolve(null);
       });
@@ -189,22 +176,17 @@ describe("SchemaDetectionJob Handler", () => {
       mocks.startStage.mockResolvedValueOnce(undefined);
       mocks.updateAndCompleteBatch.mockResolvedValueOnce(undefined);
 
-      // Execute job
       const result = await schemaDetectionJob.handler(mockContext);
 
-      // Verify result — new output format
       expect(result).toEqual({ output: { totalBatches: 1, totalRowsProcessed: 3 } });
 
-      // Verify streaming was used
       expect(mocks.streamBatchesFromFile).toHaveBeenCalledWith(expect.stringContaining("test.csv"), {
         sheetIndex: 0,
         batchSize: expect.any(Number),
       });
 
-      // Verify schema builder was called with non-duplicate rows
       expect(mockSchemaBuilderInstance.processBatch).toHaveBeenCalledWith(mockFileData);
 
-      // Verify progress tracking was called
       expect(mocks.startStage).toHaveBeenCalledWith(
         mockPayload,
         "import-123",
@@ -215,17 +197,15 @@ describe("SchemaDetectionJob Handler", () => {
     });
 
     it("should detect geocoding fields via schema builder", async () => {
-      // Create mock data using factories
       const mockIngestJob = createMockIngestJob();
       const mockIngestFile = createMockIngestFile();
 
-      // Mock file data with geocoding fields
       const mockData = [
         { id: "1", address: "123 Main St", latitude: "40.7128", longitude: "-74.0060" },
         { id: "2", address: "456 Oak Ave", latitude: "34.0522", longitude: "-118.2437" },
       ];
 
-      // Mock schema and state with detected geo fields
+      // Detected geo fields
       const mockSchema = {
         type: "object",
         properties: {
@@ -273,12 +253,11 @@ describe("SchemaDetectionJob Handler", () => {
         typeConflicts: [],
       };
 
-      // Setup mocks — use mockImplementation to handle multiple findByID calls (initial + post-processing review checks)
+      // findByID is called again by the post-processing review checks
       mockPayload.findByID.mockImplementation(({ collection }: { collection: string }) => {
         if (collection === "ingest-jobs") return Promise.resolve(mockIngestJob);
         if (collection === "ingest-files") return Promise.resolve(mockIngestFile);
-        // The handler loads the dataset for its frozen transforms and fails the job
-        // when it cannot — returning null here made the stage run without them.
+        // The handler fails the job when it cannot load the dataset (frozen transforms).
         if (collection === "datasets") return Promise.resolve(createMockDataset(TEST_IDS.DATASET));
         return Promise.resolve(null);
       });
@@ -292,13 +271,10 @@ describe("SchemaDetectionJob Handler", () => {
       mocks.startStage.mockResolvedValueOnce(undefined);
       mocks.updateAndCompleteBatch.mockResolvedValueOnce(undefined);
 
-      // Execute job
       const result = await schemaDetectionJob.handler(mockContext);
 
-      // Verify result
       expect(result).toEqual({ output: { totalBatches: 1, totalRowsProcessed: 2 } });
 
-      // Verify progress tracking was called
       expect(mocks.startStage).toHaveBeenCalled();
       expect(mocks.updateAndCompleteBatch).toHaveBeenCalled();
 
@@ -307,15 +283,12 @@ describe("SchemaDetectionJob Handler", () => {
     });
 
     it("should process multiple batches in single job", async () => {
-      // Create mock data using factories
       const mockIngestJob = createMockIngestJob();
       const mockIngestFile = createMockIngestFile();
 
-      // Mock two batches of data
       const batch1 = Array.from({ length: 3 }, (_, i) => ({ id: `${i + 1}`, title: `Event ${i + 1}` }));
       const batch2 = Array.from({ length: 2 }, (_, i) => ({ id: `${i + 4}`, title: `Event ${i + 4}` }));
 
-      // Mock schema and state
       const mockSchema = { type: "object", properties: { id: { type: "string" }, title: { type: "string" } } };
 
       const mockState1 = {
@@ -334,12 +307,10 @@ describe("SchemaDetectionJob Handler", () => {
         recordCount: 5,
       };
 
-      // Setup mocks — use mockImplementation to handle multiple findByID calls (initial + post-processing review checks)
       mockPayload.findByID.mockImplementation(({ collection }: { collection: string }) => {
         if (collection === "ingest-jobs") return Promise.resolve(mockIngestJob);
         if (collection === "ingest-files") return Promise.resolve(mockIngestFile);
-        // The handler loads the dataset for its frozen transforms and fails the job
-        // when it cannot — returning null here made the stage run without them.
+        // The handler fails the job when it cannot load the dataset (frozen transforms).
         if (collection === "datasets") return Promise.resolve(createMockDataset(TEST_IDS.DATASET));
         return Promise.resolve(null);
       });
@@ -358,41 +329,32 @@ describe("SchemaDetectionJob Handler", () => {
       mocks.startStage.mockResolvedValue(undefined);
       mocks.updateAndCompleteBatch.mockResolvedValue(undefined);
 
-      // Execute job
       const result = await schemaDetectionJob.handler(mockContext);
 
-      // Verify result shows both batches
       expect(result).toEqual({ output: { totalBatches: 2, totalRowsProcessed: 5 } });
 
-      // Verify schema builder was called for each batch
       expect(mockSchemaBuilderInstance.processBatch).toHaveBeenCalledTimes(2);
 
-      // Verify no next batch was queued (single job handles all batches)
+      // Single job handles all batches; no follow-up batch is queued
       expect(mockPayload.jobs.queue).not.toHaveBeenCalled();
     });
 
-    // A file with no data rows cannot produce a schema. The stage now says so
-    // directly; before, it "succeeded" and the NEXT task threw the internal
-    // "Schema builder state not found".
+    // A file with no data rows must fail here with a real reason, not later with
+    // the internal "Schema builder state not found".
     it("fails with a real reason when the file has no data rows", async () => {
-      // Create mock data using factories
       const mockIngestJob = createMockIngestJob();
       const mockIngestFile = createMockIngestFile();
 
-      // Setup mocks — use mockImplementation to handle multiple findByID calls (initial + post-processing review checks)
       mockPayload.findByID.mockImplementation(({ collection }: { collection: string }) => {
         if (collection === "ingest-jobs") return Promise.resolve(mockIngestJob);
         if (collection === "ingest-files") return Promise.resolve(mockIngestFile);
-        // The handler loads the dataset for its frozen transforms and fails the job
-        // when it cannot — returning null here made the stage run without them.
+        // The handler fails the job when it cannot load the dataset (frozen transforms).
         if (collection === "datasets") return Promise.resolve(createMockDataset(TEST_IDS.DATASET));
         return Promise.resolve(null);
       });
 
-      // Mock empty stream (no batches)
       mocks.streamBatchesFromFile.mockReturnValueOnce(mockAsyncGenerator([]));
 
-      // Execute job
       await expect(schemaDetectionJob.handler(mockContext)).rejects.toThrow(/No data rows found/);
 
       // Verify stage tracking at handler start (workflow controls sequencing)
@@ -402,29 +364,23 @@ describe("SchemaDetectionJob Handler", () => {
         data: { stage: "detect-schema" },
       });
 
-      // Should not queue any jobs
       expect(mockPayload.jobs.queue).not.toHaveBeenCalled();
       expect(mockSchemaBuilderInstance.processBatch).not.toHaveBeenCalled();
     });
 
     it("should skip internal but not external duplicate rows during schema building", async () => {
-      // Create mock data using factories (with duplicates)
       const mockIngestJob = createMockIngestJob({ hasDuplicates: true });
       const mockIngestFile = createMockIngestFile();
 
-      // Mock file data (3 rows, 1 internal dup, 1 external dup).
-      // Schema detection must skip the *internal* duplicate (it would double-
-      // count the same row's field stats) but must *include* the external
-      // duplicate — externals are rows that already exist in the dataset,
-      // they carry the dataset's current schema, and dropping them leaves an
-      // empty sample set on scheduled re-imports of unchanged URLs.
+      // 3 rows, 1 internal dup, 1 external dup. Internal duplicates are skipped (they
+      // would double-count field stats); external ones stay, or scheduled re-imports
+      // of unchanged URLs would leave an empty sample set.
       const mockFileData = [
         { id: "1", title: "Event 1" }, // Unique — processed
         { id: "2", title: "Event 2" }, // Internal duplicate — skipped
         { id: "3", title: "Event 3" }, // External duplicate — processed
       ];
 
-      // Mock schema and state
       const mockSchema = { type: "object", properties: { id: { type: "string" }, title: { type: "string" } } };
 
       const mockState = {
@@ -435,12 +391,10 @@ describe("SchemaDetectionJob Handler", () => {
         recordCount: 1,
       };
 
-      // Setup mocks — use mockImplementation to handle multiple findByID calls (initial + post-processing review checks)
       mockPayload.findByID.mockImplementation(({ collection }: { collection: string }) => {
         if (collection === "ingest-jobs") return Promise.resolve(mockIngestJob);
         if (collection === "ingest-files") return Promise.resolve(mockIngestFile);
-        // The handler loads the dataset for its frozen transforms and fails the job
-        // when it cannot — returning null here made the stage run without them.
+        // The handler fails the job when it cannot load the dataset (frozen transforms).
         if (collection === "datasets") return Promise.resolve(createMockDataset(TEST_IDS.DATASET));
         return Promise.resolve(null);
       });
@@ -454,20 +408,16 @@ describe("SchemaDetectionJob Handler", () => {
       mocks.startStage.mockResolvedValueOnce(undefined);
       mocks.updateAndCompleteBatch.mockResolvedValueOnce(undefined);
 
-      // Execute job
       const result = await schemaDetectionJob.handler(mockContext);
 
-      // Verify result
       expect(result).toEqual({ output: { totalBatches: 1, totalRowsProcessed: 3 } });
 
-      // Verify schema builder was called with internal-dedup'd rows but
-      // including external duplicates.
+      // Internal duplicates removed, external duplicates kept
       expect(mockSchemaBuilderInstance.processBatch).toHaveBeenCalledWith([
         { id: "1", title: "Event 1" },
         { id: "3", title: "Event 3" },
       ]);
 
-      // Verify progress tracking was called
       expect(mocks.startStage).toHaveBeenCalled();
       expect(mocks.updateAndCompleteBatch).toHaveBeenCalled();
     });
@@ -553,7 +503,7 @@ describe("SchemaDetectionJob Handler", () => {
         })
       );
 
-      // L5: the detection-resolved roles are backfilled onto the AUTHORED dataset
+      // The detection-resolved roles are backfilled onto the AUTHORED dataset
       // plan (this dataset has no authored interpretationPlan, so detection fills
       // the empty roles). event-detail.ts reads dataset.interpretationPlan.roles.
       expect(mockPayload.update).toHaveBeenCalledWith(
@@ -669,12 +619,11 @@ describe("SchemaDetectionJob Handler", () => {
         recordCount: 1,
       };
 
-      // Use mockImplementation to handle multiple findByID calls (initial + post-processing review checks)
+      // findByID is called again by the post-processing review checks
       mockPayload.findByID.mockImplementation(({ collection }: { collection: string }) => {
         if (collection === "ingest-jobs") return Promise.resolve(mockIngestJob);
         if (collection === "ingest-files") return Promise.resolve(mockIngestFile);
-        // The handler loads the dataset for its frozen transforms and fails the job
-        // when it cannot — returning null here made the stage run without them.
+        // The handler fails the job when it cannot load the dataset (frozen transforms).
         if (collection === "datasets") return Promise.resolve(createMockDataset(TEST_IDS.DATASET));
         return Promise.resolve(null);
       });
@@ -721,7 +670,7 @@ describe("SchemaDetectionJob Handler", () => {
       const mockIngestFile = createMockIngestFile();
       const mockDataset = { id: TEST_IDS.DATASET };
 
-      // Use mockImplementation to handle all findByID calls (initial + error-path reload)
+      // findByID is called again on the error path
       mockPayload.findByID.mockImplementation(({ collection }: { collection: string }) => {
         if (collection === "ingest-jobs") return Promise.resolve(mockIngestJob);
         if (collection === "ingest-files") return Promise.resolve(mockIngestFile);
@@ -730,7 +679,6 @@ describe("SchemaDetectionJob Handler", () => {
       });
       mockPayload.update.mockResolvedValue({});
 
-      // Mock streaming that throws an error
       mocks.streamBatchesFromFile.mockReturnValueOnce({
         [Symbol.asyncIterator]: () => ({
           next: async () => {
@@ -772,9 +720,6 @@ describe("SchemaDetectionJob Handler", () => {
       expect(error).not.toBeInstanceOf(JobCancelledError);
       expect((error as Error).message).toBe("Connection timeout");
 
-      // Verify sidecar cleanup was called (asserts on cleanupSidecarsForJob, not the
-      // low-level cleanupSidecarFiles, because with isolate:false the file-readers
-      // mock doesn't propagate to resource-loading.ts's cached import)
       expect(mocks.cleanupSidecarsForJob).toHaveBeenCalledWith(mockPayload, TEST_IDS.IMPORT_JOB);
     });
   });
@@ -803,12 +748,11 @@ describe("SchemaDetectionJob Handler", () => {
         recordCount: 1,
       };
 
-      // Use mockImplementation to handle multiple findByID calls (initial + post-processing review checks)
+      // findByID is called again by the post-processing review checks
       mockPayload.findByID.mockImplementation(({ collection }: { collection: string }) => {
         if (collection === "ingest-jobs") return Promise.resolve(mockIngestJob);
         if (collection === "ingest-files") return Promise.resolve(mockIngestFile);
-        // The handler loads the dataset for its frozen transforms and fails the job
-        // when it cannot — returning null here made the stage run without them.
+        // The handler fails the job when it cannot load the dataset (frozen transforms).
         if (collection === "datasets") return Promise.resolve(createMockDataset(TEST_IDS.DATASET));
         return Promise.resolve(null);
       });
@@ -918,8 +862,7 @@ describe("SchemaDetectionJob Handler", () => {
       mockPayload.findByID.mockImplementation(({ collection }: { collection: string }) => {
         if (collection === "ingest-jobs") return Promise.resolve(mockIngestJob);
         if (collection === "ingest-files") return Promise.resolve(mockIngestFile);
-        // The handler loads the dataset for its frozen transforms and fails the job
-        // when it cannot — returning null here made the stage run without them.
+        // The handler fails the job when it cannot load the dataset (frozen transforms).
         if (collection === "datasets") return Promise.resolve(createMockDataset(TEST_IDS.DATASET));
         return Promise.resolve(null);
       });

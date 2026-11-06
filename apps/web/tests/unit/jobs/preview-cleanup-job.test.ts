@@ -162,8 +162,8 @@ describe("sweepExpiredPreviews", () => {
 
   it("leaves a just-written data file alone while its metadata is still being built", () => {
     // The upload route writes the file, parses every sheet (seconds to minutes for a large
-    // XLSX) and only then saves the sidecar. A sweep landing in that window used to delete
-    // the file and count it as cleaned, handing the wizard a previewId with no data behind it.
+    // XLSX) and only then saves the sidecar. A sweep in that window must not delete the file
+    // and hand the wizard a previewId with no data behind it.
     const id = uuid("5");
     writeData(id);
 

@@ -17,7 +17,6 @@ import { describe, expect, it, vi } from "vitest";
 // Mock next-intl (used by all three source files)
 vi.mock("next-intl", () => ({ useTranslations: vi.fn(() => (key: string) => key) }));
 
-// Mock React (hooks used by source files)
 vi.mock("react", async (importOriginal) => {
   const actual = await importOriginal();
   return { ...(actual as object) };

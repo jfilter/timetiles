@@ -37,7 +37,6 @@ describe("/api/v1/events - field filtering", () => {
       user: users.testUser,
     });
 
-    // Create test dataset
     const { dataset } = await withDataset(testEnv, catalog.id, { name: "Field Filter Test Dataset", isPublic: true });
     testDatasetId = dataset.id;
 

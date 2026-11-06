@@ -78,7 +78,6 @@ describe("Schema Approval Workflow", () => {
     });
     testDatasetId = dataset.id;
 
-    // Create test import file
     const csvContent = "title,date,location\nTest Event,2024-01-01,Test Location";
     const { ingestFile } = await withIngestFile(testEnv, testCatalogId, csvContent, {
       status: "completed",
@@ -86,7 +85,6 @@ describe("Schema Approval Workflow", () => {
     });
     testIngestFileId = ingestFile.id;
 
-    // Create test import job
     const ingestJob = await payload.create({
       collection: "ingest-jobs",
       data: { ingestFile: testIngestFileId, dataset: testDatasetId, stage: "completed", sheetIndex: 0 },
@@ -117,7 +115,6 @@ describe("Schema Approval Workflow", () => {
     });
 
     it("allows admin to approve schema", async () => {
-      // Create draft schema
       const { schema: draftSchema } = await withSchemaVersion(testEnv, testDatasetId, {
         versionNumber: 2,
         status: "draft",
@@ -148,7 +145,6 @@ describe("Schema Approval Workflow", () => {
     });
 
     it("allows authorized editor to approve schema", async () => {
-      // Create draft schema
       const { schema: draftSchema } = await withSchemaVersion(testEnv, testDatasetId, {
         versionNumber: 2,
         status: "draft",
@@ -231,7 +227,6 @@ describe("Schema Approval Workflow", () => {
         },
       });
 
-      // Reject the schema
       const rejectedSchema = await payload.update({
         collection: "dataset-schemas",
         id: draftSchema.id,
@@ -248,9 +243,8 @@ describe("Schema Approval Workflow", () => {
   });
 
   describe("Schema Approval Flag Storage", () => {
-    // NOTE: Auto-approval decision logic lives in the import pipeline jobs
-    // (schema-detection job), not in collection hooks. These tests verify
-    // that the schema collection correctly stores approval-related fields.
+    // Auto-approval decisions live in the schema-detection job, not in collection hooks;
+    // these tests only check that the collection stores the approval-related fields.
 
     it("stores published auto-approved schema with correct flags", async () => {
       // Update dataset to allow auto-growth
@@ -368,7 +362,6 @@ describe("Schema Approval Workflow", () => {
 
   describe("Schema Version Management", () => {
     it("maintains schema version history", async () => {
-      // Create multiple schema versions
       const versions = [];
 
       for (let i = 2; i <= 4; i++) {
@@ -386,12 +379,10 @@ describe("Schema Approval Workflow", () => {
         versions.push(schema);
       }
 
-      // Verify versions were created correctly
       expect(versions).toHaveLength(3);
       expect(versions[2]!.versionNumber).toBe(4);
       expect(versions[2]!._status).toBe("published");
 
-      // Query schema history
       const schemaHistory = await payload.find({
         collection: "dataset-schemas",
         where: { dataset: { equals: testDatasetId } },
@@ -463,7 +454,6 @@ describe("Schema Approval Workflow", () => {
         },
       });
 
-      // Verify the schema was created successfully
       expect(schema._status).toBe("published");
       expect(
         typeof schema.approvedBy === "object" && schema.approvedBy !== null ? schema.approvedBy.id : schema.approvedBy

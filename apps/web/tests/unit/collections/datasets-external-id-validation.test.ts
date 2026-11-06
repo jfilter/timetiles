@@ -211,7 +211,7 @@ describe("collectProtectedMappingPaths", () => {
   });
 
   it("de-dupes a lat/lng path shared between plan roles and geoFieldDetection", () => {
-    // geoFieldDetection still uses its own *Path keys (out of scope, unchanged).
+    // geoFieldDetection uses its own *Path keys.
     const result = collectProtectedMappingPaths({ latitude: "lat" }, { latitudePath: "lat", longitudePath: "lng" });
     expect(result.map((p) => p.path)).toEqual(["lat", "lng"]);
   });

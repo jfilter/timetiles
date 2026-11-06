@@ -156,7 +156,6 @@ describe("Account Deletion Service", () => {
       const env = { payload, seedManager: { truncate } } as any;
       const { users } = await withUsers(env, { testUser: { role: "user" } });
 
-      // Create public catalog and dataset
       const publicCatalog = await payload.create({
         collection: "catalogs",
         data: { name: "Public Catalog", isPublic: true },
@@ -169,7 +168,6 @@ describe("Account Deletion Service", () => {
         user: users.testUser,
       });
 
-      // Create private catalog and dataset
       const privateCatalog = await payload.create({
         collection: "catalogs",
         data: { name: "Private Catalog", isPublic: false },
@@ -247,7 +245,6 @@ describe("Account Deletion Service", () => {
       expect(result.success).toBe(true);
       expect(result.deletionScheduledAt).toBeDefined();
 
-      // Verify user status updated
       const updatedUser = await payload.findByID({ collection: "users", id: users.testUser.id, overrideAccess: true });
 
       expect(updatedUser.deletionStatus).toBe("pending_deletion");
@@ -275,13 +272,10 @@ describe("Account Deletion Service", () => {
       const env = { payload, seedManager: { truncate } } as any;
       const { users } = await withUsers(env, { testUser: { role: "user" } });
 
-      // Schedule deletion first
       await deletionService.scheduleDeletion(users.testUser.id);
 
-      // Cancel it
       await deletionService.cancelDeletion(users.testUser.id);
 
-      // Verify user status
       const updatedUser = await payload.findByID({ collection: "users", id: users.testUser.id, overrideAccess: true });
 
       expect(updatedUser.deletionStatus).toBe("active");
@@ -385,21 +379,18 @@ describe("Account Deletion Service", () => {
       const env = { payload, seedManager: { truncate } } as any;
       const { users } = await withUsers(env, { testUser: { role: "user" } });
 
-      // Create public catalog
       const publicCatalog = await payload.create({
         collection: "catalogs",
         data: { name: "Public Catalog", isPublic: true },
         user: users.testUser,
       });
 
-      // Create public dataset
       const publicDataset = await payload.create({
         collection: "datasets",
         data: { name: "Public Dataset", catalog: publicCatalog.id, isPublic: true, language: "eng" },
         user: users.testUser,
       });
 
-      // Execute deletion
       const result = await deletionService.executeDeletion(users.testUser.id, { deletionType: "self" });
 
       expect(result.success).toBe(true);
@@ -479,9 +470,8 @@ describe("Account Deletion Service", () => {
       ).resolves.toBeTruthy();
     });
 
-    // A soft-deleted dataset still holds its catalog_id. Counting without `trash: true`
-    // reported zero, the catalog was deleted, and ON DELETE SET NULL stripped the parent off
-    // a row that can then never be restored — `catalog` is required.
+    // Regression: a soft-deleted dataset still holds its catalog_id; the count must include trashed rows,
+    // or ON DELETE SET NULL strips the required parent off a row that can then never be restored.
     it("keeps a private catalog that only a trashed dataset points at", async () => {
       const env = { payload, seedManager: { truncate } } as any;
       const { users } = await withUsers(env, { testUser: { role: "user" } });
@@ -530,21 +520,18 @@ describe("Account Deletion Service", () => {
       const env = { payload, seedManager: { truncate } } as any;
       const { users } = await withUsers(env, { testUser: { role: "user" } });
 
-      // Create private catalog
       const privateCatalog = await payload.create({
         collection: "catalogs",
         data: { name: "Private Catalog", isPublic: false },
         user: users.testUser,
       });
 
-      // Create private dataset
       const privateDataset = await payload.create({
         collection: "datasets",
         data: { name: "Private Dataset", catalog: privateCatalog.id, isPublic: false, language: "eng" },
         user: users.testUser,
       });
 
-      // Execute deletion
       const result = await deletionService.executeDeletion(users.testUser.id, { deletionType: "self" });
 
       expect(result.success).toBe(true);
@@ -578,9 +565,8 @@ describe("Account Deletion Service", () => {
     });
 
     it("re-checks eligibility at execution time (last-admin demoted mid-grace)", async () => {
-      // Regression: invariants were only enforced at schedule time — the
-      // 30-day window could invalidate them (e.g. the OTHER admin gets
-      // demoted), and the executor erased the last admin anyway.
+      // Regression: invariants must be rechecked at execution time — the 30-day window can demote
+      // the OTHER admin, and the last admin must not be erased.
       const env = { payload, seedManager: { truncate } } as any;
       const { users } = await withUsers(env, { adminA: { role: "admin" }, adminB: { role: "admin" } });
 
@@ -601,9 +587,8 @@ describe("Account Deletion Service", () => {
     });
 
     it("should delete the user's scraper repos, scrapers, and runs", async () => {
-      // Regression: account deletion never touched the scraper domain — a
-      // deleted user's code kept executing on schedule and their webhook
-      // tokens stayed live with no owner able to see or stop them.
+      // Regression: account deletion must cover the scraper domain, or a deleted user's code keeps
+      // executing on schedule and their webhook tokens stay live with no owner.
       const env = { payload, seedManager: { truncate } } as any;
       const { users } = await withUsers(env, { testUser: { role: "user", trustLevel: "3" } });
 
@@ -652,12 +637,8 @@ describe("Account Deletion Service", () => {
     });
 
     it("should delete the account even when a scraper is wedged in 'running'", async () => {
-      // Regression: the scrapers beforeDelete guard refuses to delete a running
-      // scraper with a 409, and scraper-repos re-raises it at repo level. A
-      // worker killed mid-scrape leaves last_run_status = 'running' with
-      // nothing to clear it, so ONE wedged scraper aborted and rolled back the
-      // user's entire account deletion — permanently, on every retry. A user's
-      // right to be erased cannot be hostage to a stuck background job.
+      // Regression: the scrapers beforeDelete guard refuses a running scraper (409). A worker killed
+      // mid-scrape leaves it "running" forever, which must not block or roll back account deletion.
       const env = { payload, seedManager: { truncate } } as any;
       const { users } = await withUsers(env, { testUser: { role: "user", trustLevel: "3" } });
 

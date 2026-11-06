@@ -29,10 +29,8 @@ describe("getNextFrequencyExecution", () => {
   });
 
   it("treats an empty-string timezone as UTC instead of throwing", () => {
-    // Regression: the timezone field's validate accepts "", and a data-package
-    // manifest can supply "". `"" ?? "UTC"` kept "", which routed into
-    // Intl.DateTimeFormat({ timeZone: "" }) → RangeError, crashing schedule
-    // create/activate and silently disabling frequency schedules.
+    // Regression: the timezone field accepts "" and manifests can supply it; it must fall
+    // back to UTC, not reach Intl.DateTimeFormat({ timeZone: "" }) and throw RangeError.
     expect(() => getNextFrequencyExecution("daily", from, "")).not.toThrow();
     expect(getNextFrequencyExecution("daily", from, "").toISOString()).toBe(
       getNextFrequencyExecution("daily", from, "UTC").toISOString()

@@ -15,7 +15,6 @@ import { scraperExecutionJob } from "@/lib/jobs/handlers/scraper-execution-job";
 
 const mockIsEnabled = vi.hoisted(() => vi.fn().mockResolvedValue(true));
 
-// Mock dependencies
 vi.mock("@/lib/logger", () => ({
   logger: { info: vi.fn(), debug: vi.fn(), warn: vi.fn(), error: vi.fn() },
   createLogger: () => ({ info: vi.fn(), debug: vi.fn(), warn: vi.fn(), error: vi.fn() }),
@@ -132,7 +131,6 @@ describe("scraperExecutionJob", () => {
     // Default: successful runner response via global fetch
     globalThis.fetch = createSuccessFetchMock();
 
-    // Set env vars for runner
     process.env.SCRAPER_RUNNER_URL = "https://runner.example.com";
     process.env.SCRAPER_API_KEY = "test-api-key";
     resetEnv();
@@ -226,8 +224,8 @@ describe("scraperExecutionJob", () => {
       }),
     });
 
-    // Also verify the scraper itself is marked as running and stamps lastRunAt at
-    // run start, so stuck-detection measures from the trigger time (not the prior run).
+    // The scraper is marked running and stamps lastRunAt at run start, so
+    // stuck-detection measures from the trigger time (not the prior run).
     expect(mockPayload.update).toHaveBeenCalledWith({
       collection: "scrapers",
       id: 10,
@@ -249,7 +247,6 @@ describe("scraperExecutionJob", () => {
       })
     );
 
-    // Parse the request body to verify its structure
     const fetchCall = (globalThis.fetch as any).mock.calls[0];
     const body = JSON.parse(fetchCall[1].body);
 
@@ -362,7 +359,6 @@ describe("scraperExecutionJob", () => {
 
     await expect(scraperExecutionJob.handler(context as any)).rejects.toThrow("Runner API returned 500");
 
-    // Verify run record updated to failed
     const runFailCalls = mockPayload.update.mock.calls.filter((call: unknown[]) => {
       const arg = call[0] as { collection: string; data?: { status?: string; error?: string } };
       return arg.collection === "scraper-runs" && arg.data?.status === "failed";
@@ -376,7 +372,6 @@ describe("scraperExecutionJob", () => {
       })
     );
 
-    // Verify scraper updated to failed with incremented failedRuns
     const scraperFailCalls = mockPayload.update.mock.calls.filter((call: unknown[]) => {
       const arg = call[0] as { collection: string; data?: { lastRunStatus?: string } };
       return arg.collection === "scrapers" && arg.data?.lastRunStatus === "failed";
@@ -517,7 +512,6 @@ describe("scraperExecutionJob", () => {
         return Promise.resolve(null);
       });
 
-      // Re-apply createIngestFile mock
       const { createIngestFile } = await import("@/lib/ingest/create-ingest-file");
       (createIngestFile as any).mockResolvedValue({ ingestFileId: 42 });
     });
@@ -531,7 +525,6 @@ describe("scraperExecutionJob", () => {
       // The output should include the ingestFileId
       expect(result.output).toEqual(expect.objectContaining({ runId: 1, status: "success", ingestFileId: 42 }));
 
-      // createIngestFile should have been called
       const { createIngestFile } = await import("@/lib/ingest/create-ingest-file");
       expect(createIngestFile).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -565,7 +558,6 @@ describe("scraperExecutionJob", () => {
     it("should still succeed when auto-import fails", async () => {
       setupAutoImportFetch();
 
-      // Make createIngestFile throw
       const { createIngestFile } = await import("@/lib/ingest/create-ingest-file");
       (createIngestFile as any).mockRejectedValue(new Error("Disk full"));
 
@@ -577,7 +569,6 @@ describe("scraperExecutionJob", () => {
       // ingestFileId should not be in output since auto-import failed
       expect(result.output.ingestFileId).toBeUndefined();
 
-      // logError should have been called for the auto-import failure
       const { logError } = await import("@/lib/logger");
       expect(logError).toHaveBeenCalledWith(
         expect.any(Error),
@@ -601,12 +592,8 @@ describe("scraperExecutionJob", () => {
       expect(deleteCall[1]).toEqual(expect.objectContaining({ method: "DELETE" }));
     });
 
-    // The `scrapers` collection has no `schemaMode` field (only `scheduled-ingests`
-    // does — see `apps/web/payload-types.ts:1600`). Auto-import therefore omits
-    // `schemaMode` from `processingOptions` and falls through to the dataset-level
-    // `schemaConfig`. If the scraper schema ever gains a `schemaMode` field, this
-    // test should be updated to assert it is propagated in the same shape as
-    // `url-fetch-job` writes for scheduled re-runs.
+    // The `scrapers` collection has no `schemaMode` field (only `scheduled-ingests` does),
+    // so auto-import omits it and falls through to the dataset-level `schemaConfig`.
     it("should omit schemaMode from processingOptions (scrapers collection has no schemaMode field)", async () => {
       setupAutoImportFetch();
 
@@ -627,12 +614,10 @@ describe("scraperExecutionJob", () => {
 
   describe("handleRunFailure error resilience", () => {
     it("should log and continue when scraper-runs update fails during handleRunFailure", async () => {
-      // Make runner call fail
       globalThis.fetch = createFailureFetchMock(500, "Server error");
 
-      // Make the first update (scraper-runs failure update) reject, but second (scrapers) succeed
-      // Note: there are updates before handleRunFailure (create run record + set running status),
-      // so we need to let those succeed first
+      // Earlier updates (run record, running status) succeed; the scraper-runs failure
+      // update rejects, the scrapers update succeeds
       mockPayload.update
         .mockResolvedValueOnce({}) // set scraper to "running" status
         .mockRejectedValueOnce(new Error("scraper-runs update failed")) // handleRunFailure: scraper-runs
@@ -649,7 +634,6 @@ describe("scraperExecutionJob", () => {
       });
       expect(scraperFailCalls).toHaveLength(1);
 
-      // logError should have been called for the scraper-runs update failure
       const { logError } = await import("@/lib/logger");
       expect(logError).toHaveBeenCalledWith(
         expect.objectContaining({ message: "scraper-runs update failed" }),
@@ -659,7 +643,6 @@ describe("scraperExecutionJob", () => {
     });
 
     it("should log and not throw when scrapers update fails during handleRunFailure", async () => {
-      // Make runner call fail
       globalThis.fetch = createFailureFetchMock(500, "Server error");
 
       // Let scraper-runs update succeed but scrapers update fail in handleRunFailure

@@ -93,11 +93,8 @@ describe("buildActivationKey", () => {
   });
 
   it("sorts parameters locale-independently so the uniqueness key is stable across environments", () => {
-    // Regression: parameters were sorted with String.prototype.localeCompare,
-    // whose ordering depends on the runtime locale/ICU. This key is persisted as
-    // `dataPackageSlug` and compared to reject duplicate activations, so a
-    // locale-dependent ordering could let a duplicate slip through. Ordering must
-    // not depend on localeCompare.
+    // Regression: parameter order must not depend on localeCompare (runtime locale/ICU).
+    // The key is persisted as `dataPackageSlug` and compared to reject duplicate activations.
     const params = { city: "berlin", year: "2026", _region: "eu" };
     const expected = buildActivationKey("pkg", params);
 
@@ -128,8 +125,8 @@ describe("deactivateDataPackage", () => {
 
   it("disables EVERY activation of a parameterized package, not just one", async () => {
     // The deactivate route never forwards `parameters`, so the multi-match
-    // branch is always taken. Acting on a single arbitrary document left the
-    // other activations live with no way to reach them through the UI.
+    // branch is always taken. Acting on a single arbitrary document would leave
+    // the other activations live with no way to reach them through the UI.
     const payload = payloadWith([
       activation(1, "berlin-events:year=2024"),
       activation(2, "berlin-events:year=2025"),

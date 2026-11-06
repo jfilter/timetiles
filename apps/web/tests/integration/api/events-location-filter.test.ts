@@ -35,7 +35,6 @@ describe("/api/v1/events - location filtering", () => {
       user: users.testUser,
     });
 
-    // Create test dataset
     const { dataset } = await withDataset(testEnv, catalog.id, {
       name: "Location Filter Test Dataset",
       isPublic: true,
@@ -107,7 +106,7 @@ describe("/api/v1/events - location filtering", () => {
     expect(response.status).toBe(200);
     const data = await response.json();
 
-    // events.length should match totalDocs (no more "170 of 390" inconsistency)
+    // events.length must match totalDocs
     expect(data.events).toHaveLength(data.pagination.totalDocs);
   });
 });

@@ -122,9 +122,8 @@ describe("POST /api/data-exports/request", () => {
   });
 
   it("acquires the per-user advisory lock before checking for an active export", async () => {
-    // Regression test: the check-then-create used to run as two unlocked
-    // operations, so two concurrent requests could both see zero active
-    // exports and both insert. The lock must be taken first.
+    // Regression: two concurrent requests must not both see zero active exports
+    // and both insert, so the lock is taken before the check.
     const callOrder: string[] = [];
     mockPayload.db.drizzle.execute.mockImplementation(() => {
       callOrder.push("lock");

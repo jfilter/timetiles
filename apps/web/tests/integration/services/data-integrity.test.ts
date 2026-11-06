@@ -43,14 +43,12 @@ describe("Data Integrity Tests", () => {
     testServer = envWithServer.testServer;
     testServerUrl = envWithServer.testServerUrl;
 
-    // Create test user
     // This suite accumulates schedules to test data integrity, not quota limits.
     const { users } = await withUsers(envWithServer, {
       testUser: { role: "admin", email: TEST_EMAILS.integrity, customQuotas: { maxActiveSchedules: -1 } },
     });
     testUser = users.testUser;
 
-    // Create test catalog
     const { catalog } = await withCatalog(testEnv, {
       name: "Integrity Test Catalog",
       description: "Catalog for data integrity tests",
@@ -88,13 +86,10 @@ describe("Data Integrity Tests", () => {
         frequency: "daily",
       });
 
-      // Set up test server endpoint
       testServer.respondWithCSV("/hash-test.csv", csvContent);
 
-      // Import the job handler
       const { urlFetchJob } = await import("@/lib/jobs/handlers/url-fetch-job");
 
-      // Execute the job
       const result = await urlFetchJob.handler({
         job: { id: "test-job-hash" },
         req: { payload },
@@ -129,10 +124,8 @@ describe("Data Integrity Tests", () => {
       // Set up test server endpoint to return same content for both requests
       testServer.respondWithCSV("/duplicate.csv", csvContent);
 
-      // Import the job handler
       const { urlFetchJob } = await import("@/lib/jobs/handlers/url-fetch-job");
 
-      // First execution
       const result1 = await urlFetchJob.handler({
         job: { id: "test-job-dup-1" },
         req: { payload },
@@ -192,15 +185,12 @@ describe("Data Integrity Tests", () => {
         },
       });
 
-      // Set up test server endpoint for large file
       testServer.respondWithCSV("/large-hash.csv", largeContent);
 
-      // Import the job handler
       const { urlFetchJob } = await import("@/lib/jobs/handlers/url-fetch-job");
 
       const startTime = Date.now();
 
-      // Execute the job
       const result = await urlFetchJob.handler({
         job: { id: "test-job-large-hash" },
         req: { payload },
@@ -241,12 +231,10 @@ describe("Data Integrity Tests", () => {
         res.end(csvContent);
       });
 
-      // Use fake timers
       vi.useFakeTimers();
       const baseTime = new Date("2024-01-01T12:00:00.000Z");
       vi.setSystemTime(baseTime);
 
-      // Import the schedule manager
       const { scheduleManagerJob } = await import("@/lib/jobs/handlers/schedule-manager-job");
 
       // Execute at different times
@@ -256,7 +244,6 @@ describe("Data Integrity Tests", () => {
         new Date("2024-01-01T15:00:00.000Z"),
       ];
 
-      // Build execution history entries
       const executionHistory = [];
       for (let i = 0; i < executionTimes.length; i++) {
         const execTime = executionTimes[i];
@@ -296,16 +283,13 @@ describe("Data Integrity Tests", () => {
         },
       });
 
-      // Fetch the updated scheduled ingest
       const updated = await payload.findByID({ collection: "scheduled-ingests", id: scheduledIngest.id });
 
-      // Check execution history
       expect(updated.executionHistory).toHaveLength(3);
       expect(updated.executionHistory[0].executedAt).toBeTruthy();
       expect(updated.executionHistory[0].status).toBe("success");
       expect(updated.executionHistory[0].duration).toBeGreaterThanOrEqual(0);
 
-      // Check statistics
       expect(updated.statistics.totalRuns).toBe(3);
       expect(updated.statistics.successfulRuns).toBe(3);
       expect(updated.statistics.failedRuns).toBe(0);
@@ -328,17 +312,13 @@ describe("Data Integrity Tests", () => {
         }
       );
 
-      // Set up test server endpoint
       testServer.respondWithCSV("/history-limit.csv", "test,data\n1,2");
 
-      // Use fake timers
       vi.useFakeTimers();
       const baseTime = new Date("2024-01-01T00:00:00.000Z");
 
-      // Import the schedule manager
       const { scheduleManagerJob } = await import("@/lib/jobs/handlers/schedule-manager-job");
 
-      // Execute 15 times
       for (let i = 0; i < 15; i++) {
         vi.setSystemTime(new Date(baseTime.getTime() + (i + 1) * 3600000)); // Each hour
 
@@ -374,7 +354,6 @@ describe("Data Integrity Tests", () => {
         });
       }
 
-      // Fetch the updated scheduled ingest
       const updated = await payload.findByID({ collection: "scheduled-ingests", id: scheduledIngest.id });
 
       // Should only keep last 10 entries
@@ -415,17 +394,14 @@ describe("Data Integrity Tests", () => {
         }
       });
 
-      // Use fake timers
       vi.useFakeTimers();
       const baseTime = new Date("2024-01-01T12:00:00.000Z");
 
-      // Import the schedule manager
       const { scheduleManagerJob } = await import("@/lib/jobs/handlers/schedule-manager-job");
 
       // Mock url-fetch job to simulate failures
       await import("@/lib/jobs/handlers/url-fetch-job");
 
-      // Execute 5 times
       for (let i = 0; i < 5; i++) {
         vi.setSystemTime(new Date(baseTime.getTime() + (i + 1) * 3600000));
 
@@ -461,10 +437,8 @@ describe("Data Integrity Tests", () => {
         }
       }
 
-      // Fetch the updated scheduled ingest
       const updated = await payload.findByID({ collection: "scheduled-ingests", id: scheduledIngest.id });
 
-      // Check statistics accuracy
       expect(updated.statistics.totalRuns).toBeGreaterThan(0);
       expect(updated.statistics.successfulRuns).toBeGreaterThan(0);
       expect(updated.statistics.totalRuns).toBe(updated.statistics.successfulRuns + updated.statistics.failedRuns);
@@ -491,14 +465,11 @@ describe("Data Integrity Tests", () => {
         res.end(csvContent);
       });
 
-      // Use fake timers
       vi.useFakeTimers();
       const baseTime = new Date("2024-01-01T12:00:00.000Z");
 
-      // Import the schedule manager
       const { scheduleManagerJob } = await import("@/lib/jobs/handlers/schedule-manager-job");
 
-      // Execute multiple times
       for (let i = 0; i < 5; i++) {
         vi.setSystemTime(new Date(baseTime.getTime() + (i + 1) * 3600000));
 
@@ -544,10 +515,8 @@ describe("Data Integrity Tests", () => {
         });
       }
 
-      // Fetch the updated scheduled ingest
       const updated = await payload.findByID({ collection: "scheduled-ingests", id: scheduledIngest.id });
 
-      // Average duration should be calculated
       expect(updated.statistics.averageDuration).toBeGreaterThan(0);
 
       // Check execution history has durations
@@ -571,16 +540,13 @@ describe("Data Integrity Tests", () => {
         frequency: "daily",
       });
 
-      // Set up test server endpoint
       testServer.respond("/special.csv", {
         body: specialContent,
         headers: { "Content-Type": "text/csv; charset=utf-8" },
       });
 
-      // Import the job handler
       const { urlFetchJob } = await import("@/lib/jobs/handlers/url-fetch-job");
 
-      // Execute the job
       const result = await urlFetchJob.handler({
         job: { id: "test-job-special" },
         req: { payload },
@@ -611,16 +577,13 @@ describe("Data Integrity Tests", () => {
       // Test with Latin-1 encoded content
       const latin1Content = Buffer.from("id,name\n1,Café\n2,Niño", "latin1");
 
-      // Set up test server endpoint
       testServer.respond("/encoded.csv", {
         body: latin1Content,
         headers: { "Content-Type": "text/csv; charset=iso-8859-1" },
       });
 
-      // Import the job handler
       const { urlFetchJob } = await import("@/lib/jobs/handlers/url-fetch-job");
 
-      // Execute the job
       const result = await urlFetchJob.handler({
         job: { id: "test-job-encoding" },
         req: { payload },
@@ -671,7 +634,6 @@ describe("Data Integrity Tests", () => {
         }
       });
 
-      // Import the job handler
       const { urlFetchJob } = await import("@/lib/jobs/handlers/url-fetch-job");
 
       const jobInput = {

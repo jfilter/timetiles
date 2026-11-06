@@ -41,7 +41,6 @@ test.describe("Visual Regression", () => {
   // current explore layout. The module docstring lists the remaining blockers.
   test.skip(!RUN_VISUAL_REGRESSION, "Opt-in only — set E2E_VISUAL_REGRESSION=true");
 
-  // Use a fixed viewport for consistent screenshots
   test.use({ viewport: { width: 1280, height: 800 } });
 
   test("explore page", async ({ page }) => {

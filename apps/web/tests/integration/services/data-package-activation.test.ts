@@ -765,7 +765,6 @@ describe("Data Package Activation", () => {
     testServer.respondWithCSV("/conflict-data.csv", MOCK_CSV);
     const manifest = buildTestManifest(`${testServerUrl}/conflict-data.csv`);
 
-    // Activate with first import triggered
     const result = await activateDataPackage(payload, manifest, adminUser, { triggerFirstImport: true });
 
     // Wait for the ingest-file to be created (url-fetch produces it)
@@ -793,7 +792,6 @@ describe("Data Package Activation", () => {
     );
 
     if (schemaResult.ingestJob?.stage === "needs-review") {
-      // Approve schema
       const job = await payload.findByID({ collection: "ingest-jobs", id: schemaResult.ingestJob.id });
       await payload.update({
         collection: "ingest-jobs",
@@ -810,11 +808,9 @@ describe("Data Package Activation", () => {
       });
     }
 
-    // Run pipeline to completion
     const settled = await runJobsUntilImportSettled(payload, ingestFileId!, { maxIterations: 60 });
     expect(settled.settled).toBe(true);
 
-    // Verify events were created
     const events = await payload.find({
       collection: "events",
       where: { dataset: { equals: result.datasetId } },
@@ -920,7 +916,6 @@ describe("Data Package Activation", () => {
     const settled = await runJobsUntilImportSettled(payload, ingestFileId!, { maxIterations: 60 });
     expect(settled.settled).toBe(true);
 
-    // Verify events were created
     const events = await payload.find({
       collection: "events",
       where: { dataset: { equals: result.datasetId } },
@@ -1010,7 +1005,6 @@ describe("Data Package Activation", () => {
     // Use unique catalog name to avoid collision
     manifest.catalog.name = `Reimport Test Catalog ${Date.now()}`;
 
-    // First import
     const result = await activateDataPackage(payload, manifest, adminUser, { triggerFirstImport: true });
 
     // Drain first import
@@ -1125,14 +1119,12 @@ describe("Data Package Activation", () => {
     const secondSettled = await runJobsUntilImportSettled(payload, secondIngestFileId!, { maxIterations: 60 });
     expect(secondSettled.settled).toBe(true);
 
-    // Check ingest job results for the re-import
     const reImportJobs = await payload.find({
       collection: "ingest-jobs",
       where: { ingestFile: { equals: secondIngestFileId } },
     });
     const reImportJob = reImportJobs.docs[0];
 
-    // Diagnostic: check what happened in the re-import
     const jobResults = reImportJob?.results as Record<string, unknown> | undefined;
     const duplicates = reImportJob?.duplicates as Record<string, unknown> | undefined;
     const jobStage = reImportJob?.stage;
@@ -1147,12 +1139,9 @@ describe("Data Package Activation", () => {
         `configSnapshot.idStrategy: ${JSON.stringify((reImportJob?.configSnapshot as Record<string, unknown>)?.idStrategy)}`
     );
 
-    // Should still have 3 events (updated, not duplicated) — or 6 if update failed and created new
+    // 3 events means updated in place; 6 would mean duplicated instead of updated
     const finalEvents = await payload.find({ collection: "events", where: { dataset: { equals: result.datasetId } } });
 
-    // The key assertion: events should be updated with new data
-    // If this is 6, events were duplicated instead of updated
-    // If 3 but no updated text, the update didn't write transformedData
     expect(finalEvents.docs).toHaveLength(3);
 
     // Check if ANY event has the updated text (in transformedData or sourceData)

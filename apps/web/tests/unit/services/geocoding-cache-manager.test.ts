@@ -26,10 +26,8 @@ describe("normalizeGeocodingAddress", () => {
     expect(normalizeGeocodingAddress("12-14 Long Rd., Springfield")).toBe("12-14 long rd., springfield");
   });
 
-  // Regression: an ASCII-only \w class mangled every non-ASCII address —
-  // providers received "mllerstrae 12, kln", fully non-Latin addresses
-  // normalized to "" and were silently dropped from the geocode set, and
-  // addresses differing only in non-ASCII letters collided on one cache key.
+  // Regression: an ASCII-only \w class would send "mllerstrae 12, kln" to providers,
+  // drop fully non-Latin addresses and collide addresses differing only in non-ASCII letters.
   it("preserves non-ASCII letters (umlauts, ß, accents)", () => {
     expect(normalizeGeocodingAddress("Müllerstraße 12, Köln")).toBe("müllerstraße 12, köln");
     expect(normalizeGeocodingAddress("Łódź, Polska")).toBe("łódź, polska");
@@ -44,9 +42,7 @@ describe("normalizeGeocodingAddress", () => {
     expect(normalizeGeocodingAddress("Köln")).not.toBe(normalizeGeocodingAddress("Kln"));
   });
 
-  // Regression: dropping the slash fused the parts into a different house number, so
-  // "12/1 Main St" became "121 main st" — colliding with a real, different address and
-  // sending the wrong string to the provider.
+  // Regression: "12/1 Main St" must not fuse into "121 main st", a real, different address.
   it("turns slashes into a separator instead of fusing address parts", () => {
     expect(normalizeGeocodingAddress("12/1 Main St")).toBe("12 1 main st");
     expect(normalizeGeocodingAddress("12/1 Main St")).not.toBe(normalizeGeocodingAddress("121 Main St"));

@@ -243,12 +243,9 @@ describe("scheduledIngestWorkflow", () => {
   });
 
   it("should resolve a review-paused run without counting it as a failure", async () => {
-    // A review pause is not a failure: the fetch and downstream jobs worked, a human simply
-    // has to approve something. Failing it incremented `currentRetries`, and because a
-    // paused run never reached updateScheduledIngestSuccess (which resets the counter), a
-    // feed that legitimately needs review each day auto-disabled itself after maxRetries
-    // runs — even though the owner approved every single one. The pending review is
-    // surfaced through the ingest job's NEEDS_REVIEW stage instead.
+    // A review pause is not a failure: counting it would increment `currentRetries`
+    // (never reset, since a paused run skips updateScheduledIngestSuccess) and auto-disable
+    // a feed that legitimately needs daily review. The ingest job's NEEDS_REVIEW stage surfaces it.
     mockReq.payload.findByID.mockResolvedValueOnce({ id: "fetched-file-1", status: "processing" });
     mockReq.payload.find.mockResolvedValueOnce({ docs: [{ stage: "needs-review", reviewReason: "schema-drift" }] });
 
@@ -263,10 +260,8 @@ describe("scheduledIngestWorkflow", () => {
   });
 
   it("should wait between reconciliation attempts instead of retrying inside the same outage", async () => {
-    // Three back-to-back writes all land in the same millisecond of a database
-    // outage, so the retry loop only survived errors that were not going to
-    // repeat anyway. A successful import then sat at lastStatus="running" until
-    // the reaper booked it as failed hours later.
+    // Back-to-back writes all land in the same millisecond of a database outage;
+    // without backoff a successful import would sit at lastStatus="running" until reaped.
     vi.useFakeTimers();
     try {
       vi.mocked(loadScheduledIngestForLifecycle)

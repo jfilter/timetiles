@@ -4,12 +4,11 @@
  *
  * scraper_runs.scraper_id is NOT NULL while its foreign key declares
  * ON DELETE SET NULL — the database can never satisfy that combination, so the
- * cascade is emulated in a beforeDelete hook. That emulation used to delete the
- * runs first and let the parent delete follow, which failed at the foreign key
- * with an opaque 500 whenever an execution job inserted a run in between.
+ * cascade is emulated in a beforeDelete hook. Deleting runs first and the parent
+ * after fails at the foreign key whenever an execution job inserts a run in between.
  *
- * These tests pin the two guarantees that replaced it: a running scraper
- * refuses deletion with a 409, and an idle one still cascades its runs.
+ * These tests pin two guarantees: a running scraper refuses deletion with a 409,
+ * and an idle one still cascades its runs.
  *
  * @module
  */
@@ -86,8 +85,8 @@ describe("Deleting a scraper while a run is in flight", () => {
       /currently running/i
     );
 
-    // The point of the guard is that the scraper survives — a 409 that still
-    // deleted the row would be worse than the 500 it replaced.
+    // The point of the guard is that the scraper survives — a 409 that still deleted the row
+    // would be worse than failing outright.
     const survivor = await payload.findByID({ collection: "scrapers", id: scraperId, overrideAccess: true });
     expect(survivor.id).toBe(scraperId);
   });
@@ -114,9 +113,8 @@ describe("Deleting a scraper while a run is in flight", () => {
   it("refuses a repo delete when one of its scrapers is running", async () => {
     const runningScraperId = await createScraper("running");
 
-    // The bulk delete inside the repo's beforeDelete collects per-document
-    // failures rather than throwing, so this used to slip through and die at
-    // the foreign key instead.
+    // The bulk delete inside the repo's beforeDelete collects per-document failures rather than
+    // throwing, so without the guard this would slip through and die at the foreign key.
     await expect(payload.delete({ collection: "scraper-repos", id: repoId, overrideAccess: true })).rejects.toThrow(
       /could not be deleted/i
     );

@@ -287,7 +287,6 @@ export class TestEnvironmentBuilder {
     const testId = randomUUID();
     const workerId = process.env.VITEST_WORKER_ID ?? "1";
 
-    // Create temporary directory if requested
     let tempDir: string | undefined;
     if (createTempDir) {
       tempDir = `/tmp/timetiles-test-${workerId}-${testId}`;
@@ -296,8 +295,7 @@ export class TestEnvironmentBuilder {
       }
     }
 
-    // Use the same database URL that was set up in the global setup
-    // Or get test database URL for this worker
+    // Use the database URL from global setup, else this worker's test database
     const { parseDatabaseUrl } = await import("../../../lib/database/url");
     const { getTestDatabaseUrl } = await import("../test-database-url");
     const dbUrl = process.env.DATABASE_URL ?? getTestDatabaseUrl();
@@ -328,7 +326,6 @@ export class TestEnvironmentBuilder {
       });
     }
 
-    // Create test environment
     const testEnv: TestEnvironment = {
       payload: environment.payload,
       seedManager: environment.seedManager,
@@ -341,7 +338,6 @@ export class TestEnvironmentBuilder {
       truncateCollections: (colls: string[]) => environment.seedManager.truncate(colls),
     };
 
-    // Track active environment for cleanup
     TestEnvironmentBuilder.activeEnvironments.add(testEnv);
 
     logger.info("Test environment created successfully", { workerId, tempDir: tempDir ? "created" : "none" });
@@ -392,12 +388,8 @@ export class TestEnvironmentBuilder {
     logger.info("Cleaning up test environment", { dbName: testEnv.dbName, workerId });
 
     try {
-      // Remove from active environments
       TestEnvironmentBuilder.activeEnvironments.delete(testEnv);
 
-      // Payload cleanup handled automatically by getPayload({ config })
-
-      // Clean up temporary directory
       if (testEnv.tempDir && fs.existsSync(testEnv.tempDir)) {
         fs.rmSync(testEnv.tempDir, { recursive: true, force: true });
       }
@@ -405,15 +397,8 @@ export class TestEnvironmentBuilder {
       // NOTE: Upload directory is shared across all tests in this worker
       // Don't delete it here - it will be cleaned up in global-setup.ts afterAll
 
-      // IMPORTANT: Do NOT close the Payload connection pool here!
-      // Payload's getPayload() returns a cached singleton instance. If we close the pool,
-      // subsequent test files in the same worker will get the SAME Payload instance but
-      // with a closed pool, causing all database operations to fail with
-      // "ValidationError: The following field is invalid: User" or similar errors.
-      //
-      // The pool will be cleaned up automatically when the worker process exits.
-      // Each worker has its own isolated database (timetiles_test_1, etc.) so there's
-      // no cross-worker contamination.
+      // Do NOT close the Payload pool: getPayload() returns a cached singleton, so later test
+      // files in this worker would get a closed pool. It is released when the worker exits.
 
       // NOTE: We do NOT truncate tables here in final cleanup because:
       // 1. Worker environments reuse a shared database connection for speed
@@ -472,8 +457,7 @@ export class TestEnvironmentBuilder {
 export const createIntegrationTestEnvironment = async (
   options: TestEnvironmentOptions = {}
 ): Promise<TestEnvironment> => {
-  // Database setup is handled by the global setup in integration.ts
-  // No need to check here as it causes a race condition
+  // Database setup is handled by the integration global setup; checking here would race
   const builder = new TestEnvironmentBuilder();
   return builder.createIntegrationTestEnvironment(options);
 };
@@ -607,8 +591,7 @@ export const buildTestInterpretationPlan = (
 /**
  * Project a record's persisted `interpretationPlan` (dataset or ingest job) back
  * to the flat field-mapping shape (titlePath/timestampPath/coordinateFormat/…)
- * tests previously read off the removed `fieldMappingOverrides` /
- * `detectedFieldMappings` groups.
+ * that tests assert on.
  */
 export const readPlanFieldMappings = (record: { interpretationPlan?: unknown }): FlatPlanFieldMappings =>
   planToFieldMappings(readInterpretationPlan(record));
@@ -738,7 +721,6 @@ export const withUsers = async (
   const users: Record<string, any> = {};
   const timestamp = Date.now();
 
-  // Handle simple array of roles
   if (Array.isArray(rolesOrConfigs)) {
     for (const role of rolesOrConfigs) {
       const user = await createUserWithoutVerification(testEnv.payload, {
@@ -749,7 +731,6 @@ export const withUsers = async (
       users[role] = user;
     }
   } else {
-    // Handle object with custom configurations
     for (const [key, config] of Object.entries(rolesOrConfigs)) {
       const userData: Record<string, any> = {
         email: config.email ?? `${key}-${timestamp}@test.com`,
@@ -757,7 +738,6 @@ export const withUsers = async (
         role: config.role ?? "user",
       };
 
-      // Add optional fields if provided
       if (config.firstName !== undefined) userData.firstName = config.firstName;
       if (config.lastName !== undefined) userData.lastName = config.lastName;
       if (config.trustLevel !== undefined) userData.trustLevel = config.trustLevel;
@@ -892,10 +872,8 @@ export const withSchemaVersion = async (
   const removedFields = options?.removedFields ?? [];
   const typeChanges = options?.typeChanges ?? [];
 
-  // Generate field metadata
   const fieldMetadata = generateFieldMetadata(schemaProperties, newFields);
 
-  // Build data object
   const data: Record<string, any> = {
     dataset: datasetId,
     versionNumber,
@@ -911,12 +889,10 @@ export const withSchemaVersion = async (
     },
   };
 
-  // Add import source if provided
   if (options?.ingestJob !== undefined) {
     data.ingestSources = [{ ingestJob: options.ingestJob, recordCount: 100, batchCount: 1 }];
   }
 
-  // Add approval fields
   addApprovalFields(data, status, options ?? {});
 
   // @ts-expect-error -- data is dynamically constructed from test options
@@ -1037,10 +1013,8 @@ export const withIngestFile = async (
     triggerWorkflow?: boolean;
   }
 ): Promise<TestEnvironment & { ingestFile: any }> => {
-  // Build data object dynamically based on provided options
   const data: Record<string, any> = { status: options?.status ?? "pending" };
 
-  // Add catalog if provided
   if (catalogId !== null) {
     data.catalog = catalogId;
   }
@@ -1053,7 +1027,6 @@ export const withIngestFile = async (
     userContext = defaultUser;
   } else {
     data.user = options.user;
-    // Try to get the full user object for context
     try {
       userContext = await testEnv.payload.findByID({ collection: "users", id: options.user });
     } catch {
@@ -1067,7 +1040,6 @@ export const withIngestFile = async (
     data.datasetsProcessed = options.datasetsProcessed;
   }
 
-  // Merge any additional data
   if (options?.additionalData) {
     Object.assign(data, options.additionalData);
   }
@@ -1163,7 +1135,6 @@ export const withScheduledIngest = async (
 ): Promise<TestEnvironment & { scheduledIngest: any }> => {
   const timestamp = Date.now();
 
-  // Build data object with required fields
   const data: Record<string, any> = {
     name: options?.name ?? `Test Import ${timestamp}`,
     sourceUrl,
@@ -1172,7 +1143,6 @@ export const withScheduledIngest = async (
     scheduleType: options?.scheduleType ?? "frequency",
   };
 
-  // Add optional fields if provided
   const optionalFields = [
     "description",
     "webhookEnabled",
@@ -1186,7 +1156,6 @@ export const withScheduledIngest = async (
 
   addOptionalFields(data, options ?? {}, optionalFields);
 
-  // Merge any additional data
   if (options?.additionalData) {
     Object.assign(data, options.additionalData);
   }

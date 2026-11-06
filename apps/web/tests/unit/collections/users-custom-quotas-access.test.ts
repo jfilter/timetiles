@@ -9,7 +9,6 @@ import { describe, expect, it } from "vitest";
 
 import Users from "@/lib/collections/users";
 
-// Extract the customQuotas field from the Users collection
 const customQuotasField = Users.fields.find((f) => "name" in f && f.name === "customQuotas");
 const access = customQuotasField && "access" in customQuotasField ? customQuotasField.access : undefined;
 

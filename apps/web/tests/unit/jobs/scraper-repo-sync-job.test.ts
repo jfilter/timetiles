@@ -20,7 +20,6 @@ const mocks = vi.hoisted(() => ({
   validateResolvedPublicHostname: vi.fn().mockResolvedValue(undefined),
 }));
 
-// Mock dependencies
 vi.mock("@/lib/logger", () => ({ logger: mocks.logger, createLogger: () => mocks.logger, logError: vi.fn() }));
 
 vi.mock("node:child_process", () => ({ execFile: vi.fn() }));
@@ -241,11 +240,9 @@ describe("scraperRepoSyncJob", () => {
     const context = createMockContext({ scraperRepoId: 5 });
     const result = await scraperRepoSyncJob.handler(context);
 
-    // Deletes the scraper, and ONLY the scraper. The runs are cascaded by the
-    // scrapers beforeDelete hook, which does it AFTER refusing to delete a
-    // running scraper. Deleting them here first inverted that order: a scraper
-    // mid-run lost its entire run history and only then hit the 409 that
-    // rejected the delete — data destroyed by an operation that then failed.
+    // Deletes the scraper, and ONLY the scraper: its beforeDelete hook cascades the runs
+    // after refusing a running scraper, so deleting runs here first would destroy the
+    // history of a scraper whose delete then fails with 409.
     expect(mockPayload.delete).toHaveBeenCalledWith({ collection: "scrapers", id: 51, overrideAccess: true });
     expect(mockPayload.delete).not.toHaveBeenCalledWith(
       expect.objectContaining({ collection: "scraper-runs" as const })
@@ -301,7 +298,6 @@ describe("scraperRepoSyncJob", () => {
     const context = createMockContext({ scraperRepoId: 5 });
     await scraperRepoSyncJob.handler(context);
 
-    // Find the repo status update call
     const repoUpdateCalls = mockPayload.update.mock.calls.filter(
       (call: unknown[]) => (call[0] as { collection: string }).collection === "scraper-repos"
     );
@@ -318,7 +314,6 @@ describe("scraperRepoSyncJob", () => {
   });
 
   it("should update repo lastSyncStatus to 'failed' with error on failure", async () => {
-    // Repo not found
     mockPayload.findByID.mockResolvedValue(null);
 
     const context = createMockContext({ scraperRepoId: 999 });
@@ -584,7 +579,6 @@ describe("scraperRepoSyncJob", () => {
   });
 
   it("should handle failed status update during error path", async () => {
-    // Repo not found
     mockPayload.findByID.mockResolvedValue(null);
     // Make the error status update also fail
     mockPayload.update.mockRejectedValue(new Error("Update also failed"));

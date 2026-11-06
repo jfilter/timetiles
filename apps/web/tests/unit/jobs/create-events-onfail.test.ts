@@ -9,7 +9,7 @@
  * @category Tests
  */
 /* oxlint-disable promise/prefer-await-to-then, unicorn/no-thenable */
-// Import centralized mocks FIRST
+// Import centralized mocks first
 import "@/tests/mocks/services/logger";
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -90,8 +90,8 @@ describe("create-events-batch onFail isolation", () => {
     vi.clearAllMocks();
 
     mockPayload = {
-      // cleanupPriorAttempt loads the job to scope its delete by createdAt.
       update: vi.fn().mockResolvedValue({}),
+      // cleanupPriorAttempt loads the job to scope its delete by createdAt.
       findByID: vi.fn().mockResolvedValue({ id: "import-onfail-1", createdAt: "2026-01-01T00:00:00.000Z", dataset: 1 }),
       db: { drizzle: createDrizzleMock() },
     };
@@ -128,7 +128,6 @@ describe("create-events-batch onFail isolation", () => {
   });
 
   it("should call both cleanup and status update when both succeed", async () => {
-    // Setup: cleanupPriorAttempt finds some events to delete
     mockPayload.db.drizzle = createDrizzleMock({ selectResult: [{ id: 1 }, { id: 2 }] });
 
     await createEventsBatchJob.onFail(buildArgs());
@@ -136,7 +135,6 @@ describe("create-events-batch onFail isolation", () => {
     // Cleanup ran (drizzle select was called)
     expect(mockPayload.db.drizzle.select).toHaveBeenCalled();
 
-    // Status update was called
     expect(mockPayload.update).toHaveBeenCalledWith(
       expect.objectContaining({
         collection: "ingest-jobs",

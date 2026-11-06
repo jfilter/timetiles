@@ -2,9 +2,9 @@
  * Trashed events must be invisible to the event SQL functions.
  *
  * Events are trash-enabled: Payload's `find` hides soft-deleted rows and `toSqlConditions`
- * adds `e.deleted_at IS NULL` to every raw-SQL path. The three PL/pgSQL functions did not,
- * so a deleted event stayed in map clusters, the histogram and the beeswarm while the list
- * beside them already hid it (fixed in 20260813_180000).
+ * adds `e.deleted_at IS NULL` to every raw-SQL path. The three PL/pgSQL functions must do the
+ * same, or a deleted event stays in map clusters, the histogram and the beeswarm while the
+ * list beside them hides it.
  *
  * Guarded twice: structurally, so a future in-place function rewrite cannot drop the clause
  * from one branch, and functionally through the actual aggregate.

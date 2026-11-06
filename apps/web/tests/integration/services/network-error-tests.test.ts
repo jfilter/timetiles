@@ -30,7 +30,6 @@ import {
 } from "@/tests/setup/integration/environment";
 import type { TestServer } from "@/tests/setup/integration/http-server";
 
-// Type definitions for urlFetchJob output
 interface UrlFetchSuccessOutput {
   ingestFileId: string | number;
   filename: string;
@@ -78,11 +77,9 @@ describe("Network Error Handling Tests", () => {
     testServer = envWithServer.testServer;
     testServerUrl = envWithServer.testServerUrl;
 
-    // Create test user
     const { users } = await withUsers(envWithServer, { testUser: { role: "admin", email: TEST_EMAILS.network } });
     testUser = users.testUser;
 
-    // Create test catalog
     const { catalog } = await withCatalog(envWithServer, {
       name: "Network Test Catalog",
       description: "Catalog for network error tests",
@@ -153,7 +150,6 @@ describe("Network Error Handling Tests", () => {
         { user: testUser, name: "URL with Spaces Import", frequency: "daily" }
       );
 
-      // Execute the job
       const errorMsg = await expectHandlerToThrow({
         job: { id: "test-job-1" },
         req: { payload },
@@ -273,8 +269,6 @@ describe("Network Error Handling Tests", () => {
           },
         });
 
-        // Should fail due to timeout
-
         {
           expect(errorMsg).toMatch(/abort|timeout|fetch failed/i);
         }
@@ -298,7 +292,6 @@ describe("Network Error Handling Tests", () => {
         frequency: "daily",
       });
 
-      // Execute the job
       const errorMsg = await expectHandlerToThrow({
         job: { id: "test-job-5" },
         req: { payload },
@@ -330,7 +323,6 @@ describe("Network Error Handling Tests", () => {
         frequency: "daily",
       });
 
-      // Execute the job
       const errorMsg = await expectHandlerToThrow({
         job: { id: "test-job-6" },
         req: { payload },
@@ -368,7 +360,6 @@ describe("Network Error Handling Tests", () => {
         authConfig: { type: "bearer", bearerToken: "invalid-token" },
       });
 
-      // Execute the job
       const errorMsg = await expectHandlerToThrow({
         job: { id: "test-job-7" },
         req: { payload },
@@ -503,7 +494,6 @@ describe("Network Error Handling Tests", () => {
         },
       });
 
-      // Execute the job
       const errorMsg = await expectHandlerToThrow({
         job: { id: "test-job-11" },
         req: { payload },
@@ -516,8 +506,6 @@ describe("Network Error Handling Tests", () => {
           userId: testUser.id,
         },
       });
-
-      // Handler should reject files exceeding max size limit
 
       {
         expect(errorMsg).toContain("too large");
@@ -611,7 +599,6 @@ describe("Network Error Handling Tests", () => {
         frequency: "daily",
       });
 
-      // Execute the job with real job queue
       const result = await urlFetchJob.handler({
         job: { id: "test-job-queue" },
         req: { payload },
@@ -631,7 +618,6 @@ describe("Network Error Handling Tests", () => {
         expect(successOutput.ingestFileId).toBeDefined();
         expect(successOutput.contentType).toBe("text/csv");
 
-        // Verify the import file was created
         const ingestFile = await payload.findByID({ collection: "ingest-files", id: successOutput.ingestFileId });
         expect(ingestFile).toBeDefined();
         // Status is "pending" after url-fetch creates the file (hooks skipped via skipIngestFileHooks context);

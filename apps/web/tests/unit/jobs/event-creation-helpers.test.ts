@@ -7,7 +7,6 @@ import "@/tests/mocks/services/logger";
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-// Use vi.hoisted to prevent thread-pool mock contamination from other test files
 const mocks = vi.hoisted(() => ({ generateUniqueId: vi.fn(() => "generated-id") }));
 
 vi.mock("@/lib/services/id-generation", () => ({ generateUniqueId: mocks.generateUniqueId }));
@@ -23,7 +22,6 @@ import {
   measureEventPayloadBytes,
 } from "@/lib/jobs/utils/event-creation-helpers";
 
-// Reset mock before each test to guard against thread-pool contamination
 beforeEach(() => {
   mocks.generateUniqueId.mockReturnValue("generated-id");
 });
@@ -138,7 +136,7 @@ describe("extractCoordinates", () => {
 
     it("should return none for ambiguous data even when one order would validate", () => {
       // "120,45": lng=120/lat=45 would be valid, but the column order is undecided.
-      // Option B never guesses per row — it returns none until the order is set.
+      // No per-row guessing — no point until the order is set.
       const row = { coords: "120,45" };
       const fieldMappings = { coordinatePath: "coords", coordinateFormat: "ambiguous" as const };
 
@@ -227,11 +225,9 @@ describe("extractCoordinates", () => {
       expect(result.coordinateSource.normalizedAddress).toBe("Munich, Bavaria, Germany");
     });
 
-    // Regression: geocoder output skipped the isValidCoordinate gate the
-    // source-data branch applies, so a provider answering (0,0) for an address
-    // it could not resolve pinned the event to Null Island instead of leaving
-    // it un-located. Job records written before the geocoder-side fix still
-    // carry such results, so the guard has to live here too.
+    // Regression: geocoder output must pass the same isValidCoordinate gate as source
+    // data, so a provider answering (0,0) for an unresolved address leaves the event
+    // un-located instead of on Null Island. Stored job records may still carry such results.
     it("should reject a Null Island geocoding result rather than place the event there", () => {
       const row = { location: "Nowhere" };
       const fieldMappings = { locationPath: "location" };
@@ -614,7 +610,7 @@ describe("createEventData", () => {
   });
 
   it("uses the precomputed fieldMappings over the job-derived projection", () => {
-    // L6: the batch processor projects the plan once per batch and passes it in.
+    // The batch processor projects the plan once per batch and passes it in.
     // When provided, createEventData must use it (not re-derive from the job).
     const row = { ts: "2024-06-15T10:30:00Z", lat: 52.52, lng: 13.405 };
     const result = createEventData(

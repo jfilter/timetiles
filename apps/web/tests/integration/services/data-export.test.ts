@@ -40,7 +40,6 @@ describe("Data Export Service", () => {
   });
 
   afterAll(async () => {
-    // Clean up test export directory
     try {
       if (existsSync(testExportDir)) {
         await rm(testExportDir, { recursive: true });
@@ -76,14 +75,12 @@ describe("Data Export Service", () => {
       const env = { payload, seedManager: { truncate } } as any;
       const { users } = await withUsers(env, { testUser: { role: "user" } });
 
-      // Create catalogs
       await payload.create({ collection: "catalogs", data: { name: "Test Catalog 1", createdBy: users.testUser.id } });
       const catalog2 = await payload.create({
         collection: "catalogs",
         data: { name: "Test Catalog 2", createdBy: users.testUser.id },
       });
 
-      // Create a dataset
       await payload.create({
         collection: "datasets",
         data: { name: "Test Dataset", catalog: catalog2.id, language: "eng", createdBy: users.testUser.id },
@@ -99,7 +96,6 @@ describe("Data Export Service", () => {
       const env = { payload, seedManager: { truncate } } as any;
       const { users } = await withUsers(env, { testUser: { role: "user" } });
 
-      // Create catalog and dataset
       const catalog = await payload.create({
         collection: "catalogs",
         data: { name: "Test Catalog", createdBy: users.testUser.id },
@@ -110,7 +106,6 @@ describe("Data Export Service", () => {
         data: { name: "Test Dataset", catalog: catalog.id, language: "eng", createdBy: users.testUser.id },
       });
 
-      // Create events
       for (let i = 0; i < 5; i++) {
         await payload.create({
           collection: "events",
@@ -132,10 +127,8 @@ describe("Data Export Service", () => {
       const env = { payload, seedManager: { truncate } } as any;
       const { users } = await withUsers(env, { user1: { role: "user" }, user2: { role: "user" } });
 
-      // Create catalog for user1
       await payload.create({ collection: "catalogs", data: { name: "User1 Catalog", createdBy: users.user1.id } });
 
-      // Create catalog for user2
       await payload.create({ collection: "catalogs", data: { name: "User2 Catalog", createdBy: users.user2.id } });
 
       const summaryUser1 = await exportService.getExportSummary(users.user1.id);
@@ -158,7 +151,6 @@ describe("Data Export Service", () => {
       expect(data.user.email).toBe(users.testUser.email);
       expect(data.user.firstName).toBe("Test");
       expect(data.user.lastName).toBe("User");
-      // Should not include password
       expect((data.user as any).password).toBeUndefined();
     });
 
@@ -289,14 +281,12 @@ describe("Data Export Service", () => {
       const env = { payload, seedManager: { truncate } } as any;
       const { users } = await withUsers(env, { user1: { role: "user" }, user2: { role: "user" } });
 
-      // Create export for user1
       await payload.create({
         collection: "data-exports",
         data: { user: users.user1.id, status: "pending", requestedAt: new Date().toISOString() },
         overrideAccess: true,
       });
 
-      // Create export for user2
       await payload.create({
         collection: "data-exports",
         data: { user: users.user2.id, status: "pending", requestedAt: new Date().toISOString() },

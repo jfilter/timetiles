@@ -377,12 +377,9 @@ describe("GeocodingOperations", () => {
   });
 
   describe("backoff handling", () => {
-    // Regression: a provider in backoff was skipped outright. With a single
-    // provider (or when every provider is throttled at once) that made
-    // tryProviders return null and geocode throw ALL_PROVIDERS_FAILED
-    // immediately, so one transient 429 permanently failed every address still
-    // to be processed in that import — even though waitForSlot would have slept
-    // the (≤30s) window out and completed the request.
+    // Regression: a provider in backoff must be waited out, not skipped. With every
+    // provider throttled, skipping throws ALL_PROVIDERS_FAILED and one transient 429
+    // fails every remaining address, although waitForSlot would sleep the ≤30s window out.
     it("waits out the backoff instead of failing when every provider is throttled", async () => {
       const geocoder = createMockGeocoder();
       const provider = createProvider("solo-provider", 10, geocoder);
@@ -443,10 +440,8 @@ describe("GeocodingOperations", () => {
   });
 
   describe("result validation", () => {
-    // Regression: the acceptance check only range-checked lat/lon, so a
-    // provider answering (0,0) for an address it could not resolve had that
-    // point cached, persisted onto the ingest job and rendered as a real event
-    // in the Gulf of Guinea.
+    // Regression: a provider answering (0,0) for an address it cannot resolve must be
+    // rejected, not cached and rendered as a real event in the Gulf of Guinea.
     it("rejects a Null Island result and falls through to the next provider", async () => {
       const nullIslandGeocoder = createMockGeocoder({ lat: 0, lng: 0 });
       const goodGeocoder = createMockGeocoder({ lat: 48.14, lng: 11.58, city: "Munich" });
@@ -501,11 +496,9 @@ describe("GeocodingOperations", () => {
   });
 
   describe("bias / cache interaction", () => {
-    // Regression: any bias disabled the cache outright. Providers that only
-    // accept a plain string query (Photon/Google/OpenCage) never see the bias,
-    // so their answer IS the unbiased answer — dropping it meant a biased
-    // import re-hit the provider for every row forever and never populated the
-    // cache at all.
+    // Regression: a bias must not disable the cache. Providers that only accept a plain
+    // string query (Photon/Google/OpenCage) never see the bias, so their answer IS the
+    // unbiased answer and may be cached under the address key.
     const settingsWithCache: GeocodingSettings = { ...defaultSettings, caching: { enabled: true, ttlDays: 30 } };
 
     const createStringOnlyProvider = (name: string, geocoder: ReturnType<typeof createMockGeocoder>) => ({

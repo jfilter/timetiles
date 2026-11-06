@@ -23,12 +23,10 @@ describe("Views Collection", () => {
   let payload: any;
   let cleanup: () => Promise<void>;
 
-  // Test users
   let adminUser: User;
   let regularUser: User;
   let otherUser: User;
 
-  // Test site
   let testSite: Site;
 
   beforeAll(async () => {
@@ -344,7 +342,6 @@ describe("Views Collection", () => {
     });
 
     it("should find default view within a site", async () => {
-      // Set view as default
       await payload.update({ collection: "views", id: testView.id, data: { isDefault: true } });
       clearViewCache();
 

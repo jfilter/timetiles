@@ -274,8 +274,6 @@ describe("DetectionOptions: field pattern overrides", () => {
 
 describe("DetectionOptions: scoring weight overrides", () => {
   it("default weights favor name match (0.6) over validation (0.4)", () => {
-    // Field with strong name match but weaker validation
-    // Field with weak name match but strong validation
     const fieldStats: Record<string, FieldStatistics> = {
       // "title" matches the first default pattern -> high pattern score
       title: makeFieldStats({
@@ -769,7 +767,6 @@ describe("DetectionOptions: additional field types", () => {
 
     const result = await detector.detect(context);
 
-    // The additional field type should appear in fieldMappings
     expect(result.fieldMappings).toHaveProperty("category");
     const categoryMapping = (result.fieldMappings as unknown as Record<string, unknown>)["category"];
     expect(categoryMapping).not.toBeNull();
@@ -803,7 +800,6 @@ describe("DetectionOptions: additional field types", () => {
 
     // Standard title detection should still work
     expect(result.fieldMappings.title?.path).toBe("title");
-    // Custom type should also be detected
     expect(result.fieldMappings).toHaveProperty("priority");
   });
 

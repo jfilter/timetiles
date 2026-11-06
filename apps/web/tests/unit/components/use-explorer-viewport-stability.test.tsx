@@ -63,9 +63,8 @@ describe("useExplorerViewport render stability", () => {
     const settledCount = renderCount;
     const settledBounds = result.current.debouncedSimpleBounds;
 
-    // With the loop, every additional 300 ms produced another render and a
-    // fresh debouncedSimpleBounds identity. Settled means: no further renders
-    // and a stable reference.
+    // A render loop would produce another render and a fresh debouncedSimpleBounds
+    // identity every 300 ms. Settled means: no further renders and a stable reference.
     act(() => {
       vi.advanceTimersByTime(3000);
     });

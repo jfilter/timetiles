@@ -38,7 +38,7 @@ const flushUrlUpdates = async () => {
 describe("useFilters.setBucketRangeFilter timezone handling", () => {
   beforeAll(() => {
     // Negative-offset zone so a small-hours-UTC instant falls on the previous
-    // local calendar day — exactly where the local-day bug manifested.
+    // local calendar day, where local-day formatting picks the wrong date.
     vi.stubEnv("TZ", "America/New_York");
   });
   afterAll(() => {
@@ -62,7 +62,7 @@ describe("useFilters.setBucketRangeFilter timezone handling", () => {
 
     expect(onUrlUpdate).toHaveBeenCalled();
     const lastCall = onUrlUpdate.mock.calls.at(-1)![0] as UrlUpdateEvent;
-    // UTC day is 2024-01-15. The old local-day formatting produced 2024-01-14.
+    // UTC day is 2024-01-15; local-day formatting would give 2024-01-14.
     expect(lastCall.queryString).toContain("startDate=2024-01-15");
     expect(lastCall.queryString).toContain("endDate=2024-01-15");
     expect(lastCall.queryString).not.toContain("2024-01-14");

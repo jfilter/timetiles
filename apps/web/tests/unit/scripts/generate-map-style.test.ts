@@ -63,8 +63,8 @@ describe("generate-map-style label halo", () => {
   });
 
   it("would have left a same-polarity, low-contrast halo had the literal gone unmatched", () => {
-    // Reproduces the defect: the raw upstream literal composited over the dark
-    // basemap, exactly what shipped before this replacement key existed.
+    // Baseline: the raw upstream literal composited over the dark basemap,
+    // which is what renders without the replacement key.
     const unfixedHaloOverLand = compositeOverBackground(UPSTREAM_HALO_HEX8, darkMapColors.land);
     expect(contrastRatio(unfixedHaloOverLand, darkMapColors.textPrimary)).toBeLessThan(2);
   });

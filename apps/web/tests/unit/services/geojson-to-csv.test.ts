@@ -461,7 +461,7 @@ describe("convertGeoJsonToCsv", () => {
 
   it("returns zero features for an empty FeatureCollection", () => {
     // An empty FeatureCollection is valid GeoJSON and a legitimate "nothing today" answer.
-    // Throwing made every empty day a scheduled-ingest failure that burned a retry.
+    // Throwing would turn every empty day into a failed scheduled ingest.
     const geojson = makeFeatureCollection([]);
 
     const result = convertGeoJsonToCsv(toBuffer(geojson));

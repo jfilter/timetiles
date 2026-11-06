@@ -251,7 +251,7 @@ describe("scheduleManagerJob timezone support", () => {
 
       await scheduleManagerJob.handler({ job: mockJob, req: mockReq });
 
-      // Should trigger (UTC behavior unchanged)
+      // Should trigger (UTC default)
       expect(mockPayload.jobs.queue).toHaveBeenCalledTimes(1);
 
       // The nextRun (11:00 UTC) is embedded in the guarded Drizzle update claim.

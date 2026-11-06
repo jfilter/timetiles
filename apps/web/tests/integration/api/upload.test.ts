@@ -56,7 +56,6 @@ describe("Import Files Collection", () => {
   });
 
   it("should create import file record with file upload", async () => {
-    // Create a test file path and read the file
     const testFilePath = join(__dirname, "../../fixtures", "valid-events.csv");
     const fileBuffer = fs.readFileSync(testFilePath);
     const fileName = "valid-events.csv";
@@ -87,7 +86,6 @@ describe("Import Files Collection", () => {
       filename: fileName,
     });
 
-    // Check that hooks populated metadata correctly
     expect(ingestFile.originalName).toBe("valid-events.csv"); // Set by beforeOperation hook
     expect(ingestFile.filename).toBeDefined(); // Payload auto-generated with unique name
     expect(ingestFile.filename).not.toBe("valid-events.csv"); // Should be unique
@@ -113,7 +111,6 @@ describe("Import Files Collection", () => {
       offset += oversizedContent.write(row, offset);
     }
 
-    // Attempting to upload should fail with file size error
     await expect(
       withIngestFile(testEnv, untrustedCatalog.id, oversizedContent, {
         user: users.untrustedUser.id,

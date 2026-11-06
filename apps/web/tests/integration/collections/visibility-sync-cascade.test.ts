@@ -52,7 +52,6 @@ describe("Visibility and ownership sync cascade", () => {
       overrideAccess: true,
     });
 
-  // Helper: create dataset
   const createDataset = async (catalogId: number, name: string, isPublic: boolean) =>
     payload.create({
       collection: "datasets",
@@ -60,7 +59,6 @@ describe("Visibility and ownership sync cascade", () => {
       overrideAccess: true,
     });
 
-  // Helper: create an event in a dataset
   const createEvent = async (datasetId: number, suffix: string) =>
     payload.create({
       collection: "events",
@@ -74,7 +72,6 @@ describe("Visibility and ownership sync cascade", () => {
       overrideAccess: true,
     });
 
-  // Helper: create a dataset-schema in a dataset
   const createSchema = async (datasetId: number) =>
     payload.create({
       collection: "dataset-schemas",
@@ -91,11 +88,9 @@ describe("Visibility and ownership sync cascade", () => {
   const readEvent = async (eventId: number) =>
     payload.findByID({ collection: "events", id: eventId, overrideAccess: true });
 
-  // Helper: read schema by ID
   const readSchema = async (schemaId: number) =>
     payload.findByID({ collection: "dataset-schemas", id: schemaId, overrideAccess: true });
 
-  // Helper: read dataset by ID
   const readDataset = async (datasetId: number) =>
     payload.findByID({ collection: "datasets", id: datasetId, overrideAccess: true });
 
@@ -171,9 +166,7 @@ describe("Visibility and ownership sync cascade", () => {
     });
 
     it("propagates catalogIsPublic=true when catalog goes public", async () => {
-      // First make it private
       await payload.update({ collection: "catalogs", id: catalogId, data: { isPublic: false }, overrideAccess: true });
-      // Then make it public again
       await payload.update({ collection: "catalogs", id: catalogId, data: { isPublic: true }, overrideAccess: true });
 
       const updated = await readDataset(datasetId);
@@ -397,7 +390,6 @@ describe("Visibility and ownership sync cascade", () => {
       });
       expect(before.docs).toHaveLength(1);
 
-      // Make catalog private
       await payload.update({ collection: "catalogs", id: catalog.id, data: { isPublic: false }, overrideAccess: true });
 
       // Anonymous can no longer read the event
@@ -422,7 +414,6 @@ describe("Visibility and ownership sync cascade", () => {
       });
       expect(before.docs).toHaveLength(0);
 
-      // Make catalog public
       await payload.update({ collection: "catalogs", id: catalog.id, data: { isPublic: true }, overrideAccess: true });
 
       // Now anonymous can read
@@ -451,7 +442,6 @@ describe("Visibility and ownership sync cascade", () => {
       });
       expect(ownerBefore.docs).toHaveLength(1);
 
-      // Transfer ownership
       await payload.update({
         collection: "catalogs",
         id: catalog.id,

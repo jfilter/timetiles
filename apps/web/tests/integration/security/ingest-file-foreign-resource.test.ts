@@ -52,7 +52,6 @@ describe("Import File Foreign Resource Vulnerability", () => {
     ownerUser = users.ownerUser;
     attackerUser = users.attackerUser;
 
-    // Create catalogs
     const ownerPrivateResult = await withCatalog(testEnv, {
       name: "Owner Private Catalog",
       isPublic: false,

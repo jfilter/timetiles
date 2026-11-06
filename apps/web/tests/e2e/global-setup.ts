@@ -57,18 +57,15 @@ const cleanupStaleE2EDatabases = async (databasePrefix: string, activeDatabaseNa
 export default async function globalSetup(): Promise<void> {
   console.log("🚀 Starting E2E global setup...");
 
-  // Verify PostgreSQL is running
   await checkPostgreSQLConnection();
 
   const dbPrefix = getWorktreeDatabasePrefix();
   const databaseName = `${dbPrefix}_${process.pid}`;
-  // Prefer the worktree's deterministic base port, but fall back to the next
-  // free port in its lane if something else holds it (e.g. another project's
-  // container) — assertPortAvailable used to hard-fail the whole run here.
+  // Prefer the worktree's deterministic base port, but fall back to the next free port in
+  // its lane if something else holds it (e.g. another project's container).
   const serverPort = await findAvailablePort(getWorktreeBasePort(), "E2E server");
   const baseURL = `http://localhost:${serverPort}`;
 
-  // Build database URL
   const baseUrl = process.env.DATABASE_URL;
   if (!baseUrl) {
     throw new Error("DATABASE_URL environment variable is required for E2E tests");
@@ -76,10 +73,8 @@ export default async function globalSetup(): Promise<void> {
 
   const databaseUrl = withDatabaseName(baseUrl, databaseName);
 
-  // Start the geocoding stub server before seeding, so the seed can write
-  // a geocoding-providers row with baseUrl pointing at the stub. The server
-  // runs in-process on an ephemeral port; it's released when the test
-  // runner process exits.
+  // Start the geocoding stub before seeding so the seed can point a geocoding-providers row
+  // at it. It runs in-process on an ephemeral port and is released when the runner exits.
   const stub = await startGeocodingStubServer();
   // eslint-disable-next-line turbo/no-undeclared-env-vars -- E2E-only env var
   process.env.E2E_GEOCODING_STUB_URL = stub.url;
@@ -92,7 +87,6 @@ export default async function globalSetup(): Promise<void> {
   // eslint-disable-next-line turbo/no-undeclared-env-vars -- E2E teardown ownership
   process.env.E2E_DATABASE_NAME = databaseName;
 
-  // Create database with migrations
   await setupDatabase({
     databaseName,
     connectionString: databaseUrl,
@@ -123,10 +117,8 @@ export default async function globalSetup(): Promise<void> {
   // A stale build (e.g. from a previous branch) silently misses new features.
   const fs = await import("node:fs");
 
-  // Build the @timetiles/ui workspace package first. `next build` resolves the
-  // bare `@timetiles/ui` imports via the package `exports` field → dist/, which
-  // a fresh worktree/clone never has. Rebuilding here also keeps the UI dist in
-  // sync with current source (same "always rebuild" intent as the app build).
+  // Build @timetiles/ui first: `next build` resolves its bare imports via `exports` → dist/,
+  // which a fresh worktree never has; rebuilding also keeps dist in sync with source.
   console.log(`📦 Building @timetiles/ui (workspace package)...`);
   execSync(`cd "${webDir}" && pnpm --filter @timetiles/ui build`, { env: serverEnv, stdio: "inherit" });
 
@@ -159,7 +151,6 @@ export default async function globalSetup(): Promise<void> {
   process.env.E2E_SERVER_PID = String(serverProcess.pid ?? "");
   /* eslint-enable turbo/no-undeclared-env-vars */
 
-  // Log server output
   if (serverProcess) {
     serverProcess.stdout?.on("data", (data: Buffer) => {
       const message = data.toString().trim();
@@ -180,7 +171,6 @@ export default async function globalSetup(): Promise<void> {
   await waitForServer(`${baseURL}/api/health`, 30000);
   console.log(`✅ Server ready at ${baseURL}`);
 
-  // Start job worker process
   const workerPath = path.join(__dirname, "utils", "job-worker.ts");
   console.log(`⚙️ Starting job worker...`);
 

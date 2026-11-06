@@ -126,9 +126,8 @@ describe("/api/v1/datasets/[id]/enum-stats - filtering", () => {
     // | 7 | Art      | North  | 2020-09-15 |
     // | 8 | Art      | North  | 2021-09-15 |
     //
-    // 2020 events: Music(2), Sports(1), Art(1) — North(3), South(0... wait)
-    // Let me re-check: events in 2020: #1,2,5,7 → categories: Music(2), Sports(1), Art(1); regions: North(4)
-    // events in 2021: #3,4,6,8 → categories: Music(2), Sports(1), Art(1); regions: South(2), North(1)
+    // 2020 events: #1,2,5,7 → Music(2), Sports(1), Art(1); all North
+    // 2021 events: #3,4,6,8 → Music(2), Sports(1), Art(1); South(3), North(1)
     // North events: #1,2,5,7,8 → categories: Music(2), Sports(1), Art(2)
     // South events: #3,4,6 → categories: Music(2), Sports(1)
 
@@ -222,11 +221,9 @@ describe("/api/v1/datasets/[id]/enum-stats - filtering", () => {
     const ff = encodeURIComponent(JSON.stringify({ region: ["North"] }));
     const fields = await fetchEnumStats(testDatasetId, `startDate=2021-01-01&endDate=2021-12-31&ff=${ff}`);
 
-    // Category should show only Art (the only 2021+North category)
     const categories = getValues(fields, "category");
     expect(categories).toContain("Art");
-    // Music and Sports have no 2021+North events... wait, #8 is Art+North+2021
-    // But also check: are there other 2021+North events? No — only #8
+    // #8 is the only 2021+North event
     expect(categories).toHaveLength(1);
   });
 });

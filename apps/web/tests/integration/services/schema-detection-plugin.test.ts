@@ -30,9 +30,8 @@ import {
 } from "../../setup/integration/environment";
 
 describe("Schema Detection Plugin Integration", () => {
-  // Do NOT include "schema-detectors" — those records are seeded once by the plugin's
-  // onInit and should persist across tests. Truncating them would break subsequent tests
-  // because onInit only runs once during Payload initialization.
+  // Excludes "schema-detectors": the plugin's onInit seeds them once per Payload init,
+  // so truncating them would break later tests.
   const collectionsToReset = IMPORT_PIPELINE_COLLECTIONS_TO_RESET;
 
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
@@ -230,7 +229,6 @@ describe("Schema Detection Plugin Integration", () => {
   // ---------------------------------------------------------------------------
   describe("detection during import pipeline", () => {
     it("should populate the interpretation plan roles when running the import pipeline", async () => {
-      // Set up users, catalog, and dataset
       const { users } = await withUsers(testEnv, { importer: { role: "user" } });
 
       const { catalog } = await withCatalog(testEnv, {
@@ -279,7 +277,6 @@ describe("Schema Detection Plugin Integration", () => {
 
       expect(stageResult.matched).toBe(true);
 
-      // Load the import job with detectedFieldMappings
       const importJobs = await payload.find({
         collection: "ingest-jobs",
         where: { ingestFile: { equals: ingestFile.id } },
@@ -311,7 +308,6 @@ describe("Schema Detection Plugin Integration", () => {
       expect(detectors.docs.length).toBeGreaterThan(0);
       const defaultDetectorId = detectors.docs[0].id;
 
-      // Create a dataset with the schemaDetector field set
       const { dataset } = await withDataset(testEnv, catalog.id, { name: "Dataset With Detector" });
 
       // Update the dataset to link a schema detector

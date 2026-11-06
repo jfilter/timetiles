@@ -12,7 +12,6 @@ import { describe, expect, it } from "vitest";
 import { detectFlatFieldMappings as detectFieldMappings } from "@/lib/services/schema-detection/utilities";
 import type { FieldStatistics } from "@/lib/types/schema-detection";
 
-// Helper to create field stats
 const createFieldStats = (
   fields: Record<
     string,
@@ -245,7 +244,7 @@ describe("Field Mapping Detection", () => {
 
   describe("Date day/month order detection", () => {
     it("attaches timestampOrder=D/M when a sample disambiguates day-first (13/02)", () => {
-      // The exact cross-row consistency bug: 13/02 forces day-first, so 01/02 in
+      // Regression: 13/02 forces day-first, so 01/02 in
       // the same column must NOT be re-guessed as month-first per row.
       const fieldStats = createFieldStats({
         date: { uniqueSamples: ["13/02/2024", "01/02/2024", "05/06/2024"], typeDistribution: { string: 100 } },

@@ -129,7 +129,6 @@ export const test = base.extend<{
     }
   },
 
-  // Set baseURL from environment or compute from worktree
   // oxlint-disable-next-line no-empty-pattern -- Playwright fixtures require destructured first arg
   baseURL: async ({}, use) => {
     // eslint-disable-next-line turbo/no-undeclared-env-vars -- E2E test-only env var

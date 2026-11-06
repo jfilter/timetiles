@@ -86,7 +86,7 @@ describe("plan hash stability — plan.ops reproduce the legacy buildTransformsF
       const legacyTransforms = buildTransformsFromDataset({ ingestTransforms: transforms });
       const expected = applyTransforms(row, legacyTransforms);
 
-      // New authoring path: the wizard plan-builder funnels the same typed array.
+      // Authoring path: the wizard plan-builder funnels the same typed array.
       const plan = buildPlanFromWizard(undefined, transforms, "strict");
       const viaPlan = applyTransforms(row, plan.ops);
 

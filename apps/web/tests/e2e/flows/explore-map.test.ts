@@ -26,7 +26,6 @@ test.describe("Explore Page - Map Interactions", () => {
     await explorePage.selectAllInCatalog("Environmental Data");
     await explorePage.waitForEventsToLoad();
 
-    // Pan the map
     await explorePage.panMap(200, 0);
 
     // Wait for new geo cluster response after pan (new bounds trigger new query after 300ms debounce)
@@ -35,9 +34,7 @@ test.describe("Explore Page - Map Interactions", () => {
       { timeout: 15000 }
     );
 
-    // The response should be successful
     expect(postPanResponse.status()).toBe(200);
-    // The URL should contain bounds parameters
     expect(postPanResponse.url()).toContain("bounds=");
   });
 
@@ -54,11 +51,9 @@ test.describe("Explore Page - Map Interactions", () => {
     await explorePage.show("map");
     const mapState = await page.evaluate(() => {
       const canvas = document.querySelector<HTMLCanvasElement>(".maplibregl-canvas");
-      // Check for MapLibre map instance via the container's internal reference
       const container = document.querySelector(".maplibregl-map");
       // Look for cluster/point elements rendered as circles or SVG markers
       const mapMarkers = document.querySelectorAll(".maplibregl-marker");
-      // Check canvas is rendering
       const gl = canvas?.getContext("webgl") ?? canvas?.getContext("webgl2");
       return {
         canvasRendering: canvas != null && canvas.width > 0 && canvas.height > 0,
@@ -73,7 +68,6 @@ test.describe("Explore Page - Map Interactions", () => {
   });
 
   test("should handle zoom interactions", async ({ page }) => {
-    // Load some events first
     await explorePage.selectAllInCatalog("Environmental Data");
     await explorePage.waitForEventsToLoad();
 
@@ -85,10 +79,8 @@ test.describe("Explore Page - Map Interactions", () => {
     // The map writes its zoom into the URL once the zoom animation ends.
     await expect.poll(zoomParam, { timeout: 10_000 }).toBeGreaterThan(zoomBefore);
 
-    // Verify map is still visible and functional after zoom
     await expect(explorePage.map).toBeVisible();
 
-    // Verify map has valid dimensions after zoom
     const mapBox = await explorePage.map.boundingBox();
     expect(mapBox).not.toBeNull();
     expect(mapBox!.width).toBeGreaterThan(0);
@@ -96,7 +88,6 @@ test.describe("Explore Page - Map Interactions", () => {
   });
 
   test("should handle rendered map feature clicks", async ({ page }) => {
-    // Load events
     await explorePage.selectAllInCatalog("Environmental Data");
     await explorePage.waitForEventsToLoad();
 
@@ -122,7 +113,6 @@ test.describe("Explore Page - Map Interactions", () => {
       }
     });
 
-    // Load events
     await explorePage.selectAllInCatalog("Environmental Data");
     await explorePage.waitForEventsToLoad();
 
@@ -132,7 +122,6 @@ test.describe("Explore Page - Map Interactions", () => {
     await explorePage.panMap(200, 0);
     await postPanResponse;
 
-    // At least some API requests should have been made
     expect(apiRequests.length).toBeGreaterThan(0);
 
     // The test passes if we have API requests (the map functionality is working)
@@ -149,26 +138,20 @@ test.describe("Explore Page - Map Interactions", () => {
     const eventCount = await explorePage.getEventCount();
     expect(eventCount).toBeGreaterThan(0);
 
-    // Map should still be visible and interactive after loading events
     await explorePage.show("map");
     await expect(explorePage.map).toBeVisible();
 
-    // Verify we can still interact with the map
     const mapBox = await explorePage.map.boundingBox();
     expect(mapBox).not.toBeNull();
     expect(mapBox!.width).toBeGreaterThan(0);
     expect(mapBox!.height).toBeGreaterThan(0);
 
-    // Should be able to pan the map
     await explorePage.panMap(50, 50);
 
-    // Map should still be visible after panning
     await expect(explorePage.map).toBeVisible();
 
-    // Should be able to zoom
     await explorePage.zoomIn();
 
-    // Verify the events list is still accessible
     await explorePage.show("list");
     await expect(explorePage.eventsList).toBeVisible();
   });
@@ -186,11 +169,9 @@ test.describe("Explore Page - Map Interactions", () => {
 
     await explorePage.waitForEventsToLoad();
 
-    // Should show "No events found" message
     await explorePage.show("list");
     await expect(explorePage.noEventsMessage).toBeVisible();
 
-    // Event count should be 0
     const count = await explorePage.getEventCount();
     expect(count).toBe(0);
 

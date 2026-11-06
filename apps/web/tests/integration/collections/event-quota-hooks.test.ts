@@ -46,7 +46,6 @@ describe("Event quota and denormalization hooks", () => {
       overrideAccess: true,
     });
 
-  // Helper: create dataset
   const createDataset = async (catalogId: number, isPublic: boolean) =>
     payload.create({
       collection: "datasets",
@@ -78,7 +77,6 @@ describe("Event quota and denormalization hooks", () => {
         });
       }
 
-      // Fourth event should be rejected
       await expect(
         payload.create({
           collection: "events",

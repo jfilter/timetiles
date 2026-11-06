@@ -140,9 +140,8 @@ describe("QuotaService", () => {
     });
 
     it("trust level upgrade overrides stale quotas snapshot", () => {
-      // Bug: system user created with trustLevel "0" gets quotas { maxUrlFetchesPerDay: 0 }
-      // baked into the user record. After upgrading to trustLevel "5", the stale
-      // quotas.maxUrlFetchesPerDay=0 overrides the default -1 (unlimited).
+      // Regression: quotas baked into the record at trustLevel "0" (maxUrlFetchesPerDay: 0)
+      // must not override the unlimited default (-1) after an upgrade to trustLevel "5".
       const { payload } = createMockPayload();
       const service = new QuotaService(payload);
 
@@ -209,8 +208,7 @@ describe("QuotaService", () => {
       // the concurrently-created row.
       expect(findMock).toHaveBeenCalledWith(expect.objectContaining({ where: { user: { equals: 42 } } }));
 
-      // The legacy find-then-create path is gone, so payload.create must not
-      // be used for upserting user-usage anymore.
+      // Upserting user-usage goes through the ON CONFLICT insert, never payload.create.
       expect(payload.create).not.toHaveBeenCalled();
     });
 
@@ -267,7 +265,7 @@ describe("QuotaService", () => {
 
     it("should re-throw when getOrCreateUsageRecord fails", async () => {
       // Mock the ON CONFLICT insert chain to reject — this is the first DB
-      // op getOrCreateUsageRecord issues in its rewritten form.
+      // op getOrCreateUsageRecord issues.
       const { payload, returningMock } = createMockPayload();
       returningMock.mockRejectedValue(new Error("Insert failed"));
       const service = new QuotaService(payload);

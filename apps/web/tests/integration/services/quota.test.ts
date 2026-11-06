@@ -49,8 +49,7 @@ const resetUserUsage = async (payload: PayloadInstance, userId: number): Promise
   }
 };
 
-// Force sequential execution for this test file to avoid database state conflicts
-// All tests in this file share the same database within a worker
+// All tests in this file share one database and depend on running sequentially
 describe("Quota System", () => {
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let testUser: User;
@@ -59,8 +58,7 @@ describe("Quota System", () => {
   beforeAll(async () => {
     testEnv = await createIntegrationTestEnvironment();
 
-    // Create test users with different trust levels
-    // Note: user-usage record is auto-created via afterChange hook
+    // The user-usage record is auto-created via afterChange hook
     const { users } = await withUsers(testEnv, {
       testUser: {
         role: "user",
@@ -174,13 +172,10 @@ describe("Quota System", () => {
       const { payload } = testEnv;
       const quotaService = createQuotaService(payload);
 
-      // Ensure clean state for this test
       await resetUserUsage(payload, testUser.id);
 
-      // Track a file upload
       await quotaService.incrementUsage(testUser.id, "FILE_UPLOADS_PER_DAY", 1);
 
-      // Check the usage was recorded in user-usage collection
       const usage = await getUserUsage(payload, testUser.id);
 
       expect(usage?.fileUploadsToday).toBe(1);
@@ -190,7 +185,6 @@ describe("Quota System", () => {
       const { payload } = testEnv;
       const quotaService = createQuotaService(payload);
 
-      // Ensure clean state
       await resetUserUsage(payload, testUser.id);
 
       // Use up the quota (increment to reach limit of 2)
@@ -200,10 +194,8 @@ describe("Quota System", () => {
         2 // Increment by 2 to reach the limit
       );
 
-      // Get fresh user data after increment
       const updatedUser = await payload.findByID({ collection: "users", id: testUser.id });
 
-      // Now check if further uploads are blocked
       const result = await quotaService.checkQuota(updatedUser, "FILE_UPLOADS_PER_DAY", 1);
 
       expect(result.allowed).toBe(false);
@@ -216,17 +208,14 @@ describe("Quota System", () => {
       const { payload } = testEnv;
       const quotaService = createQuotaService(payload);
 
-      // Ensure clean state
       await resetUserUsage(payload, testUser.id);
 
-      // Max out the quota
       await quotaService.incrementUsage(
         testUser.id,
         "FILE_UPLOADS_PER_DAY",
         2 // Max out the limit of 2
       );
 
-      // Get fresh user with updated usage
       const user = await payload.findByID({ collection: "users", id: testUser.id });
 
       // This should throw since we're at the limit
@@ -250,10 +239,8 @@ describe("Quota System", () => {
       const beforeReset = await getUserUsage(payload, testUser.id);
       expect(beforeReset?.totalEventsCreated).toBeGreaterThan(0);
 
-      // Reset the daily counters
       await quotaService.resetDailyCounters(testUser.id);
 
-      // Check counters were reset in user-usage collection
       const usage = await getUserUsage(payload, testUser.id);
 
       expectDailyCountersReset(usage);
@@ -279,8 +266,7 @@ describe("Quota System", () => {
       const { payload } = testEnv;
       const quotaService = createQuotaService(payload);
 
-      // Create additional test users with usage
-      // Note: user-usage records are auto-created via afterChange hook
+      // The user-usage records are auto-created via afterChange hook
       const { users: extraUsers } = await withUsers(testEnv, {
         user2: { trustLevel: String(TRUST_LEVELS.REGULAR) },
         user3: { trustLevel: String(TRUST_LEVELS.REGULAR) },
@@ -288,7 +274,6 @@ describe("Quota System", () => {
       const user2 = extraUsers.user2;
       const user3 = extraUsers.user3;
 
-      // Add usage to all users
       await quotaService.incrementUsage(testUser.id, "FILE_UPLOADS_PER_DAY", 5);
       await quotaService.incrementUsage(testUser.id, "URL_FETCHES_PER_DAY", 3);
       await quotaService.incrementUsage(user2.id, "FILE_UPLOADS_PER_DAY", 2);
@@ -299,7 +284,6 @@ describe("Quota System", () => {
       await quotaService.incrementUsage(user2.id, "TOTAL_EVENTS", 22);
       await quotaService.incrementUsage(user3.id, "TOTAL_EVENTS", 33);
 
-      // Verify users have usage in user-usage collection
       const beforeReset1 = await getUserUsage(payload, testUser.id);
       const beforeReset2 = await getUserUsage(payload, user2.id);
       const beforeReset3 = await getUserUsage(payload, user3.id);
@@ -314,17 +298,14 @@ describe("Quota System", () => {
       // Reset all daily counters using Payload's bulk update API
       await quotaService.resetAllDailyCounters();
 
-      // Verify all users had their daily counters reset
       const afterReset1 = await getUserUsage(payload, testUser.id);
       const afterReset2 = await getUserUsage(payload, user2.id);
       const afterReset3 = await getUserUsage(payload, user3.id);
 
-      // All daily counters should be 0
       expectDailyCountersReset(afterReset1);
       expectDailyCountersReset(afterReset2);
       expectDailyCountersReset(afterReset3);
 
-      // Verify lastResetDate was updated for all users
       expect(afterReset1?.lastResetDate).toBeDefined();
       expect(afterReset2?.lastResetDate).toBeDefined();
       expect(afterReset3?.lastResetDate).toBeDefined();
@@ -351,10 +332,8 @@ describe("Quota System", () => {
       const quotaService = createQuotaService(payload);
       await quotaService.incrementUsage(testUser.id, "FILE_UPLOADS_PER_DAY", 2);
 
-      // Get fresh user
       const user = await payload.findByID({ collection: "users", id: testUser.id });
 
-      // Check if another upload would be blocked
       const result = await quotaService.checkQuota(user, "FILE_UPLOADS_PER_DAY", 1);
 
       expect(result.allowed).toBe(false);
@@ -369,7 +348,6 @@ describe("Quota System", () => {
       // Get fresh admin user to ensure we have latest data
       const admin = await payload.findByID({ collection: "users", id: adminUser.id });
 
-      // Admin should have unlimited uploads
       const result = await quotaService.checkQuota(admin, "FILE_UPLOADS_PER_DAY", 100);
 
       expect(result.allowed).toBe(true);
@@ -410,15 +388,12 @@ describe("Quota System", () => {
       const { payload } = testEnv;
       const quotaService = createQuotaService(payload);
 
-      // Reset daily counters first
       await quotaService.resetDailyCounters(testUser.id);
 
-      // Track URL fetches
       for (let i = 0; i < 3; i++) {
         await quotaService.incrementUsage(testUser.id, "URL_FETCHES_PER_DAY", 1);
       }
 
-      // Get updated user
       const user = await payload.findByID({ collection: "users", id: testUser.id });
 
       // Check if next fetch would be blocked (limit is 3)
@@ -436,10 +411,8 @@ describe("Quota System", () => {
       const { payload } = testEnv;
       const quotaService = createQuotaService(payload);
 
-      // Ensure clean state
       await resetUserUsage(payload, testUser.id);
 
-      // Fire 10 concurrent increments
       const promises = Array.from({ length: 10 }, () =>
         quotaService.incrementUsage(testUser.id, "FILE_UPLOADS_PER_DAY", 1)
       );
@@ -485,7 +458,6 @@ describe("Quota System", () => {
         });
       }
 
-      // Get updated user
       const user = await payload.findByID({ collection: "users", id: testUser.id });
 
       // Check if creating 2 events would exceed limit

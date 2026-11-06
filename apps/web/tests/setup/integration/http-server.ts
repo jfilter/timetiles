@@ -198,7 +198,6 @@ export class TestServer {
         clientData.count++;
       }
 
-      // Return success response
       if (successResponse.delay) {
         await new Promise((resolve) => setTimeout(resolve, successResponse.delay));
       }
@@ -307,7 +306,6 @@ export class TestServer {
   async stop(): Promise<void> {
     return new Promise((resolve) => {
       if (this.server) {
-        // Force close all active connections
         for (const socket of this.connections) {
           socket.destroy();
         }

@@ -35,7 +35,6 @@ describe("Branding Global", () => {
 
   describe("Update Operations", () => {
     beforeEach(async () => {
-      // Reset branding to defaults before each test
       await payload.updateGlobal({
         slug: "branding",
         data: {
@@ -54,7 +53,6 @@ describe("Branding Global", () => {
 
       expect(updated.siteName).toBe("Custom Brand");
 
-      // Verify it persists
       const retrieved = await payload.findGlobal({ slug: "branding" });
       expect(retrieved.siteName).toBe("Custom Brand");
     });
@@ -67,7 +65,6 @@ describe("Branding Global", () => {
 
       expect(updated.siteDescription).toBe("A custom description for testing.");
 
-      // Verify it persists
       const retrieved = await payload.findGlobal({ slug: "branding" });
       expect(retrieved.siteDescription).toBe("A custom description for testing.");
     });
@@ -125,7 +122,6 @@ describe("Branding Favicon Generation", () => {
   });
 
   it("should not generate favicons when no source is provided", async () => {
-    // Update with no favicon sources
     await payload.updateGlobal({
       slug: "branding",
       data: { siteName: "Test", faviconSourceLight: null, faviconSourceDark: null },
@@ -144,12 +140,10 @@ describe("Branding Favicon Generation", () => {
     // Update again to trigger the hook with previousDoc
     const updated = await payload.updateGlobal({ slug: "branding", data: { siteName: "Updated Name" } });
 
-    // Should complete without error
     expect(updated.siteName).toBe("Updated Name");
   });
 
   it("should generate favicon files when source is uploaded", async () => {
-    // Import sharp dynamically to create a test image
     const sharp = (await import("sharp")).default;
 
     // Create a test admin user for media upload (use object form for unique email)
@@ -157,14 +151,12 @@ describe("Branding Favicon Generation", () => {
       admin: { role: "admin", email: `favicon-test-1-${Date.now()}@test.com` },
     });
 
-    // Create a simple 512x512 red square PNG as test image
     const testImageBuffer = await sharp({
       create: { width: 512, height: 512, channels: 4, background: { r: 255, g: 0, b: 0, alpha: 1 } },
     })
       .png()
       .toBuffer();
 
-    // Upload the test image to media collection
     const mediaDoc = await payload.create({
       collection: "media",
       data: { alt: "Test favicon source" },
@@ -175,14 +167,11 @@ describe("Branding Favicon Generation", () => {
     expect(mediaDoc.id).toBeDefined();
     expect(mediaDoc.url).toBeDefined();
 
-    // Set the uploaded image as favicon source
     await payload.updateGlobal({ slug: "branding", data: { faviconSourceLight: mediaDoc.id } });
 
-    // Verify the branding was updated
     const branding = await payload.findGlobal({ slug: "branding" });
     expect(branding.faviconSourceLight).toBeDefined();
 
-    // Check that favicon files were generated
     const expectedFiles = [
       "icon-32-light.png",
       "apple-touch-icon-light.png",
@@ -228,21 +217,18 @@ describe("Branding Favicon Generation", () => {
       admin: { role: "admin", email: `favicon-test-2-${Date.now()}@test.com` },
     });
 
-    // Create light favicon source (blue square)
     const lightImageBuffer = await sharp({
       create: { width: 512, height: 512, channels: 4, background: { r: 0, g: 0, b: 255, alpha: 1 } },
     })
       .png()
       .toBuffer();
 
-    // Create dark favicon source (yellow square)
     const darkImageBuffer = await sharp({
       create: { width: 512, height: 512, channels: 4, background: { r: 255, g: 255, b: 0, alpha: 1 } },
     })
       .png()
       .toBuffer();
 
-    // Upload both images
     const lightMedia = await payload.create({
       collection: "media",
       data: { alt: "Light favicon" },
@@ -257,7 +243,6 @@ describe("Branding Favicon Generation", () => {
       user: users.admin,
     });
 
-    // Set both as favicon sources
     await payload.updateGlobal({
       slug: "branding",
       data: { faviconSourceLight: lightMedia.id, faviconSourceDark: darkMedia.id },

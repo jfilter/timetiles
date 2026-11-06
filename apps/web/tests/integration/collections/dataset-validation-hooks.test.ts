@@ -229,7 +229,7 @@ describe("Dataset validation hooks", () => {
       autoDetected: false,
     });
 
-    // Build the canonical interpretation plan the hooks now read (ops + roles).
+    // Build the canonical interpretation plan the hooks read (ops + roles).
     // Typed loosely for the JSON `interpretationPlan` column on create/update.
     const plan = (transforms: ReturnType<typeof rename>[], roles?: Record<string, string>): Record<string, unknown> =>
       buildTestInterpretationPlan(roles ?? {}, transforms) as unknown as Record<string, unknown>;

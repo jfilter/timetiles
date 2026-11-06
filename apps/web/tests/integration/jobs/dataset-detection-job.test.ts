@@ -57,7 +57,6 @@ describe("Dataset Detection Job", () => {
   });
 
   it("should create ingest-job and complete the pipeline", async () => {
-    // Create a simple CSV file
     const csvContent = "name,date,lat,lng\nEvent 1,2024-01-01,52.52,13.405\nEvent 2,2024-01-02,48.135,11.582\n";
 
     // Create import file using helper (triggers manual-ingest workflow via afterChange hook)
@@ -76,7 +75,6 @@ describe("Dataset Detection Job", () => {
       if (result.noJobsRemaining) break;
     }
 
-    // Check that ingest-job was created
     const importJobs = await payload.find({
       collection: "ingest-jobs",
       where: { ingestFile: { equals: ingestFile.id } },
@@ -114,7 +112,6 @@ describe("Dataset Detection Job", () => {
     // Run dataset-detection job (automatically queued by ingest-files hook)
     await payload.jobs.run({ allQueues: true, limit: 10 });
 
-    // Find the ingest-job created by dataset-detection
     const importJobs = await payload.find({
       collection: "ingest-jobs",
       where: { ingestFile: { equals: ingestFile.id } },
@@ -128,7 +125,6 @@ describe("Dataset Detection Job", () => {
     const datasetId = extractRelationId(ingestJob.dataset);
     expect(datasetId).toBe(preCreatedDataset.id);
 
-    // Fetch the dataset to verify language is preserved
     const usedDataset = await payload.findByID({ collection: "datasets", id: datasetId });
     expect(usedDataset.language).toBe("deu");
   });
@@ -217,13 +213,11 @@ describe("Dataset Detection Job", () => {
     const csvContent = "name,date\nEvent 1,2024-01-01\n";
     const uniqueSuffix = crypto.randomUUID().slice(0, 8);
 
-    // Pre-create a dataset
     const { dataset: preCreatedDataset } = await withDataset(testEnv, testCatalogId, {
       name: `test-${uniqueSuffix}.csv`,
       language: "deu",
     });
 
-    // Create import file WITHOUT originalName
     const { ingestFile } = await withIngestFile(testEnv, Number.parseInt(testCatalogId, 10), csvContent, {
       filename: `different-name-${uniqueSuffix}.csv`, // Different from dataset name
       mimeType: "text/csv",
@@ -235,7 +229,6 @@ describe("Dataset Detection Job", () => {
     // Run dataset-detection job (automatically queued by ingest-files hook)
     await payload.jobs.run({ allQueues: true, limit: 10 });
 
-    // Find the ingest-job
     const importJobs = await payload.find({
       collection: "ingest-jobs",
       where: { ingestFile: { equals: ingestFile.id } },

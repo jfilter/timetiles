@@ -2,10 +2,9 @@
 /**
  * Regression test for sessions lost to concurrent logins.
  *
- * Payload stores sessions as an array on the user and used to write the whole array back on
- * every login. Two logins of the same account that overlapped both read the old array, and the
- * later write dropped the session the earlier one had just added: that browser held a valid
- * JWT whose session no longer existed and was treated as logged out.
+ * Payload stores sessions as an array on the user. Two overlapping logins of the same account
+ * must both keep their session: if each writes back the array it read, the later write drops the
+ * earlier session, and that browser's valid JWT is treated as logged out.
  *
  * @module
  */

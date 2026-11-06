@@ -91,14 +91,11 @@ test.describe("Import Wizard - Comprehensive Transform Test", () => {
     await expect(saveButton).toBeVisible({ timeout: 5000 });
     await expect(cancelButton).toBeVisible({ timeout: 5000 });
 
-    // Save and collapse
     await saveButton.click();
 
     // ── 4. Verify preview table shows uppercased values ──
-    // Take a full-page screenshot to see the current state
     await page.screenshot({ path: "test-results/preview-after-transform.png", fullPage: true });
 
-    // The preview table at the bottom should show transformed (uppercased) data
     const fullPageContent = await page.content();
     expect(fullPageContent).toContain("TECH CONFERENCE 2024");
 
@@ -112,7 +109,6 @@ test.describe("Import Wizard - Comprehensive Transform Test", () => {
     await expect(renameItem).toBeVisible({ timeout: 5000 });
     await renameItem.click();
 
-    // Rename chip should appear
     await expect(descRow.getByText(/rename/i)).toBeVisible({ timeout: 5000 });
 
     // ── 6. Open visual flow editor ──
@@ -120,10 +116,8 @@ test.describe("Import Wizard - Comprehensive Transform Test", () => {
     await expect(visualEditorButton).toBeVisible({ timeout: 10000 });
     await visualEditorButton.click();
 
-    // Wait for flow editor to load
     await expect(page.getByText("Visual Field Mapping")).toBeVisible({ timeout: 15000 });
 
-    // Verify transform nodes exist in the flow editor
     const transformNodes = page.locator(".react-flow__node-transform");
     await expect(transformNodes.first()).toBeVisible({ timeout: 10000 });
     const nodeCount = await transformNodes.count();
@@ -134,7 +128,6 @@ test.describe("Import Wizard - Comprehensive Transform Test", () => {
     await expect(applyButton).toBeVisible({ timeout: 5000 });
     await applyButton.click();
 
-    // Back on field mapping step
     await expect(page.getByRole("heading", { name: /map your fields/i })).toBeVisible({ timeout: 10000 });
 
     // ── 8. Verify transforms survived the round-trip ──
@@ -148,16 +141,13 @@ test.describe("Import Wizard - Comprehensive Transform Test", () => {
     // The rename transform must have survived the visual-editor round trip.
     await expect(renameChip).toBeVisible({ timeout: 10000 });
 
-    // Click the × button on the rename chip
     const removeButton = descRowAfter.getByRole("button", { name: /remove transform/i });
     await removeButton.click();
 
-    // Confirmation dialog should appear
     const confirmButton = page.getByRole("button", { name: /^confirm$/i });
     await expect(confirmButton).toBeVisible({ timeout: 5000 });
     await confirmButton.click();
 
-    // Rename chip should be gone
     await expect(renameChip).not.toBeVisible({ timeout: 5000 });
 
     // ── 10. Verify preview still shows uppercase (only rename was removed) ──
@@ -175,7 +165,6 @@ test.describe("Import Wizard - Comprehensive Transform Test", () => {
     // Step 5: Review
     await expect(page.getByRole("heading", { name: /review your import/i })).toBeVisible({ timeout: 10000 });
 
-    // Intercept the configure API call
     let capturedTransforms: Array<Record<string, unknown>> | null = null;
     page.on("request", (request) => {
       if (request.url().includes("/api/ingest/configure") && request.method() === "POST") {
@@ -189,7 +178,6 @@ test.describe("Import Wizard - Comprehensive Transform Test", () => {
       timeout: 15000,
     });
 
-    // Start import
     const startImportButton = page.getByRole("button", { name: /start import/i });
     await expect(startImportButton).toBeVisible({ timeout: 5000 });
     await startImportButton.click();

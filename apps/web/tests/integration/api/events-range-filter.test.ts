@@ -215,7 +215,7 @@ describe("/api/v1/events - numeric range filtering", () => {
   });
 
   it("includes EU sub-thousand rows when the range covers them", async () => {
-    // [11, 1500] now also includes "99,99" (=99.99); "10,5" (=10.5) stays excluded.
+    // [11, 1500] also includes "99,99" (=99.99); "10,5" (=10.5) stays excluded.
     const data = await requestRange(euDatasetId, { betrag: { min: 11, max: 1500 } });
     const betraege = data.events.map((e) => String(e.data.betrag)).toSorted((a, b) => a.localeCompare(b));
     expect(betraege).toEqual(["1.234,56", "99,99"]);

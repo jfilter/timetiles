@@ -61,7 +61,7 @@ describe("SiteBranding", () => {
   });
 
   it("keeps the site slug out of the server-rendered stylesheet", () => {
-    // Editors may set any slug; interpolating it into <style> let `</style>` end the tag early.
+    // Editors may set any slug; raw interpolation into <style> would let `</style>` end the tag early.
     const site = makeSite({ slug: 'x"]{}</style><script>alert(1)</script><style>' });
 
     const html = renderToStaticMarkup(

@@ -43,13 +43,11 @@ describe("Schema Inference Service", () => {
   });
 
   beforeEach(async () => {
-    // Clear collections used by this test
     await testEnv.seedManager.truncate(["users", "catalogs", "datasets", "events", "dataset-schemas"]);
 
     // Create test users (required for proper environment setup)
     const { users } = await withUsers(testEnv, ["admin"]);
 
-    // Create test catalog
     const { catalog } = await withCatalog(testEnv, {
       name: "Schema Inference Test Catalog",
       description: "Catalog for schema inference tests",
@@ -57,7 +55,6 @@ describe("Schema Inference Service", () => {
     });
     testCatalogId = catalog.id;
 
-    // Create test dataset
     const { dataset } = await withDataset(testEnv, testCatalogId, {
       name: "Schema Inference Test Dataset",
       description: "Dataset for schema inference tests",
@@ -95,7 +92,6 @@ describe("Schema Inference Service", () => {
     });
 
     it("detects stale schema when events are added", async () => {
-      // Create events
       for (let i = 0; i < 3; i++) {
         await payload.create({
           collection: "events",
@@ -134,7 +130,6 @@ describe("Schema Inference Service", () => {
     });
 
     it("detects stale schema when events are deleted", async () => {
-      // Create 3 events
       const eventIds: number[] = [];
       for (let i = 0; i < 3; i++) {
         const event = await payload.create({
@@ -166,7 +161,6 @@ describe("Schema Inference Service", () => {
         overrideAccess: true,
       });
 
-      // Delete one event
       await payload.delete({ collection: "events", id: eventIds[0]!, overrideAccess: true });
 
       const freshness = await getSchemaFreshness(payload, testDatasetId, schema);
@@ -178,7 +172,6 @@ describe("Schema Inference Service", () => {
     });
 
     it("reports fresh schema when up-to-date", async () => {
-      // Create event
       await payload.create({
         collection: "events",
         data: {
@@ -262,7 +255,6 @@ describe("Schema Inference Service", () => {
     });
 
     it("skips regeneration when schema is fresh", async () => {
-      // Create events
       await payload.create({
         collection: "events",
         data: {
@@ -275,7 +267,6 @@ describe("Schema Inference Service", () => {
         overrideAccess: true,
       });
 
-      // Generate initial schema
       const firstResult = await SchemaInferenceService.inferSchemaFromEvents(payload, testDatasetId);
       expect(firstResult.generated).toBe(true);
 
@@ -286,7 +277,6 @@ describe("Schema Inference Service", () => {
     });
 
     it("regenerates schema with forceRegenerate option", async () => {
-      // Create event
       await payload.create({
         collection: "events",
         data: {
@@ -299,7 +289,6 @@ describe("Schema Inference Service", () => {
         overrideAccess: true,
       });
 
-      // Generate initial schema
       await SchemaInferenceService.inferSchemaFromEvents(payload, testDatasetId);
 
       // Force regeneration
@@ -319,7 +308,6 @@ describe("Schema Inference Service", () => {
     });
 
     it("respects sampleSize option", async () => {
-      // Create 10 events
       for (let i = 0; i < 10; i++) {
         await payload.create({
           collection: "events",

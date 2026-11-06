@@ -52,8 +52,7 @@ describe("patchPlanFromBody — order-pick persistence", () => {
   });
 
   it("drops the order when nothing names the column (regression guard for the seed)", () => {
-    // No resolved roles + empty authored roles → no column to target. This is the
-    // pre-fix behavior the resolved-role seed exists to prevent.
+    // No resolved roles + empty authored roles → no column to target.
     const result = patchPlanFromBody(emptyPlan(), { timestampOrder: "D/M" });
     expect(result?.columns.find((c) => c.field === "date")).toBeUndefined();
   });

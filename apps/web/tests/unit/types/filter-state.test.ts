@@ -30,9 +30,8 @@ describe("serializeFilterKey", () => {
   });
 
   it("sorts keys locale-independently so the key is stable across environments", () => {
-    // Regression: keys were sorted with String.prototype.localeCompare, whose
-    // ordering depends on the runtime locale/ICU. The serialized key must not
-    // depend on localeCompare.
+    // Regression: the serialized key must not depend on localeCompare, whose
+    // ordering depends on the runtime locale/ICU.
     const expected = serializeFilterKey(filters);
 
     const spy = vi.spyOn(String.prototype, "localeCompare").mockImplementation(function (

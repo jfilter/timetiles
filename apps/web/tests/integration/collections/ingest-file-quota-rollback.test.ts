@@ -74,10 +74,8 @@ describe("FILE_UPLOADS_PER_DAY after a failed create", () => {
 
     const after = await usageFor();
 
-    // Measured: before=3, after=3. A double rollback (transaction undo plus the
-    // afterError compensation running outside it) would leave 2, so the
-    // reported net-decrement does not occur on this path. Kept as a guard,
-    // since the compensation and the transaction are easy to desynchronize.
+    // A double rollback (transaction undo plus the afterError compensation running outside it)
+    // would leave before - 1; guards the compensation and the transaction against desynchronizing.
     expect(after).toBe(before);
   });
 

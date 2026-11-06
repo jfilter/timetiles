@@ -73,13 +73,11 @@ test.describe("Explore Page - Filtering", () => {
     // The catalog tri-state checkbox selects every dataset in the group at once.
     await explorePage.selectAllInCatalog("Environmental Data");
 
-    // URL should have datasets param with multiple comma-separated IDs
     const params = await explorePage.getUrlParams();
     expect(params.has("datasets")).toBe(true);
     const ids = params.get("datasets")?.split(",") ?? [];
     expect(ids.length).toBeGreaterThan(1);
 
-    // Datasets in the catalog are visible as checkbox labels
     await expect(
       explorePage.page
         .locator("label")
@@ -101,7 +99,6 @@ test.describe("Explore Page - Filtering", () => {
 
     const params = await explorePage.getUrlParams();
     expect(params.has("datasets")).toBe(true);
-    // Only one dataset should be selected
     const ids = params.get("datasets")?.split(",") ?? [];
     expect(ids).toHaveLength(1);
   });
@@ -177,17 +174,14 @@ test.describe("Explore Page - Filtering", () => {
   });
 
   test("should update results when changing dataset selection", async () => {
-    // Start with one dataset
     await explorePage.toggleDataset("Air Quality Measurements");
     await explorePage.waitForEventsToLoad();
     const initialParams = await explorePage.getUrlParams();
     const initialIds = initialParams.get("datasets")?.split(",") ?? [];
     expect(initialIds).toHaveLength(1);
 
-    // Deselect it
     await explorePage.toggleDataset("Air Quality Measurements");
 
-    // Select a different dataset from a different catalog
     const changedDatasetResponsePromise = explorePage.page.waitForResponse(
       (response) => {
         if (response.request().method() !== "GET") return false;
@@ -243,7 +237,6 @@ test.describe("Explore Page - Filtering", () => {
     const monthStart = `${year}-${pad(month)}-01`;
     const monthEnd = `${year}-${pad(month)}-${pad(new Date(Date.UTC(year, month, 0)).getUTCDate())}`;
 
-    // Single-month date range
     const monthResponsePromise = waitForEventsListResponse(page, { startDate: monthStart, endDate: monthEnd });
 
     await explorePage.setStartDate(monthStart);
@@ -261,18 +254,15 @@ test.describe("Explore Page - Filtering", () => {
 
     const urlWithParams = explorePage.page.url();
 
-    // Navigate away and back
     await explorePage.page.goto("/");
     await explorePage.page.goto(urlWithParams);
 
-    // Verify the dataset checkbox is restored to checked state
     await expect
       .poll(async () =>
         (await explorePage.getSelectedDatasets()).some((name) => /Air Quality Measurements/i.test(name))
       )
       .toBe(true);
 
-    // Verify date filter is restored via URL
     await explorePage.assertUrlParam("startDate", YEAR_START);
   });
 });

@@ -91,7 +91,7 @@ describe("GET /api/data-exports/[id]/download", () => {
 
       expect(response.status).toBe(410);
       // Two writes, in this order: retire the record, unlink, and only then forget the path.
-      // Clearing it in the first write stranded the archive whenever the unlink failed.
+      // Clearing it in the first write would strand the archive whenever the unlink fails.
       expect(payload.update).toHaveBeenCalledWith(
         expect.objectContaining({ collection: "data-exports", id: EXPORT_ID, data: { status: "expired" } })
       );

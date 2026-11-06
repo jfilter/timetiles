@@ -7,7 +7,6 @@ import type { DataSourcesResponse } from "@/lib/hooks/use-data-sources-query";
 import { createCatalogs, createDatasets } from "../../mocks";
 import { fireEvent, renderWithProviders, waitFor, within } from "../../setup/unit/react-render";
 
-// Convert mock data to lightweight format
 const mockCatalogs = createCatalogs(2);
 const mockDatasets = createDatasets(3);
 
@@ -62,7 +61,6 @@ describe("EventFilters", () => {
     const catalogCheckbox = within(container).getByRole("checkbox", { name: "Select all datasets in Test Catalog 1" });
     expect(catalogCheckbox).not.toBeDisabled();
 
-    // Click the catalog checkbox to select all its datasets
     fireEvent.click(catalogCheckbox);
 
     // After click, the aria-label should change to "Deselect all" (selected state)

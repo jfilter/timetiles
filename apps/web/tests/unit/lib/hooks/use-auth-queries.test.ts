@@ -13,7 +13,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { HttpError } from "@/lib/api/http-error";
 import { fetchCurrentUser } from "@/lib/hooks/use-auth-queries";
 
-// Mock fetchJson at the module level
 const mockFetchJson = vi.hoisted(() => vi.fn());
 
 vi.mock("@/lib/api/http-error", async () => {

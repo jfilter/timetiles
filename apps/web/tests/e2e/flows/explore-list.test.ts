@@ -15,19 +15,16 @@ test.describe("Explore Page - List View", () => {
   test("should load the list view and display events", async ({ page }) => {
     await page.goto("/explore/list", { timeout: 30000, waitUntil: "domcontentloaded" });
 
-    // Wait for the map container to render
     await showExplorerSurface(page, "map");
     await page.waitForSelector('[data-testid="map-container"], .maplibregl-canvas', { timeout: 15000 });
 
-    // Verify the map is visible (not just present in DOM)
     const mapContainer = page.locator('[data-testid="map-container"], .maplibregl-canvas').first();
     await expect(mapContainer).toBeVisible();
     // A viewport the map reports later changes the list query and resets its pages.
     await new ExplorePage(page).waitForMapSettled();
 
     // The seeded database always has events, so the list must render cards.
-    // `event-card` is the list item's own testid — no loose fallback selectors,
-    // which used to match unrelated table rows.
+    // `event-card` is the list item's own testid; loose fallback selectors match unrelated table rows.
     await showExplorerSurface(page, "list");
     const eventCards = page.getByTestId("event-card");
     await expect(eventCards.first()).toBeVisible({ timeout: 15000 });
@@ -51,7 +48,6 @@ test.describe("Explore Page - List View", () => {
     await page.getByRole("button", { name: "Load More", exact: true }).click();
     await expect(eventCards).toHaveCount(Math.min(total, PAGE_SIZE * 2), { timeout: 15000 });
 
-    // Verify page loaded — check for any navigation or header element
     const header = page.locator("header, nav, [role='banner']").first();
     await expect(header).toBeVisible({ timeout: 10000 });
   });

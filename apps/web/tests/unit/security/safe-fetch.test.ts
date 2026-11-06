@@ -16,7 +16,6 @@ import { safeFetch } from "@/lib/security/safe-fetch";
 import { TEST_SECRETS } from "@/tests/constants/test-credentials";
 import { mockLogger } from "@/tests/mocks/services/logger";
 
-// Mock dns.promises.lookup
 vi.mock("node:dns", () => ({ default: { promises: { lookup: vi.fn() } }, promises: { lookup: vi.fn() } }));
 
 // Pinned-dispatcher requests go through the npm undici package's fetch (not

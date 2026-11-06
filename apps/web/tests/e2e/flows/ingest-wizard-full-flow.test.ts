@@ -31,7 +31,6 @@ test.describe("Import Wizard - Full Flow", () => {
 
   test.describe("English CSV Import", () => {
     test("should complete import with auto-detected English fields", async ({ page }) => {
-      // Increase timeout for job processing
       test.setTimeout(180000); // 3 minutes
 
       // Use a unique catalog name to avoid conflicts
@@ -45,46 +44,34 @@ test.describe("Import Wizard - Full Flow", () => {
       // Step 2: Upload file
       const csvPath = path.join(FIXTURES_PATH, "valid-events.csv");
 
-      // Use file chooser approach for more reliable file upload
       const fileInput = page.locator('input[type="file"]');
       await fileInput.setInputFiles(csvPath);
 
-      // Wait for file processing to complete - look for ready indicator
       const fileReady = page.getByText(/file ready for import|detected.*sheet/i);
       await expect(fileReady).toBeVisible({ timeout: 5000 });
 
-      // Verify file name is shown
       await expect(page.getByText("valid-events.csv")).toBeVisible();
 
-      // Click Next to go to Dataset Selection (Step 3)
       await importPage.clickNext();
 
       // Step 3: Dataset Selection
-      // Wait for "Select destination" heading
       const destinationHeading = page.getByRole("heading", { name: /select destination/i });
       await expect(destinationHeading).toBeVisible({ timeout: 10000 });
 
-      // Create a new catalog (handles both fresh DB and existing catalogs)
       await importPage.createNewCatalog(catalogName);
 
-      // Click Next to go to Field Mapping (Step 4)
       await importPage.clickNext();
 
       // Step 4: Field Mapping
-      // Wait for field mapping page to appear
       const fieldMappingHeading = page.getByRole("heading", { name: /map your fields/i });
       await expect(fieldMappingHeading).toBeVisible({ timeout: 10000 });
 
       // The CSV has columns: title, description, date, location, category
-      // Auto-detection should have pre-filled the field mappings
-
-      // Verify language detection banner is shown (English should be detected)
       const languageBanner = page.locator('[data-testid="language-detection-banner"]');
       await expect(languageBanner).toBeVisible({ timeout: 5000 });
       await expect(languageBanner).toContainText(/english/i);
 
-      // Column-centric mapping table — verify auto-detected target assignments
-      // The CSV columns (title, date, location) should be auto-mapped to target fields
+      // Auto-detection must map title, date and location to their target fields
       const titleRow = page.locator('[data-testid="column-row-title"]');
       await expect(titleRow).toBeVisible({ timeout: 10000 });
       await expect(titleRow.locator("select")).toHaveValue("titleField", { timeout: 5000 });
@@ -97,34 +84,25 @@ test.describe("Import Wizard - Full Flow", () => {
       await expect(locationRow).toBeVisible({ timeout: 5000 });
       await expect(locationRow.locator("select")).toHaveValue(/locationField|locationNameField/, { timeout: 5000 });
 
-      // No manual field mapping needed - auto-detection handled it!
-
-      // Click Next to go to Review (Step 5)
       await importPage.clickNext();
 
       // Step 5: Review
-      // Wait for review page to appear
       const reviewHeading = page.getByRole("heading", { name: /review your import/i });
       await expect(reviewHeading).toBeVisible({ timeout: 10000 });
 
-      // Verify summary shows our selections
       await expect(page.getByText(catalogName)).toBeVisible();
 
-      // Listen for API response
       const responsePromise = page.waitForResponse((response) => response.url().includes("/api/ingest/configure"), {
         timeout: 10000,
       });
 
-      // Click Start Import to begin processing (Step 6)
       const startImportButton = page.getByRole("button", { name: /start import/i });
       await expect(startImportButton).toBeVisible();
       await startImportButton.click();
 
-      // Wait for and check the API response
       const response = await responsePromise;
       const responseStatus = response.status();
 
-      // Parse response and verify success
       const responseBody = await response.json();
       if (responseStatus !== 200) {
         throw new Error(`Configure import failed with status ${responseStatus}: ${JSON.stringify(responseBody)}`);
@@ -145,7 +123,6 @@ test.describe("Import Wizard - Full Flow", () => {
       const successMessage = page.getByText(/import complete/i);
       await expect(successMessage).toBeVisible({ timeout: 5000 });
 
-      // Verify we can navigate to explore page
       const viewOnMapButton = page.getByRole("button", { name: /view on map|explore/i });
       await expect(viewOnMapButton).toBeVisible();
     });
@@ -153,7 +130,6 @@ test.describe("Import Wizard - Full Flow", () => {
 
   test.describe("German CSV Import", () => {
     test("should complete import with auto-detected German fields", async ({ page }) => {
-      // Increase timeout for job processing
       test.setTimeout(180000); // 3 minutes
 
       // Use a unique catalog name to avoid conflicts
@@ -170,24 +146,19 @@ test.describe("Import Wizard - Full Flow", () => {
       const fileInput = page.locator('input[type="file"]');
       await fileInput.setInputFiles(csvPath);
 
-      // Wait for file processing to complete (UI shows "File ready for import")
       const fileReady = page.getByText("File ready for import");
       await expect(fileReady).toBeVisible({ timeout: 5000 });
 
-      // Verify file name is shown
       await expect(page.getByText("events-german-locations.csv")).toBeVisible();
 
-      // Click Next to go to Dataset Selection (Step 3)
       await importPage.clickNext();
 
       // Step 3: Dataset Selection
       const destinationHeading = page.getByRole("heading", { name: /select destination/i });
       await expect(destinationHeading).toBeVisible({ timeout: 10000 });
 
-      // Create a new catalog (handles both fresh DB and existing catalogs)
       await importPage.createNewCatalog(catalogName);
 
-      // Click Next to go to Field Mapping (Step 4)
       await importPage.clickNext();
 
       // Step 4: Field Mapping
@@ -195,31 +166,20 @@ test.describe("Import Wizard - Full Flow", () => {
       await expect(fieldMappingHeading).toBeVisible({ timeout: 10000 });
 
       // The German CSV has columns: titel, beschreibung, datum, ort, kategorie
-      // Auto-detection should have pre-filled the field mappings
-
-      // Verify language detection banner is shown (German should be detected)
       const languageBanner = page.locator('[data-testid="language-detection-banner"]');
       await expect(languageBanner).toBeVisible({ timeout: 5000 });
       await expect(languageBanner).toContainText(/german|deutsch/i);
 
-      // Verify all required fields are auto-detected (the banner says "All required fields mapped")
       await expect(page.getByText(/all required fields mapped/i)).toBeVisible({ timeout: 5000 });
 
-      // Verify the auto-detected German columns appear in the mapping table
       await expect(page.locator("tr").filter({ hasText: "titel" }).first()).toBeVisible();
       await expect(page.locator("tr").filter({ hasText: "datum" }).first()).toBeVisible();
 
-      // Verify description field was auto-detected (should have value "beschreibung")
-      // The mapping table is column-centric: each source column owns a target
-      // <select>. German auto-detection must point "beschreibung" at the
-      // description target.
+      // German auto-detection must point "beschreibung" at the description target
       const beschreibungRow = page.getByTestId("column-row-beschreibung");
       await expect(beschreibungRow).toBeVisible({ timeout: 10000 });
       await expect(beschreibungRow.locator("select")).toHaveValue("descriptionField");
 
-      // No manual field mapping needed - German auto-detection handled it!
-
-      // Click Next to go to Review (Step 5)
       await importPage.clickNext();
 
       // Step 5: Review
@@ -228,17 +188,14 @@ test.describe("Import Wizard - Full Flow", () => {
 
       await expect(page.getByText(catalogName)).toBeVisible();
 
-      // Listen for API response
       const responsePromise = page.waitForResponse((response) => response.url().includes("/api/ingest/configure"), {
         timeout: 10000,
       });
 
-      // Click Start Import
       const startImportButton = page.getByRole("button", { name: /start import/i });
       await expect(startImportButton).toBeVisible();
       await startImportButton.click();
 
-      // Wait for and check the API response
       const response = await responsePromise;
       const responseStatus = response.status();
 
@@ -276,13 +233,10 @@ test.describe("Import Wizard - Full Flow", () => {
       const csvPath = path.join(FIXTURES_PATH, "valid-events.csv");
       await importPage.uploadFile(csvPath);
 
-      // Verify file is shown
       await expect(page.getByText("valid-events.csv")).toBeVisible({ timeout: 5000 });
 
-      // Navigate to dataset selection
       await importPage.clickNext();
 
-      // Create a new catalog (handles both fresh DB and existing catalogs)
       await importPage.createNewCatalog("Persistence Test Catalog");
 
       // Refresh the page. The wizard restores the persisted step on reload

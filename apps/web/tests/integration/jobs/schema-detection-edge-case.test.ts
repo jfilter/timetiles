@@ -96,7 +96,6 @@ describe("Schema Detection - Edge Cases", () => {
   });
 
   it("correctly detects enums when file has exactly BATCH_SIZE rows (0-row final batch)", async () => {
-    // Verify our batch size override worked
     expect(BATCH_SIZES.SCHEMA_DETECTION).toBe(3);
 
     // Create CSV with exactly 3 rows (= BATCH_SIZE)
@@ -116,7 +115,6 @@ Event 3,2024-01-03,active`;
 
     await runJobsUntilSchemaComplete(payload, ingestFile.id, 10);
 
-    // Get the import job and check the schemaBuilderState
     const importJobs = await payload.find({
       collection: "ingest-jobs",
       where: { ingestFile: { equals: ingestFile.id } },
@@ -142,7 +140,6 @@ Event 3,2024-01-03,active`;
   });
 
   it("correctly saves state between batches and restores for final batch", async () => {
-    // Verify our batch size override worked
     expect(BATCH_SIZES.SCHEMA_DETECTION).toBe(3);
 
     // Create CSV with exactly 6 rows (= 2 * BATCH_SIZE)
@@ -165,7 +162,6 @@ Event 6,2024-01-06,B`;
 
     await runJobsUntilSchemaComplete(payload, ingestFile.id, 15);
 
-    // Get the import job
     const importJobs = await payload.find({
       collection: "ingest-jobs",
       where: { ingestFile: { equals: ingestFile.id } },

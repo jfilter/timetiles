@@ -42,8 +42,8 @@ describe("isValidFieldKey", () => {
   });
 
   it("accepts non-ASCII (Unicode) field keys from localized headers", () => {
-    // Regression: an ASCII-only class silently dropped these from filters, sort,
-    // and group-by — every German/CJK/Cyrillic-named column was unfilterable.
+    // Regression: an ASCII-only class would drop these from filters, sort and
+    // group-by, leaving every German/CJK/Cyrillic-named column unfilterable.
     expect(isValidFieldKey("Größe")).toBe(true);
     expect(isValidFieldKey("Straße")).toBe(true);
     expect(isValidFieldKey("meta.kategorie_ä")).toBe(true);

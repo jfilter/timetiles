@@ -33,7 +33,6 @@ describe("HTTP Cache Integration", () => {
   let cleanup: () => Promise<void>;
 
   beforeAll(async () => {
-    // Create integration test environment
     const testEnv = await createIntegrationTestEnvironment();
     cacheDir = await mkdtemp(join(tmpdir(), "timetiles-http-cache-test-"));
     getAppConfig().cache.urlFetch.dir = cacheDir;
@@ -155,7 +154,6 @@ describe("HTTP Cache Integration", () => {
     it("should bypass cache when requested", async () => {
       const testUrl = `${serverUrl}/uuid`;
 
-      // First request
       const result1 = await fetchWithRetry(testUrl, { cacheOptions: { useCache: true } });
       const data1 = JSON.parse(result1.data.toString());
       expect(data1).toHaveProperty("uuid");
@@ -194,7 +192,6 @@ describe("HTTP Cache Integration", () => {
     it("should cache responses independently", async () => {
       const testUrl = `${serverUrl}/headers`;
 
-      // First request
       const result1 = await fetchWithRetry(testUrl, { cacheOptions: { useCache: true } });
       expect(result1.cacheStatus).toBe("MISS");
 
@@ -206,7 +203,6 @@ describe("HTTP Cache Integration", () => {
 
   describe("Cache management", () => {
     it("should provide cache statistics", async () => {
-      // Make some cached requests
       await fetchWithRetry(`${serverUrl}/json`, { cacheOptions: { useCache: true } });
       await fetchWithRetry(`${serverUrl}/json`, { cacheOptions: { useCache: true } }); // Hit
 
@@ -708,7 +704,6 @@ describe("HTTP Cache Integration", () => {
     it("should respect Cache-Control max-age", async () => {
       const cacheUrl = `${serverUrl}/cache-control`; // 2 second cache
 
-      // First fetch
       const result1 = await fetchWithRetry(cacheUrl, { cacheOptions: { useCache: true } });
       expect(result1.cacheStatus).toBe("MISS");
 

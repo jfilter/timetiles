@@ -60,11 +60,9 @@ describe("queueEmail", () => {
     expect(mocks.logError).not.toHaveBeenCalled();
   });
 
-  // Still non-throwing, so an advisory notification cannot abort its caller,
-  // but the failure is now reported back. Without this, register /
-  // forgot-password / change-email returned success and told the user to check
-  // an inbox that would never receive anything -- and since no job row was
-  // created, nothing retried it either.
+  // Non-throwing, so an advisory notification cannot abort its caller, but the failure
+  // is reported back: without a job row nothing retries it, and register/forgot-password/
+  // change-email must not tell the user to check an inbox that receives nothing.
   it("reports queue failures to the caller instead of only logging them", async () => {
     const payload = createPayloadMock();
     const error = new Error("queue unavailable");

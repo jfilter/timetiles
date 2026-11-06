@@ -59,7 +59,6 @@ const setupDatabaseWithMigrations = async (dbName: string, dbUrl: string, worker
     const { execSync } = await import("node:child_process");
     execSync("pnpm --filter web payload migrate", { stdio: "inherit" });
 
-    // Verify again after migration
     await verifyDatabaseSchema(dbUrl);
   }
 
@@ -72,7 +71,6 @@ const setupDatabaseWithMigrations = async (dbName: string, dbUrl: string, worker
   }
 };
 
-// Set test environment
 if (!process.env.NODE_ENV) {
   (process.env as any).NODE_ENV = "test";
 }
@@ -86,8 +84,6 @@ process.env.ALLOW_PRIVATE_URLS = "true";
 // deterministic and don't depend on the evolving compromised-password corpus.
 // Tests that need the HIBP path can opt back in explicitly.
 process.env.PASSWORD_HIBP_CHECK = "false";
-
-// Payload logging is now properly controlled via logger and loggingLevels configuration
 
 import { deriveDatabaseUrl, getDatabaseUrl, parseDatabaseUrl } from "../../../lib/database/url";
 
@@ -111,12 +107,10 @@ process.env.UPLOAD_TEMP_DIR = `/tmp/temp-${poolSlotId}`;
 // In CI, always setup database for all tests (isolated per worker)
 // Locally, only setup for integration tests to save time
 const isIntegrationTest = (() => {
-  // Always set up in CI
   if (process.env.CI) {
     return true;
   }
 
-  // Check if we're in a test environment with workers
   if (!process.env.VITEST_WORKER_ID) {
     return false;
   }
@@ -131,9 +125,7 @@ const isIntegrationTest = (() => {
   );
 })();
 
-// Global setup to ensure clean test environment
 beforeAll(async () => {
-  // Skip database setup for unit tests
   if (!isIntegrationTest) {
     if (process.env.LOG_LEVEL === "debug" || process.env.CI) {
       logger.info("Skipping database setup (not an integration test)", {
@@ -153,7 +145,6 @@ beforeAll(async () => {
     });
   }
 
-  // Ensure upload directories exist
   const uploadDirs = [
     `${process.env.UPLOAD_DIR!}/media`,
     `${process.env.UPLOAD_DIR!}/ingest-files`,
@@ -167,7 +158,6 @@ beforeAll(async () => {
     }
   });
 
-  // Check PostgreSQL is running before attempting database operations
   try {
     await checkPostgreSQLConnection();
   } catch (error) {
@@ -197,7 +187,6 @@ beforeAll(async () => {
   const templateExists = await databaseExists(TEMPLATE_DB_NAME);
 
   if (templateExists) {
-    // Fast path: Clone from template
     try {
       await cloneDatabase(TEMPLATE_DB_NAME, testDbName);
 
@@ -205,7 +194,6 @@ beforeAll(async () => {
         logger.info(`Cloned template to ${testDbName} for worker ${workerId}`);
       }
 
-      // Verify the cloned database has valid schema
       await verifyDatabaseSchema(dbUrl);
 
       if (process.env.LOG_LEVEL === "debug" || process.env.CI) {
@@ -216,13 +204,11 @@ beforeAll(async () => {
         });
       }
     } catch (cloneError) {
-      // Clone failed - fall back to original behavior
       logger.warn(`Clone failed for worker ${workerId}, falling back to migrations:`, cloneError);
       await setupDatabaseWithMigrations(testDbName, dbUrl, workerId);
     }
   } else {
-    // No template exists - use original behavior
-    // This handles the case where globalSetup didn't run (e.g., unit tests)
+    // No template: globalSetup did not run (e.g. unit tests), so migrate
     if (process.env.LOG_LEVEL === "debug" || process.env.CI) {
       logger.info(`No template found, using migrations for worker ${workerId}`);
     }
@@ -260,12 +246,10 @@ afterEach(async () => {
   }
 });
 
-// Global teardown to clean up
 afterAll(async () => {
   // Close the dedicated dataset-import-lease pool so its connections don't linger.
   await closeDatasetLeasePool();
 
-  // Clean up upload directories (clean base upload dir and temp dir)
   const uploadDirs = [process.env.UPLOAD_DIR!, process.env.UPLOAD_TEMP_DIR!];
   uploadDirs.forEach((dir) => {
     if (fs.existsSync(dir)) {

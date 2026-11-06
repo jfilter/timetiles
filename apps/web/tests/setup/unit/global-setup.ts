@@ -14,12 +14,10 @@ beforeEach(() => {
   resetAppConfig();
 });
 
-// Cleanup after each test
 afterEach(() => {
   cleanup();
 });
 
-// Mock globalThis.matchMedia
 Object.defineProperty(globalThis, "matchMedia", {
   writable: true,
   value: vi
@@ -36,11 +34,9 @@ Object.defineProperty(globalThis, "matchMedia", {
     })),
 });
 
-// Import centralized mocks
 import "../../mocks/external/next-intl";
 import "../../mocks/external/next-navigation";
 
-// Mock maplibre-gl
 vi.mock("maplibre-gl", async () => {
   const mock = await import("../../mocks/external/maplibre-gl");
   return { default: mock.default, ...mock.default };

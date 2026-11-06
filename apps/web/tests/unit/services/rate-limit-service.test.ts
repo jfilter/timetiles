@@ -58,7 +58,7 @@ describe("RateLimitService", () => {
     expect(unlimitedHourly).toBeDefined();
 
     // UNLIMITED users must have higher limits than the static fallback
-    // This catches the bug where endpoints use configName (static) instead of type (trust-level)
+    // Catches endpoints that use configName (static) instead of type (trust-level)
     expect(unlimitedHourly!.limit).toBeGreaterThan(staticHourly!.limit);
   });
 

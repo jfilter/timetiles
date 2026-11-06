@@ -47,7 +47,6 @@ describe("Import Transforms - Integration", () => {
 
   describe("Schema Detection with Transforms", () => {
     it("should apply active transforms during schema detection", async () => {
-      // Create catalog
       const { catalog } = await withCatalog(testEnv, { name: "Transform Test Catalog", user: testUser });
 
       // Create dataset with import transforms
@@ -84,13 +83,11 @@ describe("Import Transforms - Integration", () => {
         user: testUser.id,
       });
 
-      // Create import job
       const ingestJob = await payload.create({
         collection: COLLECTION_NAMES.INGEST_JOBS,
         data: { ingestFile: ingestFile.id, dataset: dataset.id, stage: PROCESSING_STAGE.DETECT_SCHEMA },
       });
 
-      // Run schema detection job
       const { schemaDetectionJob } = await import("@/lib/jobs/handlers/schema-detection-job");
 
       await schemaDetectionJob.handler({
@@ -178,7 +175,6 @@ Item 2,200`;
         slug: `transform-detection-${Date.now()}`,
       });
 
-      // Create first import to establish baseline schema
       const initialCsv = `date,title,location
 2024-01-01,Event 1,City A
 2024-02-01,Event 2,City B`;
@@ -232,7 +228,6 @@ Item 2,200`;
         data: { ingestFile: importFile2.id, dataset: dataset.id, stage: PROCESSING_STAGE.DETECT_SCHEMA },
       });
 
-      // Run schema detection for second import
       await schemaDetectionJob.handler({
         job: { id: "test-detection-2", input: { ingestJobId: importJob2.id } },
         req: { payload },
@@ -247,7 +242,6 @@ Item 2,200`;
         input: { ingestJobId: importJob2.id },
       });
 
-      // Verify transform suggestions were detected
       const validatedJob = (await payload.findByID({
         collection: COLLECTION_NAMES.INGEST_JOBS,
         id: importJob2.id,

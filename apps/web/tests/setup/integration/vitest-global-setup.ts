@@ -166,7 +166,6 @@ export const setup = async (): Promise<void> => {
 
   console.log("[Global Setup] Preparing template database for integration tests...");
 
-  // Check PostgreSQL is running
   try {
     await checkPostgreSQLConnection();
   } catch (error) {
@@ -189,7 +188,6 @@ export const setup = async (): Promise<void> => {
     }
   }
 
-  // Create template with migrations
   console.log("[Global Setup] Creating template database with migrations...");
   await setupDatabase({
     databaseName: TEMPLATE_DB_NAME,
@@ -199,7 +197,6 @@ export const setup = async (): Promise<void> => {
     verbose: true,
   });
 
-  // Verify the template was created correctly
   await verifyDatabaseSchema(buildTemplateUrl());
 
   // Convert tables to UNLOGGED for faster writes (no WAL overhead)
@@ -213,9 +210,6 @@ export const setup = async (): Promise<void> => {
  * Leaves template for next run (faster startup).
  */
 export const teardown = async (): Promise<void> => {
-  // Intentionally empty - keep template for next test run
-  // This is the key optimization: subsequent test runs reuse the template
-  //
-  // Note: Workers may segfault on exit due to open pg connections in forked
-  // processes. This is cosmetic — all tests pass with exit code 0.
+  // Intentionally empty: the template is kept so later runs reuse it. Workers may segfault
+  // on exit from open pg connections in forked processes; that is cosmetic, tests exit 0.
 };

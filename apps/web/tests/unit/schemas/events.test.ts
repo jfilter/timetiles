@@ -76,7 +76,7 @@ describe("event schemas", () => {
     });
 
     it("rejects malformed rf/ff JSON instead of silently returning unfiltered data", () => {
-      // Defaulting to {} made a broken filter return the FULL result set with HTTP 200 —
+      // Defaulting to {} would make a broken filter return the FULL result set with HTTP 200 —
       // the caller asked to narrow the data and got all of it.
       expect(EventFiltersSchema.safeParse({ rf: "not-json" }).success).toBe(false);
       expect(EventFiltersSchema.safeParse({ ff: "not-json" }).success).toBe(false);
@@ -205,8 +205,8 @@ describe("event schemas", () => {
     });
 
     it("should reject invalid bounds JSON instead of dropping it", () => {
-      // Dropping it produced a query with no spatial restriction at all — on the endpoints
-      // where bounds is optional that answered 200 with every event worldwide.
+      // Dropping it would produce a query with no spatial restriction at all — on the endpoints
+      // where bounds is optional that answers 200 with every event worldwide.
       const result = MapClustersQuerySchema.safeParse({ bounds: '{"north":52}', zoom: 10 });
       expect(result.success).toBe(false);
     });

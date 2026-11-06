@@ -25,7 +25,6 @@ describe("FileSystemCacheStorage", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    // Create a unique temp directory for each test
     tempDir = path.join(os.tmpdir(), `cache-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
 
     storage = new FileSystemCacheStorage({ cacheDir: tempDir, maxSize: 1024 * 1024 });
@@ -258,7 +257,6 @@ describe("FileSystemCacheStorage", () => {
 
       await tempStorage.set("test", "value", 60);
 
-      // Check directory was created
       const stats = await fs.stat(nestedDir);
       expect(stats.isDirectory()).toBe(true);
     });

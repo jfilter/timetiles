@@ -335,8 +335,7 @@ describe("All Transform Types Pipeline", () => {
 
     const firstData = getEventData(events[0]!);
 
-    // The inactive lowercase transform should NOT have been applied
-    // venue_country should remain "Germany" (not "germany")
+    // The inactive lowercase transform must leave venue_country as "Germany"
     expect(firstData.venue_country).toBe("Germany");
 
     // Active transforms should still have been applied

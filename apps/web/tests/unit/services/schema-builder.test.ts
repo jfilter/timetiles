@@ -23,7 +23,6 @@ describe("ProgressiveSchemaBuilder", () => {
   describe("processBatch", () => {
     it("detects new fields progressively", () => {
       const builder = new ProgressiveSchemaBuilder();
-      // First batch with basic fields
       const result1 = builder.processBatch([{ id: 1, name: "Test", status: "active" }]);
 
       expect(result1.schemaChanged).toBe(true);
@@ -32,7 +31,6 @@ describe("ProgressiveSchemaBuilder", () => {
         expect.objectContaining({ type: "new_field", path: "id", severity: "info", autoApprovable: true })
       );
 
-      // Second batch with additional field
       const result2 = builder.processBatch([{ id: 2, name: "Test2", status: "pending", category: "A" }]);
 
       expect(result2.schemaChanged).toBe(true);
@@ -60,7 +58,6 @@ describe("ProgressiveSchemaBuilder", () => {
 
     it("detects type conflicts", () => {
       const builder = new ProgressiveSchemaBuilder();
-      // First batch with number value
       builder.processBatch([{ id: "1", value: 123 }]);
 
       // Second batch with string value for same field
@@ -300,7 +297,6 @@ describe("ProgressiveSchemaBuilder", () => {
         autoApprovable: true,
       });
 
-      // Check that there are no breaking changes
       const breakingChanges = comparison.changes.filter((c) => c.severity === "error");
       expect(breakingChanges).toHaveLength(0);
       expect(comparison.canAutoApprove).toBe(true);
@@ -399,14 +395,12 @@ describe("ProgressiveSchemaBuilder", () => {
       }
 
       builder.processBatch(records);
-      // The pipeline finalizes enum candidacy before persisting/comparing
-      // (schema-detection-job-support does exactly this). Without it the built
-      // schema carries no `enum` and the comparison can never report enum drift.
+      // The pipeline finalizes enum candidacy before comparing; without it the
+      // built schema carries no `enum` and enum drift can never be reported.
       builder.detectEnumFields();
 
       const comparison = builder.compareWithPrevious(previousSchema);
 
-      // Check that enum change is detected
       const enumChange = comparison.changes.find((c) => c.type === "enum_change" && c.path === "status");
       expect(enumChange).toMatchObject({ type: "enum_change", path: "status", severity: "info", autoApprovable: true });
       const details = enumChange!.details as { added?: unknown[]; removed?: unknown[] };
@@ -435,14 +429,10 @@ describe("ProgressiveSchemaBuilder", () => {
       }
 
       builder.processBatch(records);
-      // The pipeline finalizes enum candidacy before persisting/comparing
-      // (schema-detection-job-support does exactly this). Without it the built
-      // schema carries no `enum` and the comparison can never report enum drift.
       builder.detectEnumFields();
 
       const comparison = builder.compareWithPrevious(previousSchema);
 
-      // Check for enum change
       const enumChange = comparison.changes.find((c) => c.type === "enum_change" && c.path === "status");
       expect(enumChange).toMatchObject({
         type: "enum_change",
@@ -457,7 +447,6 @@ describe("ProgressiveSchemaBuilder", () => {
 
   describe("state persistence", () => {
     it("can be initialized with existing state", () => {
-      // First builder processes some data
       const builder1 = new ProgressiveSchemaBuilder();
       builder1.processBatch([{ id: 1, name: "Test" }]);
       const state1 = builder1.getState();

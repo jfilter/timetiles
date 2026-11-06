@@ -1,12 +1,9 @@
 /**
  * Access-control coverage of the event SQL functions.
  *
- * Migration 20260417_160000 injected the `includePublic`/`ownerId` access
- * clause into the live function bodies by string-searching for a marker the
- * two H3 branches of `cluster_events` spelled differently — so the DEFAULT
- * map clustering path leaked private events (fixed in 20260612_130000).
- *
- * These tests guard against any recurrence of partially-patched functions:
+ * Regression: patching the `includePublic`/`ownerId` access clause into function
+ * bodies by string search once missed one H3 branch of `cluster_events`, so the
+ * default map clustering path leaked private events. Guarded twice:
  * 1. Structurally — every `FROM payload.events` scan in every event function
  *    must carry the access clause.
  * 2. Functionally — a private dataset's events must not be aggregated by the

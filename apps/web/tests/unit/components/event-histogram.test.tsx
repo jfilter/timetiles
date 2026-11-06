@@ -14,13 +14,11 @@ vi.mock("next-themes", () => ({
   useTheme: () => ({ theme: "light", setTheme: () => {}, resolvedTheme: "light" }),
 }));
 
-// Mock the UI charts package
 vi.mock("@timetiles/ui/charts", async () => {
   const actual = await vi.importActual("@timetiles/ui/charts");
   return { ...(actual as any), useChartTheme: () => ({ backgroundColor: "#ffffff", textColor: "#000000" }) };
 });
 
-// Mock view context
 vi.mock("@/lib/context/view-context", () => ({
   useView: () => ({
     view: null,
@@ -31,7 +29,6 @@ vi.mock("@/lib/context/view-context", () => ({
   }),
 }));
 
-// Mock the filters hook
 vi.mock("../../../lib/hooks/use-filters", () => ({
   useFilters: () => ({
     filters: { catalog: null, datasets: [], startDate: null, endDate: null, fieldFilters: {}, rangeFilters: {} },
@@ -39,7 +36,6 @@ vi.mock("../../../lib/hooks/use-filters", () => ({
   }),
 }));
 
-// Mock the UI store
 vi.mock("../../../lib/store", () => ({
   useUIStore: (selector: any) => {
     const state = {
@@ -52,16 +48,14 @@ vi.mock("../../../lib/store", () => ({
   },
 }));
 
-// Mock the view scope hook
 vi.mock("../../../lib/hooks/use-view-scope", () => ({ useViewScope: () => ({ mode: "all" }) }));
 
-// Mock the React Query hooks — loading phase is now computed inside the hook
+// Mock the React Query hooks; the loading phase is computed inside the hook
 vi.mock("../../../lib/hooks/use-events-queries", () => ({
   useHistogramQuery: vi.fn(),
   useTemporalClustersQuery: vi.fn(),
 }));
 
-// Mock ECharts component
 vi.mock("echarts-for-react", () => ({
   default: ({ option }: any) => {
     return <div data-testid="echarts-mock">{JSON.stringify(option?.series?.[0]?.data ?? [])}</div>;
@@ -81,7 +75,7 @@ describe("EventHistogram", () => {
       isUpdating: false,
       isError: false,
     });
-    // Note: vi.resetModules() removed - it clears the matchMedia mock needed by next-themes
+    // No vi.resetModules(): it clears the matchMedia mock needed by next-themes
   });
 
   afterEach(() => {
@@ -105,7 +99,6 @@ describe("EventHistogram", () => {
   });
 
   it("renders no data state when histogram data is empty", async () => {
-    // Mock the query with empty data
     mockUseHistogramQuery.mockReturnValue({
       data: { histogram: [] },
       isLoading: false,
@@ -116,7 +109,6 @@ describe("EventHistogram", () => {
 
     renderWithProviders(<EventHistogram />);
 
-    // Wait for no data message to appear
     await waitFor(() => {
       expect(screen.getByText("No matching events")).toBeInTheDocument();
       expect(screen.getByText("Try adjusting your filters")).toBeInTheDocument();
@@ -132,7 +124,6 @@ describe("EventHistogram", () => {
       { date: "2024-01-02T00:00:00.000Z", dateEnd: "2024-01-03T00:00:00.000Z", count: 10 },
     ];
 
-    // Mock the query with data including metadata
     mockUseHistogramQuery.mockReturnValue({
       data: {
         histogram: mockHistogramData,
@@ -154,10 +145,8 @@ describe("EventHistogram", () => {
 
     renderWithProviders(<EventHistogram />);
 
-    // Wait for the chart to render
     await waitFor(() => {
       const chartElement = screen.getByTestId("echarts-mock");
-      // Verify timestamps are in the chart data
       expect(chartElement.textContent).toContain("2024-01-01T00:00:00.000Z");
       expect(chartElement.textContent).toContain("2024-01-02T00:00:00.000Z");
       expect(chartElement.textContent).toContain("5");

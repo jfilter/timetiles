@@ -45,33 +45,26 @@ test.describe("scheduled ingest - Create, Run, Edit, Run", () => {
     const catalogName = `E2E Schedule ${uniqueId}`;
     const csvUrl = `${baseUrl}${csvPath}`;
 
-    // Navigate to wizard
     await ingestPage.goto();
     await ingestPage.waitForWizardLoad();
 
-    // Switch to URL tab
     const urlTab = page.getByRole("tab", { name: /from url|url/i });
     await urlTab.click();
 
-    // Enter URL and fetch
     const urlInput = page.locator("#source-url");
     await urlInput.fill(csvUrl);
     const fetchButton = page.getByRole("button", { name: /fetch/i });
     await fetchButton.click();
 
-    // Wait for preview
     const fileReady = page.getByText(/url data ready|ready|detected/i).first();
     await expect(fileReady).toBeVisible({ timeout: 20_000 });
 
-    // Continue to dataset selection
     await ingestPage.clickNext();
     const destinationHeading = page.getByRole("heading", { name: /select destination/i });
     await expect(destinationHeading).toBeVisible({ timeout: 10_000 });
 
-    // Create new catalog
     await ingestPage.createNewCatalog(catalogName);
 
-    // Continue to field mapping
     await ingestPage.clickNext();
     const fieldMappingHeading = page.getByRole("heading", { name: /map your fields/i });
     await expect(fieldMappingHeading).toBeVisible({ timeout: 10_000 });
@@ -87,12 +80,10 @@ test.describe("scheduled ingest - Create, Run, Edit, Run", () => {
     await expect(scheduleToggle).toBeVisible({ timeout: 5_000 });
     await scheduleToggle.click();
 
-    // Fill schedule name
     const scheduleName = page.locator("#schedule-name");
     await scheduleName.clear();
     await scheduleName.fill(`Test Schedule ${uniqueId}`);
 
-    // Continue to review
     await ingestPage.clickNext();
     const reviewHeading = page.getByRole("heading", { name: /review your import/i });
     await expect(reviewHeading).toBeVisible({ timeout: 10_000 });
@@ -100,12 +91,10 @@ test.describe("scheduled ingest - Create, Run, Edit, Run", () => {
     // Scroll down to see schedule summary and start button
     await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
 
-    // Intercept configure response
     const responsePromise = page.waitForResponse((resp) => resp.url().includes("/api/ingest/configure"), {
       timeout: 15_000,
     });
 
-    // Start import
     const startButton = page.getByRole("button", { name: /start import/i });
     await startButton.click();
 
@@ -128,7 +117,6 @@ test.describe("scheduled ingest - Create, Run, Edit, Run", () => {
     });
     expect(triggerResponse.status()).toBe(200);
 
-    // Wait for the job to complete by polling lastStatus
     await expectScheduleStatus(request, "success", 60_000);
   });
 
@@ -175,7 +163,6 @@ test.describe("scheduled ingest - Create, Run, Edit, Run", () => {
     await expect(actionsButton).toBeVisible({ timeout: 10_000 });
     await actionsButton.click();
 
-    // Click "Edit" in the dropdown
     const editItem = page.getByRole("menuitem", { name: /edit/i });
     await expect(editItem).toBeVisible({ timeout: 5_000 });
     await editItem.click();
@@ -183,7 +170,6 @@ test.describe("scheduled ingest - Create, Run, Edit, Run", () => {
     // Should navigate to wizard in edit mode (route is /ingest, not /import)
     await page.waitForURL(/\/ingest\?edit=\d+/, { timeout: 10_000 });
 
-    // Wizard should show edit mode indicator
     const editIndicator = page.getByText(/editing/i);
     await expect(editIndicator).toBeVisible({ timeout: 15_000 });
 
@@ -193,7 +179,6 @@ test.describe("scheduled ingest - Create, Run, Edit, Run", () => {
     const urlValue = await urlInput.inputValue();
     expect(urlValue).toContain(csvPath);
 
-    // Click Fetch to regenerate preview
     const fetchButton = page.getByRole("button", { name: /fetch/i });
     await fetchButton.click();
 
@@ -216,34 +201,27 @@ test.describe("scheduled ingest - Create, Run, Edit, Run", () => {
     const scheduleHeading = page.getByRole("heading", { name: /schedule import/i });
     await expect(scheduleHeading).toBeVisible({ timeout: 10_000 });
 
-    // One-time toggle should NOT be visible in edit mode
     const oneTimeButton = page.getByRole("button", { name: /one-time/i });
     await expect(oneTimeButton).not.toBeVisible();
 
-    // Change schedule name
     const scheduleName = page.locator("#schedule-name");
     await scheduleName.clear();
     await scheduleName.fill(`Updated Schedule ${Date.now()}`);
 
-    // Continue to review
     await ingestPage.clickNext();
     const reviewHeading = page.getByRole("heading", { name: /review your import/i });
     await expect(reviewHeading).toBeVisible({ timeout: 10_000 });
 
-    // Should show Update Schedule button (not Start Import)
     const updateButton = page.getByRole("button", { name: /update schedule/i });
     await expect(updateButton).toBeVisible();
 
-    // Should NOT show Start Import
     const startButton = page.getByRole("button", { name: /start import/i });
     await expect(startButton).not.toBeVisible();
 
-    // Intercept the update API call
     const updateResponsePromise = page.waitForResponse((resp) => resp.url().includes("/api/ingest/update-schedule"), {
       timeout: 15_000,
     });
 
-    // Click Update Schedule
     await updateButton.click();
 
     const updateResponse = await updateResponsePromise;
@@ -256,7 +234,7 @@ test.describe("scheduled ingest - Create, Run, Edit, Run", () => {
   test("step 6: trigger post-edit run", async ({ request }) => {
     expect(scheduledIngestId).toBeDefined();
 
-    // Capture current run count and debug advancedOptions before triggering
+    // Capture the current run count before triggering
     const beforeResp = await request.get(`${baseUrl}/api/scheduled-ingests/${scheduledIngestId}`, {
       headers: { Authorization: `JWT ${token}` },
     });

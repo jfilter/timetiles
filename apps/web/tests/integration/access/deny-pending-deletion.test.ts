@@ -34,7 +34,7 @@ describe("denyPendingDeletion Access Control", () => {
       overrideAccess: true,
     });
 
-    // Refresh user object to include the updated deletionStatus — eslint-disable-next-line require-atomic-updates
+    // Refresh user object to include the updated deletionStatus
     // eslint-disable-next-line require-atomic-updates -- sequential test setup, no race
     pendingDeletionUser = await testEnv.payload.findByID({
       collection: "users",
@@ -78,7 +78,6 @@ describe("denyPendingDeletion Access Control", () => {
   });
 
   it("should still allow read operations for a pending-deletion user", async () => {
-    // Create a public catalog via admin/override
     const catalog = await testEnv.payload.create({
       collection: "catalogs",
       data: { _status: "published", name: "Public Catalog For Read Test", isPublic: true },

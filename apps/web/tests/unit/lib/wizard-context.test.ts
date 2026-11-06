@@ -11,10 +11,8 @@ import type * as ZustandMiddleware from "zustand/middleware";
 
 import type { FieldMapping, SheetInfo } from "@/lib/ingest/types/wizard";
 
-// Mock zustand/middleware so persist and devtools are no-op wrappers.
-// This avoids localStorage/devtools dependencies in the test environment.
-// The persist mock provides the `.persist` API (clearStorage, etc.) that
-// the store's complete()/reset() actions rely on.
+// persist and devtools become no-op wrappers (no localStorage/devtools needed); the mock
+// keeps the `.persist` API (clearStorage, etc.) that complete()/reset() rely on.
 vi.mock("zustand/middleware", async (importOriginal) => {
   const actual = await importOriginal<typeof ZustandMiddleware>();
   return {
@@ -584,7 +582,6 @@ describe("Wizard Store", () => {
 
       const state = useWizardStore.getState();
 
-      // Verify every field is back to initial
       expect(state.currentStep).toBe(1);
       expect(state.file).toBeNull();
       expect(state.sheets).toHaveLength(0);
@@ -612,11 +609,9 @@ describe("Wizard Store", () => {
       loadFile({ file: { name: "first.csv", size: 1024, mimeType: "text/csv" }, sheets, previewId: "preview-1" });
       selectCatalog(42, "First Catalog");
 
-      // Verify first import state
       expect(useWizardStore.getState().file?.name).toBe("first.csv");
       expect(useWizardStore.getState().selectedCatalogId).toBe(42);
 
-      // Reset
       useWizardStore.getState().reset();
 
       // Second import — set a different file
@@ -651,9 +646,8 @@ describe("Wizard Store", () => {
  * requirements that must be met.
  */
 describe("canProceed Validation", () => {
-  // Thin adapter over the production selector. A local re-implementation drifted
-  // here before: it allowed step 5 unconditionally and knew nothing about the
-  // blank-name checks, so the mirror passed while the wizard behaved differently.
+  // Thin adapter over the production selector; a local re-implementation would drift
+  // from the wizard's real rules (step 5, blank-name checks) and pass regardless.
   const computeCanProceed = (
     state: WizardState,
     auth: { isAuthenticated: boolean; isEmailVerified: boolean } = { isAuthenticated: false, isEmailVerified: false }

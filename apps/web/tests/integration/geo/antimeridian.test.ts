@@ -93,7 +93,7 @@ describe("Anti-meridian longitude filtering", () => {
 
   it("cluster_events: returns events on both sides of the dateline when viewport crosses it", async () => {
     // Viewport crossing the anti-meridian: west=170, east=-170
-    // With the old BETWEEN: `BETWEEN 170 AND -170` returns zero rows.
+    // A naive `BETWEEN 170 AND -170` returns zero rows.
     const result = (await payload.db.drizzle.execute(
       sql`
         SELECT * FROM cluster_events(

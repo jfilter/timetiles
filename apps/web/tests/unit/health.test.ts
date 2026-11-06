@@ -22,8 +22,8 @@ const { mockGetPayload, mockTestConfiguration } = vi.hoisted(() => ({
 
 vi.mock("payload", () => ({ getPayload: mockGetPayload }));
 
-// The geocoding check now performs a live probe, so the service has to be
-// stubbed here or every health test would try to reach a real provider.
+// The geocoding check performs a live probe, so the service is stubbed here or every
+// health test would try to reach a real provider.
 vi.mock("@/lib/services/geocoding/geocoding-service", () => ({
   createGeocodingService: vi.fn(() => ({ testConfiguration: mockTestConfiguration })),
 }));
@@ -183,11 +183,8 @@ describe("health", () => {
       }
     });
 
-    // Downgraded from error to degraded on purpose: running without outgoing
-    // mail is now a supported configuration. The example deployment config
-    // ships EMAIL_SMTP_HOST unset, because a placeholder host made every send
-    // fail -- including the one Payload sends while registering the first
-    // admin, which locked operators out of fresh deployments entirely.
+    // Degraded, not error: running without outgoing mail is a supported configuration. A
+    // placeholder SMTP host made every send fail, including the first-admin registration mail.
     it("should report degraded for email in production without SMTP", async () => {
       const mockPayload = {
         find: vi.fn().mockResolvedValue({ totalDocs: 1, docs: [] }),
@@ -243,15 +240,14 @@ describe("health", () => {
       process.env.PAYLOAD_SECRET = "test-secret";
       process.env.DATABASE_URL = "postgres://localhost/test";
       vi.stubEnv("NODE_ENV", "production");
-      // The exact value the example config used to ship.
+      // A placeholder host that never resolves.
       process.env.EMAIL_SMTP_HOST = "smtp.example.com";
       resetEnv();
 
       try {
         const results = await runHealthChecks();
 
-        // Previously reported "healthy" purely because the variable was set,
-        // while every send failed with ENOTFOUND.
+        // Must not report healthy just because the variable is set; every send fails with ENOTFOUND.
         expect(results.email.status).toBe("error");
         expect(results.email.message).toContain("placeholder");
       } finally {
@@ -299,11 +295,9 @@ describe("health", () => {
       expect(results.email.message).not.toContain("with authentication");
     });
 
-    // docker-compose.prod.yml defaults both credential vars to empty, so a user
-    // set without a password is a realistic misconfiguration. It used to report
-    // "SMTP configured (host) with authentication" while every send failed with
-    // EAUTH -- which send-email-job treats as terminal, cancelling the job so
-    // nothing is ever retried.
+    // docker-compose.prod.yml defaults both credential vars to empty, so a user without a
+    // password is a realistic misconfiguration. Every send then fails with EAUTH, which
+    // send-email-job treats as terminal, so nothing is ever retried.
     it("should report error when EMAIL_SMTP_USER is set without EMAIL_SMTP_PASS", async () => {
       mockGetPayload.mockResolvedValue(createMockPayload());
       vi.mocked(fs.access).mockResolvedValue(undefined);
@@ -412,9 +406,8 @@ describe("health", () => {
       expect(mockTestConfiguration).toHaveBeenCalledTimes(1);
     });
 
-    // The bug this check exists for: an expired key or upstream outage fails
-    // every geocode-batch job, while the old row-count check reported
-    // "1 enabled provider(s) found" and stayed green.
+    // Regression: an expired key or upstream outage fails every geocode-batch job, so a
+    // count of enabled providers alone must not report healthy.
     it("should report error when every enabled provider fails the live probe", async () => {
       mockGetPayload.mockResolvedValue(createMockPayload());
       vi.mocked(fs.access).mockResolvedValue(undefined);

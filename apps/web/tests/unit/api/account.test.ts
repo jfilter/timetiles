@@ -31,7 +31,7 @@ const mocks = vi.hoisted(() => {
     sendEmail: vi.fn().mockResolvedValue(undefined),
     jobs: { queue: vi.fn().mockResolvedValue({ id: "email-job-1" }) },
     // beginTransaction returning null makes initTransaction a no-op, the same
-    // shape the job tests use — the password change now runs in a transaction.
+    // shape the job tests use; the password change runs in a transaction.
     db: { beginTransaction: vi.fn().mockResolvedValue(null) },
   };
 
@@ -84,7 +84,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { GET as getDeletionSummary } from "@/app/api/account/deletion-summary/route";
 import { GET as downloadExportGET } from "@/app/api/data-exports/[id]/download/route";
 import { POST as cancelDeletionPOST } from "@/app/api/users/cancel-deletion/route";
-// Import apiRoute-based handlers
 import { POST as changeEmailPOST } from "@/app/api/users/change-email/route";
 import { POST as changePasswordPOST } from "@/app/api/users/change-password/route";
 import { POST as scheduleDeletionPOST } from "@/app/api/users/schedule-deletion/route";
@@ -266,8 +265,8 @@ describe("POST /api/users/change-email", () => {
         collection: "users",
         id: mockUser.id,
         overrideAccess: true,
-        // The new address is STAGED — overwriting email/_verified up front
-        // locked the account out when the new address was undeliverable.
+        // The new address is STAGED — overwriting email/_verified up front would
+        // lock the account out when the new address is undeliverable.
         data: expect.objectContaining({ pendingEmail: "new@example.com" }),
       })
     );
@@ -445,8 +444,8 @@ describe("POST /api/users/schedule-deletion", () => {
     const scheduledAt = new Date().toISOString();
     mockScheduleDeletion.mockResolvedValue({
       deletionScheduledAt: scheduledAt,
-      // The route now derives the message from the configured grace period the
-      // service applied (not a static constant), so the stub must surface it.
+      // The route derives the message from the grace period the service
+      // applied (not a static constant), so the stub must surface it.
       gracePeriodDays: 7,
       summary: { catalogs: 1, datasets: 2, events: 10 },
     });

@@ -71,7 +71,6 @@ const runUntilSettled = async (payload: any, ingestFileId: string | number, maxI
       return { settled: true, iterations: i + 1, ingestFile };
     }
 
-    // Check if all workflow jobs have completed or errored
     const pendingJobs = await payload.find({
       collection: "payload-jobs",
       where: { completedAt: { exists: false }, hasError: { equals: false } },
@@ -168,13 +167,11 @@ describe("Manual Ingest Workflow (Integration)", () => {
     // Queue manual-ingest workflow (not the standalone task)
     await payload.jobs.queue({ workflow: "manual-ingest", input: { ingestFileId: String(ingestFile.id) } });
 
-    // Run jobs until the ingest file reaches a terminal state
     const result = await runUntilSettled(payload, ingestFile.id);
 
     expect(result.settled).toBe(true);
     expect(result.ingestFile.status).toBe("completed");
 
-    // Verify ingest jobs were created and completed
     const ingestJobs = await payload.find({
       collection: "ingest-jobs",
       where: { ingestFile: { equals: ingestFile.id } },
@@ -190,7 +187,6 @@ describe("Manual Ingest Workflow (Integration)", () => {
 
     expect(events.docs).toHaveLength(3);
 
-    // Verify event data is correct
     const eventTitles = events.docs.map((e: any) => e.transformedData?.title);
     expect(eventTitles).toContain("Berlin Conference");
     expect(eventTitles).toContain("Munich Meetup");
@@ -204,7 +200,6 @@ describe("Manual Ingest Workflow (Integration)", () => {
       schemaConfig: { locked: true, autoGrow: false, autoApproveNonBreaking: false },
     });
 
-    // Create a published schema version for the dataset
     await payload.create({
       collection: "dataset-schemas",
       data: {
@@ -261,7 +256,6 @@ describe("Manual Ingest Workflow (Integration)", () => {
       datasetId: dataset.id,
     });
 
-    // Queue manual-ingest workflow
     await payload.jobs.queue({ workflow: "manual-ingest", input: { ingestFileId: String(ingestFile.id) } });
 
     // Run jobs until the ingest job reaches NEEDS_REVIEW
@@ -302,7 +296,6 @@ describe("Manual Ingest Workflow (Integration)", () => {
     expect(finalResult.settled).toBe(true);
     expect(finalResult.ingestFile.status).toBe("completed");
 
-    // Verify the ingest job completed
     const completedJob = await payload.findByID({ collection: "ingest-jobs", id: ingestJobId });
     expect(completedJob.stage).toBe(PROCESSING_STAGE.COMPLETED);
 
@@ -345,14 +338,13 @@ describe("Manual Ingest Workflow (Integration)", () => {
   // ── 3. Empty file -> detection fails cleanly ──
 
   it("should fail cleanly when processing an empty CSV file", async () => {
-    // An empty CSV with just headers and no data rows
+    // An empty CSV: no header row and no data rows
     const emptyCsvContent = "";
 
     const ingestFile = await createIngestFileForWorkflow(payload, testCatalogId, emptyCsvContent, testUser, {
       filename: "empty-file.csv",
     });
 
-    // Queue manual-ingest workflow
     await payload.jobs.queue({ workflow: "manual-ingest", input: { ingestFileId: String(ingestFile.id) } });
 
     // Run jobs — should settle quickly as detection fails

@@ -129,9 +129,8 @@ describe("Timezone Utilities", () => {
     it("should resolve a wall-clock just before a spring-forward DST boundary", () => {
       // Berlin springs forward 2024-03-31: 02:00 CET -> 03:00 CEST (at 01:00 UTC).
       // 01:30 local is still CET (UTC+1), so the correct instant is 00:30 UTC.
-      // The old single-pass correction observed the offset at the naive guess
-      // (01:30 UTC, which is AFTER the transition -> UTC+2) and produced
-      // 2024-03-30T23:30:00Z (= 00:30 local), off by one hour.
+      // A single-pass correction observing the offset at the naive guess (01:30 UTC,
+      // already UTC+2) would yield 2024-03-30T23:30:00Z, off by one hour.
       const result = wallClockToUtc(2024, 3, 31, 1, 30, "Europe/Berlin");
       expect(result.toISOString()).toBe("2024-03-31T00:30:00.000Z");
     });

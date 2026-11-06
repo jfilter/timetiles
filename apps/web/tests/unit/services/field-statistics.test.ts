@@ -21,8 +21,7 @@ describe("field-statistics numeric averaging", () => {
     updateFieldStats(stats, "not-a-number", 100);
     updateFieldStats(stats, 20, 100);
 
-    // Mean of [10, 20] = 15. The old bug divided by total occurrences (4),
-    // yielding 12.5.
+    // Mean of [10, 20] = 15; dividing by total occurrences (4) would yield 12.5.
     expect(stats.numericStats?.avg).toBe(15);
     expect(stats.numericStats?.count).toBe(2);
     expect(stats.numericStats?.min).toBe(10);
@@ -39,8 +38,8 @@ describe("field-statistics formats.numeric — locale-aware", () => {
     updateFieldStats(stats, "1234.56", 100); // US decimal "."
     updateFieldStats(stats, "42", 100); // plain
 
-    // All four are numeric under the locale-aware classifier (the old US-only
-    // regex would have missed the two EU strings).
+    // All four are numeric under the locale-aware classifier (a US-only
+    // regex would miss the two EU strings).
     expect(stats.formats.numeric).toBe(4);
   });
 
@@ -62,7 +61,7 @@ describe("field-statistics unique-sample overflow", () => {
 
     updateFieldStats(stats, "value-overflow", cap);
     expect(stats.uniqueSamplesOverflow).toBe(true);
-    // uniqueValues saturates at the cap — it is now only a lower bound
+    // uniqueValues saturates at the cap — it is only a lower bound
     expect(stats.uniqueValues).toBe(cap);
   });
 
@@ -106,8 +105,8 @@ describe("field-statistics unique-sample overflow", () => {
 
   it("does not turn a scalar column into a tag field because of a stray array value", () => {
     // A mostly-scalar column with one array-shaped row must stay a scalar enum.
-    // Classifying it as a tag field replaced the enum values with the stray
-    // array's elements, making every scalar value unfilterable.
+    // As a tag field, the stray array's elements would replace the enum values
+    // and make every scalar value unfilterable.
     const cap = 100;
     const stats = createFieldStats("category");
     for (let i = 0; i < 99; i++) updateFieldStats(stats, i % 2 === 0 ? "news" : "sports", cap);

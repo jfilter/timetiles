@@ -4,8 +4,8 @@
  * `/api/v1/events` answers from Payload normally and from raw SQL when a field, range or
  * cluster filter is present. Only the SQL path can sort by a `transformedData` path; Payload's
  * `buildOrderBy` resolves the column inside a try/catch and silently drops what it cannot
- * resolve, leaving just the `id` tiebreaker. So `sort=title` used to order by title with a
- * filter attached and by insertion order without one — same URL, two different orderings.
+ * resolve, leaving just the `id` tiebreaker. `sort=title` must not order by title with a
+ * filter attached and by insertion order without one.
  *
  * @module
  * @category Integration Tests

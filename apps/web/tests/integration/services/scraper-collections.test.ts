@@ -206,7 +206,6 @@ describe("Scraper Collections Access Control", () => {
   it("should allow admin to read all scraper-repos", async () => {
     await enableScrapers();
 
-    // Create repos owned by different users
     const trustedRepo = await payload.create({
       collection: "scraper-repos",
       data: {
@@ -233,7 +232,6 @@ describe("Scraper Collections Access Control", () => {
   });
 
   it("should restrict scraper-runs read access to owner's scrapers only", async () => {
-    // Create repos owned by different users
     const trustedRepo = await payload.create({
       collection: "scraper-repos",
       data: {
@@ -256,7 +254,6 @@ describe("Scraper Collections Access Control", () => {
       overrideAccess: true,
     });
 
-    // Create scrapers for each repo
     const trustedScraper = await payload.create({
       collection: "scrapers",
       data: {
@@ -283,7 +280,6 @@ describe("Scraper Collections Access Control", () => {
       overrideAccess: true,
     });
 
-    // Create runs for each scraper
     const trustedRun = await payload.create({
       collection: "scraper-runs",
       data: { scraper: trustedScraper.id, scraperOwner: trustedUser.id, status: "success", triggeredBy: "manual" },
@@ -385,7 +381,6 @@ describe("Scraper Collections Access Control", () => {
   it("should reject scraper creation when user does not own the repo", async () => {
     await enableScrapers();
 
-    // Create a repo owned by admin
     const adminRepo = await payload.create({
       collection: "scraper-repos",
       data: { name: "Admin Only Repo", sourceType: "upload", code: { "scraper.py": "pass" }, createdBy: adminUser.id },
@@ -412,7 +407,6 @@ describe("Scraper Collections Access Control", () => {
   it("should strip client-sent repoCreatedBy on update", async () => {
     await enableScrapers();
 
-    // Create repo and scraper owned by trusted user
     const repo = await payload.create({
       collection: "scraper-repos",
       data: { name: "Strip Test Repo", sourceType: "upload", code: { "scraper.py": "pass" } },
@@ -955,9 +949,8 @@ describe("Scraper Collections Access Control", () => {
   });
 
   it("should cascade-delete scrapers and runs when deleting a scraper-repo", async () => {
-    // Regression: scrapers.repo_id is NOT NULL, so a repo delete with
-    // surviving scrapers always failed at the FK (23502) — repos could never
-    // be deleted and their scrapers stayed scheduled forever.
+    // Regression: scrapers.repo_id is NOT NULL, so deleting a repo must remove its scrapers
+    // instead of failing at the FK (23502) and leaving them scheduled forever.
     await enableScrapers();
 
     const repo = await payload.create({

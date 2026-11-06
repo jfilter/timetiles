@@ -11,7 +11,6 @@ import type { EnumField } from "@/lib/hooks/use-dataset-enum-fields";
 
 import { renderWithProviders, screen } from "../../setup/unit/react-render";
 
-// Mock the useFilters hook
 const mockSetFieldFilter = vi.fn();
 vi.mock("@/lib/hooks/use-filters", () => ({
   useFilters: () => ({

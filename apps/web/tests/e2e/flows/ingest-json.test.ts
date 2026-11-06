@@ -56,30 +56,23 @@ test.describe("Import Wizard - JSON File Upload", () => {
     const fileReady = page.getByText(/file ready for import|detected.*sheet/i);
     await expect(fileReady).toBeVisible({ timeout: 20_000 });
 
-    // Verify the file name is displayed
     await expect(page.getByText("valid-events.json")).toBeVisible();
 
-    // Click Next to go to Dataset Selection (Step 3)
     await importPage.clickNext();
 
     // Step 3: Dataset Selection
     const destinationHeading = page.getByRole("heading", { name: /select destination/i });
     await expect(destinationHeading).toBeVisible({ timeout: 10_000 });
 
-    // Create a new catalog
     await importPage.createNewCatalog(catalogName);
 
-    // Click Next to go to Field Mapping (Step 4)
     await importPage.clickNext();
 
     // Step 4: Field Mapping
     const fieldMappingHeading = page.getByRole("heading", { name: /map your fields/i });
     await expect(fieldMappingHeading).toBeVisible({ timeout: 10_000 });
 
-    // The JSON had keys: title, date, location, category
-    // After JSON-to-CSV conversion, these become CSV columns.
-    // The column-centric mapping table shows each source column as a row.
-    // Verify auto-detected columns are visible in the mapping table.
+    // JSON keys (title, date, location, category) become CSV columns, one mapping row each
     const titleRow = page.locator("tr").filter({ hasText: "title" }).first();
     await expect(titleRow).toBeVisible({ timeout: 10_000 });
 
@@ -97,20 +90,16 @@ test.describe("Import Wizard - JSON File Upload", () => {
     const reviewHeading = page.getByRole("heading", { name: /review your import/i });
     await expect(reviewHeading).toBeVisible({ timeout: 10_000 });
 
-    // Verify catalog name in summary
     await expect(page.getByText(catalogName)).toBeVisible();
 
-    // Listen for the configure API response
     const responsePromise = page.waitForResponse((response) => response.url().includes("/api/ingest/configure"), {
       timeout: 10_000,
     });
 
-    // Click Start Import
     const startImportButton = page.getByRole("button", { name: /start import/i });
     await expect(startImportButton).toBeVisible();
     await startImportButton.click();
 
-    // Wait for and check the API response
     const response = await responsePromise;
     const responseStatus = response.status();
     const responseBody = await response.json();
@@ -156,14 +145,11 @@ test.describe("Import Wizard - JSON URL Input", () => {
     const urlTab = page.getByRole("tab", { name: /from url|url/i });
     await expect(urlTab).toBeVisible({ timeout: 5_000 });
 
-    // Switch to URL tab
     await urlTab.click();
 
-    // Verify URL input field is visible
     const urlInput = page.locator("#source-url");
     await expect(urlInput).toBeVisible({ timeout: 5_000 });
 
-    // Verify fetch button exists
     const fetchButton = page.getByRole("button", { name: /fetch/i });
     await expect(fetchButton).toBeVisible();
 
@@ -172,7 +158,6 @@ test.describe("Import Wizard - JSON URL Input", () => {
     const fixtureUrl = new URL("/api/test-fixtures?format=json", page.url()).toString();
     await urlInput.fill(fixtureUrl);
 
-    // Fetch button should be enabled now
     await expect(fetchButton).toBeEnabled();
 
     // Click Fetch and verify the complete browser-to-server URL import path.
@@ -182,7 +167,6 @@ test.describe("Import Wizard - JSON URL Input", () => {
 
     await fetchButton.click();
 
-    // Wait for the API response
     const apiResponse = await apiResponsePromise;
     expect(apiResponse.status()).toBe(200);
 
@@ -193,18 +177,15 @@ test.describe("Import Wizard - JSON URL Input", () => {
     await importPage.goto();
     await importPage.waitForWizardLoad();
 
-    // Switch to URL tab
     const urlTab = page.getByRole("tab", { name: /from url|url/i });
     await urlTab.click();
 
-    // Verify auth settings collapsible exists
     const authTrigger = page.getByText(/auth.*settings/i);
     await expect(authTrigger).toBeVisible({ timeout: 5_000 });
 
-    // Expand auth settings
     await authTrigger.click();
 
-    // Verify auth type selector is visible (id has React useId prefix)
+    // Located by label: the id carries a React useId prefix
     const authTypeSelect = page.getByLabel(/authentication type/i);
     await expect(authTypeSelect).toBeVisible({ timeout: 5_000 });
   });
@@ -306,7 +287,6 @@ test.describe("scheduled ingest - JSON API Configuration", () => {
 
     scheduledIngestId = body.doc.id;
 
-    // Verify the JSON API config was saved
     expect(body.doc.advancedOptions?.responseFormat).toBe("json");
     expect(body.doc.advancedOptions?.jsonApiConfig?.recordsPath).toBe("data.results");
     expect(body.doc.advancedOptions?.jsonApiConfig?.pagination?.enabled).toBe(true);
@@ -363,7 +343,6 @@ test.describe("scheduled ingest - JSON API Configuration", () => {
   });
 
   test("should clean up test data", async ({ request }) => {
-    // Delete scheduled ingest
     if (scheduledIngestId) {
       const deleteResponse = await request.delete(`${baseUrl}/api/scheduled-ingests/${scheduledIngestId}`, {
         headers: { Authorization: `JWT ${token}` },
@@ -371,12 +350,10 @@ test.describe("scheduled ingest - JSON API Configuration", () => {
       expect(deleteResponse.status()).toBe(200);
     }
 
-    // Delete dataset
     if (datasetId) {
       await request.delete(`${baseUrl}/api/datasets/${datasetId}`, { headers: { Authorization: `JWT ${token}` } });
     }
 
-    // Delete catalog
     if (catalogId) {
       await request.delete(`${baseUrl}/api/catalogs/${catalogId}`, { headers: { Authorization: `JWT ${token}` } });
     }

@@ -28,7 +28,6 @@ import { createIntegrationTestEnvironment, withScheduledIngest, withUsers } from
 let testServer: http.Server;
 let testServerPort: number;
 
-// Start a simple HTTP server to serve test files
 const startTestServer = async (): Promise<void> => {
   return new Promise((resolve) => {
     testServer = http.createServer((req, res) => {
@@ -94,7 +93,6 @@ const startTestServer = async (): Promise<void> => {
 
       const mapping = fileMap[req.url ?? ""];
 
-      // Handle error responses
       if (mapping && "status" in mapping) {
         res.writeHead(mapping.status, { "Content-Type": "text/plain" });
         res.end(mapping.message);
@@ -150,14 +148,12 @@ describe("Webhook Import Service Integration", () => {
   let testScheduledIngest: ScheduledIngest;
 
   beforeAll(async () => {
-    // Start the test server first
     await startTestServer();
 
     testEnv = await createIntegrationTestEnvironment({ resetDatabase: false, createTempDir: false });
     payload = testEnv.payload;
     cleanup = testEnv.cleanup;
 
-    // Setup test data
     const timestamp = Date.now();
     const { users } = await withUsers(testEnv, {
       testUser: { role: "admin", email: `service-test-${timestamp}@example.com`, trustLevel: "5" },
@@ -187,7 +183,6 @@ describe("Webhook Import Service Integration", () => {
   });
 
   afterAll(async () => {
-    // Stop the test server
     if (testServer) {
       await new Promise<void>((resolve) => {
         testServer.close(() => resolve());
@@ -240,18 +235,14 @@ describe("Webhook Import Service Integration", () => {
 
       expect(result.output.ingestFileId).toBeDefined();
 
-      // Check if successful and has ingestFileId
       if (result.output.ingestFileId == null) {
         throw new Error("Expected successful result with ingestFileId");
       }
       expect(result.output.ingestFileId).toBeDefined();
 
-      // Verify import file in database
-
       const ingestFile = await payload.findByID({ collection: "ingest-files", id: result.output.ingestFileId });
 
       expect(ingestFile).toBeDefined();
-      // The originalName should contain our specified name
       expect(ingestFile.originalName).toContain("Webhook Import Test");
       // Catalog might be populated as object or ID or null
       const catalogId =
@@ -263,7 +254,6 @@ describe("Webhook Import Service Integration", () => {
       // The relationship is tracked in metadata instead
       expect(ingestFile.status).toBe("pending");
 
-      // Verify metadata
       expect(ingestFile.metadata).toMatchObject({
         scheduledExecution: { scheduledIngestId: testScheduledIngest.id, executionTime: expect.any(String) },
       });
@@ -273,10 +263,7 @@ describe("Webhook Import Service Integration", () => {
         expect(ingestFile.filename).toMatch(/url-import-.*\.csv$/);
         expect(ingestFile.mimeType).toBe("text/csv");
 
-        // Note: Physical file verification would require checking the actual Payload upload directory
-        // which may differ from our test setup. The file is saved by Payload's internal upload mechanism
-        // and the path resolution depends on Payload's configuration.
-        // For now, we're satisfied that the import file record exists with the correct filename format.
+        // The physical file lives in Payload's upload directory, so only the record is checked.
       }
     });
 
@@ -307,7 +294,6 @@ describe("Webhook Import Service Integration", () => {
 
       expect(result.output.ingestFileId).toBeDefined();
 
-      // Check if successful and has ingestFileId
       if (result.output.ingestFileId == null) {
         throw new Error("Expected successful result with ingestFileId");
       }
@@ -335,7 +321,6 @@ describe("Webhook Import Service Integration", () => {
     });
 
     it("should detect and skip duplicate content", async () => {
-      // First import
       const result1 = await urlFetchJob.handler({
         req: { payload },
         job: {
@@ -405,7 +390,6 @@ describe("Webhook Import Service Integration", () => {
         data: { advancedOptions: { skipDuplicateChecking: true } },
       });
 
-      // First import
       const result1 = await urlFetchJob.handler({
         req: { payload },
         job: {
@@ -434,7 +418,6 @@ describe("Webhook Import Service Integration", () => {
         data: { lastStatus: "success" },
       });
 
-      // Second import
       const result2 = await urlFetchJob.handler({
         req: { payload },
         job: {
@@ -700,7 +683,6 @@ describe("Webhook Import Service Integration", () => {
         },
       });
 
-      // Check if successful and has ingestFileId
       if (result.output.ingestFileId == null) {
         throw new Error("Expected successful result with ingestFileId");
       }
@@ -730,7 +712,6 @@ describe("Webhook Import Service Integration", () => {
 
   describe("Statistics Tracking", () => {
     it("should update success statistics", async () => {
-      // Set initial statistics
       await payload.update({
         collection: "scheduled-ingests",
         id: testScheduledIngest.id,
@@ -762,7 +743,6 @@ describe("Webhook Import Service Integration", () => {
       expect(updatedImport.statistics?.failedRuns).toBe(2);
 
       // Average duration should be updated
-      // Use larger tolerance for timing-dependent tests
       expect(updatedImport.statistics?.averageDuration).toBeGreaterThan(0);
       expect(updatedImport.statistics?.averageDuration).toBeLessThan(10000);
     });

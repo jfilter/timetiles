@@ -120,13 +120,10 @@ describe("Password Reset Flow", () => {
       disableVerificationEmail: true,
     });
 
-    // Get a valid reset token
     const token = await payload.forgotPassword({ collection: "users", data: { email: testEmail }, disableEmail: true });
 
-    // Reset the password
     await payload.resetPassword({ collection: "users", data: { token, password: newPassword }, overrideAccess: true });
 
-    // Verify new password works
     const loginResult = await payload.login({ collection: "users", data: { email: testEmail, password: newPassword } });
     expect(loginResult.user).toBeDefined();
     expect(loginResult.user!.email).toBe(testEmail);

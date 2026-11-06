@@ -37,11 +37,9 @@ describe("Schedule Edge Case Tests", () => {
     payload = env.payload;
     cleanup = env.cleanup;
 
-    // Create test user
     const { users } = await withUsers(env, { testUser: { role: "admin", email: TEST_EMAILS.schedule } });
     testUser = users.testUser;
 
-    // Create test catalog
     const { catalog } = await withCatalog(env, {
       name: "Schedule Test Catalog",
       description: "Catalog for schedule edge case tests",
@@ -68,7 +66,6 @@ describe("Schedule Edge Case Tests", () => {
       const allScheduledIngests = await payload.find({ collection: "scheduled-ingests", limit: 1000 });
 
       for (const scheduledIngest of allScheduledIngests.docs) {
-        // Only delete imports that aren't the test catalog's initial data
         await payload.delete({ collection: "scheduled-ingests", id: scheduledIngest.id });
       }
     } catch {
@@ -210,13 +207,11 @@ describe("Schedule Edge Case Tests", () => {
       // Move to midnight when all schedules should trigger
       vi.setSystemTime(new Date("2024-01-02T00:00:00.000Z"));
 
-      // Import and run the schedule manager
       const { scheduleManagerJob } = await import("@/lib/jobs/handlers/schedule-manager-job");
       const result = await scheduleManagerJob.handler({ job: { id: "test-schedule-manager" }, req: { payload } });
 
       expect(result.output.success).toBe(true);
       expect(result.output.triggered).toBe(3);
-      // Jobs are queued internally by the schedule manager
     });
 
     it("should skip disabled schedules", async () => {
@@ -241,13 +236,10 @@ describe("Schedule Edge Case Tests", () => {
       // Move to next hour
       vi.setSystemTime(new Date("2024-01-01T13:00:00.000Z"));
 
-      // Import and run the schedule manager
       const { scheduleManagerJob } = await import("@/lib/jobs/handlers/schedule-manager-job");
       const result = await scheduleManagerJob.handler({ job: { id: "test-schedule-manager-2" }, req: { payload } });
 
       expect(result.output.triggered).toBe(1);
-      // The enabled schedule should have been processed
-      // The disabled schedule should not have been processed
     });
 
     it("should handle schedules that are already running", async () => {
@@ -264,7 +256,6 @@ describe("Schedule Edge Case Tests", () => {
       // Move time forward to next hour (13:00) since lastRun was 11:00 and we want it to trigger
       vi.setSystemTime(new Date("2024-01-01T13:00:00.000Z"));
 
-      // Import and run the schedule manager
       const { scheduleManagerJob } = await import("@/lib/jobs/handlers/schedule-manager-job");
       const result = await scheduleManagerJob.handler({ job: { id: "test-schedule-manager-3" }, req: { payload } });
 
@@ -287,11 +278,9 @@ describe("Schedule Edge Case Tests", () => {
       // Move to next hour
       vi.setSystemTime(new Date("2024-01-01T13:00:00.000Z"));
 
-      // Import and run the schedule manager
       const { scheduleManagerJob } = await import("@/lib/jobs/handlers/schedule-manager-job");
       await scheduleManagerJob.handler({ job: { id: "test-schedule-manager-4" }, req: { payload } });
 
-      // Check the updated schedule
       const updated = await payload.findByID({ collection: "scheduled-ingests", id: scheduledIngest.id });
 
       expect(new Date(updated.nextRun)).toEqual(new Date("2024-01-01T14:00:00.000Z"));
@@ -310,11 +299,9 @@ describe("Schedule Edge Case Tests", () => {
       // Move to Sunday
       vi.setSystemTime(new Date("2024-01-07T00:00:00.000Z"));
 
-      // Import and run the schedule manager
       const { scheduleManagerJob } = await import("@/lib/jobs/handlers/schedule-manager-job");
       await scheduleManagerJob.handler({ job: { id: "test-schedule-manager-5" }, req: { payload } });
 
-      // Check the updated schedule
       const updated = await payload.findByID({ collection: "scheduled-ingests", id: scheduledIngest.id });
 
       expect(new Date(updated.nextRun)).toEqual(new Date("2024-01-14T00:00:00.000Z"));
@@ -333,11 +320,9 @@ describe("Schedule Edge Case Tests", () => {
       // Move to first of next month
       vi.setSystemTime(new Date("2024-02-01T00:00:00.000Z"));
 
-      // Import and run the schedule manager
       const { scheduleManagerJob } = await import("@/lib/jobs/handlers/schedule-manager-job");
       await scheduleManagerJob.handler({ job: { id: "test-schedule-manager-6" }, req: { payload } });
 
-      // Check the updated schedule
       const updated = await payload.findByID({ collection: "scheduled-ingests", id: scheduledIngest.id });
 
       expect(new Date(updated.nextRun)).toEqual(new Date("2024-03-01T00:00:00.000Z"));
@@ -406,7 +391,6 @@ describe("Schedule Edge Case Tests", () => {
         // Move to next hour
         vi.setSystemTime(new Date("2024-01-01T13:00:00.000Z"));
 
-        // Import and run the schedule manager
         const { scheduleManagerJob } = await import("@/lib/jobs/handlers/schedule-manager-job");
         const result = await scheduleManagerJob.handler({
           job: { id: "test-schedule-manager-partial-failure" },
@@ -457,7 +441,6 @@ describe("Schedule Edge Case Tests", () => {
       // Move to next hour (first execution)
       vi.setSystemTime(new Date("2024-01-01T13:00:00.000Z"));
 
-      // Import and run the schedule manager
       const { scheduleManagerJob } = await import("@/lib/jobs/handlers/schedule-manager-job");
       const result = await scheduleManagerJob.handler({
         job: { id: "test-schedule-manager-first-run" },
@@ -498,7 +481,6 @@ describe("Schedule Edge Case Tests", () => {
       const queueSpy = vi.spyOn(payload.jobs, "queue");
 
       try {
-        // Import and run the schedule manager
         const { scheduleManagerJob } = await import("@/lib/jobs/handlers/schedule-manager-job");
         const result = await scheduleManagerJob.handler({
           job: { id: "test-schedule-manager-template" },

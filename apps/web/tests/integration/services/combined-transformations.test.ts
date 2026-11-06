@@ -90,10 +90,8 @@ describe("Combined Transformations Integration", () => {
   };
 
   const simulateSchemaApproval = async (ingestJobId: string) => {
-    // Get the current job
     const beforeJob = await payload.findByID({ collection: "ingest-jobs", id: ingestJobId });
 
-    // Update the approval fields
     const updatedSchemaValidation = {
       ...beforeJob.schemaValidation,
       approved: true,
@@ -170,13 +168,10 @@ describe("Combined Transformations Integration", () => {
       triggerWorkflow: true,
     });
 
-    // Wait for schema detection to complete
     const ingestJob = await waitForSchemaDetection(ingestFile.id);
 
-    // Approve schema
     await simulateSchemaApproval(String(ingestJob!.id));
 
-    // Complete the rest of the pipeline
     const completed = await runJobsUntilComplete(ingestFile.id);
     expect(completed).toBe(true);
 
@@ -189,7 +184,6 @@ describe("Combined Transformations Integration", () => {
     expect(completedMappings.descriptionPath).toBe("beschreibung");
     expect(completedMappings.timestampPath).toBe("datum");
 
-    // Verify events were created
     const events = await payload.find({
       collection: "events",
       where: { dataset: { equals: dataset.id } },
@@ -284,13 +278,10 @@ Festival,2500,Music festival,2024-02-20,48.135,11.582`;
       triggerWorkflow: true,
     });
 
-    // Wait for schema detection to complete
     const ingestJob = await waitForSchemaDetection(ingestFile.id);
 
-    // Approve schema
     await simulateSchemaApproval(String(ingestJob!.id));
 
-    // Complete the rest of the pipeline
     const completed = await runJobsUntilComplete(ingestFile.id);
     expect(completed).toBe(true);
 
@@ -349,7 +340,6 @@ Workshop,Learning session,2024-02-20,Munich`;
       triggerWorkflow: true,
     });
 
-    // Wait for schema detection to complete
     const ingestJob = await waitForSchemaDetection(ingestFile.id);
 
     // Field mapping should detect the TRANSFORMED field name "titel"
@@ -400,13 +390,10 @@ Event B,200,Second event,2024-02-20,48.135,11.582`;
       triggerWorkflow: true,
     });
 
-    // Wait for schema detection to complete
     const ingestJob = await waitForSchemaDetection(ingestFile.id);
 
-    // Approve schema
     await simulateSchemaApproval(String(ingestJob!.id));
 
-    // Complete the rest of the pipeline
     const completed = await runJobsUntilComplete(ingestFile.id);
     expect(completed).toBe(true);
 

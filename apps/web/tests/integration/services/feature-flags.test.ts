@@ -271,11 +271,9 @@ describe("Feature Flag Service", () => {
       it("should block private catalog creation when disabled", async () => {
         const { users } = await withUsers(testEnv, { regularUser: { role: "user" } });
 
-        // Disable private imports
         await payload.updateGlobal({ slug: "settings", data: { featureFlags: { allowPrivateImports: false } } });
         resetFeatureFlagService();
 
-        // Attempt to create a private catalog
         await expect(
           payload.create({
             collection: "catalogs",
@@ -289,7 +287,6 @@ describe("Feature Flag Service", () => {
       it("should allow public catalog creation when disabled", async () => {
         const { users } = await withUsers(testEnv, { regularUser: { role: "user" } });
 
-        // Disable private imports
         await payload.updateGlobal({ slug: "settings", data: { featureFlags: { allowPrivateImports: false } } });
         resetFeatureFlagService();
 
@@ -316,7 +313,6 @@ describe("Feature Flag Service", () => {
           overrideAccess: false,
         });
 
-        // Disable private imports
         await payload.updateGlobal({ slug: "settings", data: { featureFlags: { allowPrivateImports: false } } });
         resetFeatureFlagService();
 
@@ -350,7 +346,6 @@ describe("Feature Flag Service", () => {
           overrideAccess: true,
         });
 
-        // Disable scheduled ingests
         await payload.updateGlobal({ slug: "settings", data: { featureFlags: { enableScheduledIngests: false } } });
         resetFeatureFlagService();
 
@@ -389,11 +384,9 @@ describe("Feature Flag Service", () => {
           overrideAccess: true,
         });
 
-        // Ensure scheduled ingests are enabled
         await payload.updateGlobal({ slug: "settings", data: { featureFlags: { enableScheduledIngests: true } } });
         resetFeatureFlagService();
 
-        // Should succeed
         // @ts-expect-error -- Payload's create() union requires `draft` when versioning is enabled
         const schedule = await payload.create({
           collection: "scheduled-ingests",

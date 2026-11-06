@@ -12,5 +12,5 @@ export { default as maplibreMock } from "./external/maplibre-gl";
 // Service mocks (for vi.mock() replacements)
 export * from "./services";
 
-// Test data factories (re-exported from setup for backward compatibility)
+// Test data factories
 export * from "../setup/factories";

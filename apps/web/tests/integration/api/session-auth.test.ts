@@ -23,7 +23,6 @@ describe("Session Authentication", () => {
     it("should create a session when logging in", async () => {
       const { payload } = testEnv;
 
-      // Create a test user
       const timestamp = Date.now();
       const testEmail = `session-test-${timestamp}@test.com`;
       const testPassword = TEST_CREDENTIALS.basic.strongPassword;
@@ -35,14 +34,12 @@ describe("Session Authentication", () => {
 
       expect(user.id).toBeDefined();
 
-      // Check sessions before login
       const sessionsBefore = (await payload.db.drizzle.execute(
         sql`SELECT COUNT(*) as count FROM payload.users_sessions WHERE _parent_id = ${user.id}`
       )) as { rows: Array<{ count: string }> };
       const countBefore = Number.parseInt(sessionsBefore.rows[0]?.count ?? "0", 10);
       console.log(`Sessions before login: ${countBefore}`);
 
-      // Login
       const loginResult = await payload.login({
         collection: "users",
         data: { email: testEmail, password: testPassword },
@@ -54,28 +51,24 @@ describe("Session Authentication", () => {
 
       console.log(`Login successful, token length: ${loginResult.token?.length}`);
 
-      // Check sessions after login
       const sessionsAfter = (await payload.db.drizzle.execute(
         sql`SELECT COUNT(*) as count FROM payload.users_sessions WHERE _parent_id = ${user.id}`
       )) as { rows: Array<{ count: string }> };
       const countAfter = Number.parseInt(sessionsAfter.rows[0]?.count ?? "0", 10);
       console.log(`Sessions after login: ${countAfter}`);
 
-      // Session should have been created
       expect(countAfter).toBeGreaterThan(countBefore);
     });
 
     it("should validate JWT with session using payload.auth()", async () => {
       const { payload } = testEnv;
 
-      // Create a test user
       const timestamp = Date.now();
       const testEmail = `auth-test-${timestamp}@test.com`;
       const testPassword = TEST_CREDENTIALS.basic.strongPassword;
 
       await withUsers(testEnv, { authTestUser: { email: testEmail, password: testPassword, _verified: true } });
 
-      // Login to get token
       const loginResult = await payload.login({
         collection: "users",
         data: { email: testEmail, password: testPassword },
@@ -101,14 +94,12 @@ describe("Session Authentication", () => {
     it("should validate JWT with session using Cookie header", async () => {
       const { payload } = testEnv;
 
-      // Create a test user
       const timestamp = Date.now();
       const testEmail = `cookie-test-${timestamp}@test.com`;
       const testPassword = TEST_CREDENTIALS.basic.strongPassword;
 
       await withUsers(testEnv, { cookieTestUser: { email: testEmail, password: testPassword, _verified: true } });
 
-      // Login to get token
       const loginResult = await payload.login({
         collection: "users",
         data: { email: testEmail, password: testPassword },
@@ -129,7 +120,6 @@ describe("Session Authentication", () => {
     it("should fail auth when session is deleted", async () => {
       const { payload } = testEnv;
 
-      // Create a test user
       const timestamp = Date.now();
       const testEmail = `session-delete-${timestamp}@test.com`;
       const testPassword = TEST_CREDENTIALS.basic.strongPassword;
@@ -139,7 +129,6 @@ describe("Session Authentication", () => {
       });
       const user = users.sessionDeleteUser;
 
-      // Login to get token
       const loginResult = await payload.login({
         collection: "users",
         data: { email: testEmail, password: testPassword },
@@ -154,7 +143,6 @@ describe("Session Authentication", () => {
       expect(authUserBefore).toBeDefined();
       console.log("Auth before session delete: success");
 
-      // Delete all sessions for this user
       await payload.db.drizzle.execute(sql`DELETE FROM payload.users_sessions WHERE _parent_id = ${user.id}`);
       console.log("Deleted sessions for user");
 
@@ -170,7 +158,6 @@ describe("Session Authentication", () => {
     it("should show what sessions table looks like after login", async () => {
       const { payload } = testEnv;
 
-      // Create and login
       const timestamp = Date.now();
       const testEmail = `inspect-${timestamp}@test.com`;
       const testPassword = TEST_CREDENTIALS.basic.strongPassword;
@@ -182,7 +169,6 @@ describe("Session Authentication", () => {
 
       await payload.login({ collection: "users", data: { email: testEmail, password: testPassword } });
 
-      // Query sessions directly
       const sessions = (await payload.db.drizzle.execute(
         sql`SELECT * FROM payload.users_sessions WHERE _parent_id = ${user.id}`
       )) as { rows: Array<{ _order: number; _parent_id: number; id: string; created_at: string; expires_at: string }> };

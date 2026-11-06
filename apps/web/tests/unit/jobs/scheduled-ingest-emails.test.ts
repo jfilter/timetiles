@@ -52,9 +52,8 @@ const buildCronIngest = (overrides: Partial<ScheduledIngest> = {}): ScheduledIng
 
 const owner = { email: TEST_EMAILS.user, firstName: "Ada", locale: "en" };
 
-// The dashboard is mounted at /dashboard, not Payload's default /admin — see
-// ADMIN_ROUTE. These assertions used to expect /admin, which is why every alert
-// email linked to a 404 without anything noticing.
+// The dashboard is mounted at /dashboard, not Payload's default /admin (see ADMIN_ROUTE);
+// an /admin link in alert emails is a 404.
 describe("buildScheduledIngestAdminUrl", () => {
   it("builds a clean URL without double slashes", () => {
     expect(buildScheduledIngestAdminUrl("https://app.example.com/", 42)).toBe(

@@ -128,10 +128,9 @@ describe("handleWebhookTokenLifecycle", () => {
   });
 
   it("does not rotate when the update omits the token but one is stored", () => {
-    // Regression: scrapers deny read access on webhookToken, so NO client can
-    // ever echo the hash back — every unrelated edit carrying
-    // webhookEnabled: true silently rotated the credential and broke the
-    // external caller's URL. The stored doc decides whether a token exists.
+    // Regression: scrapers deny read access on webhookToken, so NO client can echo the
+    // hash back; an unrelated edit carrying webhookEnabled: true must not rotate the
+    // credential. The stored doc decides whether a token exists.
     const existingHash = hashWebhookToken("previously-generated-plaintext");
     const originalDoc: Record<string, unknown> = { webhookEnabled: true, webhookToken: existingHash };
     const data: Record<string, unknown> = { webhookEnabled: true, timeout: 300 };

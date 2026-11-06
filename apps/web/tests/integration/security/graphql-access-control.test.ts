@@ -267,10 +267,8 @@ describe("GraphQL endpoint access control", () => {
 
       const result = await gql(credentialQuery(ownerSchedule.id), token);
 
-      // The editor may read the document (createOwnershipAccess grants privileged
-      // read), but `authConfig.apiKey`/`customHeaders` are owner-or-admin only.
-      // The editor does reach the document (privileged read), which is what makes
-      // the missing credential a field-level guard rather than a hidden document.
+      // The editor reaches the document (createOwnershipAccess grants privileged read), but
+      // `authConfig.apiKey`/`customHeaders` are owner-or-admin only: a field-level guard, not a hidden document.
       expect(String(result.data?.ScheduledIngest?.id)).toBe(String(ownerSchedule.id));
       const serialized = JSON.stringify(result);
       expect(serialized).not.toContain(SECRET_API_KEY);

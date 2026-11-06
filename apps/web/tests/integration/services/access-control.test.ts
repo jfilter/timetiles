@@ -21,12 +21,10 @@ describe("Hierarchical Access Control", () => {
   let payload: any;
   let cleanup: () => Promise<void>;
 
-  // Test users
   let adminUser: User;
   let ownerUser: User;
   let otherUser: User;
 
-  // Test resources
   let publicCatalog: Catalog;
   let privateCatalog: Catalog;
   let publicDatasetInPublicCatalog: Dataset;
@@ -39,7 +37,6 @@ describe("Hierarchical Access Control", () => {
     payload = env.payload;
     cleanup = env.cleanup;
 
-    // Create test users using withUsers helper
     const { users } = await withUsers(env, {
       admin: { role: "admin" },
       owner: { role: "user" },
@@ -264,7 +261,6 @@ describe("Hierarchical Access Control", () => {
     });
 
     it("should prevent non-owner from deleting catalog", async () => {
-      // Create a catalog to delete
       const tempCatalog = await payload.create({
         collection: "catalogs",
         data: { _status: "published", name: "Temp Catalog for Delete Test", isPublic: true },
@@ -298,8 +294,7 @@ describe("Hierarchical Access Control", () => {
     });
 
     it("should allow anyone to read public dataset in public catalog (secondary)", async () => {
-      // Note: Private datasets in public catalogs are no longer allowed due to security fix
-      // This test now verifies a second public dataset in the public catalog
+      // Private datasets in public catalogs are rejected, so this fixture is a second public dataset
 
       // Anonymous user - should see (public dataset)
       const resultAnon = await payload.find({
@@ -597,7 +592,6 @@ describe("Hierarchical Access Control", () => {
     });
 
     it("should allow admin to delete any resource", async () => {
-      // Create a temporary event to delete
       const tempEvent = await payload.create({
         collection: "events",
         data: {
@@ -613,7 +607,6 @@ describe("Hierarchical Access Control", () => {
       // Admin can delete it
       await payload.delete({ collection: "events", id: tempEvent.id, user: adminUser, overrideAccess: false });
 
-      // Verify deletion
       await expect(
         payload.findByID({ collection: "events", id: tempEvent.id, user: adminUser, overrideAccess: false })
       ).rejects.toThrow();
@@ -637,8 +630,6 @@ describe("Hierarchical Access Control", () => {
       });
 
       // Owner should not be able to read versions (only admins can)
-      // Note: Payload may throw an error or return empty results
-      // The access control is enforced at the collection level
       let ownerVersionsError = false;
       try {
         await payload.findVersions({
@@ -652,7 +643,7 @@ describe("Hierarchical Access Control", () => {
         ownerVersionsError = true;
       }
 
-      // Owner should be blocked (either error or empty results)
+      // Owner must be refused with an error
       expect(ownerVersionsError).toBe(true);
 
       // Admin should be able to access versions
