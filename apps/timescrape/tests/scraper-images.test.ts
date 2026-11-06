@@ -83,10 +83,12 @@ describe("node scraper image SDK build", () => {
   const imageDir = "apps/timescrape/images/node";
 
   it("installs the build tools pnpm installed for packages/scraper", () => {
-    const installed = BUILD_TOOLS.map((tool) => {
-      const manifest = path.join(REPO_ROOT, "packages/scraper/node_modules", tool, "package.json");
-      return `${tool}@${(JSON.parse(readFileSync(manifest, "utf-8")) as { version: string }).version}`;
-    });
+    const installed = Object.fromEntries(
+      BUILD_TOOLS.map((tool) => {
+        const manifest = path.join(REPO_ROOT, "packages/scraper/node_modules", tool, "package.json");
+        return [tool, (JSON.parse(readFileSync(manifest, "utf-8")) as { version: string }).version];
+      })
+    );
 
     expect(lockedBuildTools(readFileSync(path.join(REPO_ROOT, "pnpm-lock.yaml"), "utf-8"))).toEqual(installed);
   });
@@ -100,7 +102,7 @@ describe("node scraper image SDK build", () => {
   it("reads the tool versions from the lockfile at build time", () => {
     const dockerfile = readLines(`${imageDir}/Dockerfile`).join("\n");
 
-    expect(dockerfile).toContain("node locked-build-tools.mjs pnpm-lock.yaml");
+    expect(dockerfile).toContain("node locked-build-tools.mjs pnpm-lock.yaml > package.json && npm install");
     expect(dockerfile).not.toMatch(/\btsup@\d/);
     expect(readLines(`${imageDir}/Dockerfile.dockerignore`)).toEqual(
       expect.arrayContaining(["!pnpm-lock.yaml", `!${imageDir}/locked-build-tools.mjs`])

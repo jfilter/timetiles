@@ -1,5 +1,6 @@
 /**
- * Prints `name@version` for the SDK build tools as locked for packages/scraper in pnpm-lock.yaml.
+ * Prints a package.json that depends on the SDK build tools at the versions locked for
+ * packages/scraper in pnpm-lock.yaml, so a bare `npm install` installs exactly those.
  *
  * Usage: node locked-build-tools.mjs <pnpm-lock.yaml>. Exits non-zero when a tool is not locked.
  *
@@ -35,9 +36,10 @@ export const lockedBuildTools = (lockfile) => {
   });
   const missing = locked.filter(({ version }) => !version).map(({ tool }) => tool);
   if (missing.length > 0) throw new Error(`not locked for packages/scraper: ${missing.join(", ")}`);
-  return locked.map(({ tool, version }) => `${tool}@${version}`);
+  return Object.fromEntries(locked.map(({ tool, version }) => [tool, version]));
 };
 
 if (process.argv[1] === import.meta.filename) {
-  process.stdout.write(`${lockedBuildTools(readFileSync(process.argv[2], "utf-8")).join(" ")}\n`);
+  const dependencies = lockedBuildTools(readFileSync(process.argv[2], "utf-8"));
+  process.stdout.write(`${JSON.stringify({ private: true, dependencies }, null, 2)}\n`);
 }

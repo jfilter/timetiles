@@ -4,7 +4,7 @@ FROM node:24-slim AS sdk-builder
 # Build tools at the versions locked for packages/scraper in pnpm-lock.yaml.
 WORKDIR /build
 COPY pnpm-lock.yaml apps/timescrape/images/node/locked-build-tools.mjs ./
-RUN tools="$(node locked-build-tools.mjs pnpm-lock.yaml)" && npm install --no-save --no-fund --no-audit $tools
+RUN node locked-build-tools.mjs pnpm-lock.yaml > package.json && npm install --no-fund --no-audit
 COPY packages/typescript-config/base.json node_modules/@timetiles/typescript-config/base.json
 COPY packages/scraper packages/scraper
 WORKDIR /build/packages/scraper
