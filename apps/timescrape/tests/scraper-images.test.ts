@@ -13,6 +13,8 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
+import { BUILD_TOOLS, lockedBuildTools } from "../images/node/locked-build-tools.mjs";
+
 const REPO_ROOT = path.resolve(import.meta.dirname, "../../..");
 const readLines = (relativePath: string) => readFileSync(path.join(REPO_ROOT, relativePath), "utf-8").split("\n");
 
@@ -78,20 +80,30 @@ describe.each(IMAGES)("$runtime scraper image", ({ runtime, sdkDir, registryInst
 });
 
 describe("node scraper image SDK build", () => {
-  it("pins the build tools to the versions locked for packages/scraper", () => {
-    const dockerfile = readLines("apps/timescrape/images/node/Dockerfile").join("\n");
-    const importer = indentedBlock(readLines("pnpm-lock.yaml"), "  packages/scraper:");
+  const imageDir = "apps/timescrape/images/node";
 
-    for (const tool of ["tsup", "typescript", "@types/node"]) {
-      const key = tool.startsWith("@") ? `'${tool}'` : tool;
-      const locked = indentedBlock(importer, `      ${key}:`)
-        .map((line) => line.trim())
-        .find((line) => line.startsWith("version: "))
-        ?.slice("version: ".length)
-        .split("(")[0];
+  it("installs the build tools pnpm installed for packages/scraper", () => {
+    const installed = BUILD_TOOLS.map((tool) => {
+      const manifest = path.join(REPO_ROOT, "packages/scraper/node_modules", tool, "package.json");
+      return `${tool}@${(JSON.parse(readFileSync(manifest, "utf-8")) as { version: string }).version}`;
+    });
 
-      expect(locked, `${tool} in pnpm-lock.yaml`).toBeDefined();
-      expect(dockerfile).toContain(`${tool}@${locked}`);
-    }
+    expect(lockedBuildTools(readFileSync(path.join(REPO_ROOT, "pnpm-lock.yaml"), "utf-8"))).toEqual(installed);
+  });
+
+  it("rejects a lockfile without the build tools", () => {
+    const lockfile = "importers:\n  packages/scraper:\n    devDependencies:\n      tsup:\n        version: 8.5.1\n";
+
+    expect(() => lockedBuildTools(lockfile)).toThrow("typescript, @types/node");
+  });
+
+  it("reads the tool versions from the lockfile at build time", () => {
+    const dockerfile = readLines(`${imageDir}/Dockerfile`).join("\n");
+
+    expect(dockerfile).toContain("node locked-build-tools.mjs pnpm-lock.yaml");
+    expect(dockerfile).not.toMatch(/\btsup@\d/);
+    expect(readLines(`${imageDir}/Dockerfile.dockerignore`)).toEqual(
+      expect.arrayContaining(["!pnpm-lock.yaml", `!${imageDir}/locked-build-tools.mjs`])
+    );
   });
 });

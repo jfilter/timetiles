@@ -6,3 +6,5 @@
 !packages/scraper/tsup.config.ts
 !packages/scraper/src
 !packages/typescript-config/base.json
+!pnpm-lock.yaml
+!apps/timescrape/images/node/locked-build-tools.mjs
