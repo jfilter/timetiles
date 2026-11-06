@@ -38,7 +38,7 @@
     "eslint-plugin-prefer-arrow-functions": "^3.10.2",
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-regexp": "^3.3.2",
-    "eslint-plugin-security": "^4.2.0",
+    "eslint-plugin-security": "^4.2.1",
     "eslint-plugin-simple-import-sort": "^14.0.0",
     "eslint-plugin-sonarjs": "^4.2.2",
     "eslint-plugin-turbo": "^2.11.9",
