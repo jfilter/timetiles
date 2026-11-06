@@ -201,7 +201,7 @@ const runLintCheck = (): CheckResults["lint"] => {
   });
 
   const topRules = Array.from(ruleViolations.entries())
-    .sort((a, b) => b[1] - a[1])
+    .toSorted((a, b) => b[1] - a[1])
     .slice(0, 5);
 
   return {
@@ -320,7 +320,7 @@ if (oxlintResults.errorCount === 0 && oxlintResults.warningCount === 0) {
     });
     console.log("\nTop violations:");
     Array.from(ruleCount.entries())
-      .sort((a, b) => b[1] - a[1])
+      .toSorted((a, b) => b[1] - a[1])
       .slice(0, 5)
       .forEach(([rule, count]) => {
         console.log(`  ${count}x ${rule}`);

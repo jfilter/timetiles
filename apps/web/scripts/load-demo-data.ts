@@ -115,9 +115,9 @@ const cleanDemoData = async (payload: PayloadInstance) => {
 // ---------------------------------------------------------------------------
 
 const main = async () => {
-  const args = process.argv.slice(2);
-  const shouldTrigger = args.includes("--trigger");
-  const shouldClean = args.includes("--clean");
+  const args = new Set(process.argv.slice(2));
+  const shouldTrigger = args.has("--trigger");
+  const shouldClean = args.has("--clean");
 
   logger.info("Initializing Payload...");
   const payload = await getPayload({ config: await buildConfigWithDefaults() });

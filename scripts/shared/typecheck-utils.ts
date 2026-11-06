@@ -75,7 +75,7 @@ export const pruneOldResults = (dir: string, keep = 50): void => {
   const files = fs
     .readdirSync(dir)
     .filter((f) => f.endsWith(".json"))
-    .sort((a, b) => a.localeCompare(b));
+    .toSorted((a, b) => a.localeCompare(b));
   for (const file of files.slice(0, -keep)) {
     fs.unlinkSync(path.join(dir, file));
   }

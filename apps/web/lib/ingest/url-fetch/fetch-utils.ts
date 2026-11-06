@@ -242,7 +242,7 @@ const buildCacheOptions = (
           // compareCodeUnits (not localeCompare) keeps the fingerprint identical
           // across machines, so the cache key is stable regardless of runtime locale.
           Object.keys(authHeaders)
-            .sort(compareCodeUnits)
+            .toSorted(compareCodeUnits)
             .map((key) => `${key}:${authHeaders[key]}`)
             .join("\n")
         ).slice(0, 16)

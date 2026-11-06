@@ -141,7 +141,7 @@ const getLatestResultInfo = (dir: string): ResultFileInfo => {
       const filePath = path.join(dir, file);
       return { filePath, mtimeMs: fs.statSync(filePath).mtimeMs };
     })
-    .sort((a, b) => b.mtimeMs - a.mtimeMs || b.filePath.localeCompare(a.filePath));
+    .toSorted((a, b) => b.mtimeMs - a.mtimeMs || b.filePath.localeCompare(a.filePath));
 
   return latestFile ? { path: latestFile.filePath, mtimeMs: latestFile.mtimeMs } : { path: null, mtimeMs: 0 };
 };

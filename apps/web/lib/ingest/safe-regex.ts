@@ -73,13 +73,15 @@ const hasAmbiguousAlternation = (pattern: string): boolean => {
  * Validate a user-supplied regex pattern against known catastrophic-backtracking
  * shapes.
  *
- * Returns `{ valid: true }` or `{ valid: false, reason }`. The reason is a
- * user-presentable string suitable for storing on `job.errors`.
+ * Returns `{ valid: true, regex }` with the compiled pattern, or `{ valid: false, reason }`
+ * with a user-presentable reason suitable for storing on `job.errors`.
  *
- * This validator runs **before** `new RegExp(...)` so malformed-but-compilable
- * patterns are rejected early and never reach the matcher.
+ * The structural checks run before compiling, so risky-but-compilable patterns
+ * never reach the matcher.
  */
-export const validateExtractPattern = (pattern: string): { valid: true } | { valid: false; reason: string } => {
+export const validateExtractPattern = (
+  pattern: string
+): { valid: true; regex: RegExp } | { valid: false; reason: string } => {
   if (typeof pattern !== "string") {
     return { valid: false, reason: "pattern must be a string" };
   }
@@ -104,15 +106,13 @@ export const validateExtractPattern = (pattern: string): { valid: true } | { val
   // Final gate: confirm the pattern compiles. Invalid syntax is treated as
   // invalid here rather than propagating a raw SyntaxError.
   try {
-    new RegExp(pattern);
+    return { valid: true, regex: new RegExp(pattern) };
   } catch (error) {
     return {
       valid: false,
       reason: `pattern is not valid regex: ${error instanceof Error ? error.message : String(error)}`,
     };
   }
-
-  return { valid: true };
 };
 
 /**
@@ -128,7 +128,7 @@ export const safeExtractMatch = (pattern: string, value: string): RegExpExecArra
   if (!validation.valid) return null;
 
   try {
-    return new RegExp(pattern).exec(value);
+    return validation.regex.exec(value);
   } catch {
     return null;
   }

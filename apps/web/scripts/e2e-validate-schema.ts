@@ -73,6 +73,12 @@ const runDatabaseQuery = async (dbName: string, sql: string, description?: strin
   }
 };
 
+/** Reads the single number from psql table output, skipping header and separator lines; 0 when absent. */
+const parseCount = (result: string): number => {
+  const line = result.split("\n").find((row) => row.trim() && !row.includes("---") && !row.includes("count"));
+  return Number.parseInt(line?.trim() ?? "0", 10);
+};
+
 const checkDatabaseExists = async (): Promise<boolean> => {
   try {
     // The query succeeds with an EMPTY result set when the database is absent, so the
@@ -102,12 +108,7 @@ const getDatabaseInfo = async (): Promise<DatabaseInfo> => {
       "SELECT COUNT(*) FROM pg_extension WHERE extname = 'postgis'",
       "Check PostGIS extension"
     );
-    // Parse the count from psql table output (skip header lines)
-    const postgisLines = postgisResult
-      .split("\n")
-      .filter((line) => line.trim() && !line.includes("---") && !line.includes("count"));
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- Need to handle empty string
-    const postgisCount = Number.parseInt(postgisLines[0]?.trim() || "0");
+    const postgisCount = parseCount(postgisResult);
     const hasPostGIS = postgisCount > 0;
 
     // Check payload schema
@@ -116,11 +117,7 @@ const getDatabaseInfo = async (): Promise<DatabaseInfo> => {
       "SELECT COUNT(*) FROM information_schema.schemata WHERE schema_name = 'payload'",
       "Check payload schema"
     );
-    const schemaLines = schemaResult
-      .split("\n")
-      .filter((line) => line.trim() && !line.includes("---") && !line.includes("count"));
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- Need to handle empty string
-    const schemaCount = Number.parseInt(schemaLines[0]?.trim() || "0");
+    const schemaCount = parseCount(schemaResult);
     const hasPayloadSchema = schemaCount > 0;
 
     // Count tables in payload schema
@@ -131,11 +128,7 @@ const getDatabaseInfo = async (): Promise<DatabaseInfo> => {
         "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'payload'",
         "Count payload tables"
       );
-      const tableLines = tableResult
-        .split("\n")
-        .filter((line) => line.trim() && !line.includes("---") && !line.includes("count"));
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- Need to handle empty string
-      tableCount = Number.parseInt(tableLines[0]?.trim() || "0");
+      tableCount = parseCount(tableResult);
     }
 
     return { exists: true, hasPostGIS, hasPayloadSchema, tableCount };

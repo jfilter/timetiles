@@ -164,7 +164,7 @@ export const BarChart = ({
   // are NOT unique (datasets in different catalogs may share a name), so the
   // click handler must map back by index, never by label.
   const sortedEntries = useMemo(
-    () => data.map((item, originalIndex) => ({ item, originalIndex })).sort((a, b) => b.item.value - a.item.value),
+    () => data.map((item, originalIndex) => ({ item, originalIndex })).toSorted((a, b) => b.item.value - a.item.value),
     [data]
   );
   const chartOption = useMemo(

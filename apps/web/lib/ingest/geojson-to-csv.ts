@@ -160,7 +160,7 @@ const normalizeLongitude = (lng: number): number => {
 const unwrapLongitudes = (lngs: number[]): number[] => {
   if (lngs.length < 2) return lngs;
 
-  const sorted = [...lngs].sort((a, b) => a - b);
+  const sorted = [...lngs].toSorted((a, b) => a - b);
   let gapStart = sorted[sorted.length - 1]!;
   let largestGap = sorted[0]! + 360 - gapStart;
   for (let i = 1; i < sorted.length; i++) {

@@ -557,7 +557,7 @@ export class ProgressiveSchemaBuilder {
     // Determine primary type from type distribution
     const typeEntries = Object.entries(stats.typeDistribution)
       .filter(([type]) => type !== "null" && type !== "undefined")
-      .sort(([, a], [, b]) => b - a);
+      .toSorted(([, a], [, b]) => b - a);
 
     if (typeEntries.length === 1 && typeEntries[0]) {
       schema.type = this.mapToJsonSchemaType(typeEntries[0][0]);

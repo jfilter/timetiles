@@ -22,7 +22,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { PATCH as restPATCH, POST as restPOST } from "@/app/(payload)/api/[...slug]/route";
 import { TEST_CREDENTIALS } from "@/tests/constants/test-credentials";
-import { createIntegrationTestEnvironment, withUsers } from "@/tests/setup/integration/environment";
+import { createIntegrationTestEnvironment, loginToken, withUsers } from "@/tests/setup/integration/environment";
 
 describe("Users collection hook errors surface the right REST status (issue #168)", () => {
   let payload: any;
@@ -46,18 +46,9 @@ describe("Users collection hook errors surface the right REST status (issue #168
     regularUserId = users.regular.id;
     editorUserId = users.editor.id;
 
-    const tokenFor = async (email: string): Promise<string> => {
-      const login = await payload.login({
-        collection: "users",
-        data: { email, password: TEST_CREDENTIALS.basic.strongPassword },
-      });
-      return login.token ?? "";
-    };
-    adminToken = await tokenFor(users.admin.email);
-    regularToken = await tokenFor(users.regular.email);
-    editorToken = await tokenFor(users.editor.email);
-    expect(adminToken).not.toBe("");
-    expect(regularToken).not.toBe("");
+    adminToken = await loginToken(payload, users.admin.email);
+    regularToken = await loginToken(payload, users.regular.email);
+    editorToken = await loginToken(payload, users.editor.email);
   }, 60000);
 
   afterAll(async () => {

@@ -77,7 +77,7 @@ const resolveManifestParameters = (
 export const buildActivationKey = (slug: string, params: Record<string, string>): string => {
   if (Object.keys(params).length === 0) return slug;
   const sorted = Object.entries(params)
-    .sort(([a], [b]) => compareCodeUnits(a, b))
+    .toSorted(([a], [b]) => compareCodeUnits(a, b))
     .map(([k, v]) => `${k}=${v}`)
     .join(",");
   return `${slug}:${sorted}`;

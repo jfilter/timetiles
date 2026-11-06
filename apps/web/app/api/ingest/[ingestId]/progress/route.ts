@@ -74,7 +74,7 @@ const formatStage = (stageName: string, stageData: StageProgress): FormattedStag
 const extractFormattedStages = (job: IngestJob): FormattedStage[] => {
   const stages = (job.progress?.stages as Record<string, StageProgress> | undefined) ?? {};
   return Object.entries(stages)
-    .sort(([a], [b]) => {
+    .toSorted(([a], [b]) => {
       const ai = STAGE_ORDER.indexOf(a as (typeof STAGE_ORDER)[number]);
       const bi = STAGE_ORDER.indexOf(b as (typeof STAGE_ORDER)[number]);
       return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
@@ -164,7 +164,7 @@ export const GET = apiRoute({
     const estimatedCompletionTime = jobs
       .map((job) => job.progress?.estimatedCompletionTime as Date | undefined)
       .filter((time): time is Date => time != null)
-      .sort((a, b) => new Date(a).getTime() - new Date(b).getTime())[0];
+      .toSorted((a, b) => new Date(a).getTime() - new Date(b).getTime())[0];
 
     // Extract catalog ID from relationship (can be object or number)
     const catalogId =

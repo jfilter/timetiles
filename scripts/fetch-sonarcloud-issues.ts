@@ -204,7 +204,7 @@ const fetchNewCodeCoverage = async ({ token, projectKey }: SonarCredentials): Pr
     (data: Paging & { components: CoverageComponent[] }) => data.components
   );
   const files = components.map(toCoverageFile).filter((file): file is CoverageFile => file !== null);
-  return files.sort((a, b) => b.newUncoveredLines - a.newUncoveredLines);
+  return files.toSorted((a, b) => b.newUncoveredLines - a.newUncoveredLines);
 };
 
 const printIssueSummary = (issues: SonarCloudIssue[], projectKey: string): void => {

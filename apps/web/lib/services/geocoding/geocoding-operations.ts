@@ -229,7 +229,7 @@ export class GeocodingOperations {
       return available;
     }
 
-    const soonest = [...enabledProviders].sort(
+    const soonest = [...enabledProviders].toSorted(
       (a, b) => rateLimiter.getTimeUntilAllowed(a.name) - rateLimiter.getTimeUntilAllowed(b.name)
     )[0]!;
     logger.debug("All providers in backoff, waiting for the soonest-available one", {

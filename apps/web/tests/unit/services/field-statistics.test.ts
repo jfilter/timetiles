@@ -130,6 +130,6 @@ describe("field-statistics unique-sample overflow", () => {
     enrichEnumFields({ tags: stats }, { enumThreshold: 10, enumMode: "count" });
 
     expect(stats.isTagField).toBe(true);
-    expect(stats.enumValues?.map((e) => e.value).sort()).toEqual(["local", "news", "sports"]);
+    expect(stats.enumValues?.map((e) => e.value).toSorted()).toEqual(["local", "news", "sports"]);
   });
 });

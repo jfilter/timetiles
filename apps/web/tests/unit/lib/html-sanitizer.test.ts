@@ -167,8 +167,7 @@ describe("sanitizeHTML", () => {
     it("drops external scripts lacking SRI even when combined with safe content", () => {
       // Supply-chain sanity check: a legitimate-looking CDN URL without SRI
       // is exactly the vector we are closing off.
-      const input =
-        '<script src="https://analytics.com/ga.js" async></script>' + '<meta name="og:title" content="Safe">';
+      const input = '<script src="https://analytics.com/ga.js" async></script><meta name="og:title" content="Safe">';
       const result = sanitizeHTML(input);
       expect(result).not.toContain("analytics.com/ga.js");
       expect(result).toContain("meta");

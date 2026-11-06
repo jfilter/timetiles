@@ -221,7 +221,7 @@ export const TAGS = {
  * Pick random items from an array.
  */
 const pickRandom = <T>(arr: T[], count: number): T[] => {
-  const shuffled = [...arr].sort(() => Math.random() - 0.5);
+  const shuffled = [...arr].toSorted(() => Math.random() - 0.5);
   return shuffled.slice(0, count);
 };
 

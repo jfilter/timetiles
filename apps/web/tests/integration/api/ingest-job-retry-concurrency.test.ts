@@ -173,7 +173,7 @@ describe("Ingest job recovery — concurrency and rollback", () => {
     });
     const second = operation === "reset" ? callReset : callRetry;
     const responses = await Promise.all([callReset(job.id, login.token), second(job.id, login.token)]);
-    expect(responses.map((response) => response.status).sort((a, b) => a - b)).toEqual([200, 400]);
+    expect(responses.map((response) => response.status).toSorted((a, b) => a - b)).toEqual([200, 400]);
     const queued = await payload.count({
       collection: "payload-jobs",
       where: { workflowSlug: { equals: "ingest-process" }, "input.ingestJobId": { equals: String(job.id) } },
@@ -234,7 +234,7 @@ describe("Ingest job recovery — concurrency and rollback", () => {
 
     const [first, second] = await Promise.all([callRetry(ingestJob.id, token), callRetry(ingestJob.id, token)]);
 
-    const statuses = [first.status, second.status].sort((a, b) => a - b);
+    const statuses = [first.status, second.status].toSorted((a, b) => a - b);
     // Exactly one succeeds; the other finds the job no longer FAILED.
     expect(statuses).toEqual([200, 400]);
 

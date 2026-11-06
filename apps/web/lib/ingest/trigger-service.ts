@@ -232,6 +232,6 @@ export const queueWebhookImport = async (
   } catch (queueError) {
     if (isScheduledIngestBusyError(queueError)) throw queueError;
     logError(queueError, "Failed to queue webhook job, claim reverted", { scheduledIngestId: scheduledIngest.id });
-    throw new Error("Failed to queue import job");
+    throw new Error("Failed to queue import job", { cause: queueError });
   }
 };

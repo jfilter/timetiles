@@ -186,7 +186,26 @@
     "unicorn/prefer-set-size": "error",
     "promise/no-callback-in-promise": "warn",
     "import/default": "error",
-    "import/namespace": "error"
+    "import/namespace": "error",
+    "jsx-a11y/control-has-associated-label": [
+      "error",
+      { "ignoreElements": ["audio", "canvas", "embed", "input", "textarea", "tr", "td", "video"] }
+    ],
+    "no-unmodified-loop-condition": "error",
+    "preserve-caught-error": "error",
+    "no-useless-concat": "error",
+    "no-unneeded-ternary": "error",
+    "no-new": "error",
+    "no-useless-call": "error",
+    "unicorn/no-array-sort": "error",
+    "unicorn/no-array-reverse": "error",
+    "unicorn/prefer-array-find": "error",
+    "unicorn/prefer-set-has": "error",
+    "import/no-named-as-default": "error",
+    "import/no-named-as-default-member": "error",
+    "@typescript-eslint/no-extraneous-class": "error",
+    "vitest/no-standalone-expect": "error",
+    "vitest/valid-title": ["error", { "allowArguments": true }]
   },
   "settings": { "react": { "version": "999.999.999" } },
   "overrides": [

@@ -93,7 +93,7 @@ describe("compareSchemas — nested objects", () => {
       { type: "object", properties: { a: newChild, b: newChild } }
     );
 
-    expect(result.changes.map((c) => c.path).sort((x, y) => x.localeCompare(y))).toEqual(["a.id", "b.id"]);
+    expect(result.changes.map((c) => c.path).toSorted((x, y) => x.localeCompare(y))).toEqual(["a.id", "b.id"]);
   });
 
   it("terminates on a self-referential schema", () => {

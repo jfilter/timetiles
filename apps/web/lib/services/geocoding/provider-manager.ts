@@ -73,7 +73,7 @@ export class ProviderManager {
         throw error;
       }
       logger.error("Error loading providers from database", { error });
-      throw new Error("Failed to load geocoding providers from database");
+      throw new Error("Failed to load geocoding providers from database", { cause: error });
     }
   }
 
@@ -83,7 +83,7 @@ export class ProviderManager {
       throw new Error("No enabled geocoding providers available");
     }
     // Sort by priority (lower number = higher priority)
-    return enabledProviders.sort((a, b) => a.priority - b.priority);
+    return enabledProviders.toSorted((a, b) => a.priority - b.priority);
   }
 
   getProviders(): ProviderConfig[] {

@@ -37,14 +37,14 @@ export const filterAndSortCatalogs = (
     const scopeIds = new Set(scopeCatalogIds);
     filtered = filtered.filter((c) => scopeIds.has(c.id));
   }
-  return [...filtered].sort(compareByCountThenName(eventCounts));
+  return [...filtered].toSorted(compareByCountThenName(eventCounts));
 };
 
 /** Sort datasets by event count then name */
 const sortDatasets = (
   datasets: DataSourceDataset[],
   eventCounts: Record<string, number> | undefined
-): DataSourceDataset[] => [...datasets].sort(compareByCountThenName(eventCounts));
+): DataSourceDataset[] => [...datasets].toSorted(compareByCountThenName(eventCounts));
 
 /** Group datasets by catalog, sorted by total event count */
 export const groupDatasetsByCatalog = (

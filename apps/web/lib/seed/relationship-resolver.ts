@@ -341,9 +341,7 @@ export class RelationshipResolver {
     const stats = this.stats.get(collection);
     if (stats) stats.skippedOptional++;
 
-    logger.debug(
-      `Optional relationship not found: ${config.field}='${originalValue}' ` + `in ${config.targetCollection}`
-    );
+    logger.debug(`Optional relationship not found: ${config.field}='${originalValue}' in ${config.targetCollection}`);
 
     return true;
   }

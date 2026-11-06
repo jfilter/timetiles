@@ -73,7 +73,7 @@ const groupHotspots = (hotspots: SonarCloudHotspot[]): GroupedHotspots[] => {
   }
 
   // Sort by count descending
-  return Array.from(groups.values()).sort((a, b) => b.hotspots.length - a.hotspots.length);
+  return Array.from(groups.values()).toSorted((a, b) => b.hotspots.length - a.hotspots.length);
 };
 
 const markHotspot = async (

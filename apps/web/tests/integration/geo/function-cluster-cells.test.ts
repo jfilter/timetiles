@@ -87,8 +87,7 @@ describe("event SQL functions and the clusterCells filter", () => {
     )) as { rows: Array<{ id: number; cell: string }> };
     cellA = cells.rows.find((row) => row.id === eventIds[0])?.cell ?? "";
     const cellB = cells.rows.find((row) => row.id === eventIds[2])?.cell ?? "";
-    expect(cellA).not.toBe("");
-    expect(cellB).not.toBe(cellA);
+    if (!cellA || cellB === cellA) throw new Error("fixture events must land in two distinct H3 cells");
   }, 120_000);
 
   afterAll(async () => {

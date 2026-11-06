@@ -65,7 +65,8 @@ vi.mock("@/lib/services/cache/url-fetch-cache", () => {
         });
         return { data, headers, status: response.status };
       } catch (error) {
-        if ((error as Error).name === "AbortError") throw new Error(`Request timeout after ${timeout}ms`);
+        if ((error as Error).name === "AbortError")
+          throw new Error(`Request timeout after ${timeout}ms`, { cause: error });
         throw error;
       } finally {
         if (timeoutId) clearTimeout(timeoutId);
@@ -566,9 +567,9 @@ describe("Data Package Activation", () => {
     // Rename transforms
     const renames = ops.filter((t: any) => t.type === "rename");
     expect(renames).toHaveLength(6);
-    expect(renames.map((r: any) => r.to).sort((a: string, b: string) => a.localeCompare(b))).toEqual(
-      ["Civilian Deaths", "Conflict", "District", "Fatalities", "Parties", "Province"].sort((a: string, b: string) =>
-        a.localeCompare(b)
+    expect(renames.map((r: any) => r.to).toSorted((a: string, b: string) => a.localeCompare(b))).toEqual(
+      ["Civilian Deaths", "Conflict", "District", "Fatalities", "Parties", "Province"].toSorted(
+        (a: string, b: string) => a.localeCompare(b)
       )
     );
 

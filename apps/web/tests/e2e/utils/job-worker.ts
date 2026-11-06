@@ -28,18 +28,15 @@ const IDLE_POLL_MS = 1000; // Sleep when no jobs found
 const BUSY_POLL_MS = 50; // Minimal delay between runs when processing
 const MAX_JOBS_PER_RUN = 50;
 
-let isRunning = true;
+const shutdown = new AbortController();
 
 // Handle graceful shutdown
-process.on("SIGTERM", () => {
-  console.log("[job-worker] Received SIGTERM, shutting down...");
-  isRunning = false;
-});
-
-process.on("SIGINT", () => {
-  console.log("[job-worker] Received SIGINT, shutting down...");
-  isRunning = false;
-});
+for (const signal of ["SIGTERM", "SIGINT"] as const) {
+  process.on(signal, () => {
+    console.log(`[job-worker] Received ${signal}, shutting down...`);
+    shutdown.abort();
+  });
+}
 
 const main = async () => {
   console.log("[job-worker] Starting job worker...");
@@ -64,7 +61,7 @@ const main = async () => {
   let loopCount = 0;
   const HEARTBEAT_INTERVAL = 30; // Log heartbeat every N loops
 
-  while (isRunning) {
+  while (!shutdown.signal.aborted) {
     try {
       // Check for pending jobs before running
       const pending = await payload.find({

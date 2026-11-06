@@ -129,7 +129,7 @@ const cellToGeoJsonRing = (cellId: string): Array<[number, number]> => {
 
 /** Graham scan convex hull for [lng, lat] points. */
 const convexHull = (points: Array<[number, number]>): Array<[number, number]> => {
-  const pts = [...points].sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  const pts = [...points].toSorted((a, b) => a[0] - b[0] || a[1] - b[1]);
   if (pts.length <= 2) return pts;
   const cross = (o: [number, number], a: [number, number], b: [number, number]) =>
     (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
@@ -139,7 +139,7 @@ const convexHull = (points: Array<[number, number]>): Array<[number, number]> =>
     lower.push(p);
   }
   const upper: Array<[number, number]> = [];
-  for (const p of [...pts].reverse()) {
+  for (const p of [...pts].toReversed()) {
     while (upper.length >= 2 && cross(upper[upper.length - 2]!, upper[upper.length - 1]!, p) <= 0) upper.pop();
     upper.push(p);
   }
@@ -187,7 +187,7 @@ export const buildMergeGroupData = (
   for (const f of animatedClusters) {
     const sc = f.properties.sourceCells;
     if (!sc || !Array.isArray(sc) || sc.length < 2) continue;
-    const key = [...sc].sort((a, b) => String(a).localeCompare(String(b))).join(",");
+    const key = [...sc].toSorted((a, b) => String(a).localeCompare(String(b))).join(",");
     if (!groups.has(key)) groups.set(key, []);
     groups.get(key)!.push(f.geometry.coordinates);
   }

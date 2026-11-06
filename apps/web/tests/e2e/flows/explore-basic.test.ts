@@ -146,7 +146,7 @@ test.describe("Explore Page - Basic Functionality", () => {
         "a[href], button:not([disabled]), input:not([disabled]), select, textarea, [tabindex]:not([tabindex='-1'])"
       );
       [...tabbables]
-        .reverse()
+        .toReversed()
         .find((el) => el.offsetParent !== null)
         ?.focus();
     });

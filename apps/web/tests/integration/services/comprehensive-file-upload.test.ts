@@ -226,7 +226,7 @@ describe("Comprehensive File Upload Tests", () => {
       });
       expect(completed, diagnostics).toBe(true);
       expect(finalIngestFile.status, diagnostics).toBe("completed");
-      expect(importJobs.docs.map((job: IngestJob) => job.sheetIndex).sort(), diagnostics).toEqual([0, 1, 2]);
+      expect(importJobs.docs.map((job: IngestJob) => job.sheetIndex).toSorted(), diagnostics).toEqual([0, 1, 2]);
       logger.debug(`✓ Created ${importJobs.docs.length} import jobs for sheets`);
 
       // Verify jobs completed

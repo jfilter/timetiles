@@ -17,7 +17,7 @@ import { nodemailerAdapter } from "@payloadcms/email-nodemailer";
 import { lexicalEditor } from "@payloadcms/richtext-lexical";
 import { de } from "@payloadcms/translations/languages/de";
 import { en } from "@payloadcms/translations/languages/en";
-import nodemailer from "nodemailer";
+import { createTestAccount, createTransport } from "nodemailer";
 import type { Config, Plugin } from "payload";
 import { buildConfig } from "payload";
 import sharp from "sharp";
@@ -94,7 +94,7 @@ const readCachedEtherealCredentials = (): EtherealCredentials | null => {
 
 /** Create a new ethereal.email test account and persist it to the cache file. */
 const provisionEtherealCredentials = async (): Promise<EtherealCredentials> => {
-  const testAccount = await nodemailer.createTestAccount();
+  const testAccount = await createTestAccount();
   const credentials: EtherealCredentials = { user: testAccount.user, pass: testAccount.pass };
 
   try {
@@ -108,7 +108,7 @@ const provisionEtherealCredentials = async (): Promise<EtherealCredentials> => {
 };
 
 const createEtherealTransport = (credentials: EtherealCredentials) =>
-  nodemailer.createTransport({
+  createTransport({
     host: "smtp.ethereal.email",
     port: 587,
     requireTLS: true,
@@ -205,7 +205,7 @@ const configureEmail = async (config: Config, env: ReturnType<typeof getEnv>, en
       defaultFromAddress: env.EMAIL_FROM_ADDRESS,
       defaultFromName: env.EMAIL_FROM_NAME,
       // eslint-disable-next-line sonarjs/no-clear-text-protocols -- JSON transport is in-memory and test-only
-      transport: nodemailer.createTransport({ jsonTransport: true }),
+      transport: createTransport({ jsonTransport: true }),
       skipVerify: true,
     });
     return;
@@ -215,7 +215,7 @@ const configureEmail = async (config: Config, env: ReturnType<typeof getEnv>, en
     config.email = nodemailerAdapter({
       defaultFromAddress: env.EMAIL_FROM_ADDRESS,
       defaultFromName: env.EMAIL_FROM_NAME,
-      transport: nodemailer.createTransport({
+      transport: createTransport({
         host: env.EMAIL_SMTP_HOST,
         port: env.EMAIL_SMTP_PORT,
         auth: env.EMAIL_SMTP_USER ? { user: env.EMAIL_SMTP_USER, pass: env.EMAIL_SMTP_PASS } : undefined,
@@ -253,7 +253,7 @@ const configureEmail = async (config: Config, env: ReturnType<typeof getEnv>, en
       defaultFromAddress: env.EMAIL_FROM_ADDRESS,
       defaultFromName: env.EMAIL_FROM_NAME,
       // eslint-disable-next-line sonarjs/no-clear-text-protocols -- JSON transport is in-memory; nothing is sent over the wire
-      transport: nodemailer.createTransport({ jsonTransport: true }),
+      transport: createTransport({ jsonTransport: true }),
       skipVerify: true,
     });
     return;

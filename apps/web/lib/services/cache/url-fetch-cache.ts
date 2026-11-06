@@ -463,7 +463,7 @@ export class UrlFetchCache {
           controller.signal.aborted &&
           optionsWithSignal.signal?.reason === controller.signal.reason
         ) {
-          throw new Error(`Request timeout after ${timeout}ms`);
+          throw new Error(`Request timeout after ${timeout}ms`, { cause: error });
         }
         throw error;
       } finally {

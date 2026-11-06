@@ -711,7 +711,7 @@ describe("processEventBatch", () => {
       const result = await processEventBatch(ctx, rows, 0);
 
       expect(result.eventsSkipped).toBe(2);
-      expect(result.errors.map((e) => e.row).sort((a, b) => a - b)).toEqual([2, 3, 4]);
+      expect(result.errors.map((e) => e.row).toSorted((a, b) => a - b)).toEqual([2, 3, 4]);
       expect(result.errors.every((e) => e.error === "simulated bulk insert failure")).toBe(true);
     });
 
@@ -732,7 +732,7 @@ describe("processEventBatch", () => {
 
       const result = await processEventBatch(ctx, rows, 100);
 
-      expect(result.errors.map((e) => e.row).sort((a, b) => a - b)).toEqual([101, 102]);
+      expect(result.errors.map((e) => e.row).toSorted((a, b) => a - b)).toEqual([101, 102]);
     });
 
     it("counts committed rows and errors only the failed sub-batch on a partial insert", async () => {

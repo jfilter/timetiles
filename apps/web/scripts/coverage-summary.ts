@@ -156,7 +156,7 @@ try {
         };
       })
       .filter((file) => file.coverage < threshold)
-      .sort((a, b) => a.coverage - b.coverage);
+      .toSorted((a, b) => a.coverage - b.coverage);
 
     console.log(`\n⚠️  Files Below ${threshold}% Coverage Threshold:`);
     console.log("━".repeat(60));

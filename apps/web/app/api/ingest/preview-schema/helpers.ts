@@ -371,7 +371,7 @@ export const buildPreviewResult = async ({
       if (!existing || s.score > existing.score) seen.set(s.datasetName, s);
     }
   }
-  const configSuggestions = [...seen.values()].sort((a, b) => b.score - a.score);
+  const configSuggestions = [...seen.values()].toSorted((a, b) => b.score - a.score);
 
   return { sheets, configSuggestions };
 };

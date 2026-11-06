@@ -18,8 +18,8 @@ const getKeys = (obj: Record<string, unknown>, prefix = ""): string[] =>
 
 describe("i18n locale parity", () => {
   it("en and de have the same translation keys", () => {
-    const enKeys = getKeys(en).sort((a, b) => a.localeCompare(b));
-    const deKeys = getKeys(de).sort((a, b) => a.localeCompare(b));
+    const enKeys = getKeys(en).toSorted((a, b) => a.localeCompare(b));
+    const deKeys = getKeys(de).toSorted((a, b) => a.localeCompare(b));
     expect(deKeys).toEqual(enKeys);
   });
 

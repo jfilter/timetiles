@@ -32,7 +32,7 @@ export const stableStringify = (value: unknown, { legacyContentHash = false } = 
           // Persisted content-hash IDs historically omitted this key. Only that
           // caller opts in; filter identities must include every own data field.
           .filter(([key]) => !legacyContentHash || key !== "__proto__")
-          .sort(([a], [b]) => compareCodeUnits(a, b))
+          .toSorted(([a], [b]) => compareCodeUnits(a, b))
       );
     }
     return entry;

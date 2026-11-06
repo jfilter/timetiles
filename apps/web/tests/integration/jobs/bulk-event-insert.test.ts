@@ -122,8 +122,8 @@ describe("bulkInsertEvents — atomicity", () => {
     expect(created).toBe(2);
     expect(failures).toEqual([]);
     const byString = (x: string, y: string): number => x.localeCompare(y);
-    expect(conflicts.map((x) => x.uniqueId).sort(byString)).toEqual([a, b].sort(byString));
-    expect(conflicts.map((x) => x.index).sort((x, y) => x - y)).toEqual([0, 2]);
+    expect(conflicts.map((x) => x.uniqueId).toSorted(byString)).toEqual([a, b].toSorted(byString));
+    expect(conflicts.map((x) => x.index).toSorted((x, y) => x - y)).toEqual([0, 2]);
   });
 
   it("rolls back events insert when _events_v insert fails", async () => {
@@ -152,7 +152,7 @@ describe("bulkInsertEvents — atomicity", () => {
     // no events committed, no orphaned rows, no throw to the caller.
     const { created, failures } = await bulkInsertEvents(payload, batch);
     expect(created).toBe(0);
-    expect(failures.map((f) => f.index).sort((a, b) => a - b)).toEqual([0, 1, 2]);
+    expect(failures.map((f) => f.index).toSorted((a, b) => a - b)).toEqual([0, 1, 2]);
 
     const remaining = (await payload.db.drizzle.execute(sql`
       SELECT COUNT(*)::int AS count
@@ -198,7 +198,7 @@ describe("bulkInsertEvents — atomicity", () => {
 
     // First sub-batch committed and counted; only the second sub-batch's rows fail.
     expect(created).toBe(2);
-    expect(failures.map((f) => f.index).sort((a, b) => a - b)).toEqual([2, 3]);
+    expect(failures.map((f) => f.index).toSorted((a, b) => a - b)).toEqual([2, 3]);
 
     const remaining = (await payload.db.drizzle.execute(sql`
       SELECT COUNT(*)::int AS count

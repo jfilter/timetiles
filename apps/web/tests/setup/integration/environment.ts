@@ -851,6 +851,17 @@ const addApprovalFields = (
   }
 };
 
+/** Logs a seeded user in and returns the JWT; throws when Payload issues none (e.g. unverified user). */
+export const loginToken = async (
+  payload: Payload,
+  email: string,
+  password: string = TEST_CREDENTIALS.basic.strongPassword
+): Promise<string> => {
+  const { token } = await payload.login({ collection: "users", data: { email, password } });
+  if (!token) throw new Error(`payload.login issued no token for ${email}`);
+  return token;
+};
+
 export const withSchemaVersion = async (
   testEnv: TestEnvironment,
   datasetId: string | number,

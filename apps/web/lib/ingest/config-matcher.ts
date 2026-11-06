@@ -19,7 +19,7 @@ const MAX_RESULTS = 3;
 
 /** Trace post-transform columns back to file inputs, undoing generated paths in reverse operation order. */
 const collectPlanInputColumns = (plan: DatasetInterpretationPlan, columns: Set<string>): void => {
-  for (const t of [...plan.ops].reverse()) {
+  for (const t of [...plan.ops].toReversed()) {
     if (!t.active) continue;
     for (const output of getTransformOutputPaths(t)) columns.delete(output);
     if ("from" in t && typeof t.from === "string") columns.add(t.from);

@@ -218,7 +218,7 @@ Event C,2024-06-03,http://example.com/events/789/show
     expect(events.docs).toHaveLength(3);
 
     // Check that eventId was extracted from the URL
-    const ids = events.docs.map((e: any) => e.transformedData?.eventId).sort();
+    const ids = events.docs.map((e: any) => e.transformedData?.eventId).toSorted();
     expect(ids).toEqual(["123", "456", "789"]);
 
     // Check that the original link is preserved

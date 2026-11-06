@@ -115,7 +115,7 @@ describe("/api/v1/events - numeric range filtering", () => {
           eventTimestamp: new Date(2024, 0, 1 + i).toISOString(),
         },
       ]);
-      expect(inserted.created).toBe(1);
+      if (inserted.created !== 1) throw new Error(`fixture insert created ${inserted.created} events, expected 1`);
     }
 
     // EU dataset: comma-decimal, dot-thousands raw values.
@@ -143,7 +143,7 @@ describe("/api/v1/events - numeric range filtering", () => {
           eventTimestamp: new Date(2024, 1, 1 + i).toISOString(),
         },
       ]);
-      expect(inserted.created).toBe(1);
+      if (inserted.created !== 1) throw new Error(`fixture insert created ${inserted.created} events, expected 1`);
     }
   });
 
@@ -180,7 +180,7 @@ describe("/api/v1/events - numeric range filtering", () => {
 
   it("filters a US column by a min/max range (inclusive), excluding non-numeric cells", async () => {
     const data = await requestRange(usDatasetId, { price: { min: 10, max: 100 } });
-    const prices = data.events.map((e) => String(e.data.price)).sort((a, b) => a.localeCompare(b));
+    const prices = data.events.map((e) => String(e.data.price)).toSorted((a, b) => a.localeCompare(b));
     // 10, 25.5, 100 are in [10,100]; 1,234.56 is above; "n/a" is non-numeric.
     expect(prices).toEqual(["10", "100", "25.5"]);
     expect(data.pagination.totalDocs).toBe(3);
@@ -195,13 +195,13 @@ describe("/api/v1/events - numeric range filtering", () => {
 
   it("applies a min-only range (open upper bound)", async () => {
     const data = await requestRange(usDatasetId, { price: { min: 26 } });
-    const prices = data.events.map((e) => String(e.data.price)).sort((a, b) => a.localeCompare(b));
+    const prices = data.events.map((e) => String(e.data.price)).toSorted((a, b) => a.localeCompare(b));
     expect(prices).toEqual(["1,234.56", "100"]);
   });
 
   it("applies a max-only range (open lower bound)", async () => {
     const data = await requestRange(usDatasetId, { price: { max: 25.5 } });
-    const prices = data.events.map((e) => String(e.data.price)).sort((a, b) => a.localeCompare(b));
+    const prices = data.events.map((e) => String(e.data.price)).toSorted((a, b) => a.localeCompare(b));
     expect(prices).toEqual(["10", "25.5"]);
   });
 
@@ -217,7 +217,7 @@ describe("/api/v1/events - numeric range filtering", () => {
   it("includes EU sub-thousand rows when the range covers them", async () => {
     // [11, 1500] now also includes "99,99" (=99.99); "10,5" (=10.5) stays excluded.
     const data = await requestRange(euDatasetId, { betrag: { min: 11, max: 1500 } });
-    const betraege = data.events.map((e) => String(e.data.betrag)).sort((a, b) => a.localeCompare(b));
+    const betraege = data.events.map((e) => String(e.data.betrag)).toSorted((a, b) => a.localeCompare(b));
     expect(betraege).toEqual(["1.234,56", "99,99"]);
   });
 

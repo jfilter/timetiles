@@ -92,7 +92,7 @@ describe("useFilters setters within one tick", () => {
     result.current.setRangeFilter("size", 3, 4);
 
     const rf = JSON.parse(String(nuqsState.pending.rf)) as Record<string, unknown>;
-    expect(Object.keys(rf).sort((a, b) => a.localeCompare(b))).toEqual(["price", "size"]);
+    expect(Object.keys(rf).toSorted((a, b) => a.localeCompare(b))).toEqual(["price", "size"]);
   });
 
   it("adds a catalog's datasets on top of a selection made in the same tick", () => {

@@ -141,7 +141,14 @@ class MockPopup {
   }
 }
 
-class MockNavigationControl {}
+// Implements maplibre's IControl contract so `map.addControl` consumers get a mountable element.
+class MockNavigationControl {
+  onAdd() {
+    return document.createElement("div");
+  }
+
+  onRemove() {}
+}
 
 const mockMapLibre = { Map: MockMap, Marker: MockMarker, Popup: MockPopup, NavigationControl: MockNavigationControl };
 

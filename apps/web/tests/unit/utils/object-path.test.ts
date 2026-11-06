@@ -84,7 +84,6 @@ describe("object-path", () => {
       const obj: Record<string, unknown> = {};
       deleteByPath(obj, "__proto__.toString");
       expect(Object.hasOwn(Object.prototype, "toString")).toBe(true);
-      expect(Object.prototype.hasOwnProperty.call(Object.prototype, "toString")).toBe(true);
     });
 
     it("refuses an unsafe last segment", () => {

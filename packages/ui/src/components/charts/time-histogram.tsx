@@ -322,7 +322,7 @@ const getTooltipConfig = (
     const total = histogramEntries.reduce((sum, entry) => sum + entry.data[1], 0);
     const rows = histogramEntries
       .filter((entry) => entry.data[1] > 0)
-      .sort((a, b) => b.data[1] - a.data[1])
+      .toSorted((a, b) => b.data[1] - a.data[1])
       .map(
         (entry) => `<div>${entry.marker} ${escapeHtml(entry.seriesName)}: ${entry.data[1].toLocaleString(locale)}</div>`
       )

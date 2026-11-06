@@ -130,7 +130,7 @@ export const buildEventsDescription = (
 };
 
 /** Built-in groupBy values whose availability is derived from the loaded data sources. */
-const BUILT_IN_GROUP_VALUES = ["none", "dataset", "catalog"];
+const BUILT_IN_GROUP_VALUES = new Set(["none", "dataset", "catalog"]);
 
 /**
  * Decide whether a groupBy value must fall back to "none".
@@ -147,7 +147,7 @@ export const shouldResetGroupBy = (
   optionsLoading: boolean
 ): boolean => {
   if (optionsLoading) return false;
-  if (!BUILT_IN_GROUP_VALUES.includes(groupBy) || groupBy === "none") return false;
+  if (!BUILT_IN_GROUP_VALUES.has(groupBy) || groupBy === "none") return false;
   return !options.some((o) => o.value === groupBy);
 };
 

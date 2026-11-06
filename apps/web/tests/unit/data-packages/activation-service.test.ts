@@ -75,7 +75,7 @@ describe("getActivationStatus", () => {
       { id: 10, dataPackageSlug: "events:city=Berlin", enabled: true, createdBy: 2 },
       { id: 11, dataPackageSlug: "events:city=Bonn", enabled: true, createdBy: 1 },
     ];
-    const payload = { find: vi.fn().mockResolvedValue({ docs: reverse ? [...docs].reverse() : docs }) };
+    const payload = { find: vi.fn().mockResolvedValue({ docs: reverse ? [...docs].toReversed() : docs }) };
     const result = await getActivationStatus(payload as never, ["events"], 1);
     expect(result.get("events")).toMatchObject({ enabled: true, ownedByCaller: true, scheduledIngestId: 11 });
   });

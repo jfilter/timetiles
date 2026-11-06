@@ -234,7 +234,7 @@ export const createPairedDateInference = (options: PairedDateInferenceOptions) =
           (pair): pair is CandidatePairMetrics & { agreement: number; score: number; headerOrderStable: number } =>
             pair !== null
         )
-        .sort((left, right) => {
+        .toSorted((left, right) => {
           if (right.score !== left.score) return right.score - left.score;
           if (right.comparableRows !== left.comparableRows) return right.comparableRows - left.comparableRows;
           if (right.headerOrderStable !== left.headerOrderStable)

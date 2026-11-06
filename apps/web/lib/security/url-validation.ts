@@ -134,7 +134,9 @@ export const resolvePublicHostname = async (
     resolved = Array.isArray(raw) ? raw : [raw];
   } catch (error) {
     // Without resolved addresses neither the private-IP check nor IP pinning can apply.
-    throw new Error(`DNS lookup failed for "${hostname}": ${error instanceof Error ? error.message : String(error)}`);
+    throw new Error(`DNS lookup failed for "${hostname}": ${error instanceof Error ? error.message : String(error)}`, {
+      cause: error,
+    });
   }
 
   for (const entry of resolved) {

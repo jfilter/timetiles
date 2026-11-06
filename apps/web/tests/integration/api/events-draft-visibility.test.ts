@@ -17,7 +17,6 @@ import { GET as boundsGet } from "@/app/api/v1/events/bounds/route";
 import { GET as eventsGet } from "@/app/api/v1/events/route";
 import { GET as temporalGet } from "@/app/api/v1/events/temporal/route";
 
-import { TEST_CREDENTIALS } from "../../constants/test-credentials";
 import type { TestEnvironment } from "../../setup/integration/environment";
 
 type RouteHandler = (request: NextRequest, context: { params: Promise<Record<string, never>> }) => Promise<Response>;
@@ -42,7 +41,7 @@ describe("Draft events on SQL-backed event endpoints", () => {
   };
 
   beforeAll(async () => {
-    const { createIntegrationTestEnvironment, withCatalog, withDataset, withUsers } =
+    const { createIntegrationTestEnvironment, loginToken, withCatalog, withDataset, withUsers } =
       await import("../../setup/integration/environment");
     testEnv = await createIntegrationTestEnvironment();
     payload = testEnv.payload;
@@ -70,12 +69,7 @@ describe("Draft events on SQL-backed event endpoints", () => {
       if (!isDraft) publishedIds.push(event.id);
     }
 
-    const login = await payload.login({
-      collection: "users",
-      data: { email: users.owner.email, password: TEST_CREDENTIALS.basic.strongPassword },
-    });
-    ownerToken = login.token ?? "";
-    expect(ownerToken).not.toBe("");
+    ownerToken = await loginToken(payload, users.owner.email);
   }, 120000);
 
   afterAll(async () => {

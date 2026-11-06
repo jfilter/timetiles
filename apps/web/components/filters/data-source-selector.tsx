@@ -286,7 +286,7 @@ const CatalogGroupSection = ({
   };
 
   const handleToggleExpand = () => {
-    setManualExpanded(isExpanded ? false : true);
+    setManualExpanded(!isExpanded);
   };
 
   // Collapse threshold for datasets within a group

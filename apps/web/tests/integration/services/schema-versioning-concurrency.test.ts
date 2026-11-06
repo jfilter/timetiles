@@ -101,7 +101,7 @@ describe("SchemaVersioningService — concurrent creation", () => {
         })
       );
 
-      const versions = results.map((r) => r.versionNumber).sort((a, b) => a - b);
+      const versions = results.map((r) => r.versionNumber).toSorted((a, b) => a - b);
       expect(versions).toEqual([1, 2, 3, 4, 5]);
       expect(new Set(versions).size).toBe(CONCURRENT_CALLS);
 

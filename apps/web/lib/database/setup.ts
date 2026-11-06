@@ -46,7 +46,8 @@ export const checkPostgreSQLConnection = async (): Promise<void> => {
           `To start PostgreSQL:\n` +
           `  • Run: make dev (starts DB + dev server)\n` +
           `  • Or: docker compose up -d db\n\n` +
-          `Original error: ${error instanceof Error ? error.message : String(error)}`
+          `Original error: ${error instanceof Error ? error.message : String(error)}`,
+        { cause: error }
       );
     }
     throw error;
@@ -173,7 +174,9 @@ export const runMigrations = (connectionString: string): void => {
     logger.info("Migrations completed successfully");
   } catch (error) {
     logger.error("Migration failed:", error);
-    throw new Error(`Failed to run migrations: ${error instanceof Error ? error.message : String(error)}`);
+    throw new Error(`Failed to run migrations: ${error instanceof Error ? error.message : String(error)}`, {
+      cause: error,
+    });
   }
 };
 

@@ -154,7 +154,7 @@ const transformToSeries = (
   const groups = groupByField(items, labels.noValue);
 
   // Sort groups by total item count, take top N
-  const sorted = [...groups.entries()].sort((a, b) => b[1].items.length - a[1].items.length);
+  const sorted = [...groups.entries()].toSorted((a, b) => b[1].items.length - a[1].items.length);
   const topGroups = sorted.slice(0, topN);
   const otherGroups = sorted.slice(topN);
 

@@ -168,8 +168,8 @@ describe("Quotas Route", () => {
 
     const expectedKeys = Object.values(PUBLIC_QUOTAS)
       .map((descriptor) => descriptor.responseKey)
-      .sort((a, b) => a.localeCompare(b));
-    expect(Object.keys(body.quotas).sort((a, b) => a.localeCompare(b))).toEqual(expectedKeys);
+      .toSorted((a, b) => a.localeCompare(b));
+    expect(Object.keys(body.quotas).toSorted((a, b) => a.localeCompare(b))).toEqual(expectedKeys);
     for (const descriptor of Object.values(PUBLIC_QUOTAS)) {
       const entry = body.quotas[descriptor.responseKey];
       expect(entry.limit).toBeTypeOf("number");

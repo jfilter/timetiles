@@ -50,7 +50,7 @@ const hexToLinearRgb = (hex: string): [number, number, number] => {
 
 const contrast = (a: [number, number, number], b: [number, number, number]): number => {
   const luminance = ([r, g, bl]: [number, number, number]) => 0.2126 * r + 0.7152 * g + 0.0722 * bl;
-  const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x) as [number, number];
+  const [hi, lo] = [luminance(a), luminance(b)].toSorted((x, y) => y - x) as [number, number];
   return (hi + 0.05) / (lo + 0.05);
 };
 

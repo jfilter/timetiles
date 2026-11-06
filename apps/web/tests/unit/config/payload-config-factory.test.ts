@@ -38,9 +38,7 @@ vi.mock("node:fs", async (importOriginal) => ({
 
 vi.mock("payload", () => ({ buildConfig: buildConfigMock }));
 
-vi.mock("nodemailer", () => ({
-  default: { createTestAccount: createTestAccountMock, createTransport: createTransportMock },
-}));
+vi.mock("nodemailer", () => ({ createTestAccount: createTestAccountMock, createTransport: createTransportMock }));
 
 vi.mock("@payloadcms/db-postgres", async (importOriginal) => ({
   ...(await importOriginal<Record<string, unknown>>()),

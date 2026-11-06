@@ -16,7 +16,7 @@ import DataExports from "@/lib/collections/data-exports";
 import DatasetSchemas from "@/lib/collections/dataset-schemas";
 import Datasets from "@/lib/collections/datasets";
 import Events from "@/lib/collections/events";
-import GeocodingProviders from "@/lib/collections/geocoding-providers";
+import { GeocodingProviders } from "@/lib/collections/geocoding-providers";
 import IngestFiles from "@/lib/collections/ingest-files";
 import IngestJobs from "@/lib/collections/ingest-jobs/";
 import { LayoutTemplates } from "@/lib/collections/layout-templates";

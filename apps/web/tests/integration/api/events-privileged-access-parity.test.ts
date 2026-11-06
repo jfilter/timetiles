@@ -20,7 +20,6 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { GET as geoGet } from "../../../app/api/v1/events/geo/route";
 import { GET as eventsGet } from "../../../app/api/v1/events/route";
 import { GET as temporalGet } from "../../../app/api/v1/events/temporal/route";
-import { TEST_CREDENTIALS } from "../../constants/test-credentials";
 import type { TestEnvironment } from "../../setup/integration/environment";
 
 const WORLD_BOUNDS = { north: 90, south: -90, east: 180, west: -180 };
@@ -71,7 +70,7 @@ describe("privileged access parity across event endpoints", () => {
   };
 
   beforeAll(async () => {
-    const { createIntegrationTestEnvironment, withCatalog, withDataset, withUsers } =
+    const { createIntegrationTestEnvironment, loginToken, withCatalog, withDataset, withUsers } =
       await import("../../setup/integration/environment");
     testEnv = await createIntegrationTestEnvironment();
     payload = testEnv.payload;
@@ -106,18 +105,8 @@ describe("privileged access parity across event endpoints", () => {
       });
     }
 
-    const tokenFor = async (email: string): Promise<string> => {
-      const login = await payload.login({
-        collection: "users",
-        data: { email, password: TEST_CREDENTIALS.basic.strongPassword },
-      });
-      return login.token ?? "";
-    };
-
-    adminToken = await tokenFor(users.siteAdmin.email);
-    ownerToken = await tokenFor(users.owner.email);
-    expect(adminToken).not.toBe("");
-    expect(ownerToken).not.toBe("");
+    adminToken = await loginToken(payload, users.siteAdmin.email);
+    ownerToken = await loginToken(payload, users.owner.email);
   });
 
   afterAll(async () => {

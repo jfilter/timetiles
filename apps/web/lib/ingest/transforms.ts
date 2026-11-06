@@ -482,6 +482,8 @@ const runCustomTransform = (value: unknown, expression: string): unknown => {
     const variables = { value } as unknown as Parameters<typeof parsed.evaluate>[0];
     return parsed.evaluate(variables);
   } catch (error) {
-    throw new Error(`Custom transform failed: ${error instanceof Error ? error.message : String(error)}`);
+    throw new Error(`Custom transform failed: ${error instanceof Error ? error.message : String(error)}`, {
+      cause: error,
+    });
   }
 };

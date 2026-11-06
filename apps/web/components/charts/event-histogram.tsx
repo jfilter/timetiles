@@ -52,9 +52,9 @@ const buildGroupedSeries = (
 
   const allBucketDates = new Set<string>();
   for (const item of items) allBucketDates.add(item.bucketStart);
-  const sortedDates = [...allBucketDates].sort((a, b) => a.localeCompare(b));
+  const sortedDates = [...allBucketDates].toSorted((a, b) => a.localeCompare(b));
 
-  const sorted = [...groupTotals.entries()].sort((a, b) => b[1].total - a[1].total);
+  const sorted = [...groupTotals.entries()].toSorted((a, b) => b[1].total - a[1].total);
   const topGroups = sorted.slice(0, maxGroups);
   const otherGroups = sorted.slice(maxGroups);
 
