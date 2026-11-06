@@ -10,6 +10,7 @@
 import { expect, test } from "../fixtures";
 import { ExplorePage } from "../pages/explore.page";
 import { showExplorerSurface } from "../pages/responsive-layout";
+import { BASEMAP_HOST_PATTERN } from "../utils/basemap-stub";
 
 test.describe("Explore Page - Basic Functionality", () => {
   let explorePage: ExplorePage;
@@ -253,5 +254,17 @@ test.describe("Explore Page - Without WebGL", () => {
     const alert = page.getByRole("alert").filter({ hasText: "The map can't be displayed" });
     await expect(alert).toBeVisible({ timeout: 15000 });
     await expect(page.getByText("Loading map data...")).toBeHidden();
+  });
+});
+
+test.describe("Explore Page - Basemap host unreachable", () => {
+  test("should still start the map without an error message", async ({ context, page }) => {
+    await context.route(BASEMAP_HOST_PATTERN, (route) => route.abort("connectionrefused"));
+    const explorePage = new ExplorePage(page);
+    await explorePage.goto();
+    await explorePage.waitForMapLoad();
+
+    await expect(page.getByText("The map can't be displayed")).toBeHidden();
+    await expect(page.getByText("Unable to load map data")).toBeHidden();
   });
 });

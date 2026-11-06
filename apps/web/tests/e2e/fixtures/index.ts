@@ -16,6 +16,7 @@ import { Client } from "pg";
 import { withDatabaseName } from "@/lib/database/url";
 
 import { TEST_CREDENTIALS, TEST_EMAILS } from "../../constants/test-credentials";
+import { stubBasemap } from "../utils/basemap-stub";
 import { getWorktreeBasePort } from "../utils/worktree-id";
 
 /** An admin account created for one test and deleted after it. */
@@ -84,7 +85,16 @@ export const test = base.extend<{
   baseURL: string;
   setScraperRunStatus: (scraperId: number, status: ScraperRunStatus) => Promise<void>;
   ownUser: OwnUser;
+  basemapStub: void;
 }>({
+  basemapStub: [
+    async ({ context }, use) => {
+      await stubBasemap(context);
+      await use();
+    },
+    { auto: true },
+  ],
+
   // oxlint-disable-next-line no-empty-pattern -- Playwright fixtures require destructured first arg
   setScraperRunStatus: async ({}, use) => {
     await use(setScraperRunStatusFixture);
