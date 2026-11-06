@@ -920,8 +920,7 @@ describe("scheduled ingests Integration", () => {
     });
 
     it("should handle timeout properly", { timeout: 5000 }, async () => {
-      const previousTestTimeout = process.env.URL_FETCH_TEST_TIMEOUT_MS;
-      process.env.URL_FETCH_TEST_TIMEOUT_MS = "300";
+      vi.stubEnv("URL_FETCH_TEST_TIMEOUT_MS", "300");
 
       try {
         const scheduledIngest = await payload.create({
@@ -969,11 +968,7 @@ describe("scheduled ingests Integration", () => {
           statistics: expect.objectContaining({ totalRuns: 1, failedRuns: 1, successfulRuns: 0 }),
         });
       } finally {
-        if (previousTestTimeout === undefined) {
-          delete process.env.URL_FETCH_TEST_TIMEOUT_MS;
-        } else {
-          process.env.URL_FETCH_TEST_TIMEOUT_MS = previousTestTimeout;
-        }
+        vi.unstubAllEnvs();
       }
     });
   });

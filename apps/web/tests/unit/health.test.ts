@@ -99,34 +99,27 @@ describe("health", () => {
       vi.mocked(fs.access).mockResolvedValue(undefined);
       vi.mocked(fs.readdir).mockResolvedValue([] as never);
 
-      const origSecret = process.env.PAYLOAD_SECRET;
-      const origDbUrl = process.env.DATABASE_URL;
-      process.env.PAYLOAD_SECRET = "test-secret";
-      process.env.DATABASE_URL = "postgres://localhost/test";
+      vi.stubEnv("PAYLOAD_SECRET", "test-secret");
+      vi.stubEnv("DATABASE_URL", "postgres://localhost/test");
       resetEnv();
 
-      try {
-        const results = await runHealthChecks();
+      const results = await runHealthChecks();
 
-        expect(results).toHaveProperty("env");
-        expect(results).toHaveProperty("uploads");
-        expect(results).toHaveProperty("geocoding");
-        expect(results).toHaveProperty("email");
-        expect(results).toHaveProperty("cms");
-        expect(results).toHaveProperty("migrations");
-        expect(results).toHaveProperty("postgis");
-        expect(results).toHaveProperty("dbFunctions");
-        expect(results).toHaveProperty("dbSize");
+      expect(results).toHaveProperty("env");
+      expect(results).toHaveProperty("uploads");
+      expect(results).toHaveProperty("geocoding");
+      expect(results).toHaveProperty("email");
+      expect(results).toHaveProperty("cms");
+      expect(results).toHaveProperty("migrations");
+      expect(results).toHaveProperty("postgis");
+      expect(results).toHaveProperty("dbFunctions");
+      expect(results).toHaveProperty("dbSize");
 
-        for (const key of Object.keys(results)) {
-          const result = results[key as keyof typeof results];
-          expect(result).toHaveProperty("status");
-          expect(result).toHaveProperty("message");
-          expect(["healthy", "error", "degraded"]).toContain(result.status);
-        }
-      } finally {
-        process.env.PAYLOAD_SECRET = origSecret;
-        process.env.DATABASE_URL = origDbUrl;
+      for (const key of Object.keys(results)) {
+        const result = results[key as keyof typeof results];
+        expect(result).toHaveProperty("status");
+        expect(result).toHaveProperty("message");
+        expect(["healthy", "error", "degraded"]).toContain(result.status);
       }
     });
 
@@ -135,22 +128,15 @@ describe("health", () => {
       vi.mocked(fs.access).mockRejectedValue(new Error("No access"));
       vi.mocked(fs.readdir).mockRejectedValue(new Error("No dir"));
 
-      const origSecret = process.env.PAYLOAD_SECRET;
-      const origDbUrl = process.env.DATABASE_URL;
-      process.env.PAYLOAD_SECRET = "test";
-      process.env.DATABASE_URL = "test";
+      vi.stubEnv("PAYLOAD_SECRET", "test");
+      vi.stubEnv("DATABASE_URL", "test");
       resetEnv();
 
-      try {
-        const results = await runHealthChecks();
+      const results = await runHealthChecks();
 
-        expect(results.env.status).toBe("healthy");
-        expect(results.cms.status).toBe("error");
-        expect(results.postgis.status).toBe("error");
-      } finally {
-        process.env.PAYLOAD_SECRET = origSecret;
-        process.env.DATABASE_URL = origDbUrl;
-      }
+      expect(results.env.status).toBe("healthy");
+      expect(results.cms.status).toBe("error");
+      expect(results.postgis.status).toBe("error");
     });
 
     it("should report error when required environment variables are missing", async () => {
@@ -164,23 +150,16 @@ describe("health", () => {
       vi.mocked(fs.access).mockResolvedValue(undefined);
       vi.mocked(fs.readdir).mockResolvedValue([] as never);
 
-      const origSecret = process.env.PAYLOAD_SECRET;
-      const origDbUrl = process.env.DATABASE_URL;
-      delete process.env.PAYLOAD_SECRET;
-      delete process.env.DATABASE_URL;
+      vi.stubEnv("PAYLOAD_SECRET", undefined);
+      vi.stubEnv("DATABASE_URL", undefined);
       resetEnv();
 
-      try {
-        const results = await runHealthChecks();
+      const results = await runHealthChecks();
 
-        expect(results.env.status).toBe("error");
-        expect(results.env.message).toContain("Missing required environment variables");
-        expect(results.env.message).toContain("PAYLOAD_SECRET");
-        expect(results.env.message).toContain("DATABASE_URL");
-      } finally {
-        process.env.PAYLOAD_SECRET = origSecret;
-        process.env.DATABASE_URL = origDbUrl;
-      }
+      expect(results.env.status).toBe("error");
+      expect(results.env.message).toContain("Missing required environment variables");
+      expect(results.env.message).toContain("PAYLOAD_SECRET");
+      expect(results.env.message).toContain("DATABASE_URL");
     });
 
     // Degraded, not error: running without outgoing mail is a supported configuration. A
@@ -196,31 +175,17 @@ describe("health", () => {
       vi.mocked(fs.access).mockResolvedValue(undefined);
       vi.mocked(fs.readdir).mockResolvedValue([] as never);
 
-      const origSecret = process.env.PAYLOAD_SECRET;
-      const origDbUrl = process.env.DATABASE_URL;
-      const origSmtpHost = process.env.EMAIL_SMTP_HOST;
-      process.env.PAYLOAD_SECRET = "test-secret";
-      process.env.DATABASE_URL = "postgres://localhost/test";
+      vi.stubEnv("PAYLOAD_SECRET", "test-secret");
+      vi.stubEnv("DATABASE_URL", "postgres://localhost/test");
       vi.stubEnv("NODE_ENV", "production");
-      delete process.env.EMAIL_SMTP_HOST;
+      vi.stubEnv("EMAIL_SMTP_HOST", undefined);
       resetEnv();
 
-      try {
-        const results = await runHealthChecks();
+      const results = await runHealthChecks();
 
-        expect(results.email.status).toBe("degraded");
-        expect(results.email.message).toContain("SMTP not configured");
-        expect(results.email.message).toContain("disabled");
-      } finally {
-        process.env.PAYLOAD_SECRET = origSecret;
-        process.env.DATABASE_URL = origDbUrl;
-        vi.unstubAllEnvs();
-        if (origSmtpHost === undefined) {
-          delete process.env.EMAIL_SMTP_HOST;
-        } else {
-          process.env.EMAIL_SMTP_HOST = origSmtpHost;
-        }
-      }
+      expect(results.email.status).toBe("degraded");
+      expect(results.email.message).toContain("SMTP not configured");
+      expect(results.email.message).toContain("disabled");
     });
 
     it("should report error when EMAIL_SMTP_HOST is a placeholder", async () => {
@@ -234,32 +199,18 @@ describe("health", () => {
       vi.mocked(fs.access).mockResolvedValue(undefined);
       vi.mocked(fs.readdir).mockResolvedValue([] as never);
 
-      const origSecret = process.env.PAYLOAD_SECRET;
-      const origDbUrl = process.env.DATABASE_URL;
-      const origSmtpHost = process.env.EMAIL_SMTP_HOST;
-      process.env.PAYLOAD_SECRET = "test-secret";
-      process.env.DATABASE_URL = "postgres://localhost/test";
+      vi.stubEnv("PAYLOAD_SECRET", "test-secret");
+      vi.stubEnv("DATABASE_URL", "postgres://localhost/test");
       vi.stubEnv("NODE_ENV", "production");
       // A placeholder host that never resolves.
-      process.env.EMAIL_SMTP_HOST = "smtp.example.com";
+      vi.stubEnv("EMAIL_SMTP_HOST", "smtp.example.com");
       resetEnv();
 
-      try {
-        const results = await runHealthChecks();
+      const results = await runHealthChecks();
 
-        // Must not report healthy just because the variable is set; every send fails with ENOTFOUND.
-        expect(results.email.status).toBe("error");
-        expect(results.email.message).toContain("placeholder");
-      } finally {
-        process.env.PAYLOAD_SECRET = origSecret;
-        process.env.DATABASE_URL = origDbUrl;
-        vi.unstubAllEnvs();
-        if (origSmtpHost === undefined) {
-          delete process.env.EMAIL_SMTP_HOST;
-        } else {
-          process.env.EMAIL_SMTP_HOST = origSmtpHost;
-        }
-      }
+      // Must not report healthy just because the variable is set; every send fails with ENOTFOUND.
+      expect(results.email.status).toBe("error");
+      expect(results.email.message).toContain("placeholder");
     });
 
     it("should report healthy email with SMTP and authentication configured", async () => {
@@ -336,31 +287,17 @@ describe("health", () => {
       vi.mocked(fs.access).mockResolvedValue(undefined);
       vi.mocked(fs.readdir).mockResolvedValue([] as never);
 
-      const origSecret = process.env.PAYLOAD_SECRET;
-      const origDbUrl = process.env.DATABASE_URL;
-      const origSmtpHost = process.env.EMAIL_SMTP_HOST;
-      process.env.PAYLOAD_SECRET = "test-secret";
-      process.env.DATABASE_URL = "postgres://localhost/test";
+      vi.stubEnv("PAYLOAD_SECRET", "test-secret");
+      vi.stubEnv("DATABASE_URL", "postgres://localhost/test");
       vi.stubEnv("NODE_ENV", "development");
-      delete process.env.EMAIL_SMTP_HOST;
+      vi.stubEnv("EMAIL_SMTP_HOST", undefined);
       resetEnv();
 
-      try {
-        const results = await runHealthChecks();
+      const results = await runHealthChecks();
 
-        expect(results.email.status).toBe("degraded");
-        expect(results.email.message).toContain("Development mode");
-        expect(results.email.message).toContain("ethereal.email");
-      } finally {
-        process.env.PAYLOAD_SECRET = origSecret;
-        process.env.DATABASE_URL = origDbUrl;
-        vi.unstubAllEnvs();
-        if (origSmtpHost === undefined) {
-          delete process.env.EMAIL_SMTP_HOST;
-        } else {
-          process.env.EMAIL_SMTP_HOST = origSmtpHost;
-        }
-      }
+      expect(results.email.status).toBe("degraded");
+      expect(results.email.message).toContain("Development mode");
+      expect(results.email.message).toContain("ethereal.email");
     });
 
     it("should report degraded geocoding when no providers are enabled", async () => {
@@ -374,23 +311,16 @@ describe("health", () => {
       vi.mocked(fs.access).mockResolvedValue(undefined);
       vi.mocked(fs.readdir).mockResolvedValue([] as never);
 
-      const origSecret = process.env.PAYLOAD_SECRET;
-      const origDbUrl = process.env.DATABASE_URL;
-      process.env.PAYLOAD_SECRET = "test-secret";
-      process.env.DATABASE_URL = "postgres://localhost/test";
+      vi.stubEnv("PAYLOAD_SECRET", "test-secret");
+      vi.stubEnv("DATABASE_URL", "postgres://localhost/test");
       resetEnv();
 
-      try {
-        const results = await runHealthChecks();
+      const results = await runHealthChecks();
 
-        expect(results.geocoding.status).toBe("degraded");
-        expect(results.geocoding.message).toContain("No enabled geocoding providers");
-        // Nothing to probe, so the provider must not be contacted at all.
-        expect(mockTestConfiguration).not.toHaveBeenCalled();
-      } finally {
-        process.env.PAYLOAD_SECRET = origSecret;
-        process.env.DATABASE_URL = origDbUrl;
-      }
+      expect(results.geocoding.status).toBe("degraded");
+      expect(results.geocoding.message).toContain("No enabled geocoding providers");
+      // Nothing to probe, so the provider must not be contacted at all.
+      expect(mockTestConfiguration).not.toHaveBeenCalled();
     });
 
     it("should report healthy geocoding only after a provider answers a live probe", async () => {
@@ -502,28 +432,15 @@ describe("health", () => {
       vi.mocked(fs.access).mockRejectedValue(new Error("ENOENT"));
       vi.mocked(fs.readdir).mockResolvedValue([] as never);
 
-      const origSecret = process.env.PAYLOAD_SECRET;
-      const origDbUrl = process.env.DATABASE_URL;
-      const origCI = process.env.CI;
-      process.env.PAYLOAD_SECRET = "test-secret";
-      process.env.DATABASE_URL = "postgres://localhost/test";
-      process.env.CI = "true";
+      vi.stubEnv("PAYLOAD_SECRET", "test-secret");
+      vi.stubEnv("DATABASE_URL", "postgres://localhost/test");
+      vi.stubEnv("CI", "true");
       resetEnv();
 
-      try {
-        const results = await runHealthChecks();
+      const results = await runHealthChecks();
 
-        expect(results.uploads.status).toBe("degraded");
-        expect(results.uploads.message).toContain("CI environment");
-      } finally {
-        process.env.PAYLOAD_SECRET = origSecret;
-        process.env.DATABASE_URL = origDbUrl;
-        if (origCI === undefined) {
-          delete process.env.CI;
-        } else {
-          process.env.CI = origCI;
-        }
-      }
+      expect(results.uploads.status).toBe("degraded");
+      expect(results.uploads.message).toContain("CI environment");
     });
   });
 });

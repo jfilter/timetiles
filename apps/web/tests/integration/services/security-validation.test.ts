@@ -17,7 +17,7 @@
 
 import { readFile } from "node:fs/promises";
 
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { getIngestFilePath } from "@/lib/ingest/upload-path";
 import { TEST_CREDENTIALS, TEST_EMAILS } from "@/tests/constants/test-credentials";
@@ -41,16 +41,11 @@ interface UrlFetchSuccessOutput {
 type _UrlFetchOutput = UrlFetchSuccessOutput;
 
 const withPrivateUrlBypass = async <T>(enabled: boolean, fn: () => Promise<T>): Promise<T> => {
-  const previous = process.env.ALLOW_PRIVATE_URLS;
-  process.env.ALLOW_PRIVATE_URLS = enabled ? "true" : "";
+  vi.stubEnv("ALLOW_PRIVATE_URLS", enabled ? "true" : "");
   try {
     return await fn();
   } finally {
-    if (previous === undefined) {
-      delete process.env.ALLOW_PRIVATE_URLS;
-    } else {
-      process.env.ALLOW_PRIVATE_URLS = previous;
-    }
+    vi.unstubAllEnvs();
   }
 };
 

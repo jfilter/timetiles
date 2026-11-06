@@ -17,7 +17,7 @@
  *
  * @module
  */
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { urlFetchJob } from "@/lib/jobs/handlers/url-fetch-job";
 import { TEST_EMAILS } from "@/tests/constants/test-credentials";
@@ -228,8 +228,7 @@ describe("Network Error Handling Tests", () => {
     });
 
     it("should handle connection timeout", async () => {
-      const previousTestTimeout = process.env.URL_FETCH_TEST_TIMEOUT_MS;
-      process.env.URL_FETCH_TEST_TIMEOUT_MS = "300";
+      vi.stubEnv("URL_FETCH_TEST_TIMEOUT_MS", "300");
 
       try {
         testServer.route("/slow-file.csv", () => {
@@ -273,11 +272,7 @@ describe("Network Error Handling Tests", () => {
           expect(errorMsg).toMatch(/abort|timeout|fetch failed/i);
         }
       } finally {
-        if (previousTestTimeout === undefined) {
-          delete process.env.URL_FETCH_TEST_TIMEOUT_MS;
-        } else {
-          process.env.URL_FETCH_TEST_TIMEOUT_MS = previousTestTimeout;
-        }
+        vi.unstubAllEnvs();
       }
     }, 4000);
   });

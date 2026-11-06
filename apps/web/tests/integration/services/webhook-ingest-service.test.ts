@@ -1,4 +1,4 @@
-/* eslint-disable sonarjs/cors */
+/* oxlint-disable sonarjs/cors */
 // @vitest-environment node
 /**
  * Integration tests for webhook import service functionality
@@ -14,7 +14,7 @@ import http from "node:http";
 import path from "node:path";
 
 import type { Payload } from "payload";
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { JOB_TYPES } from "@/lib/constants/ingest-constants";
 import { queueWebhookImport } from "@/lib/ingest/trigger-service";
@@ -787,8 +787,7 @@ describe("Webhook Import Service Integration", () => {
 
   describe("Error Handling", () => {
     it("should handle fetch timeouts", async () => {
-      const previousTestTimeout = process.env.URL_FETCH_TEST_TIMEOUT_MS;
-      process.env.URL_FETCH_TEST_TIMEOUT_MS = "300";
+      vi.stubEnv("URL_FETCH_TEST_TIMEOUT_MS", "300");
       const sourceUrl = `http://localhost:${testServerPort}/timeout.csv`;
 
       await payload.update({ collection: "scheduled-ingests", id: testScheduledIngest.id, data: { sourceUrl } });
@@ -816,11 +815,7 @@ describe("Webhook Import Service Integration", () => {
         expect(updatedImport.lastStatus).toBe("failed");
         expect(updatedImport.lastError).toMatch(/timeout/i);
       } finally {
-        if (previousTestTimeout === undefined) {
-          delete process.env.URL_FETCH_TEST_TIMEOUT_MS;
-        } else {
-          process.env.URL_FETCH_TEST_TIMEOUT_MS = previousTestTimeout;
-        }
+        vi.unstubAllEnvs();
       }
     });
 
