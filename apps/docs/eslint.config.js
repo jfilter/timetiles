@@ -45,7 +45,6 @@ export default [
       "sonarjs/no-ignored-exceptions": "off", // Scripts can have catch-all error handling
       "sonarjs/anchor-precedence": "off", // Allow regex patterns as needed
       "sonarjs/updated-loop-counter": "off", // Allow loop counter updates
-      "@typescript-eslint/prefer-regexp-exec": "off", // Allow match method
       "sonarjs/prefer-regexp-exec": "off", // Allow match method
       "regexp/no-useless-escape": "off", // Scripts may need escapes
     },

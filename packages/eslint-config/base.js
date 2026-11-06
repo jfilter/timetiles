@@ -83,46 +83,17 @@ export default [
     files: ["**/*.ts", "**/*.tsx"],
     languageOptions: { parserOptions: { projectService: true, tsconfigRootDir: import.meta.dirname } },
     rules: {
-      // Type-aware rules that require TypeScript project information
-      "@typescript-eslint/no-floating-promises": "error",
-      "@typescript-eslint/await-thenable": "error",
-      "@typescript-eslint/no-misused-promises": "error",
-      "@typescript-eslint/require-await": "error",
-      "@typescript-eslint/return-await": "error",
       // Disable overly strict type-aware rules that cause noise
       "@typescript-eslint/no-unsafe-assignment": "off",
       "@typescript-eslint/no-unsafe-member-access": "off",
       "@typescript-eslint/no-unsafe-call": "off",
       "@typescript-eslint/no-unsafe-return": "off",
       "@typescript-eslint/no-unsafe-argument": "off",
-      "@typescript-eslint/no-redundant-type-constituents": "warn",
-
-      // Phase 2: TypeScript Enhancements
       "@typescript-eslint/strict-boolean-expressions": "off",
-      "@typescript-eslint/prefer-nullish-coalescing": [
-        "error",
-        { ignoreTernaryTests: false, ignoreConditionalTests: false, ignoreMixedLogicalExpressions: false },
-      ],
-      "@typescript-eslint/prefer-optional-chain": "error",
-      "@typescript-eslint/no-unnecessary-type-assertion": "error",
       "@typescript-eslint/naming-convention": [
         "error",
         { selector: "interface", format: ["PascalCase"], custom: { regex: "^I[A-Z]", match: false } },
       ],
-
-      // 2024 TypeScript Enhancements
-      "@typescript-eslint/no-base-to-string": "error",
-      "@typescript-eslint/no-meaningless-void-operator": "error",
-      "@typescript-eslint/no-mixed-enums": "error",
-      "@typescript-eslint/no-unnecessary-template-expression": "error",
-      "@typescript-eslint/only-throw-error": "error",
-      "@typescript-eslint/prefer-find": "error",
-      "@typescript-eslint/prefer-promise-reject-errors": "error",
-
-      // Additional SonarCloud alignment
-      "@typescript-eslint/prefer-regexp-exec": "error",
-      "@typescript-eslint/prefer-readonly": "error",
-      "@typescript-eslint/no-duplicate-type-constituents": "error",
     },
   },
   // Config files and other JS files without type checking

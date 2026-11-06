@@ -197,11 +197,6 @@ export default [
       "sonarjs/max-lines-per-function": "off", // Migrations often need long functions
       "sonarjs/max-lines": "off", // Migration files can be very long
       "sonarjs/no-duplicate-string": "off", // SQL strings often repeat
-      "@typescript-eslint/require-await": "off", // Migration functions may not use await
-      // Payload's getMigrationTemplate emits ordinary imports for MigrateUpArgs/DownArgs.
-      // Preserve generated migrations; TypeScript erases these type-only uses at build time.
-      // Historical helpers name both migration directions even when Payload's DB types coincide.
-      "@typescript-eslint/no-duplicate-type-constituents": "off",
       // Versioned DDL rewrites use trusted SQL fragments and function identifiers, including
       // DO blocks that cannot accept query parameters. Keep the runtime SQL guard outside migrations.
       "no-restricted-syntax": "off",
@@ -231,7 +226,6 @@ export default [
     files: ["**/*.config.{ts,js}", "**/playwright.config.ts", "**/vitest.config.ts", "**/eslint.config.js"],
     rules: {
       "@typescript-eslint/strict-boolean-expressions": "off",
-      "@typescript-eslint/prefer-nullish-coalescing": "off", // Can't use type-aware rules on config files
       "turbo/no-undeclared-env-vars": "off", // Config files often use env vars
       "@typescript-eslint/no-unsafe-assignment": "off", // Config files often have dynamic imports
       "@typescript-eslint/no-unsafe-member-access": "off",
@@ -261,7 +255,6 @@ export default [
       "sonarjs/os-command": "warn", // Scripts legitimately use OS commands
       "@typescript-eslint/no-unsafe-assignment": "warn",
       "@typescript-eslint/no-unsafe-member-access": "warn",
-      "@typescript-eslint/require-await": "off", // Scripts may have async functions without await
       "turbo/no-undeclared-env-vars": "off", // Scripts often use env vars
     },
   },

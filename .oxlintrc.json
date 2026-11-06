@@ -2,6 +2,7 @@
   "$schema": "./node_modules/oxlint/configuration_schema.json",
   "plugins": ["typescript", "promise", "import", "unicorn", "jsdoc", "vitest", "jsx-a11y"],
   "categories": { "correctness": "off" },
+  "options": { "typeAware": true },
   "env": { "browser": true, "node": true, "es2024": true },
   "ignorePatterns": [
     "**/node_modules/**",
@@ -265,6 +266,10 @@
         "@typescript-eslint/no-meaningless-void-operator": "error",
         "@typescript-eslint/no-mixed-enums": "error",
         "@typescript-eslint/no-unnecessary-template-expression": "error",
+        "@typescript-eslint/prefer-find": "error",
+        "@typescript-eslint/prefer-optional-chain": "error",
+        "@typescript-eslint/prefer-readonly": "error",
+        "@typescript-eslint/prefer-regexp-exec": "error",
         "@typescript-eslint/no-useless-empty-export": "error",
         "@typescript-eslint/no-unnecessary-parameter-property-assignment": "error"
       }
@@ -350,6 +355,7 @@
       "rules": { "react/display-name": "off", "react-hooks/exhaustive-deps": "off" },
       "plugins": ["react"]
     },
+    { "files": ["apps/docs/scripts/**/*.ts"], "rules": { "@typescript-eslint/prefer-regexp-exec": "off" } },
     { "files": ["**/tests/e2e/**/*.ts"], "rules": { "react-hooks/rules-of-hooks": "off" }, "plugins": ["react"] },
     {
       "files": ["**/*.ts", "**/*.tsx"],
@@ -394,6 +400,7 @@
       "rules": {
         "unicorn/filename-case": "off",
         "@typescript-eslint/require-await": "off",
+        "@typescript-eslint/no-duplicate-type-constituents": "off",
         "@typescript-eslint/consistent-type-imports": "off",
         "@typescript-eslint/no-unused-vars": "off",
         "no-unused-vars": "off",
