@@ -12,6 +12,7 @@ import jsxA11y from "eslint-plugin-jsx-a11y";
 import react from "eslint-plugin-react";
 import reactHooks from "eslint-plugin-react-hooks";
 
+export { defaultIgnores, oxlintBridge } from "./base.js";
 import baseConfig from "./base.js";
 
 /**
@@ -26,35 +27,15 @@ export default [
     rules: {
       // React Hooks rules, including the React Compiler diagnostics
       ...reactHooks.configs["recommended-latest"].rules,
-      "react-hooks/rules-of-hooks": "error",
-      "react-hooks/exhaustive-deps": "error",
 
       // Core React rules (minimal set, most handled by @eslint-react)
       "react/jsx-uses-react": "off", // Not needed with React 17+ JSX transform
       "react/react-in-jsx-scope": "off", // Not needed with React 17+ JSX transform
       "react/prop-types": "off", // TypeScript handles this
       "react/jsx-uses-vars": "error", // Still needed for variable usage detection
-      "react/display-name": "warn", // Warn as React Compiler may handle this
       // Additional React rules not covered by @eslint-react
-      "react/jsx-boolean-value": ["error", "never"],
-      "react/jsx-curly-brace-presence": ["error", { props: "never", children: "never" }],
-      "react/jsx-fragments": ["error", "syntax"],
-      "react/jsx-pascal-case": "error",
-      "react/self-closing-comp": "error",
-      "react/void-dom-elements-no-children": "error",
-      "react/jsx-no-target-blank": "error",
-      "react/jsx-no-duplicate-props": "error",
-      "react/jsx-no-undef": "error",
-      "react/no-danger-with-children": "error",
       "react/no-deprecated": "error",
-      "react/no-find-dom-node": "error",
-      "react/no-is-mounted": "error",
-      "react/no-render-return-value": "error",
-      "react/no-unknown-property": "error",
-      "react/no-unsafe": "warn",
       "react/require-render-return": "error",
-      "react/no-unescaped-entities": "error",
-      "react/no-children-prop": "error",
 
       // @eslint-react rules for modern React patterns (v5)
       // React 19 passes ref as a normal prop, so forwardRef is obsolete;
@@ -83,8 +64,6 @@ export default [
       "@eslint-react/no-set-state-in-component-did-mount": "warn",
       "@eslint-react/no-set-state-in-component-did-update": "warn",
       "@eslint-react/no-set-state-in-component-will-update": "error",
-      // Same: v5 dropped it (React 19 removed string refs outright); kept via eslint-plugin-react.
-      "react/no-string-refs": "error",
       "@eslint-react/no-unsafe-component-will-mount": "error",
       "@eslint-react/no-unsafe-component-will-receive-props": "error",
       "@eslint-react/no-unsafe-component-will-update": "error",
@@ -94,11 +73,6 @@ export default [
   {
     // Disable performance and strict rules in test files
     files: ["**/*.test.ts", "**/*.test.tsx", "**/*.spec.ts", "**/*.spec.tsx"],
-    rules: {
-      "react/display-name": "off",
-      "react-hooks/exhaustive-deps": "off",
-      "@eslint-react/no-array-index-key": "off",
-      "@eslint-react/no-nested-component-definitions": "off",
-    },
+    rules: { "@eslint-react/no-array-index-key": "off", "@eslint-react/no-nested-component-definitions": "off" },
   },
 ];

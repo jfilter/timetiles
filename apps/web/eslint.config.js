@@ -10,7 +10,7 @@
  *
  * @module
  */
-import baseConfig, { defaultIgnores } from "@timetiles/eslint-config/next-js";
+import baseConfig, { defaultIgnores, oxlintBridge } from "@timetiles/eslint-config/next-js";
 import { globalIgnores } from "eslint/config";
 import i18next from "eslint-plugin-i18next";
 
@@ -187,18 +187,7 @@ export default [
             "Do not pass string concatenation to sql.raw() — use parameterized sql`` template tags instead to prevent SQL injection.",
         },
       ],
-      "sonarjs/no-unused-vars": "off", // Covered by @typescript-eslint/no-unused-vars with ignoreRestSiblings
-      "@typescript-eslint/no-unused-vars": [
-        "error",
-        {
-          args: "all",
-          argsIgnorePattern: "^_", // Allow _ prefix for intentionally unused args
-          varsIgnorePattern: "^_", // Allow _ prefix for intentionally unused vars
-          caughtErrors: "all",
-          caughtErrorsIgnorePattern: "^_", // Allow _ prefix for unused caught errors
-          ignoreRestSiblings: true, // Allow unused rest siblings in destructuring
-        },
-      ],
+      "sonarjs/no-unused-vars": "off", // oxlint runs no-unused-vars with ignoreRestSiblings
     },
   },
   // Migration files - allow long functions for SQL/schema changes
@@ -211,7 +200,6 @@ export default [
       "@typescript-eslint/require-await": "off", // Migration functions may not use await
       // Payload's getMigrationTemplate emits ordinary imports for MigrateUpArgs/DownArgs.
       // Preserve generated migrations; TypeScript erases these type-only uses at build time.
-      "@typescript-eslint/consistent-type-imports": "off",
       // Historical helpers name both migration directions even when Payload's DB types coincide.
       "@typescript-eslint/no-duplicate-type-constituents": "off",
       // Versioned DDL rewrites use trusted SQL fragments and function identifiers, including
@@ -219,7 +207,6 @@ export default [
       "no-restricted-syntax": "off",
       // Disable other style/convention rules for migrations
       "prefer-arrow-functions/prefer-arrow-functions": "off", // Payload migration convention uses regular functions
-      "@typescript-eslint/no-unused-vars": "off", // Migration args often unused
       "jsdoc/require-file-overview": "off", // Migrations don't need JSDoc
       "simple-import-sort/imports": "off", // Don't sort imports in migrations
     },
@@ -230,7 +217,6 @@ export default [
     rules: {
       "sonarjs/max-lines": "off", // Generated files are often very long
       "sonarjs/max-lines-per-function": "off",
-      "@typescript-eslint/no-explicit-any": "off",
       "@typescript-eslint/no-unsafe-assignment": "off",
       "@typescript-eslint/no-unsafe-member-access": "off",
       "@typescript-eslint/no-unsafe-call": "off",
@@ -247,7 +233,6 @@ export default [
       "@typescript-eslint/strict-boolean-expressions": "off",
       "@typescript-eslint/prefer-nullish-coalescing": "off", // Can't use type-aware rules on config files
       "turbo/no-undeclared-env-vars": "off", // Config files often use env vars
-      "@typescript-eslint/no-explicit-any": "warn",
       "@typescript-eslint/no-unsafe-assignment": "off", // Config files often have dynamic imports
       "@typescript-eslint/no-unsafe-member-access": "off",
       "sonarjs/no-all-duplicated-branches": "off", // Common in config conditionals
@@ -274,7 +259,6 @@ export default [
       "sonarjs/max-lines-per-function": ["error", { maximum: 150 }], // Scripts often need longer functions
       [NO_HARDCODED_PASSWORDS_RULE]: "off", // Scripts may have test passwords
       "sonarjs/os-command": "warn", // Scripts legitimately use OS commands
-      "@typescript-eslint/no-explicit-any": "warn",
       "@typescript-eslint/no-unsafe-assignment": "warn",
       "@typescript-eslint/no-unsafe-member-access": "warn",
       "@typescript-eslint/require-await": "off", // Scripts may have async functions without await
@@ -285,20 +269,11 @@ export default [
   {
     files: ["tests/**/*.{ts,tsx}", "**/*.test.{ts,tsx}"],
     rules: {
-      // Allow console statements in test files
-      "no-console": "off", // Tests often need console for debugging and setup logs
       // Relax file size limits for test files
       "sonarjs/max-lines": ["error", { maximum: 1000 }], // Increased for comprehensive integration tests
       "sonarjs/max-lines-per-function": ["error", { maximum: 1000 }], // Allow longer test suites with multiple test cases
       "sonarjs/cognitive-complexity": ["error", 30], // More complex test setups allowed
-      // Allow longer functions in tests (setup, teardown, comprehensive test scenarios)
-      complexity: ["error", 25], // Increase from 20 to 25 for tests
-      "max-nested-callbacks": ["error", 6], // Increase from 5 to 6 for test nesting
       "sonarjs/no-nested-functions": "off", // Common in test scenarios
-      // Relax some strict rules that are less important in tests
-      "@typescript-eslint/no-explicit-any": "off", // Allow any in tests for mocking and flexibility
-      // Allow relative imports in tests (common pattern for test utilities)
-      "no-restricted-imports": "off",
       // Pseudorandom is often OK in tests
       "sonarjs/pseudo-random": "off", // Allow Math.random() in tests for test data generation
       // Test utilities often have duplicate functions for different scenarios
@@ -313,46 +288,6 @@ export default [
       // Style preference ("replace these N tests with a parameterized one"). Separate, named cases
       // are often the more readable form; not worth rewriting correct tests over.
       "sonarjs/parameterized-tests": "off",
-      // Enforce kebab-case for test files (override base config exemption)
-      "unicorn/filename-case": [
-        "error",
-        {
-          case: "kebabCase",
-          ignore: [
-            String.raw`^page\.tsx?$`,
-            String.raw`^layout\.tsx?$`,
-            String.raw`^loading\.tsx?$`,
-            String.raw`^error\.tsx?$`,
-            String.raw`^not-found\.tsx?$`,
-            String.raw`^route\.ts$`,
-            String.raw`^middleware\.ts$`,
-            String.raw`^instrumentation\.ts$`,
-            String.raw`^\[[\w-]+\]\.tsx?$`,
-            String.raw`^\[\[\.\.\.\w+\]\]\.tsx?$`,
-            String.raw`\.config\.(js|ts|mjs)$`,
-            String.raw`\.d\.ts$`,
-            String.raw`^README\.md$`,
-            String.raw`^CLAUDE\.md$`,
-            String.raw`^\d{8}_.*\.ts$`,
-            // Note: Removed \.test\.tsx?$ to enforce kebab-case for test files
-            // Note: \.spec\.tsx?$ files are not allowed - use .test. instead
-          ],
-        },
-      ],
-    },
-  },
-  // Disallow .spec. files - use .test. instead
-  {
-    files: ["**/*.spec.{ts,tsx,js,jsx}"],
-    rules: {
-      "unicorn/filename-case": [
-        "error",
-        {
-          case: "kebabCase",
-          // This will always fail for .spec files, effectively disallowing them
-          ignore: ["$^"], // Matches nothing, so all .spec files will be flagged
-        },
-      ],
     },
   },
   // Server-runtime files carry two extra restricted-syntax rules:
@@ -405,4 +340,6 @@ export default [
   { files: ["components/maps/clustered-map.tsx"], rules: { "sonarjs/max-lines-per-function": "off" } },
   // Query hooks intentionally spread query results to compose return types
   { files: ["lib/hooks/use-events-queries.ts"], rules: { "@tanstack/query/no-rest-destructuring": "off" } },
+  // Must stay last, see oxlintBridge.
+  ...oxlintBridge,
 ];

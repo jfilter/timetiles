@@ -6,7 +6,7 @@
  *
  * @module
  */
-import baseConfig, { defaultIgnores } from "@timetiles/eslint-config/base";
+import baseConfig, { defaultIgnores, oxlintBridge } from "@timetiles/eslint-config/base";
 
 /** @type {import("eslint").Linter.Config[]} */
 export default [
@@ -20,4 +20,6 @@ export default [
   // tsconfig, so the type-aware project service cannot resolve them. oxlint
   // still lints these; ESLint focuses on the typed src tree.
   { ignores: ["dist/**", "examples/**", "*.config.ts", "tests/**"] },
+  // Must stay last, see oxlintBridge.
+  ...oxlintBridge,
 ];

@@ -8,8 +8,6 @@
  * @category E2E Fixtures
  */
 
-/* eslint-disable react-hooks/rules-of-hooks -- Playwright fixture `use()` is not a React hook */
-
 import { expect, test as base } from "@playwright/test";
 import { Client } from "pg";
 

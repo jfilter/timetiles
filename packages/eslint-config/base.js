@@ -123,7 +123,6 @@ export default [
       "@typescript-eslint/prefer-regexp-exec": "error",
       "@typescript-eslint/prefer-readonly": "error",
       "@typescript-eslint/no-duplicate-type-constituents": "error",
-      "@typescript-eslint/no-useless-empty-export": "error",
     },
   },
   // Config files and other JS files without type checking
@@ -248,23 +247,7 @@ export default [
     },
     rules: {
       // ESLint Core
-      "no-async-promise-executor": "error",
-      "no-case-declarations": "error",
-      // Disabled again by the oxlint bridge below (oxlint owns this rule), so suppress
-      // violations with `// oxlint-disable-next-line no-console`, not an eslint-disable.
-      "no-console": "error",
-      "prefer-const": "error",
       "require-atomic-updates": "error",
-      "max-params": ["error", 7],
-      complexity: ["error", 20],
-      "max-nested-callbacks": ["error", 5],
-      "no-empty": ["error", { allowEmptyCatch: false }],
-      "no-unused-expressions": "error",
-
-      // TypeScript
-      "@typescript-eslint/consistent-type-imports": "error",
-      "@typescript-eslint/no-explicit-any": "error",
-      "@typescript-eslint/no-unused-vars": ["warn", { varsIgnorePattern: "^_" }],
 
       // Security
       "security/detect-buffer-noassert": "error",
@@ -277,14 +260,7 @@ export default [
       "security/detect-unsafe-regex": "error",
 
       // Promise
-      "promise/always-return": "error",
-      "promise/catch-or-return": "error",
-      "promise/no-new-statics": "error",
       "promise/no-return-in-finally": "error",
-      "promise/no-return-wrap": "error",
-      "promise/param-names": "error",
-      "promise/prefer-await-to-then": "warn",
-      "promise/valid-params": "error",
 
       // RegExp
       "regexp/no-empty-capturing-group": "error",
@@ -313,9 +289,7 @@ export default [
       "simple-import-sort/imports": "error",
       "simple-import-sort/exports": "error",
       "unused-imports/no-unused-imports": "error",
-      "import/no-cycle": "error",
       "import/no-default-export": "off",
-      "import/no-self-import": "error",
       // Disable import/order in favor of simple-import-sort
       "import/order": "off",
 
@@ -446,38 +420,10 @@ export default [
       ],
 
       // Unicorn
-      "unicorn/filename-case": [
-        "error",
-        {
-          case: "kebabCase",
-          ignore: [
-            String.raw`^page\.tsx?$`,
-            String.raw`^layout\.tsx?$`,
-            String.raw`^loading\.tsx?$`,
-            String.raw`^error\.tsx?$`,
-            String.raw`^not-found\.tsx?$`,
-            String.raw`^route\.ts$`,
-            String.raw`^middleware\.ts$`,
-            String.raw`^instrumentation\.ts$`,
-            String.raw`^\[\[\w+-?\w*\]\.tsx?$`,
-            String.raw`^\[\[\.\.\.\w+\]\]\.tsx?$`,
-            String.raw`\.config\.(js|ts|mjs)$`,
-            String.raw`\.d\.ts$`,
-            String.raw`\.test\.tsx?$`,
-            String.raw`^README\.md$`,
-            String.raw`^CLAUDE\.md$`,
-            String.raw`^\d{8}_.*\.ts$`,
-          ],
-        },
-      ],
-      "unicorn/no-instanceof-array": "error",
       // unicorn 65 renamed `ignoreUsedVariables` to `checkUsedVariables` AND inverted its
       // polarity, so the value flips too: `checkUsedVariables: false` is what
       // `ignoreUsedVariables: true` used to mean (skip imports that have other references).
       "unicorn/prefer-export-from": ["error", { checkUsedVariables: false }],
-      "unicorn/prefer-includes": "error",
-      "unicorn/prefer-string-starts-ends-with": "error",
-      "unicorn/throw-new-error": "error",
 
       // Function declaration consistency
       "prefer-arrow-functions/prefer-arrow-functions": [
@@ -486,20 +432,6 @@ export default [
       ],
 
       // Project-specific
-      "no-restricted-imports": [
-        "error",
-        {
-          patterns: [
-            { group: ["../**/apps/*"], message: "Don't import across app boundaries" },
-            { group: ["*/index", "*/index.js", "*/index.ts", "*/index.tsx"], message: "Avoid barrel imports" },
-            { group: ["./index", "./index.js", "./index.ts", "./index.tsx"], message: "Avoid local index imports" },
-            {
-              group: ["../../../../*", "../../../../../*"],
-              message: "Use @/ path alias instead of deep relative imports (more than 3 levels)",
-            },
-          ],
-        },
-      ],
       "no-restricted-syntax": [
         "error",
         {
@@ -515,10 +447,6 @@ export default [
         "error",
         { tags: { module: { initialCommentsOnly: true, mustExist: true, preventDuplicates: true } } },
       ],
-      // Ensure @module tag doesn't have inline descriptions (TypeDoc requirement)
-      "jsdoc/check-tag-names": ["error", { definedTags: ["module", "category"] }],
-      // @module should be empty for TypeDoc
-      "jsdoc/empty-tags": ["error", { tags: ["module"] }],
       // Disable the sentence completion rules - they're too strict for property descriptions
       "jsdoc/require-description-complete-sentence": "off",
       // Disable match-description - too strict for inline comments
@@ -532,9 +460,11 @@ export default [
     files: ["**/*.config.{js,ts,mjs}", "**/eslint.config.{js,ts}", "packages/eslint-config/*.js"],
     rules: { "import/no-default-export": "off" },
   },
-  // Add oxlint bridge at the END to auto-disable ESLint rules that oxlint handles
-  // Uses buildFromOxlintConfigFile to only disable rules actually enabled in .oxlintrc.json
-  // This disables those rules repo-wide, so any package that runs this config but skips
-  // the oxlint step in its own lint script silently enforces none of them.
-  ...oxlint.buildFromOxlintConfigFile(resolve(MONOREPO_ROOT, ".oxlintrc.json")),
 ];
+
+/**
+ * Turns off every ESLint rule that `.oxlintrc.json` enables, so oxlint alone runs it.
+ * Every eslint.config must spread this LAST: a later block would switch rules back on.
+ * A package that skips the oxlint step in its lint script enforces none of these rules.
+ */
+export const oxlintBridge = oxlint.buildFromOxlintConfigFile(resolve(MONOREPO_ROOT, ".oxlintrc.json"));

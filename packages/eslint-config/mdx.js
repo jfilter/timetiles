@@ -9,7 +9,7 @@
 import * as mdx from "eslint-plugin-mdx";
 
 // Re-export defaultIgnores for apps to use
-export { defaultIgnores } from "./base.js";
+export { defaultIgnores, oxlintBridge } from "./base.js";
 import baseConfig from "./base.js";
 
 /**
@@ -27,7 +27,6 @@ export default [
       "jsdoc/require-file-overview": "off",
       "jsdoc/require-jsdoc": "off",
       // Disable TypeScript rules that require type information for MDX files
-      "@typescript-eslint/consistent-type-imports": "off",
       "@typescript-eslint/no-floating-promises": "off",
       "@typescript-eslint/no-misused-promises": "off",
       "@typescript-eslint/no-unnecessary-condition": "off",

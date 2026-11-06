@@ -350,6 +350,7 @@
       "rules": { "react/display-name": "off", "react-hooks/exhaustive-deps": "off" },
       "plugins": ["react"]
     },
+    { "files": ["**/tests/e2e/**/*.ts"], "rules": { "react-hooks/rules-of-hooks": "off" }, "plugins": ["react"] },
     {
       "files": ["**/*.ts", "**/*.tsx"],
       "rules": {
@@ -417,9 +418,7 @@
         "@typescript-eslint/prefer-nullish-coalescing": "off",
         "@typescript-eslint/no-explicit-any": "warn",
         "@typescript-eslint/no-unsafe-assignment": "off",
-        "@typescript-eslint/no-unsafe-member-access": "off",
-        "no-unused-vars": "off",
-        "@typescript-eslint/no-unused-vars": "off"
+        "@typescript-eslint/no-unsafe-member-access": "off"
       }
     },
     { "files": ["**/seed/**/*.ts", "**/seed/**/*.js", "**/seeds/**/*.ts"], "rules": { "no-console": "off" } },
@@ -427,8 +426,6 @@
       "files": ["scripts/**/*.ts", "scripts/**/*.js", "**/scripts/**/*.ts", "**/scripts/**/*.js"],
       "rules": {
         "no-console": "off",
-        "no-unused-vars": "off",
-        "@typescript-eslint/no-unused-vars": "off",
         "@typescript-eslint/no-explicit-any": "warn",
         "@typescript-eslint/no-unsafe-assignment": "off",
         "@typescript-eslint/no-unsafe-member-access": "off",

@@ -12,7 +12,7 @@ import nextPlugin from "@next/eslint-plugin-next";
 import pluginQuery from "@tanstack/eslint-plugin-query";
 
 // Re-export defaultIgnores for apps to use
-export { defaultIgnores } from "./base.js";
+export { defaultIgnores, oxlintBridge } from "./base.js";
 import reactConfig from "./react-internal.js";
 
 /**

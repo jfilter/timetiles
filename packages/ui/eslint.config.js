@@ -4,7 +4,7 @@
  * @module
  */
 
-import config from "@timetiles/eslint-config/react-internal";
+import config, { oxlintBridge } from "@timetiles/eslint-config/react-internal";
 
 /** @type {import("eslint").Linter.Config[]} */
 export default [
@@ -21,4 +21,6 @@ export default [
       ".storybook/**",
     ],
   },
+  // Must stay last, see oxlintBridge.
+  ...oxlintBridge,
 ];

@@ -1,4 +1,4 @@
-import mdxConfig, { defaultIgnores } from "@timetiles/eslint-config/mdx";
+import mdxConfig, { defaultIgnores, oxlintBridge } from "@timetiles/eslint-config/mdx";
 
 /** @type {import("eslint").Linter.Config[]} */
 export default [
@@ -10,8 +10,6 @@ export default [
   {
     files: ["**/*.mdx"],
     rules: {
-      "@typescript-eslint/no-unused-vars": "off", // MDX imports are used in JSX
-      "no-unused-vars": "off", // MDX imports are used in JSX
       "unused-imports/no-unused-imports": "off", // MDX imports are used in JSX components
       "sonarjs/max-lines": ["error", { maximum: 1000 }], // Documentation files can be longer
     },
@@ -40,20 +38,15 @@ export default [
       },
     },
     rules: {
-      "no-console": "off", // Scripts can use console for output
       "no-undef": "off", // Node.js globals are available
-      "@typescript-eslint/no-unused-vars": ["error", { argsIgnorePattern: "^_", varsIgnorePattern: "^_" }],
       "sonarjs/slow-regex": "off", // Scripts may need complex regex patterns
       "regexp/no-super-linear-backtracking": "off", // Allow complex regex for scripts
       "sonarjs/cognitive-complexity": "off", // Scripts can be complex
       "sonarjs/no-ignored-exceptions": "off", // Scripts can have catch-all error handling
       "sonarjs/anchor-precedence": "off", // Allow regex patterns as needed
       "sonarjs/updated-loop-counter": "off", // Allow loop counter updates
-      "prefer-const": "off", // Scripts may need let
       "@typescript-eslint/prefer-regexp-exec": "off", // Allow match method
       "sonarjs/prefer-regexp-exec": "off", // Allow match method
-      "promise/prefer-await-to-then": "off", // Allow then/catch
-      "no-useless-escape": "off", // Scripts may need escapes
       "regexp/no-useless-escape": "off", // Scripts may need escapes
     },
   },
@@ -71,4 +64,6 @@ export default [
       ],
     },
   },
+  // Must stay last, see oxlintBridge.
+  ...oxlintBridge,
 ];
