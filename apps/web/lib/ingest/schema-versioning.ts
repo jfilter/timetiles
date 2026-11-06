@@ -74,180 +74,176 @@ const isUniqueViolation = (error: unknown): boolean => {
 };
 
 /**
+ * Acquire a per-dataset transaction-scoped advisory lock. Released when the
+ * caller's Payload transaction commits or rolls back. No-op if `req` doesn't
+ * carry a transaction — callers without a transaction rely on the unique
+ * index + retry for correctness.
+ *
+ * The first lock key is a stable hash of a namespace string, the second is
+ * the dataset id — standard Postgres pattern for scoped advisory locks.
+ */
+const acquireDatasetLock = async (payload: Payload, datasetId: number, req?: PayloadRequest): Promise<void> => {
+  if (!req?.transactionID) return;
+  const drizzle = await getTransactionAwareDrizzle(payload, req);
+  await drizzle.execute(sql`
+    SELECT pg_advisory_xact_lock(
+      hashtext('timetiles.dataset_schema_version')::int,
+      ${datasetId}::int
+    )
+  `);
+};
+
+/**
+ * Get the next schema version number for a dataset.
+ *
+ * Must run under an advisory lock (see `acquireDatasetLock`) when used to
+ * derive a value for an INSERT; the read-then-write pattern otherwise races
+ * under concurrent callers.
+ */
+const getNextSchemaVersion = async (
+  payload: Payload,
+  datasetId: string | number,
+  req?: PayloadRequest
+): Promise<number> => {
+  const normalizedDatasetId = requireStrictInteger(datasetId, "dataset");
+
+  const existingSchemas = await payload.find({
+    collection: COLLECTION_NAMES.DATASET_SCHEMAS,
+    where: { dataset: { equals: normalizedDatasetId } },
+    sort: "-versionNumber",
+    limit: 1,
+    req,
+    overrideAccess: true,
+  });
+
+  const lastVersion = existingSchemas.docs[0]?.versionNumber ?? 0;
+  return lastVersion + 1;
+};
+
+/**
+ * Create a new schema version with consistent data structure.
+ */
+const createSchemaVersion = async (
+  payload: Payload,
+  {
+    dataset,
+    schema,
+    fieldMetadata = {},
+    fieldMappings,
+    autoApproved = false,
+    approvedBy,
+    ingestSources = [],
+    eventCountAtCreation,
+    req,
+  }: {
+    dataset: Dataset | string | number;
+    schema: unknown;
+    fieldMetadata?: Record<string, unknown>;
+    fieldMappings?: {
+      titlePath?: string | null;
+      descriptionPath?: string | null;
+      locationNamePath?: string | null;
+      timestampPath?: string | null;
+      endTimestampPath?: string | null;
+    };
+    autoApproved?: boolean;
+    approvedBy?: string | number | null;
+    ingestSources?: Array<{ ingestJob: string | number; recordCount?: number; batchCount?: number }>;
+    /** Number of events in the dataset when this schema was generated */
+    eventCountAtCreation?: number;
+    req?: PayloadRequest;
+  }
+): Promise<DatasetSchema> => {
+  const datasetId = requireRelationId(dataset, "schema.dataset");
+  const normalizedDatasetId = requireStrictInteger(datasetId, "dataset");
+
+  const hasCallerTransaction = Boolean(req?.transactionID);
+  await acquireDatasetLock(payload, normalizedDatasetId, req);
+
+  for (let attempt = 1; ; attempt++) {
+    logger.info("Getting next schema version", { datasetId, attempt });
+    const nextVersion = await getNextSchemaVersion(payload, normalizedDatasetId, req);
+
+    const createData = {
+      dataset: normalizedDatasetId,
+      versionNumber: nextVersion,
+      schema: schema as string | number | boolean | unknown[] | { [k: string]: unknown } | null,
+      fieldMetadata,
+      fieldMappings,
+      autoApproved,
+      approvedBy: optionalStrictInteger(approvedBy, "approvedBy"),
+      ingestSources: ingestSources.map((source) => ({
+        ...source,
+        ingestJob: requireStrictInteger(source.ingestJob, "ingest source"),
+      })),
+      eventCountAtCreation,
+      _status: "published" as const,
+    };
+
+    logger.info("Calling payload.create for dataset-schemas", {
+      datasetId: createData.dataset,
+      versionNumber: createData.versionNumber,
+      attempt,
+    });
+
+    try {
+      const schemaVersion = await payload.create({
+        collection: COLLECTION_NAMES.DATASET_SCHEMAS,
+        data: createData,
+        req,
+        overrideAccess: true,
+      });
+
+      logger.info("Schema version created successfully", {
+        schemaVersionId: schemaVersion.id,
+        datasetId,
+        versionNumber: nextVersion,
+      });
+
+      return schemaVersion;
+    } catch (error) {
+      // Payload rolls back and clears req.transactionID on create failure.
+      // Retrying here would silently commit outside the caller's transaction.
+      if (!hasCallerTransaction && isUniqueViolation(error) && attempt < MAX_CREATE_ATTEMPTS) {
+        logger.warn("Schema version unique-violation, retrying", { datasetId, attemptedVersion: nextVersion, attempt });
+        continue;
+      }
+      logger.error("Failed to create schema version", {
+        error,
+        datasetId,
+        nextVersion,
+        hasSchema: !!schema,
+        schemaType: typeof schema,
+        attempt,
+      });
+      throw error;
+    }
+  }
+};
+
+/**
+ * Link an import job to a schema version.
+ */
+const linkImportToSchemaVersion = async (
+  payload: Payload,
+  ingestJobId: string | number,
+  schemaVersionId: string | number,
+  req?: PayloadRequest
+): Promise<void> => {
+  const normalizedIngestJobId = requireStrictInteger(ingestJobId, "import job");
+  const normalizedSchemaVersionId = requireStrictInteger(schemaVersionId, "schema version");
+
+  await payload.update({
+    collection: COLLECTION_NAMES.INGEST_JOBS,
+    id: normalizedIngestJobId,
+    data: { datasetSchemaVersion: normalizedSchemaVersionId },
+    req,
+    overrideAccess: true,
+  });
+};
+
+/**
  * Consolidated schema versioning service to prevent duplicate creation
  * and ensure consistent version numbering across auto and manual approval flows.
  */
-export class SchemaVersioningService {
-  /**
-   * Acquire a per-dataset transaction-scoped advisory lock. Released when the
-   * caller's Payload transaction commits or rolls back. No-op if `req` doesn't
-   * carry a transaction — callers without a transaction rely on the unique
-   * index + retry for correctness.
-   *
-   * The first lock key is a stable hash of a namespace string, the second is
-   * the dataset id — standard Postgres pattern for scoped advisory locks.
-   */
-  private static async acquireDatasetLock(payload: Payload, datasetId: number, req?: PayloadRequest): Promise<void> {
-    if (!req?.transactionID) return;
-    const drizzle = await getTransactionAwareDrizzle(payload, req);
-    await drizzle.execute(sql`
-      SELECT pg_advisory_xact_lock(
-        hashtext('timetiles.dataset_schema_version')::int,
-        ${datasetId}::int
-      )
-    `);
-  }
-
-  /**
-   * Get the next schema version number for a dataset.
-   *
-   * Must run under an advisory lock (see `acquireDatasetLock`) when used to
-   * derive a value for an INSERT; the read-then-write pattern otherwise races
-   * under concurrent callers.
-   */
-  static async getNextSchemaVersion(
-    payload: Payload,
-    datasetId: string | number,
-    req?: PayloadRequest
-  ): Promise<number> {
-    const normalizedDatasetId = requireStrictInteger(datasetId, "dataset");
-
-    const existingSchemas = await payload.find({
-      collection: COLLECTION_NAMES.DATASET_SCHEMAS,
-      where: { dataset: { equals: normalizedDatasetId } },
-      sort: "-versionNumber",
-      limit: 1,
-      req,
-      overrideAccess: true,
-    });
-
-    const lastVersion = existingSchemas.docs[0]?.versionNumber ?? 0;
-    return lastVersion + 1;
-  }
-
-  /**
-   * Create a new schema version with consistent data structure.
-   */
-  static async createSchemaVersion(
-    payload: Payload,
-    {
-      dataset,
-      schema,
-      fieldMetadata = {},
-      fieldMappings,
-      autoApproved = false,
-      approvedBy,
-      ingestSources = [],
-      eventCountAtCreation,
-      req,
-    }: {
-      dataset: Dataset | string | number;
-      schema: unknown;
-      fieldMetadata?: Record<string, unknown>;
-      fieldMappings?: {
-        titlePath?: string | null;
-        descriptionPath?: string | null;
-        locationNamePath?: string | null;
-        timestampPath?: string | null;
-        endTimestampPath?: string | null;
-      };
-      autoApproved?: boolean;
-      approvedBy?: string | number | null;
-      ingestSources?: Array<{ ingestJob: string | number; recordCount?: number; batchCount?: number }>;
-      /** Number of events in the dataset when this schema was generated */
-      eventCountAtCreation?: number;
-      req?: PayloadRequest;
-    }
-  ): Promise<DatasetSchema> {
-    const datasetId = requireRelationId(dataset, "schema.dataset");
-    const normalizedDatasetId = requireStrictInteger(datasetId, "dataset");
-
-    const hasCallerTransaction = Boolean(req?.transactionID);
-    await this.acquireDatasetLock(payload, normalizedDatasetId, req);
-
-    for (let attempt = 1; ; attempt++) {
-      logger.info("Getting next schema version", { datasetId, attempt });
-      const nextVersion = await this.getNextSchemaVersion(payload, normalizedDatasetId, req);
-
-      const createData = {
-        dataset: normalizedDatasetId,
-        versionNumber: nextVersion,
-        schema: schema as string | number | boolean | unknown[] | { [k: string]: unknown } | null,
-        fieldMetadata,
-        fieldMappings,
-        autoApproved,
-        approvedBy: optionalStrictInteger(approvedBy, "approvedBy"),
-        ingestSources: ingestSources.map((source) => ({
-          ...source,
-          ingestJob: requireStrictInteger(source.ingestJob, "ingest source"),
-        })),
-        eventCountAtCreation,
-        _status: "published" as const,
-      };
-
-      logger.info("Calling payload.create for dataset-schemas", {
-        datasetId: createData.dataset,
-        versionNumber: createData.versionNumber,
-        attempt,
-      });
-
-      try {
-        const schemaVersion = await payload.create({
-          collection: COLLECTION_NAMES.DATASET_SCHEMAS,
-          data: createData,
-          req,
-          overrideAccess: true,
-        });
-
-        logger.info("Schema version created successfully", {
-          schemaVersionId: schemaVersion.id,
-          datasetId,
-          versionNumber: nextVersion,
-        });
-
-        return schemaVersion;
-      } catch (error) {
-        // Payload rolls back and clears req.transactionID on create failure.
-        // Retrying here would silently commit outside the caller's transaction.
-        if (!hasCallerTransaction && isUniqueViolation(error) && attempt < MAX_CREATE_ATTEMPTS) {
-          logger.warn("Schema version unique-violation, retrying", {
-            datasetId,
-            attemptedVersion: nextVersion,
-            attempt,
-          });
-          continue;
-        }
-        logger.error("Failed to create schema version", {
-          error,
-          datasetId,
-          nextVersion,
-          hasSchema: !!schema,
-          schemaType: typeof schema,
-          attempt,
-        });
-        throw error;
-      }
-    }
-  }
-
-  /**
-   * Link an import job to a schema version.
-   */
-  static async linkImportToSchemaVersion(
-    payload: Payload,
-    ingestJobId: string | number,
-    schemaVersionId: string | number,
-    req?: PayloadRequest
-  ): Promise<void> {
-    const normalizedIngestJobId = requireStrictInteger(ingestJobId, "import job");
-    const normalizedSchemaVersionId = requireStrictInteger(schemaVersionId, "schema version");
-
-    await payload.update({
-      collection: COLLECTION_NAMES.INGEST_JOBS,
-      id: normalizedIngestJobId,
-      data: { datasetSchemaVersion: normalizedSchemaVersionId },
-      req,
-      overrideAccess: true,
-    });
-  }
-}
+export const SchemaVersioningService = { getNextSchemaVersion, createSchemaVersion, linkImportToSchemaVersion };

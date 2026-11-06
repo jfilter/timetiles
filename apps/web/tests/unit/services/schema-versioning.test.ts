@@ -135,8 +135,8 @@ describe("SchemaVersioningService", () => {
 
   describe("createSchemaVersion", () => {
     it("should create schema version with dataset object", async () => {
-      // Mock getNextSchemaVersion to return predictable version
-      vi.spyOn(SchemaVersioningService, "getNextSchemaVersion").mockResolvedValue(2);
+      // Latest stored version is 1, so the next one is 2
+      mockPayload.find.mockResolvedValueOnce({ docs: [{ versionNumber: 1 }] });
 
       const mockDataset = { id: 123, name: "Test Dataset" } as Dataset;
       const mockSchema = {
@@ -182,8 +182,8 @@ describe("SchemaVersioningService", () => {
     });
 
     it("should create schema version with string dataset ID", async () => {
-      // Mock getNextSchemaVersion to return predictable version
-      vi.spyOn(SchemaVersioningService, "getNextSchemaVersion").mockResolvedValue(2);
+      // Latest stored version is 1, so the next one is 2
+      mockPayload.find.mockResolvedValueOnce({ docs: [{ versionNumber: 1 }] });
 
       const mockSchema = { type: "object", properties: {} };
       const mockFieldMetadata = {
@@ -233,8 +233,8 @@ describe("SchemaVersioningService", () => {
       // Reset all mocks before this test
       vi.clearAllMocks();
 
-      // Mock getNextSchemaVersion to return predictable version
-      vi.spyOn(SchemaVersioningService, "getNextSchemaVersion").mockResolvedValue(2);
+      // Latest stored version is 1, so the next one is 2
+      mockPayload.find.mockResolvedValueOnce({ docs: [{ versionNumber: 1 }] });
 
       const mockSchema = { type: "object" };
       const mockCreatedSchema = {
@@ -275,8 +275,8 @@ describe("SchemaVersioningService", () => {
       // Reset all mocks before this test
       vi.clearAllMocks();
 
-      // Mock getNextSchemaVersion to return predictable version
-      vi.spyOn(SchemaVersioningService, "getNextSchemaVersion").mockResolvedValue(2);
+      // Latest stored version is 1, so the next one is 2
+      mockPayload.find.mockResolvedValueOnce({ docs: [{ versionNumber: 1 }] });
 
       const mockSchema = { type: "object" };
       const mockCreatedSchema = {
@@ -324,8 +324,8 @@ describe("SchemaVersioningService", () => {
       // Reset all mocks before this test
       vi.clearAllMocks();
 
-      // Mock getNextSchemaVersion to return predictable version
-      vi.spyOn(SchemaVersioningService, "getNextSchemaVersion").mockResolvedValue(2);
+      // Latest stored version is 1, so the next one is 2
+      mockPayload.find.mockResolvedValueOnce({ docs: [{ versionNumber: 1 }] });
 
       const mockSchema = { type: "object" };
       const mockCreatedSchema = {
@@ -364,7 +364,7 @@ describe("SchemaVersioningService", () => {
     });
 
     it("rejects partially numeric import source IDs", async () => {
-      vi.spyOn(SchemaVersioningService, "getNextSchemaVersion").mockResolvedValue(2);
+      mockPayload.find.mockResolvedValueOnce({ docs: [{ versionNumber: 1 }] });
 
       await expect(
         SchemaVersioningService.createSchemaVersion(mockPayload as unknown as BasePayload, {
