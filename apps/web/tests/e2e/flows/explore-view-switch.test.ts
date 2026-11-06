@@ -66,3 +66,19 @@ test.describe("Explore View Switch - Map Position Persistence", () => {
     expect(url.searchParams.get("endDate")).toBe("2025-06-30");
   });
 });
+
+test.describe("Explore View Switch - URL writes", () => {
+  // A URL write that lands while a view switch is pending makes Next.js drop the navigation.
+  test("does not rewrite the URL once the map settles at the URL position", async ({ page }) => {
+    const explorePage = new ExplorePage(page);
+    // nuqs serializes 11.5820 as 11.582, so any position write would change this spelling.
+    await page.goto("/explore?lat=48.1351&lng=11.5820&zoom=10", { waitUntil: "domcontentloaded" });
+    await explorePage.waitForMapSettled();
+
+    // Filter and position writes share one queue, so a pending position write lands with this one.
+    const [dataset] = await explorePage.getAvailableDatasets();
+    await explorePage.toggleDataset(dataset!);
+
+    expect(new URL(page.url()).search).toContain("lng=11.5820");
+  });
+});

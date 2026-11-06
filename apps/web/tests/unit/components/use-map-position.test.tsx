@@ -96,6 +96,51 @@ describe("useMapPosition", () => {
     expect(capturedState!.mapPosition).toEqual({ latitude: null, longitude: null, zoom: null });
   });
 
+  test("setMapPosition leaves the URL alone when the rounded position is unchanged", async () => {
+    // The URL spells lng with a trailing zero; the map settling there must not rewrite it.
+    const searchParams = new URLSearchParams("lat=48.1351&lng=11.5820&zoom=10");
+    const onUrlUpdate = vi.fn();
+    let capturedState: ReturnType<typeof useMapPosition> | null = null;
+
+    renderWithProviders(<MapPositionTestComponent onStateChange={(s) => (capturedState = s)} />, {
+      searchParams,
+      onUrlUpdate,
+    });
+
+    await act(async () => {
+      capturedState!.setMapPosition({ latitude: 48.135_100_3, longitude: 11.581_999_8, zoom: 10.02 });
+      // Longer than nuqs' URL update throttle, so a write would have flushed by now
+      await new Promise((resolve) => setTimeout(resolve, 200));
+    });
+    expect(onUrlUpdate).not.toHaveBeenCalled();
+
+    act(() => capturedState!.setMapPosition({ latitude: 48.2, longitude: 11.582, zoom: 10 }));
+    await waitFor(() => expect(onUrlUpdate).toHaveBeenCalledTimes(1));
+    expect(onUrlUpdate.mock.calls[0]![0].queryString).toBe("?lat=48.2&lng=11.582&zoom=10");
+  });
+
+  test("setMapPosition back to the URL position overrides a write still queued", async () => {
+    const searchParams = new URLSearchParams("lat=48.1351&lng=11.582&zoom=10");
+    const onUrlUpdate = vi.fn();
+    let capturedState: ReturnType<typeof useMapPosition> | null = null;
+
+    renderWithProviders(<MapPositionTestComponent onStateChange={(s) => (capturedState = s)} />, {
+      searchParams,
+      onUrlUpdate,
+    });
+
+    // Both calls see the same render, as two map events firing back to back do.
+    const { setMapPosition } = capturedState!;
+    act(() => {
+      setMapPosition({ latitude: 48.2, longitude: 11.7, zoom: 10 });
+      setMapPosition({ latitude: 48.1351, longitude: 11.582, zoom: 10 });
+    });
+
+    await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled());
+    expect(onUrlUpdate.mock.lastCall![0].queryString).toBe("?lat=48.1351&lng=11.582&zoom=10");
+    expect(capturedState!.mapPosition).toEqual({ latitude: 48.1351, longitude: 11.582, zoom: 10 });
+  });
+
   test("handles decimal zoom values correctly", () => {
     const searchParams = new URLSearchParams("lat=40.7128&lng=-74.006&zoom=12.5");
     let capturedState: ReturnType<typeof useMapPosition> | null = null;

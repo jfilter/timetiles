@@ -306,30 +306,29 @@ export interface MapPosition {
  * @returns Map position state and handlers
  */
 export const useMapPosition = () => {
-  const [latitude, setLatitude] = useQueryState("lat", parseAsFloat.withOptions({ history: "replace", shallow: true }));
-
-  const [longitude, setLongitude] = useQueryState(
-    "lng",
-    parseAsFloat.withOptions({ history: "replace", shallow: true })
+  const [position, setPosition] = useQueryStates(
+    { lat: parseAsFloat, lng: parseAsFloat, zoom: parseAsFloat },
+    { history: "replace", shallow: true }
   );
 
-  const [zoom, setZoom] = useQueryState("zoom", parseAsFloat.withOptions({ history: "replace", shallow: true }));
+  const mapPosition: MapPosition = { latitude: position.lat, longitude: position.lng, zoom: position.zoom };
 
-  const mapPosition: MapPosition = { latitude, longitude, zoom };
+  const hasMapPosition = position.lat !== null && position.lng !== null && position.zoom !== null;
 
-  const hasMapPosition = latitude !== null && longitude !== null && zoom !== null;
-
-  const setMapPosition = (position: { latitude: number; longitude: number; zoom: number }) => {
+  const setMapPosition = (next: { latitude: number; longitude: number; zoom: number }) => {
     // Round to 4 decimal places for cleaner URLs (~11m precision)
-    void setLatitude(Math.round(position.latitude * 10000) / 10000);
-    void setLongitude(Math.round(position.longitude * 10000) / 10000);
-    void setZoom(Math.round(position.zoom * 10) / 10);
+    const lat = Math.round(next.latitude * 10000) / 10000;
+    const lng = Math.round(next.longitude * 10000) / 10000;
+    const zoom = Math.round(next.zoom * 10) / 10;
+    // The updater sees queued writes too. Returning {} skips no-op writes: one landing during a
+    // router navigation makes Next.js restore the current URL and drop the navigation.
+    void setPosition((current) =>
+      current.lat === lat && current.lng === lng && current.zoom === zoom ? {} : { lat, lng, zoom }
+    );
   };
 
   const clearMapPosition = () => {
-    void setLatitude(null);
-    void setLongitude(null);
-    void setZoom(null);
+    void setPosition(null);
   };
 
   return { mapPosition, hasMapPosition, setMapPosition, clearMapPosition };

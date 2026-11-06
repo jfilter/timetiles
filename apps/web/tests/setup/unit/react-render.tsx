@@ -10,7 +10,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, type RenderOptions, type RenderResult } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
-import { NuqsTestingAdapter } from "nuqs/adapters/testing";
+import { NuqsTestingAdapter, type OnUrlUpdateFunction } from "nuqs/adapters/testing";
 import React from "react";
 
 import { ThemeProvider } from "@/components/theme-provider";
@@ -19,6 +19,8 @@ import en from "../../../messages/en.json";
 
 interface CustomRenderOptions extends Omit<RenderOptions, "wrapper"> {
   searchParams?: URLSearchParams;
+  /** Called for every URL write nuqs makes */
+  onUrlUpdate?: OnUrlUpdateFunction;
   locale?: string;
   messages?: Record<string, unknown>;
 }
@@ -28,11 +30,13 @@ const defaultSearchParams = new URLSearchParams();
 const AllTheProviders = ({
   children,
   searchParams = defaultSearchParams,
+  onUrlUpdate,
   locale = "en",
   messages = en,
 }: {
   children: React.ReactNode;
   searchParams?: URLSearchParams;
+  onUrlUpdate?: OnUrlUpdateFunction;
   locale?: string;
   messages?: Record<string, unknown>;
 }) => {
@@ -52,7 +56,7 @@ const AllTheProviders = ({
   return (
     <NextIntlClientProvider locale={locale} messages={messages}>
       <QueryClientProvider client={queryClient}>
-        <NuqsTestingAdapter searchParams={searchParams}>
+        <NuqsTestingAdapter searchParams={searchParams} onUrlUpdate={onUrlUpdate}>
           <ThemeProvider>{children}</ThemeProvider>
         </NuqsTestingAdapter>
       </QueryClientProvider>
@@ -61,11 +65,11 @@ const AllTheProviders = ({
 };
 
 export const renderWithProviders = (ui: React.ReactElement, options?: CustomRenderOptions): RenderResult => {
-  const { searchParams, locale, messages, ...renderOptions } = options ?? {};
+  const { searchParams, onUrlUpdate, locale, messages, ...renderOptions } = options ?? {};
 
   return render(ui, {
     wrapper: ({ children }) => (
-      <AllTheProviders searchParams={searchParams} locale={locale} messages={messages}>
+      <AllTheProviders searchParams={searchParams} onUrlUpdate={onUrlUpdate} locale={locale} messages={messages}>
         {children}
       </AllTheProviders>
     ),
