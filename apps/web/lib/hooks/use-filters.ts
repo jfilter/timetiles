@@ -14,6 +14,7 @@
 import { parseAsArrayOf, parseAsFloat, parseAsInteger, parseAsString, useQueryState, useQueryStates } from "nuqs";
 import { useCallback, useMemo } from "react";
 
+import { useUIStore } from "@/lib/store";
 import { formatISODate } from "@/lib/utils/date";
 
 import type { FilterState } from "../types/filter-state";
@@ -320,8 +321,15 @@ export const useMapPosition = () => {
     const lat = Math.round(next.latitude * 10000) / 10000;
     const lng = Math.round(next.longitude * 10000) / 10000;
     const zoom = Math.round(next.zoom * 10) / 10;
-    // The updater sees queued writes too. Returning {} skips no-op writes: one landing during a
-    // router navigation makes Next.js restore the current URL and drop the navigation.
+    // A URL write landing during a router navigation makes Next.js restore the current URL and drop
+    // the navigation: a pending view switch carries the position instead, and no-op writes are skipped.
+    // A write nuqs still throttles (50ms) at the click can land anyway; no click follows a map move that fast.
+    const { ui, holdMapPosition } = useUIStore.getState();
+    if (ui.viewSwitch) {
+      holdMapPosition({ lat, lng, zoom });
+      return;
+    }
+    // The updater sees queued writes too, so a return to the URL position overrides a queued one.
     void setPosition((current) =>
       current.lat === lat && current.lng === lng && current.zoom === zoom ? {} : { lat, lng, zoom }
     );

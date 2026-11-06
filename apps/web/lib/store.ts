@@ -77,6 +77,18 @@ interface UIState {
   clusterFilterCells: string[] | null;
   /** Cluster currently selected in focus mode — transient, not persisted to URL. */
   focusedCluster: FocusedCluster | null;
+  /**
+   * Set while the header's map/list switch navigates. The map then holds its position here instead of
+   * writing the URL, and the switch carries it into the destination URL.
+   */
+  viewSwitch: { path: string; heldPosition: HeldMapPosition | null } | null;
+}
+
+/** Rounded map position as written to the URL. */
+export interface HeldMapPosition {
+  lat: number;
+  lng: number;
+  zoom: number;
 }
 
 // Define the shape of our UI-only store
@@ -96,6 +108,10 @@ interface UIStore {
   setFocusedCluster: (cluster: UIState["focusedCluster"]) => void;
   clearFocusedCluster: () => void;
   setClusterFilterCells: (cells: string[] | null) => void;
+  startViewSwitch: (path: string) => void;
+  /** Hold a map position for the pending view switch; a no-op when none is pending. */
+  holdMapPosition: (position: HeldMapPosition) => void;
+  endViewSwitch: () => void;
 }
 
 // Helper function to create UI state setters
@@ -117,6 +133,7 @@ export const useUIStore = create<UIStore>()(
       focusedCluster: null,
       clusterDensityMode: "normal",
       clusterDensity: INITIAL_CLUSTER_DENSITY,
+      viewSwitch: null,
     },
 
     // UI actions
@@ -171,5 +188,14 @@ export const useUIStore = create<UIStore>()(
     setFocusedCluster: createUIStateSetter(set, "focusedCluster"),
     clearFocusedCluster: () => set((state) => ({ ...state, ui: { ...state.ui, focusedCluster: null } })),
     setClusterFilterCells: createUIStateSetter(set, "clusterFilterCells"),
+    startViewSwitch: (path: string) =>
+      set((state) => ({ ...state, ui: { ...state.ui, viewSwitch: { path, heldPosition: null } } })),
+    holdMapPosition: (position: HeldMapPosition) =>
+      set((state) =>
+        state.ui.viewSwitch
+          ? { ...state, ui: { ...state.ui, viewSwitch: { ...state.ui.viewSwitch, heldPosition: position } } }
+          : state
+      ),
+    endViewSwitch: () => set((state) => ({ ...state, ui: { ...state.ui, viewSwitch: null } })),
   }))
 );

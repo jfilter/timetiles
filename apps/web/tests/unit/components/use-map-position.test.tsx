@@ -5,6 +5,7 @@
  * @category Tests
  */
 import { useMapPosition } from "@/lib/hooks/use-filters";
+import { useUIStore } from "@/lib/store";
 
 import { act, renderWithProviders, waitFor } from "../../setup/unit/react-render";
 
@@ -117,6 +118,42 @@ describe("useMapPosition", () => {
     act(() => capturedState!.setMapPosition({ latitude: 48.2, longitude: 11.582, zoom: 10 }));
     await waitFor(() => expect(onUrlUpdate).toHaveBeenCalledTimes(1));
     expect(onUrlUpdate.mock.calls[0]![0].queryString).toBe("?lat=48.2&lng=11.582&zoom=10");
+  });
+
+  test("setMapPosition holds the position for a pending view switch instead of writing the URL", async () => {
+    const searchParams = new URLSearchParams("lat=48.1351&lng=11.582&zoom=10");
+    const onUrlUpdate = vi.fn();
+    let capturedState: ReturnType<typeof useMapPosition> | null = null;
+
+    renderWithProviders(<MapPositionTestComponent onStateChange={(s) => (capturedState = s)} />, {
+      searchParams,
+      onUrlUpdate,
+    });
+
+    useUIStore.getState().startViewSwitch("/explore/list");
+    try {
+      await act(async () => {
+        capturedState!.setMapPosition({ latitude: 52.520_01, longitude: 13.405_04, zoom: 10.04 });
+        // Longer than nuqs' URL update throttle, so a write would have flushed by now
+        await new Promise((resolve) => setTimeout(resolve, 200));
+      });
+      expect(onUrlUpdate).not.toHaveBeenCalled();
+      expect(useUIStore.getState().ui.viewSwitch).toEqual({
+        path: "/explore/list",
+        heldPosition: { lat: 52.52, lng: 13.405, zoom: 10 },
+      });
+    } finally {
+      useUIStore.getState().endViewSwitch();
+    }
+
+    act(() => capturedState!.setMapPosition({ latitude: 52.52, longitude: 13.405, zoom: 10 }));
+    await waitFor(() => expect(onUrlUpdate).toHaveBeenCalledTimes(1));
+    expect(onUrlUpdate.mock.calls[0]![0].queryString).toBe("?lat=52.52&lng=13.405&zoom=10");
+  });
+
+  test("holdMapPosition is a no-op without a pending view switch", () => {
+    useUIStore.getState().holdMapPosition({ lat: 1, lng: 2, zoom: 3 });
+    expect(useUIStore.getState().ui.viewSwitch).toBeNull();
   });
 
   test("setMapPosition back to the URL position overrides a write still queued", async () => {

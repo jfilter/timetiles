@@ -82,3 +82,34 @@ test.describe("Explore View Switch - URL writes", () => {
     expect(new URL(page.url()).search).toContain("lng=11.5820");
   });
 });
+
+test.describe("Explore View Switch - map moving during the switch", () => {
+  test("switches to the list at the position the map moves to right after the click", async ({ page }) => {
+    const explorePage = new ExplorePage(page);
+    await page.goto("/explore?lat=48.1351&lng=11.5820&zoom=10", { waitUntil: "domcontentloaded" });
+    await explorePage.waitForMapSettled();
+
+    // Map inertia ends after the click, so its position write lands while the navigation is pending.
+    // The visible control is the header toggle on desktop and the view tab on mobile.
+    await page.evaluate(() => {
+      const control = [...document.querySelectorAll<HTMLElement>("button, [role=tab]")].find(
+        (element) => element.textContent?.trim() === "List" && element.checkVisibility()
+      );
+      control!.click();
+      const map = (globalThis as typeof globalThis & { __TIMETILES_E2E_MAP__?: { jumpTo: (o: object) => void } })
+        .__TIMETILES_E2E_MAP__;
+      map!.jumpTo({ center: [13.405, 52.52] });
+    });
+
+    if (isMobileLayout(page)) {
+      await expect(page.getByRole("tab", { name: "List" })).toHaveAttribute("aria-selected", "true");
+      await expect(page).toHaveURL(/lat=52\.52&lng=13\.405/);
+    } else {
+      // The list opens where the map came to rest, not where it was when the button was clicked.
+      await expect(page).toHaveURL(/\/explore\/list\?.*lat=52\.52&lng=13\.405/, { timeout: 15000 });
+      // Once the list's map has settled, the switch must not have bounced back to the map view.
+      await explorePage.waitForMapSettled();
+      expect(new URL(page.url()).pathname).toBe("/explore/list");
+    }
+  });
+});
