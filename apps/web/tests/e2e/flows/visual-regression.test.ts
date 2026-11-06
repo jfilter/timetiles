@@ -14,8 +14,6 @@
  * - The explore-page tests capture data that mutates between runs (other
  *   tests create catalogs/datasets during the suite that bleed into the
  *   filter sidebar here).
- * - The "login page" test actually captures the homepage because the
- *   authenticated fixture redirects `/login` away.
  *
  * To run locally or on a specific CI job, set `E2E_VISUAL_REGRESSION=true`
  * before running Playwright. Baselines are generated on first run; review
@@ -69,10 +67,16 @@ test.describe("Visual Regression", () => {
     });
   });
 
-  test("login page", async ({ page }) => {
-    await page.goto("/login");
-    await page.waitForLoadState("networkidle");
-    await expect(page).toHaveScreenshot("login-page.png", { maxDiffPixelRatio: 0.01 });
+  test.describe("signed out", () => {
+    // The admin session from setup redirects /login away.
+    test.use({ storageState: { cookies: [], origins: [] } });
+
+    test("login page", async ({ page }) => {
+      await page.goto("/login");
+      await expect(page.getByRole("heading", { name: /welcome back/i })).toBeVisible();
+      await page.waitForLoadState("networkidle");
+      await expect(page).toHaveScreenshot("login-page.png", { maxDiffPixelRatio: 0.01 });
+    });
   });
 
   test("not found page", async ({ page }) => {
