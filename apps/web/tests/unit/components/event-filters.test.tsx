@@ -21,10 +21,15 @@ const mockDataSources: DataSourcesResponse = {
   })),
 };
 
-// Mock the useDataSourcesQuery hook
+const dataSourcesState = vi.hoisted(() => ({ current: null as DataSourcesResponse | null }));
+
 vi.mock("@/lib/hooks/use-data-sources-query", () => ({
-  useDataSourcesQuery: () => ({ data: mockDataSources, isLoading: false, error: null }),
+  useDataSourcesQuery: () => ({ data: dataSourcesState.current, isLoading: false, error: null }),
 }));
+
+beforeEach(() => {
+  dataSourcesState.current = mockDataSources;
+});
 
 // Mock the view context (no view active by default)
 const mockViewContext = {
@@ -81,6 +86,32 @@ describe("EventFilters", () => {
 
     // Should show the clear button when dates are set
     expect(container).toHaveTextContent("Clear date filters");
+  });
+
+  test("clears date filters when no visible dataset has temporal data", async () => {
+    dataSourcesState.current = {
+      ...mockDataSources,
+      datasets: mockDataSources.datasets.map((d) => ({ ...d, hasTemporalData: false })),
+    };
+    const onUrlUpdate = vi.fn();
+    const searchParams = new URLSearchParams("startDate=2024-01-01&endDate=2024-12-31");
+
+    renderWithProviders(<EventFilters />, { searchParams, onUrlUpdate });
+
+    await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled());
+    const { searchParams: updated } = onUrlUpdate.mock.lastCall![0] as { searchParams: URLSearchParams };
+    expect(updated.has("startDate")).toBe(false);
+    expect(updated.has("endDate")).toBe(false);
+  });
+
+  test("keeps date filters while temporal data is visible", async () => {
+    const onUrlUpdate = vi.fn();
+    const searchParams = new URLSearchParams("startDate=2024-01-01&endDate=2024-12-31");
+
+    const { container } = renderWithProviders(<EventFilters />, { searchParams, onUrlUpdate });
+
+    await waitFor(() => expect(container).toHaveTextContent("Clear date filters"));
+    expect(onUrlUpdate).not.toHaveBeenCalled();
   });
 
   test("does not show clear date filters button when no dates are set", () => {

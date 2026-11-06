@@ -119,7 +119,7 @@ export const EventFilters = () => {
     if (!showTemporalFilters && (filters.startDate != null || filters.endDate != null)) {
       clearDateRange();
     }
-  }, [showTemporalFilters]); // eslint-disable-line react-hooks/exhaustive-deps -- only react to visibility change
+  }, [showTemporalFilters, filters.startDate, filters.endDate, clearDateRange]);
 
   // Categorical + numeric range filters are dataset-specific (enum values /
   // number formats), so they only render when exactly one dataset is selected.

@@ -28,9 +28,6 @@ vi.mock("undici", async (importOriginal) => {
   return { ...actual, fetch: mockUndiciFetch };
 });
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars -- referenced inside describe blocks
-const mockDnsLookup = dns.promises.lookup as unknown as ReturnType<typeof vi.fn>;
-
 /** Helper to create a mock Response with proper headers. */
 const createResponse = (status: number, headers?: Record<string, string>): Response =>
   new Response(null, { status, headers: headers ? new Headers(headers) : undefined });

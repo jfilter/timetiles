@@ -100,12 +100,10 @@ export default function GlobalError({
             >
               Try again
             </button>
-            {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- Next.js router may be broken at this level */}
-            <a
-              href="/"
+            <button
+              type="button"
+              onClick={() => window.location.assign("/")}
               style={{
-                display: "inline-flex",
-                alignItems: "center",
                 padding: "0.6rem 1.25rem",
                 fontSize: "0.875rem",
                 fontWeight: 500,
@@ -114,12 +112,11 @@ export default function GlobalError({
                 borderRadius: "0.375rem",
                 backgroundColor: "#2e4a6e",
                 color: "#f5f0e8",
-                textDecoration: "none",
                 cursor: "pointer",
               }}
             >
               Return home
-            </a>
+            </button>
           </div>
         </div>
       </body>

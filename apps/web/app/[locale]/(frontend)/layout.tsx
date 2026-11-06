@@ -57,10 +57,6 @@ import { resolveSite } from "@/lib/services/resolution/site-resolver";
 import config from "@/payload.config";
 import type { Footer as FooterType } from "@/payload-types";
 
-interface ImportedAsset {
-  src: string;
-}
-
 const fontSans = DM_Sans({ subsets: ["latin"], variable: "--font-sans", display: "swap" });
 
 const fontSerif = Playfair_Display({ subsets: ["latin"], variable: "--font-serif", display: "swap" });
@@ -70,16 +66,6 @@ const fontMono = Space_Mono({ subsets: ["latin"], variable: "--font-mono", weigh
 // Modern theme fonts (loaded alongside cartographic fonts — CSS variables switch which is active)
 const fontInter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "swap" });
 const fontJetBrains = JetBrains_Mono({ subsets: ["latin"], variable: "--font-jetbrains", display: "swap" });
-
-const resolveImportedAssetSrc = (asset: string | ImportedAsset): string =>
-  typeof asset === "string" ? asset : asset.src;
-
-const bmftrDeSrc = resolveImportedAssetSrc(bmftrDe);
-const bmftrEnSrc = resolveImportedAssetSrc(bmftrEn);
-const ptfBannerDeDarkSrc = resolveImportedAssetSrc(ptfBannerDeDark);
-const ptfBannerDeLightSrc = resolveImportedAssetSrc(ptfBannerDeLight);
-const ptfBannerEnDarkSrc = resolveImportedAssetSrc(ptfBannerEnDark);
-const ptfBannerEnLightSrc = resolveImportedAssetSrc(ptfBannerEnLight);
 
 const getFooterData = async (locale: Locale): Promise<FooterType> => {
   const payload = await getPayload({ config });
@@ -195,25 +181,28 @@ const SiteFooter = ({
         <div className="flex w-full flex-col items-center justify-between gap-4 sm:flex-row">
           <div className="flex items-center gap-4">
             <a href="https://prototypefund.de" target="_blank" rel="noopener noreferrer">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={locale === "de" ? ptfBannerDeLightSrc : ptfBannerEnLightSrc}
+              <Image
+                src={locale === "de" ? ptfBannerDeLight : ptfBannerEnLight}
                 alt={locale === "de" ? "Unterstützt durch Prototype Fund" : "Supported by Prototype Fund"}
                 className="h-16 w-auto dark:hidden"
+                width={850}
+                height={567}
               />
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={locale === "de" ? ptfBannerDeDarkSrc : ptfBannerEnDarkSrc}
+              <Image
+                src={locale === "de" ? ptfBannerDeDark : ptfBannerEnDark}
                 alt={locale === "de" ? "Unterstützt durch Prototype Fund" : "Supported by Prototype Fund"}
                 className="hidden h-16 w-auto dark:block"
+                width={850}
+                height={567}
               />
             </a>
             <a href="https://www.bmftr.bund.de" target="_blank" rel="noopener noreferrer">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={locale === "de" ? bmftrDeSrc : bmftrEnSrc}
+              <Image
+                src={locale === "de" ? bmftrDe : bmftrEn}
                 alt={footerMessages.bmftrAlt}
                 className="h-16 w-auto"
+                width={214}
+                height={142}
               />
             </a>
             <span className="text-muted-foreground text-xs">{footerMessages.fundingText}</span>
