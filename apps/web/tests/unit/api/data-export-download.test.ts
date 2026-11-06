@@ -49,7 +49,6 @@ const createRequest = () =>
     headers: new Headers({ Authorization: `Bearer ${TEST_CREDENTIALS.bearer.token}` }),
   });
 
-// oxlint-disable-next-line promise/prefer-await-to-then
 const routeParams = { params: Promise.resolve({ id: String(EXPORT_ID) }) };
 
 describe("GET /api/data-exports/[id]/download", () => {

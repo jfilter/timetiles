@@ -313,8 +313,6 @@ export const createEventsBatchJob = {
     logger.info("Starting event creation", { ingestJobId });
     const startTime = Date.now();
 
-    let filePath = "";
-    let sheetIndex = 0;
     let reservedEventQuota = 0;
     // -1 until markJobCompleted reconciles the reservation; distinguishes "not yet
     // completed" (release the full reservation on failure) from "completed with 0
@@ -329,8 +327,8 @@ export const createEventsBatchJob = {
 
     try {
       const { job, dataset, ingestFile } = await loadJobResources(payload, ingestJobId);
-      filePath = getIngestFilePath(ingestFile.filename ?? "");
-      sheetIndex = job.sheetIndex ?? 0;
+      const filePath = getIngestFilePath(ingestFile.filename ?? "");
+      const sheetIndex = job.sheetIndex ?? 0;
 
       // Serialize EVERY import on this dataset (see ADR 0041): imports are processed
       // one-at-a-time per dataset, so two never overlap. That is the invariant behind

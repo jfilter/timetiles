@@ -170,19 +170,10 @@ const parseTextMonthDate = (value: string, inputFormat: string): Date | null => 
   const parts = cleaned.split(/\s+/);
   if (parts.length !== 3) return null;
 
-  let day = 0;
-  let month = 0;
-  let year = 0;
-
-  if (inputFormat === DAY_FIRST_TEXT_FORMAT) {
-    day = parseUnsignedInteger(parts[0] ?? "") ?? 0;
-    month = MONTH_NAMES[parts[1]?.toLowerCase() ?? ""] ?? 0;
-    year = parseUnsignedInteger(parts[2] ?? "") ?? 0;
-  } else {
-    month = MONTH_NAMES[parts[0]?.toLowerCase() ?? ""] ?? 0;
-    day = parseUnsignedInteger(parts[1] ?? "") ?? 0;
-    year = parseUnsignedInteger(parts[2] ?? "") ?? 0;
-  }
+  const [dayPart, monthPart] = inputFormat === DAY_FIRST_TEXT_FORMAT ? [parts[0], parts[1]] : [parts[1], parts[0]];
+  const day = parseUnsignedInteger(dayPart ?? "") ?? 0;
+  const month = MONTH_NAMES[monthPart?.toLowerCase() ?? ""] ?? 0;
+  const year = parseUnsignedInteger(parts[2] ?? "") ?? 0;
 
   return createUtcDate(year, month, day);
 };

@@ -583,11 +583,7 @@ describe("ProgressiveSchemaBuilder", () => {
       const builder = new ProgressiveSchemaBuilder();
       const records = Array(100)
         .fill(null)
-        .map((_, i) => ({
-          status:
-            // eslint-disable-next-line sonarjs/no-nested-conditional
-            i % 3 === 0 ? "active" : i % 3 === 1 ? "pending" : "done",
-        }));
+        .map((_, i) => ({ status: ["active", "pending", "done"][i % 3] }));
       builder.processBatch(records);
       builder.detectEnumFields();
 

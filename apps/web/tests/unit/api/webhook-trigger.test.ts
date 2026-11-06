@@ -74,10 +74,7 @@ const createRequest = () => {
   return new Request("http://localhost/api/webhooks/trigger/test-token-abc", { method: "POST" });
 };
 
-const createContext = (token: string) => ({
-  // oxlint-disable-next-line promise/prefer-await-to-then
-  params: Promise.resolve({ token }),
-});
+const createContext = (token: string) => ({ params: Promise.resolve({ token }) });
 
 describe("POST /api/webhooks/trigger/[token]", () => {
   beforeEach(() => {

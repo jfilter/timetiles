@@ -48,7 +48,6 @@ export interface PayloadConfigOptions {
   secret?: string;
   serverURL?: string;
 
-  disableAdmin?: boolean;
   disableGraphQL?: boolean;
 
   // Collections to include (defaults to all)
@@ -311,7 +310,6 @@ export const buildConfigWithDefaults = async (options: PayloadConfigOptions = {}
     databaseUrl = env.DATABASE_URL,
     secret = env.PAYLOAD_SECRET,
     serverURL = env.NEXT_PUBLIC_PAYLOAD_URL,
-    disableAdmin = false,
     disableGraphQL = true,
     collections = Object.keys(COLLECTIONS) as CollectionName[],
     poolConfig,
@@ -338,7 +336,6 @@ export const buildConfigWithDefaults = async (options: PayloadConfigOptions = {}
     routes: { admin: ADMIN_ROUTE },
     admin: {
       user: collections?.includes("users") ? Users.slug : undefined,
-      disable: disableAdmin || environment === "test",
       components: { header: ["/components/admin/admin-header"], providers: ["/components/admin/admin-i18n-provider"] },
     },
     logger: getLogger(logLevel, environment),

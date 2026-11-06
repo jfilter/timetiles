@@ -182,7 +182,7 @@ export const NumericRangeSlider = ({
 
   const handleKeyDown = (handle: "min" | "max") => (e: React.KeyboardEvent) => {
     const delta = isInteger ? 1 : (max - min) / 100;
-    let direction = 0;
+    let direction: number;
     if (e.key === "ArrowLeft" || e.key === "ArrowDown") direction = -1;
     else if (e.key === "ArrowRight" || e.key === "ArrowUp") direction = 1;
     else return;

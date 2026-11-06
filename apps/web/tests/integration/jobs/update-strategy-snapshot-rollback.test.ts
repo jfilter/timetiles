@@ -34,7 +34,6 @@ import {
 describe("update-strategy snapshot rollback", () => {
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>["payload"];
-  // oxlint-disable-next-line @typescript-eslint/no-explicit-any
   let owner: any;
   let dataset: Dataset;
   let ingestFile: IngestFile;

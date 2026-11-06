@@ -1,7 +1,5 @@
 "use client";
 
-/* oxlint-disable complexity */
-
 /**
  * Compact newsletter subscription form with cartographic aesthetics.
  *

@@ -80,8 +80,8 @@ export const POST = apiRoute({
     let mimeType: string;
     let fileSize: number;
     let fileExtension: string;
-    let wasConverted = false;
-    let originalContentType = "";
+    let wasConverted: boolean;
+    let originalContentType: string;
     let recordCount: number | undefined;
 
     try {

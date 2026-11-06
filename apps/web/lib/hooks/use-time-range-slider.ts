@@ -221,7 +221,7 @@ export const useTimeRangeSlider = ({
     const currentDay = Math.floor(currentValue / DAY_MS) * DAY_MS;
     const step = Math.max(1, Math.round(((maxTimestamp - minTimestamp) * 0.01) / DAY_MS)) * DAY_MS;
 
-    let nextValue: number | null = null;
+    let nextValue: number;
     switch (e.key) {
       case "ArrowLeft":
       case "ArrowDown":

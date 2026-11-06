@@ -147,7 +147,7 @@ const handleImportError = async (
   // Advance nextRun so the scheduler doesn't retry every minute for a
   // broken import. Without this, a queue failure would leave the old
   // nextRun in the past and re-trigger on every scheduler tick.
-  let nextRun: Date | null = null;
+  let nextRun: Date;
   try {
     nextRun = getNextExecutionTime(scheduledIngest, currentTime);
   } catch (scheduleError) {

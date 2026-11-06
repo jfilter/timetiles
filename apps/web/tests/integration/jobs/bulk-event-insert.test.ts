@@ -31,7 +31,6 @@ import {
 describe("bulkInsertEvents — atomicity", () => {
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>["payload"];
-  // oxlint-disable-next-line @typescript-eslint/no-explicit-any
   let testUser: any;
   let testCatalogId: number;
   let testDatasetId: number;
@@ -131,21 +130,17 @@ describe("bulkInsertEvents — atomicity", () => {
     const batch = Array.from({ length: 3 }, (_, i) => makeEvent(`${prefix}-${i}`, i));
 
     const originalTransaction = payload.db.drizzle.transaction.bind(payload.db.drizzle);
-    vi.spyOn(payload.db.drizzle, "transaction").mockImplementationOnce(
-      // oxlint-disable-next-line @typescript-eslint/no-explicit-any
-      (callback: any) =>
-        // oxlint-disable-next-line @typescript-eslint/no-explicit-any
-        originalTransaction((tx: any) => {
-          const originalInsert = tx.insert.bind(tx);
-          // oxlint-disable-next-line @typescript-eslint/no-explicit-any
-          tx.insert = (table: any) => {
-            if (table === _events_v) {
-              throw new Error("simulated _events_v insert failure");
-            }
-            return originalInsert(table);
-          };
-          return callback(tx);
-        })
+    vi.spyOn(payload.db.drizzle, "transaction").mockImplementationOnce((callback: any) =>
+      originalTransaction((tx: any) => {
+        const originalInsert = tx.insert.bind(tx);
+        tx.insert = (table: any) => {
+          if (table === _events_v) {
+            throw new Error("simulated _events_v insert failure");
+          }
+          return originalInsert(table);
+        };
+        return callback(tx);
+      })
     );
 
     // The single failed sub-batch rolls back and is reported via `failures` —
@@ -171,25 +166,20 @@ describe("bulkInsertEvents — atomicity", () => {
     // batchSize=2 → two sub-batches: rows [0,1] then [2,3]. Fail only the 2nd.
     const originalTransaction = payload.db.drizzle.transaction.bind(payload.db.drizzle);
     let txCall = 0;
-    vi.spyOn(payload.db.drizzle, "transaction").mockImplementation(
-      // oxlint-disable-next-line @typescript-eslint/no-explicit-any
-      (callback: any) => {
-        txCall++;
-        if (txCall !== 2) return originalTransaction(callback);
-        // oxlint-disable-next-line @typescript-eslint/no-explicit-any
-        return originalTransaction((tx: any) => {
-          const originalInsert = tx.insert.bind(tx);
-          // oxlint-disable-next-line @typescript-eslint/no-explicit-any
-          tx.insert = (table: any) => {
-            if (table === _events_v) {
-              throw new Error("simulated failure on second sub-batch");
-            }
-            return originalInsert(table);
-          };
-          return callback(tx);
-        });
-      }
-    );
+    vi.spyOn(payload.db.drizzle, "transaction").mockImplementation((callback: any) => {
+      txCall++;
+      if (txCall !== 2) return originalTransaction(callback);
+      return originalTransaction((tx: any) => {
+        const originalInsert = tx.insert.bind(tx);
+        tx.insert = (table: any) => {
+          if (table === _events_v) {
+            throw new Error("simulated failure on second sub-batch");
+          }
+          return originalInsert(table);
+        };
+        return callback(tx);
+      });
+    });
 
     const { created, failures } = await bulkInsertEvents(payload, batch, 2);
 

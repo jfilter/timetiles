@@ -95,7 +95,6 @@ const checkRequiresApproval = (
 ): boolean => comparison.isBreaking || !!dataset.schemaConfig?.locked || !dataset.schemaConfig?.autoApproveNonBreaking;
 
 // Approval requirement based on schema mode and dataset config
-/* oxlint-disable-next-line max-params -- one flag per decision input; grouping them would just move the noise */
 export const determineRequiresApproval = (
   schemaModeRequiresApproval: boolean | undefined,
   schemaMode: string | undefined,

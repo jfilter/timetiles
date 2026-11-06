@@ -128,7 +128,7 @@ export const resolvePublicHostname = async (
 
   let resolved: Array<{ address: string; family: number }>;
   try {
-    const raw = (await dns.promises.lookup(lookupHost, { all: true, verbatim: true })) as
+    const raw = (await dns.promises.lookup(lookupHost, { all: true, order: "verbatim" })) as
       | Array<{ address: string; family: number }>
       | { address: string; family: number };
     resolved = Array.isArray(raw) ? raw : [raw];

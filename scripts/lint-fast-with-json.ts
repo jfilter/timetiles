@@ -103,7 +103,7 @@ const createConfigErrorResults = (message: string): ESLintFileResult[] => [
   },
 ];
 
-let exitCode = 0;
+let exitCode: number;
 
 try {
   const output = execFileSync(localBin("oxlint"), ["--config", configPath, "--format=json", "."], {

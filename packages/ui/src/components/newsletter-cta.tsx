@@ -1,7 +1,5 @@
 "use client";
 
-/* oxlint-disable complexity */
-
 /**
  * Large newsletter CTA section with immersive cartographic design.
  *

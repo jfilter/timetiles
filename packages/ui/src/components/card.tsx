@@ -40,7 +40,6 @@ const CardHeader = ({ className, ref, ...props }: React.ComponentProps<"div">) =
 CardHeader.displayName = "CardHeader";
 
 const CardTitle = ({ className, children, ref, ...props }: React.ComponentProps<"h3">) => (
-  // oxlint-disable-next-line jsx-a11y/heading-has-content -- Content provided via children prop
   <h3 ref={ref} className={cn("text-foreground font-serif text-2xl leading-tight font-bold", className)} {...props}>
     {children}
   </h3>

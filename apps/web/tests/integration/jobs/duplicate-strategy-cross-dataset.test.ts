@@ -33,9 +33,7 @@ import {
 describe("processEventBatch — cross-dataset update guard", () => {
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>["payload"];
-  // oxlint-disable-next-line @typescript-eslint/no-explicit-any
   let ownerA: any;
-  // oxlint-disable-next-line @typescript-eslint/no-explicit-any
   let ownerB: any;
   let datasetA: Dataset;
   let datasetB: Dataset;

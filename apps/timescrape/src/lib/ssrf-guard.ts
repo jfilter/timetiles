@@ -55,7 +55,7 @@ export const assertGitTargetIsPublic = async (gitUrl: string): Promise<void> => 
 
   let resolved: Array<{ address: string; family: number }>;
   try {
-    resolved = await dns.promises.lookup(hostname, { all: true, verbatim: true });
+    resolved = await dns.promises.lookup(hostname, { all: true, order: "verbatim" });
   } catch (error) {
     // Fail closed: a host this process cannot resolve is a host the check never inspected.
     const reason = error instanceof Error ? error.message : String(error);

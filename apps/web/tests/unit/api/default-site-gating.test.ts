@@ -39,7 +39,6 @@ const createRequest = (host = "localhost:3000") =>
     body: JSON.stringify({}),
   });
 
-// oxlint-disable-next-line promise/prefer-await-to-then
 const createParams = () => ({ params: Promise.resolve({}) });
 
 describe("requireDefaultSite", () => {

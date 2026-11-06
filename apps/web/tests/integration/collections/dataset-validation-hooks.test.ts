@@ -204,7 +204,6 @@ describe("Dataset validation hooks", () => {
   });
 
   describe("external ID and mapping transform validation", () => {
-    // oxlint-disable-next-line @typescript-eslint/no-explicit-any
     const createDataset = async (extra: Record<string, any>) => {
       const catalog = await createCatalog(true, ownerUser.id);
       return payload.create({

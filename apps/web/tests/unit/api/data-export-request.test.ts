@@ -55,7 +55,6 @@ const createRequest = () =>
     headers: new Headers({ Authorization: `Bearer ${TEST_CREDENTIALS.bearer.token}` }),
   });
 
-// oxlint-disable-next-line promise/prefer-await-to-then
 const emptyParams = { params: Promise.resolve({}) };
 
 describe("POST /api/data-exports/request", () => {

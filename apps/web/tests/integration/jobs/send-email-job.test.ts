@@ -146,7 +146,6 @@ describe("Send Email Job", () => {
     // an input that is missing `context`, which triggers getJobInput's
     // JobCancelledError path before any SMTP call.
     const queued = await payload.jobs.queue({
-      // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- intentional malformed payload for regression test
       task: "send-email",
       input: { to: "malformed@example.com", subject: "Subject", html: "<p>Hello</p>" } as never,
       meta: { channel: "email", context: EMAIL_CONTEXTS.ACCOUNT_EXISTS, maskedTo: "ma***@ex***.com" },

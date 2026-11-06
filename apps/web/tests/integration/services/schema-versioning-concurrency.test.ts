@@ -28,7 +28,6 @@ import {
  * `SchemaVersioningService` scopes correctly (matches the job-handler pattern
  * where each workflow task runs with its own transactionID).
  */
-// oxlint-disable-next-line @typescript-eslint/no-explicit-any
 const withTransaction = async <T>(payload: any, fn: (req: PayloadRequest) => Promise<T>): Promise<T> => {
   const req = { payload, transactionID: undefined, context: {} } as unknown as PayloadRequest;
   const ownsTransaction = await initTransaction(req);
@@ -47,7 +46,6 @@ describe("SchemaVersioningService — concurrent creation", () => {
 
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>["payload"];
-  // oxlint-disable-next-line @typescript-eslint/no-explicit-any
   let adminUser: any;
   let catalogId: number;
   let datasetId: number;

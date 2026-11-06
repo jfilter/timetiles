@@ -57,7 +57,6 @@ const createRequest = () =>
     headers: new Headers({ Authorization: `Bearer ${TEST_CREDENTIALS.bearer.token}` }),
   });
 
-// oxlint-disable-next-line promise/prefer-await-to-then
 const createParams = (id: string) => ({ params: Promise.resolve({ id }) });
 
 describe("POST /api/scrapers/[id]/run", () => {

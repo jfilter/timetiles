@@ -104,7 +104,6 @@ const exposeMapForLocalDiagnostics = (map: MapRef): void => {
 // Main component
 // ---------------------------------------------------------------------------
 
-/* oxlint-disable complexity */
 export const ClusteredMap = ({
   onBoundsChange,
   onEventClick,

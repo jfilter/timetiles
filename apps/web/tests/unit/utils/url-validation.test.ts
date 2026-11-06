@@ -348,7 +348,7 @@ describe("validateResolvedPublicHostname", () => {
     await expect(validateResolvedPublicHostname("evil.example")).rejects.toThrow(
       'SSRF blocked: hostname "evil.example" resolves to private IP 127.0.0.1'
     );
-    expect(mockDnsLookup).toHaveBeenCalledWith("evil.example", { all: true, verbatim: true });
+    expect(mockDnsLookup).toHaveBeenCalledWith("evil.example", { all: true, order: "verbatim" });
   });
 
   it("allows when all resolved addresses are public", async () => {

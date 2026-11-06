@@ -28,7 +28,6 @@ const { mockPayload } = mocks;
 const createRequest = () =>
   new Request("http://localhost/api/users/verify/abc123", { method: "POST" }) as unknown as NextRequest;
 
-// oxlint-disable-next-line promise/prefer-await-to-then
 const createContext = (token: string) => ({ params: Promise.resolve({ token }) });
 
 beforeEach(() => {

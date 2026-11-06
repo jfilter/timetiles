@@ -3,7 +3,6 @@
  *
  * @module
  */
-/* oxlint-disable prefer-await-to-then -- mock Response.json() returns Promise.resolve/reject by design */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { fetchJson, HttpError } from "@/lib/api/http-error";

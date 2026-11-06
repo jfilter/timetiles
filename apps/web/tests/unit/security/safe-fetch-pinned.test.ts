@@ -31,7 +31,6 @@ describe("fetchWithDispatcher pinned-agent pairing", () => {
 
     const pinnedAgent = new Agent({
       connect: {
-        // oxlint-disable-next-line no-explicit-any -- mirrors buildPinnedDispatcher's callback shape
         lookup: ((_host: string, _opts: unknown, cb: any) => cb(null, [{ address: "127.0.0.1", family: 4 }])) as never,
       },
     });

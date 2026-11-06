@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { cn } from "@timetiles/ui/lib/utils";
 import { ArrowLeft, ArrowRight, CalendarIcon, ClockIcon, GlobeIcon, KeyIcon, RepeatIcon } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import { humanizeFileName } from "@/lib/ingest/humanize-file-name";
 import type { UrlAuthConfig } from "@/lib/ingest/types/wizard";
@@ -70,9 +70,10 @@ export const StepSchedule = ({ className }: Readonly<StepScheduleProps>) => {
   // formatDateShort with the viewer's locale, not a bare toLocaleDateString(): that reads the
   // runtime's locale, which differs between the SSR pass and the browser and mismatches on hydration.
   const fileName = file?.name;
+  const [today] = useState(() => new Date());
   const defaultScheduleName = useMemo(
-    () => (fileName ? `${humanizeFileName(fileName)} - ${formatDateShort(new Date(), locale)}` : ""),
-    [fileName, locale]
+    () => (fileName ? `${humanizeFileName(fileName)} - ${formatDateShort(today, locale)}` : ""),
+    [fileName, locale, today]
   );
 
   const activeConfig = useMemo(

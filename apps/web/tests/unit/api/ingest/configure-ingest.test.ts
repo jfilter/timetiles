@@ -183,9 +183,7 @@ describe("POST /api/ingest/configure", () => {
 
     mocks.mockPayload.auth.mockResolvedValue({ user: mockUser });
 
-    let createId = 100;
-    // oxlint-disable-next-line promise/prefer-await-to-then
-    mocks.mockPayload.create.mockResolvedValue({ id: createId++ });
+    mocks.mockPayload.create.mockResolvedValue({ id: 100 });
     mocks.mockPayload.update.mockResolvedValue({ id: 1 });
 
     // Default: catalog ownership check passes
