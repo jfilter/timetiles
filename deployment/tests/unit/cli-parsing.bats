@@ -587,7 +587,13 @@ printf '%s\n' "$*" >> "$TEST_TEMP_DIR/git-calls"
 exit 0
 EOF
     printf '#!/bin/bash\nexit 0\n' > "$TEST_TEMP_DIR/bin/docker"
-    printf '#!/bin/bash\necho "unexpected network call: curl $*" >&2\nexit 1\n' > "$TEST_TEMP_DIR/bin/curl"
+    # The web health check after the deploy is the one call allowed; it answers healthy.
+    cat > "$TEST_TEMP_DIR/bin/curl" << 'EOF'
+#!/bin/bash
+[[ " $* " == *" http://localhost/api/health "* ]] && exit 0
+echo "unexpected network call: curl $*" >&2
+exit 1
+EOF
     chmod +x "$TEST_TEMP_DIR/bin/"*
     export PATH="$TEST_TEMP_DIR/bin:$PATH"
     unset TIMETILES_REPO_BRANCH
@@ -623,4 +629,16 @@ EOF
 
     [ "$status" -eq 1 ]
     [[ "$output" == *".env.production"* ]] || [[ "$output" == *"not found"* ]]
+}
+
+@test "setup generates the payload secret and the backup password" {
+    rm "$TEST_TEMP_DIR/deployment/.env.production"
+    cp "$DEPLOY_DIR/.env.production.example" "$TEST_TEMP_DIR/deployment/.env.production.example"
+
+    run "$TEST_CLI" setup
+    [ "$status" -eq 0 ]
+
+    local env_file="$TEST_TEMP_DIR/deployment/.env.production"
+    grep -Eq '^PAYLOAD_SECRET=[A-Za-z0-9]{20,}$' "$env_file"
+    grep -Eq '^RESTIC_PASSWORD=[A-Za-z0-9]{20,}$' "$env_file"
 }

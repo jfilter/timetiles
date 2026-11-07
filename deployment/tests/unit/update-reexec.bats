@@ -28,7 +28,9 @@ echo "docker $*" >> "$CALLS"
 if [[ "$1" == "inspect" ]]; then echo "DATADIR=/var/lib/postgresql/data"; fi
 exit 0
 EOF
-    chmod +x "$TEST_TEMP_DIR/bin/git" "$TEST_TEMP_DIR/bin/docker"
+    # The web health check after the deploy answers at once.
+    printf '#!/bin/sh\nexit 0\n' > "$TEST_TEMP_DIR/bin/curl"
+    chmod +x "$TEST_TEMP_DIR/bin/git" "$TEST_TEMP_DIR/bin/docker" "$TEST_TEMP_DIR/bin/curl"
     PATH="$TEST_TEMP_DIR/bin:$PATH"
     unset TIMETILES_UPDATE_PULLED
 }

@@ -78,9 +78,12 @@ APP_USER="timetiles"
 # Defaults to LETSENCRYPT_EMAIL if not set
 # ALERT_EMAIL=""
 
-# SMTP settings for email alerts (optional - alerts logged to file if not set)
+# SMTP for the app (signup, password reset) and for alerts. Without a host the
+# app runs with EMAIL_DISABLED=true and alerts are only logged to a file.
 # EMAIL_SMTP_HOST="smtp.example.com"
 # EMAIL_SMTP_PORT="587"
+# EMAIL_SMTP_USER=""
+# EMAIL_SMTP_PASS=""
 # EMAIL_FROM="noreply@example.com"
 
 # ============================================================================
@@ -91,6 +94,8 @@ APP_USER="timetiles"
 # SKIP_SSL="false"
 
 # Skip firewall setup (useful if managed externally)
+# With scrapers enabled, step 13 refuses to run without an active ufw unless this
+# is "true"; your own firewall must then keep the app user off private addresses.
 # SKIP_FIREWALL="false"
 
 # Skip SSH hardening (useful if managed externally)

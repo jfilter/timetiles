@@ -60,7 +60,14 @@ run_step() {
         mv "$src_dir" "${src_dir}.old"
         # Carry the operator's state into the new tree BEFORE the swap — the
         # .old dir is rm -rf'd at the end of this step.
-        preserve_operator_state "${src_dir}.old" "$new_dir"
+        local preserved=0
+        preserve_operator_state "${src_dir}.old" "$new_dir" || preserved=$?
+        if [[ $preserved -eq 2 ]]; then
+            die "Operator state is split between ${src_dir}.old and $new_dir. Move it back into ${src_dir}.old and rename that to $src_dir before rerunning, which deletes $new_dir"
+        elif [[ $preserved -ne 0 ]]; then
+            mv "${src_dir}.old" "$src_dir" || die "Could not restore $src_dir from ${src_dir}.old"
+            die "Could not carry operator state into the new checkout; $src_dir is unchanged"
+        fi
     fi
     mv "$new_dir" "$src_dir"
 
@@ -119,6 +126,8 @@ sparse_checkout_patterns() {
 #
 # The re-clone `rm -rf`s the old tree at the end of this step, which is what
 # `bootstrap.sh --force` runs, so everything above must be carried over first.
+# On a failed move, what was already moved goes back and the function returns 1,
+# or 2 when moving back failed too and the state is split across both trees.
 #
 # The list comes from git rather than being hardcoded, so it tracks .gitignore
 # as that evolves and correctly spans BOTH ignore files that matter here — the
@@ -128,6 +137,7 @@ preserve_operator_state() {
     local old_dir="$1"
     local new_dir="$2"
     local rel
+    local moved=()
 
     [[ -d "$old_dir" ]] || return 0
 
@@ -141,11 +151,32 @@ preserve_operator_state() {
 
         mkdir -p "$(dirname "$new_dir/$rel")"
         if mv "$old_dir/$rel" "$new_dir/$rel"; then
+            moved+=("$rel")
             print_info "Preserved $rel"
         else
-            print_warning "Could not preserve $rel — a copy remains in $old_dir"
+            print_error "Could not preserve $rel"
+            return_operator_state "$old_dir" "$new_dir" "${moved[@]}" || return 2
+            return 1
         fi
     done < <(list_operator_paths "$old_dir")
+}
+
+# Move already-preserved paths back into the old tree, newest first.
+# Usage: return_operator_state <old_dir> <new_dir> [rel...]
+return_operator_state() {
+    local old_dir="$1"
+    local new_dir="$2"
+    shift 2
+    local i rel failed=0
+
+    for ((i = $#; i > 0; i--)); do
+        rel="${!i}"
+        if ! mv "$new_dir/$rel" "$old_dir/$rel"; then
+            print_error "Could not move $rel back; it is in $new_dir/$rel"
+            failed=1
+        fi
+    done
+    return "$failed"
 }
 
 # Enumerate the gitignored (operator-owned) paths of a tree, repo-relative.

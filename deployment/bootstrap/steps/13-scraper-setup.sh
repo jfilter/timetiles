@@ -36,6 +36,15 @@ SCRAPER_IMAGE_STORE_SUBDIR=".local/share/containers"
 # starting at all.
 SCRAPER_WORK_DIR="/tmp/timescrape"
 
+# Per-run checkouts and the containers' /output binds, on a size-capped tmpfs: a
+# bind mount has no quota, so this cap is what keeps a scraper off the host disk.
+SCRAPER_RUNS_DIR="$SCRAPER_WORK_DIR/runs"
+# The systemd-escaped form of SCRAPER_RUNS_DIR, which a mount unit's name must be.
+SCRAPER_RUNS_MOUNT_UNIT="tmp-timescrape-runs.mount"
+# Default runner limits need about 3 runs x (50 MB pack + 50 MB checkout + 50 MB output);
+# raise it with SCRAPER_MAX_CONCURRENT or the size limits. Unwritten space costs no memory.
+SCRAPER_RUNS_TMPFS_SIZE="1G"
+
 run_step() {
     if [[ "${SKIP_SCRAPER:-true}" == "true" ]]; then
         print_skip "Scraper setup skipped (SKIP_SCRAPER=true)"
@@ -138,6 +147,15 @@ EOF
     systemd-tmpfiles --create /etc/tmpfiles.d/timetiles-scraper.conf
     print_info "Created scraper work directory"
 
+    # Mounted before ensure_podman_run_root starts podman's pause process, so its
+    # namespace sees the tmpfs. reload remounts an active unit with the new options.
+    runs_mount_unit "$user" > "/etc/systemd/system/$SCRAPER_RUNS_MOUNT_UNIT"
+    systemctl daemon-reload
+    if ! systemctl enable "$SCRAPER_RUNS_MOUNT_UNIT" || ! systemctl reload-or-restart "$SCRAPER_RUNS_MOUNT_UNIT"; then
+        die "Could not mount the scraper run area at $SCRAPER_RUNS_DIR"
+    fi
+    print_info "Mounted $SCRAPER_RUNS_TMPFS_SIZE tmpfs for scraper runs at $SCRAPER_RUNS_DIR"
+
     # The image store is a plain directory under the user's home, but it has to
     # exist before the unit starts: it is a ReadWritePath without a leading dash,
     # so systemd refuses to start the service if it is missing. Podman would
@@ -153,6 +171,25 @@ EOF
 
     ensure_podman_run_root "$user"
     print_success "Rootless Podman configured for $user"
+}
+
+# The size-capped tmpfs for SCRAPER_RUNS_DIR as a mount unit. Usage: runs_mount_unit <user>
+runs_mount_unit() {
+    local user="$1"
+
+    cat << EOF
+[Unit]
+Description=TimeScrape run work area (size-capped)
+
+[Mount]
+What=tmpfs
+Where=$SCRAPER_RUNS_DIR
+Type=tmpfs
+Options=size=$SCRAPER_RUNS_TMPFS_SIZE,mode=0700,uid=$(id -u "$user"),gid=$(id -g "$user"),nosuid,nodev
+
+[Install]
+WantedBy=multi-user.target
+EOF
 }
 
 # The app user's containers.conf. Usage: podman_containers_conf <install_dir>
@@ -246,16 +283,32 @@ create_sandbox_network() {
     apply_sandbox_egress_rules "$user"
 }
 
+# Whether ufw is installed and enforcing. LC_ALL=C because ufw translates its status line.
+ufw_is_active() {
+    local status
+    command -v ufw &>/dev/null || return 1
+    status="$(LC_ALL=C ufw status 2>/dev/null)" || return 1
+    [[ "${status%%$'\n'*}" == "Status: active" ]]
+}
+
 # Rootless containers reach the host as slirp4netns sockets owned by the app
 # user, crossing OUTPUT and never FORWARD, so the fence matches that uid.
 apply_sandbox_egress_rules() {
     local user="$1"
     local uid destination
 
-    if ! command -v ufw &>/dev/null; then
-        print_warning "ufw not installed — scraper egress is UNFILTERED"
-        print_warning "  A scraper can reach every host the server can reach"
-        return 0
+    # SKIP_FIREWALL=true is the operator's statement that the host firewall is managed
+    # elsewhere; without it, scrapers must not start on an unfenced host.
+    if ! ufw_is_active; then
+        if [[ "${SKIP_FIREWALL:-false}" == "true" ]]; then
+            print_warning "ufw is not active and SKIP_FIREWALL=true: scraper egress is not filtered here"
+            print_warning "  Block uid $(id -u "$user") from private and link-local destinations in your own firewall"
+            return 0
+        fi
+        print_error "ufw is not installed or not active, so scraper egress cannot be fenced"
+        print_info "Without the fence a scraper can reach every host the server can reach."
+        print_info "Run step 03-firewall, or set SKIP_FIREWALL=true if the firewall is managed externally."
+        die "Scraper egress firewall unavailable"
     fi
 
     print_step "Restricting scraper egress to public destinations..."
@@ -285,7 +338,6 @@ apply_sandbox_egress_rules() {
     done
     ufw route delete allow from "$SCRAPER_SANDBOX_SUBNET" >/dev/null
 
-    # ufw loads before.rules at boot; while inactive, reload is a no-op.
     ufw reload >/dev/null || die "ufw rejected the scraper egress rules"
 
     print_success "Scraper egress restricted (public destinations only)"
@@ -459,11 +511,7 @@ enable_scraper_url() {
     # This was deferred from step 06 to avoid the web app health check
     # returning 503 during step 07 (before the runner is installed).
     local runner_url="http://host.docker.internal:${SCRAPER_RUNNER_PORT}"
-    if grep -q "^SCRAPER_RUNNER_URL=" "$env_file" 2>/dev/null; then
-        sed -i "s|^SCRAPER_RUNNER_URL=.*|SCRAPER_RUNNER_URL=$runner_url|" "$env_file"
-    else
-        echo "SCRAPER_RUNNER_URL=$runner_url" >> "$env_file"
-    fi
+    env_set "$env_file" SCRAPER_RUNNER_URL "$runner_url"
 
     # Restart the whole stack so the new env var reaches every service:
     # worker-ingest is the process that actually calls the runner (the
@@ -509,6 +557,10 @@ Documentation=https://github.com/jfilter/timetiles/blob/main/apps/timescrape/doc
 # and the unit fails to start — loudly, which is the point.
 After=network-online.target timetiles.service user@$(id -u "$user").service
 Wants=network-online.target user@$(id -u "$user").service
+# Named rather than RequiresMountsFor=, which a missing mount unit satisfies silently;
+# without the capped tmpfs, run output would land on the host disk with no limit.
+Requires=$SCRAPER_RUNS_MOUNT_UNIT
+After=$SCRAPER_RUNS_MOUNT_UNIT
 
 [Service]
 Type=simple

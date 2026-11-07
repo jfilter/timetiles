@@ -35,7 +35,9 @@ After installation, the bootstrap places a real git working tree at
 scraper is enabled) and points
 `/opt/timetiles` at it via a symlink. `timetiles update` then refreshes
 tracked files with a plain `git pull`; operator state is `.gitignore`d
-inside `deployment/` so it survives the pull.
+inside `deployment/` so it survives the pull. It then waits for the web health
+check and exits non-zero if the new release never becomes healthy; roll back by
+setting `TIMETILES_VERSION` to the previous release and running `timetiles update` again.
 
 ```
 /opt/timetiles-src/                    # Real git working tree
@@ -175,8 +177,8 @@ During bootstrap, pass `--scraper` or set `SKIP_SCRAPER=false` in your bootstrap
 
 1. Installs Podman (rootless)
 2. Builds base images (`timescrape-python`, `timescrape-node`)
-3. Creates the `scraper-sandbox` network and fences the Podman user off from private addresses (public internet only)
-4. Installs the runner as a systemd service
+3. Creates the `scraper-sandbox` network and fences the Podman user off from private addresses (public internet only). Without an active ufw the step fails, unless `SKIP_FIREWALL=true` says the firewall is managed externally
+4. Mounts a size-capped tmpfs at `/tmp/timescrape/runs` for checkouts and run output, and installs the runner as a systemd service that requires it
 5. Generates and configures `SCRAPER_API_KEY`
 
 For manual setup, see `apps/timescrape/docs/SETUP.md`.

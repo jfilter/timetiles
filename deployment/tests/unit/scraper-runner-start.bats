@@ -57,3 +57,29 @@ teardown() {
     done
     [ "$covered" = true ]
 }
+
+@test "the runner unit needs the capped run area under its data dir" {
+    run env PATH="$TEST_TEMP_DIR/bin:$PATH" bash -c \
+        'source "$1/lib/common.sh"; source "$2"; runner_unit /opt/timetiles timetiles; runs_mount_unit timetiles' \
+        _ "$BOOTSTRAP_DIR" "$STEP13"
+    [ "$status" -eq 0 ]
+    data_dir=$(sed -n 's/^Environment=SCRAPER_DATA_DIR=//p' <<< "$output")
+    [ "$(sed -n 's/^Where=//p' <<< "$output")" = "$data_dir/runs" ]
+    grep -qx 'Requires=tmp-timescrape-runs.mount' <<< "$output"
+    grep -qx 'After=tmp-timescrape-runs.mount' <<< "$output"
+}
+
+@test "the run area is a size-capped tmpfs owned by the app user" {
+    run env PATH="$TEST_TEMP_DIR/bin:$PATH" bash -c \
+        'source "$1/lib/common.sh"; source "$2"; runs_mount_unit timetiles; echo "UNIT=$SCRAPER_RUNS_MOUNT_UNIT"' \
+        _ "$BOOTSTRAP_DIR" "$STEP13"
+    [ "$status" -eq 0 ]
+    where=$(sed -n 's/^Where=//p' <<< "$output")
+    [ "$where" = /tmp/timescrape/runs ]
+    [ "$(sed -n 's/^Type=//p' <<< "$output")" = tmpfs ]
+    [[ ",$(sed -n 's/^Options=//p' <<< "$output")," =~ ,size=[0-9]+[KMG]?, ]]
+    [[ "$(sed -n 's/^Options=//p' <<< "$output")" == *",uid=1000,gid=1000,"* ]]
+    # systemd only accepts a mount unit named after its escaped Where= path.
+    escaped="${where#/}"
+    [ "$(sed -n 's/^UNIT=//p' <<< "$output")" = "${escaped//\//-}.mount" ]
+}

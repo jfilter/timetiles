@@ -13,10 +13,12 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { RunnerError } from "../src/lib/errors.js";
+import { resolvePublicGitTarget } from "../src/lib/ssrf-guard.js";
 import type { RunRequest } from "../src/types.js";
+import { startGitHttpServer } from "./helpers/git-http-server.js";
 
 // Clones run real git against loopback servers, which the SSRF guard would refuse.
-vi.mock("../src/lib/ssrf-guard.js", () => ({ assertGitTargetIsPublic: vi.fn().mockResolvedValue(undefined) }));
+vi.mock("../src/lib/ssrf-guard.js", () => ({ resolvePublicGitTarget: vi.fn().mockResolvedValue(["127.0.0.1"]) }));
 
 vi.mock("../src/lib/logger.js", () => ({ logger: { info: vi.fn(), error: vi.fn() } }));
 
@@ -52,6 +54,52 @@ describe("prepareCode", () => {
       await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
       return { server, url: `http://127.0.0.1:${(server.address() as AddressInfo).port}` };
     };
+
+    // The fixture listens on 127.0.0.1 only, while the URL names localhost.
+    const cloneViaLocalhost = async (vetted: string[]) => {
+      const server = await startGitHttpServer({ "main.py": "pass\n" });
+      vi.mocked(resolvePublicGitTarget).mockResolvedValueOnce(vetted);
+      const { prepareCode } = await import("../src/services/code-prep.js");
+      const request: RunRequest = {
+        run_id: "pin",
+        runtime: "python",
+        entrypoint: "main.py",
+        code_url: `http://localhost:${server.port}/r.git`,
+      };
+      try {
+        return { result: await prepareCode(request, codeDir).catch((error: unknown) => error), hits: server.hits() };
+      } finally {
+        await server.close();
+      }
+    };
+
+    it("clones through the vetted address while the URL keeps its hostname", async () => {
+      const { result, hits } = await cloneViaLocalhost(["127.0.0.1"]);
+
+      expect(result).toBeUndefined();
+      expect(hits).toBeGreaterThan(0);
+      expect(readFileSync(join(codeDir, "main.py"), "utf-8")).toBe("pass\n");
+    });
+
+    it("never connects to an address the guard did not vet, even if the name resolves to one", async () => {
+      const { result, hits } = await cloneViaLocalhost(["::1"]);
+
+      expect(result).toMatchObject({ code: "GIT_CLONE_FAILED" });
+      expect(hits).toBe(0);
+    });
+
+    it("keeps the pin when NO_PROXY exempts every host", async () => {
+      vi.stubEnv("NO_PROXY", "*");
+      vi.stubEnv("no_proxy", "*");
+      try {
+        const { result, hits } = await cloneViaLocalhost(["::1"]);
+
+        expect(result).toMatchObject({ code: "GIT_CLONE_FAILED" });
+        expect(hits).toBe(0);
+      } finally {
+        vi.unstubAllEnvs();
+      }
+    });
 
     it("refuses an HTTP redirect so git never reaches a host the SSRF guard did not inspect", async () => {
       let internalHits = 0;

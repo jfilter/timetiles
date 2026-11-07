@@ -55,31 +55,35 @@ run_step() {
         fi
     fi
 
-    # Create .env.production from template
-    print_step "Creating .env.production..."
-    cp "$env_template" "$env_file"
+    # The template only seeds a new file. An existing one holds operator settings
+    # (pinned version, paths, offsite backup) that only the keys below may change.
+    if [[ -f "$env_file" ]]; then
+        print_step "Updating existing .env.production..."
+    else
+        print_step "Creating .env.production..."
+        cp "$env_template" "$env_file"
+    fi
 
-    # Substitute values using sed with | as delimiter (to handle URLs)
     print_step "Configuring values..."
 
     # Required values
-    sed -i "s|DOMAIN_NAME=.*|DOMAIN_NAME=$DOMAIN_NAME|" "$env_file"
-    sed -i "s|DB_PASSWORD=.*|DB_PASSWORD=$DB_PASSWORD|" "$env_file"
-    sed -i "s|PAYLOAD_SECRET=.*|PAYLOAD_SECRET=$PAYLOAD_SECRET|" "$env_file"
-    sed -i "s|LETSENCRYPT_EMAIL=.*|LETSENCRYPT_EMAIL=$LETSENCRYPT_EMAIL|" "$env_file"
+    env_set "$env_file" DOMAIN_NAME "$DOMAIN_NAME"
+    env_set "$env_file" DB_PASSWORD "$DB_PASSWORD"
+    env_set "$env_file" PAYLOAD_SECRET "$PAYLOAD_SECRET"
+    env_set "$env_file" LETSENCRYPT_EMAIL "$LETSENCRYPT_EMAIL"
 
     # Backup configuration
-    sed -i "s|RESTIC_PASSWORD=.*|RESTIC_PASSWORD=$RESTIC_PASSWORD|" "$env_file"
+    env_set "$env_file" RESTIC_PASSWORD "$RESTIC_PASSWORD"
 
     # Set NEXT_PUBLIC_PAYLOAD_URL (derived from domain)
-    sed -i "s|NEXT_PUBLIC_PAYLOAD_URL=.*|NEXT_PUBLIC_PAYLOAD_URL=https://$DOMAIN_NAME|" "$env_file"
+    env_set "$env_file" NEXT_PUBLIC_PAYLOAD_URL "https://$DOMAIN_NAME"
 
     # Point the container's /app/apps/web/config mount at the cloned source
     # repo's apps/web/config dir, so bundled data-package manifests refresh
     # on every `git pull`. The path is resolved relative to the compose file.
     #
-    # This is also the template's default, so the sed is normally a no-op; it
-    # also corrects an .env.production carried over with "./config".
+    # This is also the template's default; setting it corrects an .env.production
+    # carried over with "./config" or written before the key existed.
     #
     # It must NOT be "./config" (deployment/config): the single mount also
     # carries data-packages/ and
@@ -93,15 +97,17 @@ run_step() {
     # deployment/config/. A file left at the latter is never mounted, and
     # getAppConfig() reads a missing file as "no overrides" — so every rate
     # limit, quota and batch size stays at its default without logging a thing.
-    sed -i "s|^CONFIG_DIR=.*|CONFIG_DIR=../apps/web/config|" "$env_file"
+    env_set "$env_file" CONFIG_DIR ../apps/web/config
+
+    configure_email "$env_file"
 
     # Pre-configure scraper API key (if enabled). SCRAPER_RUNNER_URL is set later
     # by step 13 after the runner is installed, so the health check doesn't fail
     # during step 07 when the runner isn't running yet.
     if [[ "${SKIP_SCRAPER:-true}" != "true" ]]; then
         print_step "Configuring scraper API key..."
-        sed -i "s|# SCRAPER_API_KEY=.*|SCRAPER_API_KEY=$SCRAPER_API_KEY|" "$env_file"
-        sed -i "s|# SCRAPER_PORT=.*|SCRAPER_PORT=4000|" "$env_file"
+        env_set "$env_file" SCRAPER_API_KEY "$SCRAPER_API_KEY"
+        env_set "$env_file" SCRAPER_PORT 4000
     fi
 
     # Set secure file permissions
@@ -120,6 +126,28 @@ run_step() {
     create_credentials_file
 
     print_success "Environment configured"
+}
+
+# The app refuses to start without SMTP unless EMAIL_DISABLED=true, and with both set.
+# A host the operator added to .env.production by hand is kept and turns mail back on.
+configure_email() {
+    local env_file="$1" key
+
+    if [[ -n "${EMAIL_SMTP_HOST:-}" ]]; then
+        for key in EMAIL_SMTP_HOST EMAIL_SMTP_PORT EMAIL_SMTP_USER EMAIL_SMTP_PASS EMAIL_FROM; do
+            if [[ -n "${!key:-}" ]]; then
+                env_set "$env_file" "$key" "${!key}"
+            fi
+        done
+    fi
+
+    if [[ -n "$(env_get "$env_file" EMAIL_SMTP_HOST || true)" ]]; then
+        env_set "$env_file" EMAIL_DISABLED false
+    else
+        env_set "$env_file" EMAIL_DISABLED true
+        print_warning "No EMAIL_SMTP_HOST configured - outgoing mail is disabled (EMAIL_DISABLED=true)"
+        print_info "Signup, password reset and email change stay unavailable until SMTP is set"
+    fi
 }
 
 # Read a secret back out of an existing .env.production.

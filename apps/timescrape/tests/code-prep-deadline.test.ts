@@ -18,7 +18,7 @@ vi.mock("@timetiles/shared", async (importOriginal) => ({
   ...(await importOriginal<Record<string, unknown>>()),
   SCRAPER_CLONE_DEADLINE_SECONDS: 1,
 }));
-vi.mock("../src/lib/ssrf-guard.js", () => ({ assertGitTargetIsPublic: vi.fn().mockResolvedValue(undefined) }));
+vi.mock("../src/lib/ssrf-guard.js", () => ({ resolvePublicGitTarget: vi.fn().mockResolvedValue(["127.0.0.1"]) }));
 vi.mock("../src/lib/logger.js", () => ({ logger: { info: vi.fn(), error: vi.fn() } }));
 vi.mock("../src/config.js", () => ({
   getConfig: () => ({ SCRAPER_MAX_REPO_SIZE_MB: 50, SCRAPER_GIT_CLONE_TIMEOUT: 60_000 }),

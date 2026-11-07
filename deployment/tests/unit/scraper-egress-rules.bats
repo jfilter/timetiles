@@ -72,3 +72,50 @@ write_block() {
     run grep -c 'timetiles scraper egress' "$RULES_FILE"
     [ "$output" -eq 0 ]
 }
+
+# apply_sandbox_egress_rules with ufw stubbed (or absent) and the rules writer recorded.
+# PATH leaves out /usr/sbin, where a host's real ufw lives.
+apply_rules() {
+    run env PATH="$TEST_TEMP_DIR/bin:/usr/bin:/bin" SKIP_FIREWALL="${SKIP_FIREWALL:-}" bash -c '
+        source "$1/lib/common.sh"; source "$2"
+        write_ufw_block() { echo "write_ufw_block $1"; }
+        apply_sandbox_egress_rules "$(id -un)"' _ "$BOOTSTRAP_DIR" "$STEP13"
+}
+
+stub_ufw() {
+    mkdir -p "$TEST_TEMP_DIR/bin"
+    printf '#!/bin/sh\n[ "$1" = status ] && echo "Status: %s"\nexit 0\n' "$1" > "$TEST_TEMP_DIR/bin/ufw"
+    chmod +x "$TEST_TEMP_DIR/bin/ufw"
+}
+
+@test "an active ufw gets the egress rules without a warning" {
+    stub_ufw active
+
+    apply_rules
+    [ "$status" -eq 0 ]
+    assert_contains "$output" "write_ufw_block /etc/ufw/before.rules"
+    assert_contains "$output" "write_ufw_block /etc/ufw/before6.rules"
+    assert_not_contains "$output" "⚠"
+}
+
+@test "scraper setup fails when ufw is not installed" {
+    apply_rules
+    [ "$status" -ne 0 ]
+    assert_contains "$output" "Scraper egress firewall unavailable"
+    assert_contains "$output" "SKIP_FIREWALL=true"
+    assert_not_contains "$output" "write_ufw_block"
+}
+
+@test "scraper setup fails when ufw is installed but inactive" {
+    stub_ufw inactive
+
+    apply_rules
+    [ "$status" -ne 0 ]
+    assert_contains "$output" "Scraper egress firewall unavailable"
+}
+
+@test "SKIP_FIREWALL=true lets setup continue without ufw, with a warning" {
+    SKIP_FIREWALL=true apply_rules
+    [ "$status" -eq 0 ]
+    assert_contains "$output" "scraper egress is not filtered here"
+}

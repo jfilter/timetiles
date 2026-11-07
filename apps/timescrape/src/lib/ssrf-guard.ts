@@ -5,9 +5,9 @@
  * runner clones, a malicious DNS record could have been rebound to point an
  * otherwise-public hostname at an internal address (the DNS-rebinding window).
  * Before cloning we re-resolve the host and reject any answer that lands in a
- * private/loopback/link-local/carrier-grade-NAT/metadata range. This is
- * defence-in-depth on top of the trust-level-3 gate and the container network
- * isolation; the clone itself runs over the host network, so the check matters.
+ * private/loopback/link-local/carrier-grade-NAT/metadata range. The vetted
+ * addresses are returned so the clone can be pinned to them (see
+ * git-egress-proxy.ts); the clone itself runs over the host network.
  *
  * The IP-range classification comes from @timetiles/shared, so web and
  * timescrape cannot drift apart on it.
@@ -25,14 +25,14 @@ import { RunnerError } from "./errors.js";
 
 /**
  * Resolve a git URL's host and reject it when any answer is a private/internal
- * address. Throws a {@link RunnerError} on a blocked target, and on a failed
- * DNS lookup: git resolves again on its own, so an unchecked host is never cloned.
+ * address. A failed DNS lookup is refused too, so an unchecked host is never cloned.
  *
  * @param gitUrl - The clone URL (without the optional `#branch` fragment).
+ * @returns The vetted addresses, in resolver order; the only ones the clone may connect to.
  * @throws {RunnerError} when the host resolves to a private/internal IP, cannot be
  *   resolved, or the URL is not a parseable http(s) URL.
  */
-export const assertGitTargetIsPublic = async (gitUrl: string): Promise<void> => {
+export const resolvePublicGitTarget = async (gitUrl: string): Promise<string[]> => {
   let parsed: URL;
   try {
     parsed = new URL(gitUrl);
@@ -50,7 +50,7 @@ export const assertGitTargetIsPublic = async (gitUrl: string): Promise<void> => 
   const literal = hostname.replace(/^\[(.*)\]$/, "$1");
   if (isIP(literal) !== 0) {
     assertAddressIsPublic(hostname, literal);
-    return;
+    return [literal];
   }
 
   let resolved: Array<{ address: string; family: number }>;
@@ -65,6 +65,7 @@ export const assertGitTargetIsPublic = async (gitUrl: string): Promise<void> => 
   for (const entry of resolved) {
     assertAddressIsPublic(hostname, entry.address);
   }
+  return resolved.map((entry) => entry.address);
 };
 
 const assertAddressIsPublic = (hostname: string, address: string): void => {

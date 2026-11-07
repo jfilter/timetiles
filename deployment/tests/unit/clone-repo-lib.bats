@@ -148,3 +148,72 @@ run_ensure_symlink() {
     [[ "$output" == *$'packages/scraper/\n'* ]]
     [[ "$output" == *'packages/typescript-config/'* ]]
 }
+
+# =============================================================================
+# preserve_operator_state / run_step re-clone
+# =============================================================================
+
+# A repo whose deployment/ carries the files step 05 verifies and ignores operator state.
+make_origin() {
+    local origin="$TEST_TEMP_DIR/origin"
+    mkdir -p "$origin/deployment"
+    touch "$origin/deployment/timetiles" "$origin/deployment/docker-compose.prod.yml" \
+        "$origin/deployment/.env.production.example"
+    printf '.env.production\nuploads/\n' > "$origin/deployment/.gitignore"
+    git -C "$origin" init -q -b main
+    git -C "$origin" add -A
+    git -C "$origin" -c user.name=t -c user.email=t@example.org commit -q -m fixture
+    echo "file://$origin"
+}
+
+# mv that fails for a source path ending in $FAIL_MV, otherwise the real one.
+stub_failing_mv() {
+    local real_mv
+    real_mv="$(command -v mv)"
+    mkdir -p "$TEST_TEMP_DIR/bin"
+    printf '#!/bin/bash\n[[ -n "$FAIL_MV" && "$1" == *"$FAIL_MV" ]] && { echo "mv: fixture failure" >&2; exit 1; }\nexec %q "$@"\n' \
+        "$real_mv" > "$TEST_TEMP_DIR/bin/mv"
+    chmod +x "$TEST_TEMP_DIR/bin/mv"
+}
+
+run_clone_step() {
+    run env PATH="$TEST_TEMP_DIR/bin:$PATH" REPO_URL="$1" INSTALL_DIR="$INSTALL_DIR" FAIL_MV="${FAIL_MV:-}" bash -c '
+        source "$1/lib/common.sh"; source "$1/steps/05-clone-repo.sh"
+        chown() { :; }; ensure_dir() { :; }
+        run_step' _ "$BOOTSTRAP_DIR"
+}
+
+@test "preserve_operator_state moves state back when a later move fails" {
+    stub_failing_mv
+    local old="$TEST_TEMP_DIR/old" new="$TEST_TEMP_DIR/new"
+    mkdir -p "$old/deployment/uploads" "$new/deployment"
+    echo env > "$old/deployment/.env.production"
+    echo upload > "$old/deployment/uploads/a.jpg"
+    list_operator_paths() { printf '%s\n' deployment/.env.production deployment/uploads; }
+
+    PATH="$TEST_TEMP_DIR/bin:$PATH" FAIL_MV=deployment/uploads run preserve_operator_state "$old" "$new"
+
+    [ "$status" -eq 1 ]
+    [ "$(cat "$old/deployment/.env.production")" = env ]
+    [ "$(cat "$old/deployment/uploads/a.jpg")" = upload ]
+    [ ! -e "$new/deployment/.env.production" ]
+}
+
+@test "a re-clone whose state move fails aborts and keeps the installed tree" {
+    local origin
+    origin="$(make_origin)"
+    stub_failing_mv
+    run_clone_step "$origin"
+    [ "$status" -eq 0 ]
+    echo secret > "$SRC_DIR/deployment/.env.production"
+    mkdir -p "$SRC_DIR/deployment/uploads"
+    echo upload > "$SRC_DIR/deployment/uploads/a.jpg"
+
+    FAIL_MV=deployment/uploads/a.jpg run_clone_step "$origin"
+
+    [ "$status" -ne 0 ]
+    assert_contains "$output" "Could not carry operator state into the new checkout"
+    [ "$(cat "$SRC_DIR/deployment/.env.production")" = secret ]
+    [ "$(cat "$SRC_DIR/deployment/uploads/a.jpg")" = upload ]
+    [ ! -e "$SRC_DIR.old" ]
+}

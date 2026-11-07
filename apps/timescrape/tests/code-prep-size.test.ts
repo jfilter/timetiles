@@ -4,18 +4,18 @@
  * @module
  * @category Tests
  */
-import { mkdtempSync, rmSync } from "node:fs";
+import { randomBytes } from "node:crypto";
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-// git itself is replaced: no real git prints count-objects without a size-pack line.
-const countObjects = vi.hoisted(() => ({ stdout: "" }));
-vi.mock("simple-git", () => ({
-  simpleGit: () => ({ clone: vi.fn(), cwd: () => ({ raw: () => Promise.resolve(countObjects.stdout) }) }),
-}));
-vi.mock("../src/lib/ssrf-guard.js", () => ({ assertGitTargetIsPublic: vi.fn().mockResolvedValue(undefined) }));
+import type { GitHttpServer } from "./helpers/git-http-server.js";
+import { startGitHttpServer } from "./helpers/git-http-server.js";
+
+// Real git against a loopback server, which the SSRF guard would refuse.
+vi.mock("../src/lib/ssrf-guard.js", () => ({ resolvePublicGitTarget: vi.fn().mockResolvedValue(["127.0.0.1"]) }));
 vi.mock("../src/lib/logger.js", () => ({ logger: { info: vi.fn(), error: vi.fn() } }));
 vi.mock("../src/config.js", () => ({
   getConfig: () => ({ SCRAPER_MAX_REPO_SIZE_MB: 1, SCRAPER_GIT_CLONE_TIMEOUT: 60_000 }),
@@ -23,28 +23,52 @@ vi.mock("../src/config.js", () => ({
 
 const { prepareCode } = await import("../src/services/code-prep.js");
 
-describe("cloneRepo size check", () => {
+const MB = 1024 * 1024;
+
+describe("cloneRepo size limit", () => {
   let codeDir: string;
-  const clone = () =>
-    prepareCode({ run_id: "size", runtime: "python", entrypoint: "main.py", code_url: "https://x/r.git" }, codeDir);
+  let server: GitHttpServer | undefined;
+  const clone = (url: string) =>
+    prepareCode({ run_id: "size", runtime: "python", entrypoint: "main.py", code_url: url }, codeDir);
 
   beforeEach(() => {
     codeDir = mkdtempSync(join(tmpdir(), "code-prep-size-"));
   });
 
-  afterEach(() => {
+  afterEach(async () => {
+    const running = server;
+    server = undefined;
+    await running?.close();
     rmSync(codeDir, { recursive: true, force: true });
   });
 
-  it("rejects a repository over the size limit", async () => {
-    countObjects.stdout = "count: 0\nsize: 0\nin-pack: 9\npacks: 1\nsize-pack: 2048\n";
+  it("checks out a repository within the limit", async () => {
+    server = await startGitHttpServer({ "main.py": "print('hi')\n", "lib/util.py": "x = 1\n" });
 
-    await expect(clone()).rejects.toMatchObject({ code: "REPO_TOO_LARGE", statusCode: 413 });
+    await clone(server.url);
+
+    expect(readFileSync(join(codeDir, "main.py"), "utf-8")).toBe("print('hi')\n");
+    expect(readFileSync(join(codeDir, "lib/util.py"), "utf-8")).toBe("x = 1\n");
   });
 
-  it("refuses a clone whose size it cannot read instead of treating it as empty", async () => {
-    countObjects.stdout = "count: 0\nsize: 0\n";
+  it("cuts the transfer once the server sends more than the limit", async () => {
+    server = await startGitHttpServer({ "main.py": "pass\n", "blob.bin": randomBytes(3 * MB) });
 
-    await expect(clone()).rejects.toMatchObject({ code: "GIT_CLONE_FAILED" });
+    await expect(clone(server.url)).rejects.toMatchObject({
+      code: "REPO_TOO_LARGE",
+      statusCode: 413,
+      message: "Repository transfer exceeded the 1MB limit",
+    });
+  });
+
+  it("refuses a small pack that would check out larger than the limit, before writing it", async () => {
+    server = await startGitHttpServer({ "main.py": "pass\n", "zeros.bin": Buffer.alloc(3 * MB) });
+
+    await expect(clone(server.url)).rejects.toMatchObject({
+      code: "REPO_TOO_LARGE",
+      message: "Repository size (3.0MB) exceeds limit (1MB)",
+    });
+    expect(existsSync(join(codeDir, "zeros.bin"))).toBe(false);
+    expect(readdirSync(codeDir).filter((name) => name !== ".git")).toEqual([]);
   });
 });

@@ -151,6 +151,11 @@ Use systemd to keep it running. `deployment/bootstrap/steps/13-scraper-setup.sh`
 unit and is the reference for what the service needs (`XDG_RUNTIME_DIR`, `SCRAPER_DATA_DIR` inside the
 writable paths rootless Podman requires, and ordering after `user@$UID.service`).
 
+Put `$SCRAPER_DATA_DIR/runs` on a size-capped filesystem, as the bootstrap does with a tmpfs mount unit.
+Containers write their output through a bind mount there, and a bind mount has no quota of its own: the
+output watchdog samples every two seconds, so only the filesystem cap stops a fast writer from filling the
+host disk.
+
 Verify the service is running:
 
 ```bash

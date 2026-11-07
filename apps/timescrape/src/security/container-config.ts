@@ -105,16 +105,12 @@ export const buildPodmanArgs = (config: ContainerConfig): string[] => {
     // the runner creates the directory itself -- but running the runner under
     // a primary group it does not own would make the chown fail with EPERM.
     //
-    // SIZE: a bind mount carries no kernel-level quota, and podman's
-    // `--storage-opt size=` applies only to the container's own writable layer,
-    // never to a bind. A scraper can therefore write until the runner host's
-    // disk is full. SCRAPER_MAX_OUTPUT_SIZE_MB alone cannot prevent that: it is
-    // read in `collectOutput`, AFTER the container has exited and the bytes are
-    // already on disk. The runner enforces the cap while the run is in flight
-    // with the output watchdog in services/runner.ts, which kills the container
-    // on breach. The watchdog samples, so it bounds the write at roughly the
-    // cap rather than exactly; a hard bound needs SCRAPER_DATA_DIR to sit on a
-    // size-limited filesystem, which is a host-provisioning concern.
+    // SIZE: a bind mount carries no quota of its own, and podman's
+    // `--storage-opt size=` applies only to the container's writable layer. The
+    // hard bound is the filesystem under SCRAPER_DATA_DIR/runs: bootstrap step 13
+    // mounts a size-capped tmpfs there. SCRAPER_MAX_OUTPUT_SIZE_MB is enforced
+    // in flight by the sampling output watchdog in services/runner.ts and again
+    // in `collectOutput` after the container exits.
     `-v=${outputDir}:/output:rw,Z,U`,
 
     // Security hardening

@@ -236,6 +236,21 @@ env_get() {
     printf '%s' "$value"
 }
 
+# Set KEY=VALUE in an env file: rewrite every active assignment, else the first commented
+# "# KEY=" placeholder, else append. Rewrites in place, so mode and owner stay.
+env_set() {
+    local file="$1" key="$2" value="$3" updated
+    updated=$(ENV_KEY="$key" ENV_VALUE="$value" awk '
+        BEGIN { k = ENVIRON["ENV_KEY"]; line = k "=" ENVIRON["ENV_VALUE"] }
+        NR == FNR { if (index($0, k "=") == 1) active = 1; next }
+        index($0, k "=") == 1 { print line; done = 1; next }
+        !active && !done && index($0, "# " k "=") == 1 { print line; done = 1; next }
+        { print }
+        END { if (!done) print line }
+    ' "$file" "$file") || return
+    printf '%s\n' "$updated" > "$file"
+}
+
 # Rootless Podman wedges instead of failing without its runtime dir, which sudo drops:
 # pin XDG_RUNTIME_DIR to the runner unit's and cap every call. cwd /tmp stays readable.
 # Usage: podman_as <user> <timeout-seconds> <podman args...>

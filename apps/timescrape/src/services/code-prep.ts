@@ -14,8 +14,9 @@ import { simpleGit } from "simple-git";
 
 import { getConfig } from "../config.js";
 import { RunnerError } from "../lib/errors.js";
+import { startGitEgressProxy } from "../lib/git-egress-proxy.js";
 import { logger } from "../lib/logger.js";
-import { assertGitTargetIsPublic } from "../lib/ssrf-guard.js";
+import { resolvePublicGitTarget } from "../lib/ssrf-guard.js";
 import type { RunRequest } from "../types.js";
 
 export const prepareCode = async (request: RunRequest, codeDir: string): Promise<void> => {
@@ -37,50 +38,43 @@ const cloneRepo = async (codeUrl: string, codeDir: string): Promise<void> => {
   }
 
   const config = getConfig();
-  // Configure a block (idle) timeout so a stalled or trickling git server kills
-  // the git process and rejects, rather than hanging forever and permanently
-  // holding a concurrency slot in the runner.
-  //
-  // `config` entries are passed as `-c <key>=<value>` BEFORE the subcommand.
-  //
-  // http.followRedirects=false is what makes assertGitTargetIsPublic below mean
-  // anything. The guard resolves the hostname in THIS process and then hands
-  // the original URL to a separate git process, which resolves again and, with
-  // git's default `http.followRedirects=initial`, follows a redirect to any
-  // host the guard never inspected, e.g. a 302 to an internal Location.
-  // Refusing redirects outright closes the gap; legitimate hosts (GitHub,
-  // GitLab, Codeberg) serve clone traffic directly.
-  // The block timeout only catches silence; the deadline bounds a server that trickles progress forever.
-  const deadline = AbortSignal.timeout(SCRAPER_CLONE_DEADLINE_SECONDS * 1000);
-  const git = simpleGit({
-    timeout: { block: config.SCRAPER_GIT_CLONE_TIMEOUT },
-    config: ["http.followRedirects=false"],
-    abort: deadline,
-  });
+  const maxBytes = config.SCRAPER_MAX_REPO_SIZE_MB * 1024 * 1024;
 
   logger.info({ url, branch: branch ?? "default" }, "Cloning repository");
 
-  // Re-resolve the host and reject private/internal targets before cloning.
-  // The web side only validated the hostname pattern, so this closes the
-  // DNS-rebinding window toward internal hosts (defence-in-depth).
-  await assertGitTargetIsPublic(url);
+  // The web side only validated the hostname pattern; resolve it here and pin the clone to the answer.
+  const addresses = await resolvePublicGitTarget(url);
+  const { protocol, port } = new URL(url);
+  const proxy = await startGitEgressProxy(
+    { addresses, port: Number(port) || (protocol === "https:" ? 443 : 80) },
+    maxBytes
+  );
+
+  // The block timeout only catches silence; the deadline bounds a server that trickles progress forever.
+  const deadline = AbortSignal.timeout(SCRAPER_CLONE_DEADLINE_SECONDS * 1000);
+  // `config` entries become `-c key=value`. A redirect would reach a host the guard never saw,
+  // and NO_PROXY in the environment would let git bypass the pinning proxy, so git gets PATH and HOME only.
+  const git = simpleGit({
+    timeout: { block: config.SCRAPER_GIT_CLONE_TIMEOUT },
+    config: ["http.followRedirects=false", `http.proxy=${proxy.url}`],
+    abort: deadline,
+  }).env(gitEnvironment());
 
   try {
-    const cloneArgs = ["--depth", "1", "--single-branch"];
+    const cloneArgs = ["--depth", "1", "--single-branch", "--no-checkout"];
     if (branch) {
       cloneArgs.push("--branch", branch);
     }
 
-    await git.clone(url, codeDir, cloneArgs);
-
-    // Check repo size
-    const stdout = await git.cwd(codeDir).raw(["count-objects", "-v"]);
-    const sizeMatch = /size-pack:\s+(\d+)/.exec(stdout);
-    if (!sizeMatch) {
-      throw new RunnerError("Could not determine the cloned repository's size", "GIT_CLONE_FAILED", 500);
+    try {
+      await git.clone(url, codeDir, cloneArgs);
+    } finally {
+      await proxy.close();
     }
-    const sizeMb = Number(sizeMatch[1]) / 1024;
 
+    // Blob sizes are the checkout's size; a small pack can inflate to far more on disk.
+    const repo = git.cwd(codeDir);
+    const sizeMb = sumBlobBytes(await repo.raw(["ls-tree", "-r", "-l", "-z", "HEAD"])) / (1024 * 1024);
     if (sizeMb > config.SCRAPER_MAX_REPO_SIZE_MB) {
       throw new RunnerError(
         `Repository size (${sizeMb.toFixed(1)}MB) exceeds limit (${config.SCRAPER_MAX_REPO_SIZE_MB}MB)`,
@@ -88,8 +82,16 @@ const cloneRepo = async (codeUrl: string, codeDir: string): Promise<void> => {
         413
       );
     }
+    await repo.raw(["checkout", "HEAD", "--", "."]);
   } catch (error) {
     if (error instanceof RunnerError) throw error;
+    if (proxy.exceeded()) {
+      throw new RunnerError(
+        `Repository transfer exceeded the ${config.SCRAPER_MAX_REPO_SIZE_MB}MB limit`,
+        "REPO_TOO_LARGE",
+        413
+      );
+    }
     if (deadline.aborted) {
       throw new RunnerError(
         `Repository clone exceeded the ${SCRAPER_CLONE_DEADLINE_SECONDS}s deadline`,
@@ -103,6 +105,30 @@ const cloneRepo = async (codeUrl: string, codeDir: string): Promise<void> => {
       500
     );
   }
+};
+
+const gitEnvironment = (): Record<string, string> => {
+  const env: Record<string, string> = {};
+  for (const key of ["PATH", "HOME"]) {
+    const value = process.env[key];
+    if (value !== undefined) env[key] = value;
+  }
+  return env;
+};
+
+/** Total blob size from `git ls-tree -r -l -z`; submodule entries carry no size. */
+const sumBlobBytes = (listing: string): number => {
+  let total = 0;
+  for (const entry of listing.split("\0")) {
+    const [, type, , size] = entry.split(/\s+/, 4);
+    if (type !== "blob") continue;
+    const bytes = Number(size);
+    if (!Number.isSafeInteger(bytes)) {
+      throw new RunnerError("Could not determine the cloned repository's size", "GIT_CLONE_FAILED", 500);
+    }
+    total += bytes;
+  }
+  return total;
 };
 
 const writeInlineCode = async (code: Record<string, string>, codeDir: string): Promise<void> => {

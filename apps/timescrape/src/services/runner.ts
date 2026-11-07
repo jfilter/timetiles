@@ -330,13 +330,12 @@ const OUTPUT_WATCHDOG_INTERVAL_MS = 2000;
  * The check in `collectOutput` runs after the container exited, when the bytes
  * are already on the runner host's disk.
  * `/output` is a bind mount and carries no quota of its own (see the mount
- * comment in security/container-config.ts), so the cap has to be enforced from
- * out here while the run is still in flight.
+ * comment in security/container-config.ts), so the per-run cap is enforced
+ * from out here while the run is still in flight.
  *
  * Sampling means the bound is approximate: a run can overshoot by whatever it
- * writes within one interval. That is a far weaker guarantee than a quota, but
- * it turns "fills the host disk" into "overshoots the cap briefly". A hard
- * bound requires SCRAPER_DATA_DIR to sit on a size-limited filesystem.
+ * writes within one interval and the stop grace. The hard bound is the
+ * size-capped tmpfs that bootstrap step 13 mounts at SCRAPER_DATA_DIR/runs.
  *
  * The container owns the tree and can chmod parts of it out of the runner's
  * reach. What the watchdog cannot measure it cannot bound, so a permission

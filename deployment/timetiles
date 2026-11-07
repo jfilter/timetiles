@@ -308,10 +308,16 @@ update_scraper_runner() {
 
     echo -e "${YELLOW}Updating scraper runner...${NC}"
 
-    # The runner refuses to start without SCRAPER_DATA_DIR. Step 13 rewrites the unit and installs
-    # the runner itself, so leave the working one in place until it has run.
+    # The runner needs SCRAPER_DATA_DIR and the size-capped run area that step 13 installs. Step 13
+    # rewrites the unit and installs the runner itself, so leave the working one in place until it has run.
+    local unit_gap=""
     if ! systemctl show --property=Environment --value timescrape-runner.service | grep -q 'SCRAPER_DATA_DIR='; then
-        echo -e "${YELLOW}Scraper runner not updated: its unit predates SCRAPER_DATA_DIR${NC}" >&2
+        unit_gap="SCRAPER_DATA_DIR"
+    elif ! systemctl show --property=Requires --value timescrape-runner.service | grep -qw 'tmp-timescrape-runs.mount'; then
+        unit_gap="the size-capped run area"
+    fi
+    if [[ -n "$unit_gap" ]]; then
+        echo -e "${YELLOW}Scraper runner not updated: its unit predates ${unit_gap}${NC}" >&2
         echo -e "${YELLOW}Run: sudo $SCRIPT_DIR/bootstrap/bootstrap.sh --step 13-scraper-setup${NC}" >&2
         return 0
     fi
@@ -372,6 +378,18 @@ update_scraper_runner() {
     echo -e "${GREEN}Scraper runner updated!${NC}"
 }
 
+# Wait for the updated web app to answer its health check; exit non-zero with recovery steps if it never does.
+verify_web_after_update() {
+    # Same endpoint and budget as bootstrap step 07: nginx's default server proxies it to the app.
+    if wait_for_health "http://localhost/api/health" 300 10; then
+        return 0
+    fi
+    echo -e "${RED}Update failed: the web app is not healthy, and the new release is still deployed.${NC}" >&2
+    echo -e "${YELLOW}Inspect: $SCRIPT_DIR/timetiles logs --web${NC}" >&2
+    echo -e "${YELLOW}Roll back: set TIMETILES_VERSION in $ENV_FILE to the release that ran before, then run: $SCRIPT_DIR/timetiles update${NC}" >&2
+    exit 1
+}
+
 # Sourced by unit tests: define the functions, dispatch no command.
 if [[ "${BASH_SOURCE[0]}" != "$0" ]]; then
     return 0
@@ -396,6 +414,12 @@ case "$1" in
             sed -i.bak "s|PAYLOAD_SECRET=.*|PAYLOAD_SECRET=$PAYLOAD_SECRET|" "$ENV_FILE"
             rm -f "$ENV_FILE.bak"
             echo -e "${GREEN}Generated PAYLOAD_SECRET${NC}"
+
+            # Backups refuse to run without it; it is also the only key to the snapshots.
+            RESTIC_PASSWORD=$(openssl rand -base64 32 | tr -d '/+=')
+            sed -i.bak "s|^RESTIC_PASSWORD=.*|RESTIC_PASSWORD=$RESTIC_PASSWORD|" "$ENV_FILE"
+            rm -f "$ENV_FILE.bak"
+            echo -e "${GREEN}Generated RESTIC_PASSWORD (keep a copy off this server)${NC}"
             
             echo -e "${YELLOW}Please edit $ENV_FILE and set:${NC}"
             echo "  - DB_PASSWORD"
@@ -1495,7 +1519,10 @@ EOF
         # container isn't up yet.
         $DC_CMD exec -T nginx nginx -s reload 2>/dev/null || true
 
-        echo -e "${GREEN}Services updated! Migrations will run automatically.${NC}"
+        # `up -d` returns once containers start; migrations and boot finish later.
+        verify_web_after_update
+
+        echo -e "${GREEN}Services updated!${NC}"
 
         # Update scraper runner if configured
         if grep -q "^SCRAPER_RUNNER_URL=" "$ENV_FILE" 2>/dev/null; then
