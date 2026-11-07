@@ -35,15 +35,18 @@ TimeTiles is in **alpha phase** — core features are functional and the system 
 - [x] Event detail cards with full metadata
 - [x] Shareable URLs with filter/map state encoded
 - [x] Views for saved display configurations
+- [x] Per-view filter configuration and numeric range filters
+- [x] Embeddable maps (iframe)
 
 ### Platform
 
 - [x] User quotas and rate limiting with trust levels (0-5)
-- [x] Self-service account deletion with a [configurable grace period](../self-hosting/configuration#account-settings)
+- [x] Self-service account deletion with a [configurable grace period](/self-hosting/configuration#account-settings)
 - [x] Data export (ZIP archive of all user data)
-- [x] Feature flags system (8 toggleable capabilities)
-- [x] Audit log tracking 20 action types across 5 domains
-- [x] Multi-provider geocoding with fallback (Nominatim, Google, OpenCage)
+- [x] Feature flags system
+- [x] Audit log for account, admin, data, import, and system actions
+- [x] Multi-provider geocoding with fallback (Photon, Nominatim, Google, OpenCage, LocationIQ)
+- [x] Scheduled imports in the import wizard
 - [x] Internationalization (English, German) with next-intl
 - [x] Content management (pages, branding, navigation, footer)
 - [x] Multi-tenant sites with per-site theming
@@ -53,16 +56,15 @@ TimeTiles is in **alpha phase** — core features are functional and the system 
 ## In Progress
 
 - [ ] Import wizard UX improvements (live preview, auto-advance)
-- [ ] Scheduled imports wizard integration
 - [ ] Performance optimizations for large datasets (100k+ events)
 
 ## Planned
 
-- [ ] Advanced filter system — editor control, numeric/text/boolean filters, operators ([ADR 0031](https://github.com/jfilter/timetiles/blob/main/docs/adr/0031-advanced-filter-system.md))
-- [ ] Embeddable map widgets (iframe/web component)
+- [ ] Advanced filter system — text and boolean filters, operators, simple/advanced mode ([ADR 0031](https://github.com/jfilter/timetiles/blob/main/docs/adr/0031-advanced-filter-system.md))
+- [ ] Embeddable map web component
 - [ ] Advanced search across event fields
 - [ ] Additional UI locales beyond English and German
-- [ ] Public API authentication (API keys for external consumers)
+- [ ] Self-service API keys for external consumers
 
 ---
 

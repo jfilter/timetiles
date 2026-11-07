@@ -223,7 +223,7 @@ All logo variations use these exact design system colors:
 | Text          | Charcoal `#404040`  | Parchment `#f8f5f0`      |
 | Grid overlay  | Navy 15% opacity    | Cream 20% opacity        |
 
-**Note**: All colors are derived from the OKLCH color space definitions in the [DESIGN_SYSTEM.md](DESIGN_SYSTEM.md) Color System section.
+**Note**: All colors are derived from the OKLCH color space definitions in the [DESIGN_SYSTEM.md](../DESIGN_SYSTEM.md) Color System section.
 
 ## Asset Locations
 
@@ -268,6 +268,6 @@ Light or dark mode?
 
 ## Related Documentation
 
-- [DESIGN_SYSTEM.md](DESIGN_SYSTEM.md) - Complete design system reference
+- [DESIGN_SYSTEM.md](../DESIGN_SYSTEM.md) - Complete design system reference
 - [THEMING.md](THEMING.md) - Multi-theme support and dark mode strategies
 - [ICONS.md](ICONS.md) - Icon system documentation

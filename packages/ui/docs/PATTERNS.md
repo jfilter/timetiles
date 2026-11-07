@@ -1,7 +1,7 @@
 # Design Patterns
 
 > **Part of the TimeTiles Cartographic Design System**
-> See [DESIGN_SYSTEM.md](DESIGN_SYSTEM.md) for complete design guidance
+> See [DESIGN_SYSTEM.md](../DESIGN_SYSTEM.md) for complete design guidance
 
 Common UI patterns and workflows for TimeTiles. Patterns are higher-level than components — they describe how components work together to solve user problems.
 

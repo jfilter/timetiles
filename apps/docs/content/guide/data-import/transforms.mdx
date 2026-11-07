@@ -43,15 +43,15 @@ transforms:
 
 ### String Operation
 
-Apply text operations: uppercase, lowercase, find-and-replace, or safe expressions.
+Apply text operations: uppercase, lowercase, trim, find-and-replace, or safe expressions.
 
-| Field         | Description                                          |
-| ------------- | ---------------------------------------------------- |
-| `from`        | Field to transform                                   |
-| `operation`   | `uppercase`, `lowercase`, `replace`, or `expression` |
-| `pattern`     | Regex pattern (for `replace`)                        |
-| `replacement` | Replacement string (for `replace`)                   |
-| `expression`  | Safe expression using `expr-eval` (for `expression`) |
+| Field         | Description                                                        |
+| ------------- | ------------------------------------------------------------------ |
+| `from`        | Field to transform                                                 |
+| `operation`   | `uppercase`, `lowercase`, `trim`, `replace`, or `expression`       |
+| `pattern`     | Literal text to find; every occurrence is replaced (for `replace`) |
+| `replacement` | Replacement string (for `replace`)                                 |
+| `expression`  | Safe expression using `expr-eval` (for `expression`)               |
 
 ```yaml
 transforms:

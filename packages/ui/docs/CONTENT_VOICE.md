@@ -1,7 +1,7 @@
 # Content & Voice Guidelines
 
 > **Part of the TimeTiles Cartographic Design System**
-> See [DESIGN_SYSTEM.md](DESIGN_SYSTEM.md) for complete design guidance
+> See [DESIGN_SYSTEM.md](../DESIGN_SYSTEM.md) for complete design guidance
 
 ## Voice & Tone
 
@@ -243,4 +243,4 @@ Before publishing any UI text:
 
 ---
 
-**Questions about content?** Check [DESIGN_SYSTEM.md](DESIGN_SYSTEM.md) for design guidance or open an issue for clarification.
+**Questions about content?** Check [DESIGN_SYSTEM.md](../DESIGN_SYSTEM.md) for design guidance or open an issue for clarification.

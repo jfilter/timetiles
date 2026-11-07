@@ -65,7 +65,8 @@ packages/
   ui/            Shared UI components (shadcn/ui)
   assets/        SVG logo sources and static assets
   shared/        Logic shared by web and timescrape
-  scraper/       Scraper SDK
+  scraper/       Scraper SDK (Node.js)
+  python/        Scraper SDK (Python)
   typescript-config/  Shared TypeScript config
 ```
 

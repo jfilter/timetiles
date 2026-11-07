@@ -16,17 +16,19 @@ TimeTiles uses two categories of API endpoints with different purposes:
 
 **Purpose**: Stable, public-facing data APIs designed for external consumers and integrations.
 
-| Endpoint                             | Description                |
-| ------------------------------------ | -------------------------- |
-| `/api/v1/events`                     | Event listing with filters |
-| `/api/v1/events/geo`                 | Map clusters (GeoJSON)     |
-| `/api/v1/events/geo/stats`           | Cluster size statistics    |
-| `/api/v1/events/bounds`              | Map bounds                 |
-| `/api/v1/events/temporal`            | Temporal histogram         |
-| `/api/v1/events/stats`               | Event statistics           |
-| `/api/v1/data-sources`               | Data source listing        |
-| `/api/v1/sources/stats`              | Data source statistics     |
-| `/api/v1/datasets/[id]/schema/infer` | Schema inference           |
+| Endpoint                             | Description                  |
+| ------------------------------------ | ---------------------------- |
+| `/api/v1/events`                     | Event listing with filters   |
+| `/api/v1/events/geo`                 | Map clusters (GeoJSON)       |
+| `/api/v1/events/geo/stats`           | Cluster size statistics      |
+| `/api/v1/events/bounds`              | Map bounds                   |
+| `/api/v1/events/temporal`            | Temporal histogram           |
+| `/api/v1/events/temporal-clusters`   | Events or clusters over time |
+| `/api/v1/events/cluster-summary`     | Summary of H3 map cells      |
+| `/api/v1/events/stats`               | Event statistics             |
+| `/api/v1/data-sources`               | Data source listing          |
+| `/api/v1/sources/stats`              | Data source statistics       |
+| `/api/v1/datasets/[id]/schema/infer` | Schema inference             |
 
 **Characteristics**:
 

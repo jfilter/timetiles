@@ -28,10 +28,8 @@ const REPO_IGNORED_PATHS = ["**/node_modules/**", "**/dist/**", "**/out/**", "**
 
 // Regular expressions to match different link types
 const linkPatterns = [
-  // Markdown links: [text](url)
+  // Markdown links: [text](url). MDX imports are left to the bundler, which fails the build on a missing file.
   /\[([^\]]+)\]\((<[^>\n]+>|[^)]+)\)/g,
-  // MDX imports
-  /import\s+\S[^\n]*?from\s+['"]([^'"]+)['"]/g,
   // Next.js Link component href
   /href=["']([^"']+)["']/g,
   // Direct URL references in text
@@ -95,34 +93,36 @@ const extractLinks = (content: string): string[] => {
   return Array.from(links);
 };
 
+/**
+ * Published URL path of a content file. `trailingSlash: true` in next.config.mjs gives every page a
+ * trailing slash, so `guide/getting-started.mdx` is `/guide/getting-started/` and `guide/index.mdx` is `/guide/`.
+ */
+const pageUrlPath = (file: string): string => {
+  const route = path
+    .relative(docsDir, file)
+    .replace(/\.mdx?$/, "")
+    .split(path.sep)
+    .join("/")
+    .replace(/(^|\/)index$/, "");
+  return route ? `/${route}/` : "/";
+};
+
 const resolveInternalLink = (link: string, currentFile: string): LinkCheckResult | null => {
-  // Handle relative paths
+  // Relative links resolve against the page URL, as the browser does, not against the source file.
   if (link.startsWith("./") || link.startsWith("../")) {
-    const dir = path.dirname(currentFile);
-    let resolved = path.resolve(dir, link);
-
-    // Remove fragment identifier
-    resolved = resolved.split("#")[0] || resolved;
-
-    // Check if file exists with various extensions
-    const extensions = ["", ".mdx", ".md", "/index.mdx", "/index.md"];
-    for (const ext of extensions) {
-      const testPath = resolved + ext;
-      if (fs.existsSync(testPath)) {
-        return { valid: true, resolved: testPath };
-      }
-    }
-
-    return { valid: false, resolved };
+    const target = new URL(link, `${DOCS_SITE_ORIGIN}${pageUrlPath(currentFile)}`);
+    return resolveInternalLink(target.pathname, docsDir);
   }
 
   // Handle absolute paths from docs root
   if (link.startsWith("/")) {
-    const resolved = path.join(docsDir, link);
+    // Drop the fragment and the trailing slash every published page URL carries.
+    const pagePath = (link.split("#")[0] ?? "").replace(/(.)\/$/, "$1");
+    const resolved = path.join(docsDir, pagePath);
     const extensions = ["", ".mdx", ".md", "/index.mdx", "/index.md"];
 
     for (const ext of extensions) {
-      const testPath = resolved.split("#")[0] + ext;
+      const testPath = resolved + ext;
       if (fs.existsSync(testPath)) {
         return { valid: true, resolved: testPath };
       }
@@ -331,6 +331,7 @@ export {
   extractLinks,
   findAllMdxFiles,
   findRepoDocsSiteLinks,
+  pageUrlPath,
   resolveDocsSiteUrl,
   resolveInternalLink,
 };

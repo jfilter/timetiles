@@ -1,7 +1,7 @@
 # Component Library Status
 
 > **Part of the TimeTiles Cartographic Design System**
-> See [DESIGN_SYSTEM.md](DESIGN_SYSTEM.md) for complete design guidance
+> See [DESIGN_SYSTEM.md](../DESIGN_SYSTEM.md) for complete design guidance
 
 ## Completed Components
 

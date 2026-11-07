@@ -47,10 +47,10 @@ All packages lint with the root `.oxlintrc.json`. ESLint plugins without a nativ
 ```bash
 make seed ARGS="development"            # Rich, realistic data (default)
 make seed ARGS="testing --truncate"     # Fast, deterministic data for tests
-make seed ARGS="demo"                   # Polished data for demos
+make demo-berlin                        # Site setup plus all data packages, imported immediately
 ```
 
-Available presets: `minimal`, `testing`, `e2e`, `development`, `demo`, `benchmark`. Add `--truncate` to clear existing data first.
+Available presets: `testing`, `e2e`, `development`, `deploy` (the idempotent site bootstrap deployments run). Add `--truncate` to clear existing data first. For demo content, `make demo-data` installs the data packages and `make setup-site` creates the site pages and navigation.
 
 ## Workflow
 

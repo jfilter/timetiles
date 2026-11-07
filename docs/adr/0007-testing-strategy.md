@@ -137,9 +137,9 @@ import { ExplorePage } from "../pages/explore.page";
 
 **Configuration** (`playwright.config.ts`):
 
-- Tests within a file run sequentially (`fullyParallel: false`)
-- 2 workers locally, 4 in CI
-- Retries: 0 locally, 2 in CI
+- Tests run in parallel, including within a file (`fullyParallel: true`)
+- 2 workers, locally and in CI, so at most two imports compete for the job queue
+- No retries: a flaky test fails the run
 - Traces, screenshots, and video captured on failure
 - Default browser: Chromium only (set `TEST_ALL_BROWSERS` for full matrix)
 

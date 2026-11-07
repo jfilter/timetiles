@@ -1,14 +1,14 @@
 # Usage Limits
 
-Trust levels, quotas, rate limiting, and HTTP caching configuration. Unless marked as a fixed technical limit, values shown are defaults — customize them in `config/timetiles.yml` (see [Configuration](./configuration#config-file-timetilesyml)).
+Trust levels, quotas, rate limiting, and HTTP caching configuration. Unless marked as a fixed technical limit, values shown are defaults — customize them in `config/timetiles.yml` (see [Configuration](/self-hosting/configuration#config-file-timetilesyml)).
 
 ## Trust Levels
 
-Each user is assigned a trust level that determines their quotas and rate limits. Admins set trust levels in `/dashboard/collections/users`.
+Each user is assigned a trust level that determines their quotas and rate limits. Self-registered users start at Basic (1). Admins set trust levels in `/dashboard/collections/users`.
 
 | Level | Name       | Description                     |
 | ----- | ---------- | ------------------------------- |
-| 0     | Untrusted  | New or unverified accounts      |
+| 0     | Untrusted  | Restricted accounts             |
 | 1     | Basic      | Conservative limits             |
 | 2     | Regular    | Standard operational limits     |
 | 3     | Trusted    | Enhanced access, scraper access |

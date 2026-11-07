@@ -1,12 +1,13 @@
 # <type>(<scope>): <subject>
 # Type = WHAT you're doing, Scope = WHERE in the codebase
-# Types: feat, fix, docs, format, refactor, perf, test, build, ci, chore, revert, security
-# Scopes (optional but recommended):
-#   Apps/Packages: web, docs, ui, assets, config
-#   Features: import, geocoding, events, schema, deploy, quota, access, cache, webhooks, admin, auth, media
-#   Technical: db, api, jobs, deps, seed, test
+# Types: feat, fix, docs, style, format, refactor, perf, test, build, ci, chore, revert, security
+# Scopes (optional but recommended; source of truth: SCOPES in commitlint.config.mjs):
+#   Apps/Packages: web, docs, ui, assets, config, scraper
+#   Features: explore, ingest, geocoding, events, schema, deploy, quota, access, cache, webhooks,
+#             admin, auth, media, charts, map
+#   Technical: db, api, jobs, deps, seed, test, e2e
 #   Infrastructure: ci, build, infra
-# Subject: imperative mood, max 72 chars (proper nouns allowed: GitHub, API, ES, etc.)
+# Header: imperative mood, max 72 chars including type and scope, subject at least 10 chars
 
 # List your changes as bullet points:
 # - 

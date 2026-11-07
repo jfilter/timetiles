@@ -45,7 +45,7 @@ TimeTiles implements a six-layer UI customization system documented in ADR 0035.
 | `components/block-renderer.tsx`              | Block rendering with style wrapper                                 |
 | `lib/services/resolution/layout-resolver.ts` | Layout template resolution                                         |
 | `components/layout/layout-frame.tsx`         | Skip link, header, main landmark and footer per template           |
-| `lib/utils/css-sanitizer.ts`                 | CSS sanitization for injection                                     |
+| `lib/security/css-sanitizer.ts`              | CSS sanitization for injection                                     |
 
 For the full theming API (semantic tokens, UIProvider, dark mode, fonts), see the [UI package documentation](/development/packages/ui).
 
@@ -378,7 +378,7 @@ Without a template (`null`) a CMS page renders exactly as an unconfigured site: 
 
 ## CSS Sanitization
 
-Custom CSS injected via the CMS passes through `lib/utils/css-sanitizer.ts` before rendering:
+Custom CSS injected via the CMS passes through `lib/security/css-sanitizer.ts` before rendering:
 
 ### Sanitized Patterns
 

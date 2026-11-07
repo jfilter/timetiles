@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed
+Proposed — partially implemented. **Current state (2026-11-07):** editor control shipped as a `filterConfig` group on Views (`lib/collections/views/index.ts`: auto, manual, or disabled, with per-field settings) rather than on datasets, and numeric range filters shipped (`components/filters/numeric-range-filters.tsx`). Text and boolean filters, the operator-based `fieldFilters` format, and the simple/advanced mode (Phase 3) are not implemented.
 
 ## Date
 

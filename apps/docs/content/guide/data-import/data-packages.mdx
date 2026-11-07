@@ -58,7 +58,7 @@ source:
   url: https://api.example.org/data.csv
   format: csv # csv, json, html-in-json
   auth: # Optional authentication
-    type: bearer # none, api-key, bearer, basic
+    type: bearer # none, api-key, bearer, basic, oauth
     bearerToken: $ENV:API_TOKEN
 
 # --- Catalog & Dataset ---
@@ -109,12 +109,16 @@ Activating a data package creates three records:
 2. **Dataset** — with field mappings, ID strategy, and transforms
 3. **Scheduled Ingest** — with source URL, auth, and schedule
 
-```bash
-# List available packages
-pnpm --filter web tsx scripts/manage-packages.ts list
+Signed-in users activate packages with one click at `/account/data-packages`; activation needs the **Enable Scheduled Ingests** feature flag and counts against the user's schedule quota. Packages that need parameters ask for them there.
 
-# Activate a package
-pnpm --filter web tsx scripts/manage-packages.ts activate my-dataset
+From a development checkout, the same works from the command line:
+
+```bash
+pnpm --filter web packages list                              # List packages and their status
+pnpm --filter web packages setup my-dataset                  # Show required credentials and parameters
+pnpm --filter web packages install my-dataset                # Activate (--param key=value, --trigger)
+pnpm --filter web packages install --all                     # Activate every package
+pnpm --filter web packages uninstall my-dataset              # Disable the package's schedule
 ```
 
 ### Automatic activation on startup

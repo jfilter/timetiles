@@ -29,7 +29,7 @@ const SCOPES = [
   "docs", // Documentation site (apps/docs)
   "ui", // Shared UI components package
   "assets", // Shared assets package (logos, images)
-  "config", // Configuration changes (Payload, oxlint, TypeScript, Prettier packages, etc.)
+  "config", // Configuration changes (Payload, oxlint, TypeScript, oxfmt, etc.)
   "scraper", // TimeScrape runner and scraper system (apps/timescrape)
 
   // Core features

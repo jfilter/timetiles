@@ -23,14 +23,15 @@ consumes exactly one queue:
 
 | Queue         | Polling cron (`--cron`)             | Batch limit (`--limit`) | `--handle-schedules` |
 | ------------- | ----------------------------------- | ----------------------- | -------------------- |
-| `ingest`      | `*/10 * * * * *` (every 10 seconds) | `10`                    | No                   |
+| `ingest`      | `*/10 * * * * *` (every 10 seconds) | `10`                    | Yes                  |
 | `default`     | `*/1 * * * *` (every minute)        | `20`                    | Yes                  |
 | `maintenance` | `*/1 * * * *` (every minute)        | `20`                    | Yes                  |
 
 `--cron` needs a quoted cron expression. Polling consumes queued work; `--handle-schedules`
 also queues due tasks from their native Payload `schedule` definitions. Scheduling is filtered
-by `--queue`, so both `default` and `maintenance` need the flag. Enabling it only on `default`
-does not schedule maintenance tasks. The `ingest` queue receives workflows from application triggers.
+by `--queue`, so every worker whose queue has scheduled tasks needs the flag. Enabling it only on `default`
+does not schedule maintenance tasks. The `ingest` queue receives workflows from application triggers and
+schedules `cache-cleanup`, which runs in the worker that owns the URL fetch cache.
 
 For example, the equivalent default-queue worker command from the repository root is:
 
@@ -40,7 +41,7 @@ pnpm --filter web payload jobs:run --cron '*/1 * * * *' --queue default --limit 
 
 ## Ingest Workflows
 
-The ingestion pipeline is orchestrated by 4 Payload Workflows. Each workflow sequences multiple task handlers into a linear pipeline. See [Data Ingestion Pipeline](./data-processing-pipeline) for detailed stage documentation.
+The ingestion pipeline is orchestrated by 4 Payload Workflows. Each workflow sequences multiple task handlers into a linear pipeline. See [Data Ingestion Pipeline](/development/architecture/data-processing-pipeline) for detailed stage documentation.
 
 | Workflow           | Trigger                                                                                    | Pipeline                                                                                                           |
 | ------------------ | ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------ |

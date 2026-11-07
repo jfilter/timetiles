@@ -4,6 +4,8 @@
 
 Accepted
 
+**Current state (2026-11-07):** the CSS sanitizer lives at `lib/security/css-sanitizer.ts` ([ADR 0038](0038-site-custom-css-sanitization.md)). `components/layout/layout-shell.tsx` was removed as unused; layout templates are stored on sites and pages, but no frontend component applies them.
+
 ## Context
 
 TimeTiles is a multi-tenant platform where each site deployment may need distinct visual branding, layout, and content structure. The existing customization surface is limited: sites have 3 color overrides (primary, secondary, background), a raw `headerHtml` textarea, and a fixed page builder with 11 hardcoded block types. Content editors cannot control per-block spacing or visibility, there is no reusable theme system, and developers cannot add new block types without modifying core code.

@@ -162,7 +162,7 @@ Payload CMS deletes completed jobs by default. This has important implications:
 
 ### Configurable Batch Sizes
 
-Different stages use different batch sizes optimized for their specific needs. See [Processing Stages](./stages) for batch sizes per stage.
+Different stages use different batch sizes optimized for their specific needs. See [Processing Stages](/development/architecture/data-processing-pipeline/stages) for batch sizes per stage.
 
 - **Duplicate analysis** — reads the file in batches while building an in-memory duplicate map
 - **Schema detection** — larger batches for efficiency; builder state persisted between batches for progressive schema building

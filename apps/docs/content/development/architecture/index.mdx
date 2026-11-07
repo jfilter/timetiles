@@ -57,7 +57,7 @@ Three layers, each for a different type of state:
 | Client state | Zustand     | UI state, ephemeral interactions | Filter drawer open/closed, map bounds |
 | URL state    | nuqs        | Shareable, bookmarkable state    | Active filters, selected catalog      |
 
-35 custom React Query hooks in `lib/hooks/` handle all data fetching. Components never call `fetch()` directly.
+Custom React Query hooks in `lib/hooks/` handle all data fetching. Components never call `fetch()` directly.
 
 ## Data Flow
 
@@ -65,8 +65,8 @@ Three layers, each for a different type of state:
 CSV/Excel upload or scheduled URL fetch
   → Payload Workflow queued (ingest queue)
     → Dataset detection, schema analysis
-      → User reviews schema (NEEDS_REVIEW)
-        → Geocoding via providers (Nominatim → Google → OpenCage)
+      → Pause for review only if a check trips (NEEDS_REVIEW)
+        → Geocoding via the configured providers
           → Events created in PostgreSQL
             → PostGIS spatial indexing
               → React Query cache invalidation
@@ -80,7 +80,7 @@ CSV/Excel upload or scheduled URL fetch
 | Queue         | Worker               | Purpose                                 |
 | ------------- | -------------------- | --------------------------------------- |
 | `ingest`      | `worker-ingest`      | File imports, geocoding, event creation |
-| `default`     | `worker-default`     | Schedule manager, webhooks              |
+| `default`     | `worker-general`     | Schedule manager, webhooks, email       |
 | `maintenance` | `worker-maintenance` | Cleanup, cache expiry, audit rotation   |
 
 Ingest workflows orchestrate the import pipeline; system jobs declare their schedules through Payload. See [Background Jobs](./background-jobs) for workflow definitions and worker configuration.
@@ -90,7 +90,7 @@ Ingest workflows orchestrate the import pipeline; system jobs declare their sche
 PostgreSQL 17 with PostGIS 3.5 for spatial data. Key patterns:
 
 - **Payload CMS** manages schema and migrations — all tables in the `payload` schema
-- **PostGIS** functions for clustering (`ST_ClusterKMeans`), distance, and spatial queries
+- **PostGIS** for clustering (H3 cells by default; grid k-means and DBSCAN selectable in expert mode), distance, and spatial queries
 - **GeoJSON standard** — coordinates always in `[longitude, latitude]` order
 - **Drizzle ORM** (via Payload) for type-safe database access
 

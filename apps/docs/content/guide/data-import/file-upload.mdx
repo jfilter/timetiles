@@ -20,25 +20,29 @@ Any additional fields (description, category, source, severity) become filterabl
 
 <Steps>
 
-### Go to the import page
+### Sign in
 
-Navigate to `/ingest` or click the import button.
+Navigate to `/ingest` or click the import button. Importing needs an account with a confirmed email address.
 
 ### Upload your file
 
 Drag and drop your CSV, Excel, ODS, JSON, or GeoJSON file. JSON and GeoJSON are converted to tabular data before the preview.
 
-### Choose or create a catalog
+### Choose a catalog and dataset
 
-Catalogs are project-level containers. Create one for your topic or select an existing one. If a previous dataset configuration matches your file, you can apply the suggestion or ignore it and configure the import yourself.
+Catalogs are project-level containers. Create one for your topic or select an existing one, then choose the dataset. If a previous dataset configuration matches your file, you can apply the suggestion or ignore it and configure the import yourself.
 
-### Review the detected schema
+### Check the field mapping
 
 TimeTiles identifies field types, dates, locations, and categories. Verify the mappings and adjust if needed, especially if your file includes start/end date pairs or a single combined coordinate column.
 
-### Start processing
+### Review
 
-Click **Start**. TimeTiles validates, geocodes, and creates events. A progress bar shows the current stage.
+File uploads skip the **Schedule** step, which only applies to [URL sources](/guide/data-import/scheduled-imports). Check the summary on the **Review** step.
+
+### Start the import
+
+Click **Start Import**. TimeTiles validates, geocodes, and creates events. A progress bar shows the current stage.
 
 </Steps>
 
@@ -64,6 +68,6 @@ title,date,location,category,description
 
 ## Next Steps
 
-- [Scheduled Imports](./scheduled-imports) — Automate recurring data fetches
-- [Scrapers](./scrapers) — Write custom scripts for non-tabular data sources
+- [Scheduled Imports](/guide/data-import/scheduled-imports) — Automate recurring data fetches
+- [Scrapers](/guide/data-import/scrapers) — Write custom scripts for non-tabular data sources
 - [Exploring Data](/guide/exploring-data) — Map, timeline, filters, and sharing

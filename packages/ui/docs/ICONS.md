@@ -1,7 +1,7 @@
 # Icon Guidelines
 
 > **Part of the TimeTiles Cartographic Design System**
-> See [DESIGN_SYSTEM.md](DESIGN_SYSTEM.md) for complete design guidance
+> See [DESIGN_SYSTEM.md](../DESIGN_SYSTEM.md) for complete design guidance
 
 ## Icon Library
 
@@ -415,4 +415,4 @@ When using icons:
 
 ---
 
-**Questions about icons?** Browse the [Lucide icon library](https://lucide.dev/icons) or check [DESIGN_SYSTEM.md](DESIGN_SYSTEM.md) for design guidance.
+**Questions about icons?** Browse the [Lucide icon library](https://lucide.dev/icons) or check [DESIGN_SYSTEM.md](../DESIGN_SYSTEM.md) for design guidance.

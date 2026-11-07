@@ -4,6 +4,8 @@
 
 Accepted
 
+**Current state (2026-11-07):** ESLint has since been replaced by oxlint ([ADR 0042](0042-oxlint-with-eslint-js-plugins.md)). `simple-import-sort` runs as an oxlint JS plugin, so import order is fixed with `oxlint --fix`; the `format` scripts run only `oxfmt --write`. References to ESLint below describe the setup at the time of this decision.
+
 ## Context
 
 The codebase used Prettier 3.8.1 as its code formatter, deeply integrated into ESLint via `eslint-plugin-prettier` (reporting formatting violations as lint errors) and `eslint-config-prettier` (disabling conflicting ESLint rules). This coupling meant formatting ran through ESLint's pipeline — slower and more complex than necessary.

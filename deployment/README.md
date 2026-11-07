@@ -2,7 +2,7 @@
 
 Full documentation at **[docs.timetiles.io/self-hosting](https://docs.timetiles.io/self-hosting/)**.
 
-## Bootstrap (Fresh Ubuntu 24.04)
+## Bootstrap (Fresh Ubuntu 22.04+, 24.04 Recommended)
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/jfilter/timetiles/main/deployment/bootstrap/install.sh | sudo bash
@@ -10,11 +10,17 @@ curl -fsSL https://raw.githubusercontent.com/jfilter/timetiles/main/deployment/b
 
 ## Manual Setup
 
+Bootstrap does all of this on a fresh host. A manual install also has to substitute
+`${DOMAIN_NAME}` in `nginx/sites-enabled/*.conf` and provide a temporary certificate
+before nginx can start; the full steps are in the
+[Docker Compose quick start](https://docs.timetiles.io/self-hosting/deployment/#docker-compose-recommended).
+
 ```bash
-cp .env.production.example .env.production   # configure
+./timetiles setup                             # create .env.production, then edit it
 ./timetiles pull                              # pull images
 ./timetiles up                                # start
 ./timetiles ssl                               # SSL via Let's Encrypt
+./timetiles create-admin you@example.com      # first admin account
 ```
 
 ## CLI
@@ -23,7 +29,7 @@ cp .env.production.example .env.production   # configure
 timetiles status     # service health
 timetiles logs       # view logs
 timetiles backup     # create backup
-timetiles update     # pull + redeploy
+timetiles update     # refresh deployment files + images, redeploy
 timetiles check      # full verification
 ```
 
@@ -33,10 +39,11 @@ After installation, the bootstrap places a real git working tree at
 `/opt/timetiles-src/` (sparse-checkout: `deployment/`, `apps/web/config/`, plus
 `apps/timescrape/` and the scraper SDK sources under `packages/` when the
 scraper is enabled) and points
-`/opt/timetiles` at it via a symlink. `timetiles update` then refreshes
-tracked files with a plain `git pull`; operator state is `.gitignore`d
-inside `deployment/` so it survives the pull. It then waits for the web health
-check and exits non-zero if the new release never becomes healthy; roll back by
+`/opt/timetiles` at it via a symlink. `timetiles update` fetches the release tag
+`v$TIMETILES_VERSION` (or `main` when the version is `latest` or `edge`) and runs
+`git reset --hard`, so local edits to tracked files are discarded. Operator state is
+`.gitignore`d inside `deployment/` and survives the update. The update then waits for the
+web health check and exits non-zero if the new release never becomes healthy; roll back by
 setting `TIMETILES_VERSION` to the previous release and running `timetiles update` again.
 
 ```
@@ -138,7 +145,7 @@ Take a backup, or confirm the data is disposable, then reset:
 TIMETILES_DISCARD_CONTAINER_DB=1 timetiles down
 docker volume rm timetiles_postgres_data
 timetiles up
-timetiles create-admin
+timetiles create-admin you@example.com
 ```
 
 ### SSL Certificate Issues
@@ -173,7 +180,7 @@ That call is container → host, so it lands in the host's `INPUT` chain rather 
 
 ### Enabling scrapers
 
-During bootstrap, pass `--scraper` or set `SKIP_SCRAPER=false` in your bootstrap config. This runs step 13 which:
+During bootstrap, set `SKIP_SCRAPER=false` in your bootstrap config. This runs step 13 which:
 
 1. Installs Podman (rootless)
 2. Builds base images (`timescrape-python`, `timescrape-node`)

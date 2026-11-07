@@ -78,7 +78,7 @@ describe("Import workflow", () => {
 });
 ```
 
-Integration databases are isolated per worker, but multiple files share a worker process. Use sequential suites and explicit cleanup scope; never close the shared Payload connection. `apps/web/vitest.config.ts` declares the separately isolated project and retry policy.
+Integration databases are isolated per worker, but multiple files share a worker process. Use sequential suites and explicit cleanup scope; never close the shared Payload connection. `apps/web/vitest.config.ts` declares the separately isolated project. There is no retry policy: a flaky test fails the run.
 
 Worker databases use the fork's process ID and remain available after a run for debugging. The next integration global setup prunes leftover worker databases without open connections; it does not terminate active connections to clean them up. The template database is retained and reused when its schema is valid. Do not rely on a worker database surviving the next test run.
 

@@ -4,6 +4,8 @@
 
 Accepted
 
+**Current state (2026-11-07):** internal names were renamed from `import` to `ingest` (see [ADR 0030](0030-import-workflow-migration.md)), for example `import-files` → `ingest-files`, `import-jobs` → `ingest-jobs`, and `scheduled-imports` → `scheduled-ingests`. Names below are as they were when this was decided; user-facing copy still says import.
+
 ## Context
 
 TimeTiles is a multi-tenant platform where users import data, trigger geocoding against external APIs, and consume shared server resources. The security model must handle authentication, authorization, abuse prevention, and resource fairness without adding operational complexity (see ADR 0001: single-process architecture).

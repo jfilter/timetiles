@@ -1,5 +1,7 @@
 # TimeTiles Cartographic Design System
 
+> **The canonical design system is [`packages/ui/DESIGN_SYSTEM.md`](../DESIGN_SYSTEM.md)**, the file published as `@timetiles/ui/design-system`. Where the two disagree, it wins. This file is the longer reference written for the Cartographic theme; theme specifics live in [themes/CARTOGRAPHIC.md](themes/CARTOGRAPHIC.md), theming in [THEMING.md](THEMING.md), and component status in [COMPONENT_STATUS.md](COMPONENT_STATUS.md).
+
 ## Philosophy
 
 The TimeTiles design system embodies **refined cartographic elegance** — a visual language inspired by traditional cartography, editorial publishing, and geographic information systems. This design language prioritizes:

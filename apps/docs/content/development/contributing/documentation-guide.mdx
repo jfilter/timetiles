@@ -6,11 +6,13 @@ This guide explains how documentation works in the TimeTiles project.
 
 All documentation lives under `/apps/docs/content/` as hand-written MDX files:
 
-- **Getting Started** (`/getting-started/`) - Installation, quick start guides
+- **Overview** (`/overview/`) - Core concepts, comparison with other tools
+- **Quick Start** (`/quick-start`) - Local installation
 - **Guide** (`/guide/`) - Features, use cases, tutorials
-- **Development** (`/development/`) - Architecture, development guides, API docs
 - **Self-Hosting** (`/self-hosting/`) - Deployment, configuration, maintenance
+- **Development** (`/development/`) - Architecture, development guides, API docs
 - **Reference** (`/reference/`) - Glossary, changelog, roadmap
+- **FAQ** (`/faq`) - Frequently asked questions
 
 API documentation is hand-written in `apps/docs/content/development/api/`. For implementation details beyond what the docs cover, read the source code in `apps/web/app/api/`.
 
@@ -21,7 +23,7 @@ API documentation is hand-written in `apps/docs/content/development/api/`. For i
 1. Create an `.mdx` file in the appropriate directory:
 
 ```bash
-apps/docs/content/development/guides/my-new-guide.mdx
+apps/docs/content/development/contributing/my-new-guide.mdx
 ```
 
 2. Write your content using MDX (Markdown + JSX):
@@ -40,11 +42,13 @@ const example = "code here"
 \`\`\`
 ```
 
-3. Update the navigation by editing `_meta.json` in the same directory:
+3. Update the navigation by editing `_meta.js` in the same directory:
 
-```json
-{ "existing-page": "Existing Page", "my-new-guide": "My New Guide" }
+```js
+export default { "existing-page": "Existing Page", "my-new-guide": "My New Guide" };
 ```
+
+Link to other pages with absolute paths (`/self-hosting/deployment`). Every page URL ends in a slash, so a relative `./sibling` link from a non-index page resolves below the current page and 404s.
 
 ### Best Practices for Manual Docs
 

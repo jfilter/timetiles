@@ -23,13 +23,17 @@ PAYLOAD_SECRET=your-secret-key   # openssl rand -base64 32
 
 ```bash
 NODE_ENV=production              # development, production, test
-NEXT_PUBLIC_PAYLOAD_URL=https://your-domain.com  # Defaults to http://localhost:3000
+NEXT_PUBLIC_PAYLOAD_URL=https://your-domain.com  # Required in production; dev default http://localhost:3000
 NEXT_PUBLIC_SITE_URL=https://...  # If different from NEXT_PUBLIC_PAYLOAD_URL
 DEFAULT_LOCALE=en                # en or de — BUILD-time only, see below
 RATE_LIMIT_BACKEND=memory        # memory or pg
+DEPLOYMENT_ENVIRONMENT=production  # production, staging, preview, development
+RUN_AUTO_ACTIVATIONS=false       # Activate configured data packages on startup
 ```
 
 Set `NEXT_PUBLIC_PAYLOAD_URL` to the public URL of your deployment; the localhost default is only suitable for local use.
+
+`DEPLOYMENT_ENVIRONMENT` labels the instance; anything other than `production` shows an environment banner. `RUN_AUTO_ACTIVATIONS=true` activates the data packages listed in `data-packages.activations.yml` when the app starts; set it on one process only (the Compose file sets it on `web`).
 
 Use `RATE_LIMIT_BACKEND=pg` for horizontally scaled web deployments. Leave it as `memory` for local development, tests, and explicitly single-process deployments.
 
@@ -41,6 +45,8 @@ Use `RATE_LIMIT_BACKEND=pg` for horizontally scaled web deployments. Leave it as
 UPLOAD_DIR=uploads               # Base directory (includes media/ and ingest-files/)
 UPLOAD_TEMP_DIR=/tmp             # Temporary files during upload
 DATA_EXPORT_DIR=.exports         # User data export output
+INGEST_FILE_RETENTION_HOURS=24   # Keep uploaded source files this long after an import finishes
+INGEST_FILE_ORPHAN_GRACE_HOURS=12  # Minimum age before an unreferenced upload is removed
 ```
 
 ### Logging
@@ -52,7 +58,9 @@ LOG_FILE=/var/log/timetiles/app.log  # Optional file logging
 
 ### Email (SMTP)
 
-In production, omitting `EMAIL_SMTP_HOST` disables outgoing email and logs a warning. Account verification and password-reset messages are not delivered; configure SMTP before relying on those flows.
+In production the app refuses to start without `EMAIL_SMTP_HOST`. To run without outgoing mail, set `EMAIL_DISABLED=true` instead: registration, password reset and email change then answer `503`, and the health check reports email as degraded. Setting both is a startup error.
+
+Public registration is on by default, and a self-registered user cannot sign in until they have confirmed their email address. With `EMAIL_DISABLED=true`, also turn off **Enable Public Registration** in the [feature flags](#feature-flags) so the sign-up form is hidden, and create accounts yourself.
 
 In development, missing SMTP settings use an Ethereal test inbox rather than delivering messages to recipients. Tests and production builds use an in-memory JSON transport and do not send email.
 
@@ -63,23 +71,36 @@ EMAIL_SMTP_USER=your-user
 EMAIL_SMTP_PASS=your-password
 EMAIL_FROM_ADDRESS=noreply@timetiles.io
 EMAIL_FROM_NAME=TimeTiles
+EMAIL_SMTP_TLS_SERVERNAME=mail.example.com  # Optional: TLS name when the host is an IP
+EMAIL_SMTP_REQUIRE_TLS=true      # Default; false allows plaintext on a trusted relay
+EMAIL_DISABLED=true              # Only without EMAIL_SMTP_HOST
 ```
+
+On port 465 the connection uses TLS from the start. On any other port the app requires the server to offer STARTTLS and refuses to send in plaintext unless `EMAIL_SMTP_REQUIRE_TLS=false`.
+
+The production Compose file also accepts `EMAIL_FROM` as the sender address, which the shipped `.env.production` template uses.
 
 ### Security
 
 ```bash
 SSRF_DNS_CHECK=false             # Opt in to DNS validation outside production
 ALLOW_PRIVATE_URLS=false        # Keep private/internal URL targets blocked
+PASSWORD_HIBP_CHECK=true         # Reject passwords found in known breaches
+TRUSTED_PROXY_CIDRS=             # Comma-separated CIDRs of trusted reverse proxies
 ```
 
 Production always enforces DNS-based SSRF checks, even when `SSRF_DNS_CHECK=false`. `ALLOW_PRIVATE_URLS=true` is a bypass for development, tests, and the explicit E2E runtime; it does not enable private targets in normal production deployments.
+
+`PASSWORD_HIBP_CHECK` is on by default and sends the first five characters of each new password's SHA-1 hash to the Have I Been Pwned range API. Set it to `false` on hosts without outbound internet access or if you do not want that request.
+
+`TRUSTED_PROXY_CIDRS` decides which proxies' `X-Forwarded-For` entries the rate limiter trusts. It is empty by default, so forwarded client IPs are ignored in production. The production Compose file sets `172.16.0.0/12` to cover the bundled Nginx; extend it if another proxy or CDN sits in front.
 
 ### Scraper Integration
 
 Optional — only needed if running the [TimeScrape runner](/development/packages/scrapers).
 
 ```bash
-SCRAPER_RUNNER_URL=http://localhost:4000
+SCRAPER_RUNNER_URL=http://localhost:4000   # http://host.docker.internal:4000 under Docker Compose
 SCRAPER_API_KEY=your-api-key-min-16-chars
 ```
 
@@ -129,7 +150,7 @@ rateLimits:
       - { limit: 20, windowMs: 86400000, name: daily }
 ```
 
-Available endpoint names: `FILE_UPLOAD`, `PROGRESS_CHECK`, `IMPORT_RETRY`, `ADMIN_IMPORT_RESET`, `RETRY_RECOMMENDATIONS`, `API_GENERAL`, `WEBHOOK_TRIGGER`, `NEWSLETTER_SUBSCRIBE`, `PASSWORD_CHANGE`, `EMAIL_CHANGE`, `ACCOUNT_DELETION`, `DELETION_PASSWORD_ATTEMPTS`, `DATA_EXPORT`, `REGISTRATION`.
+The accepted endpoint names are listed in `RATE_LIMIT_ENDPOINTS` in `apps/web/lib/config/app-config.ts` and in the commented template `timetiles.example.yml`. An unknown name is rejected at startup.
 
 ### Quotas by Trust Level
 
@@ -144,7 +165,7 @@ quotas:
     maxFileUploadsPerDay: 100
 ```
 
-Trust levels: `0` = Untrusted, `1` = Basic, `2` = Regular, `3` = Trusted, `4` = Power User, `5` = Unlimited. See [Usage Limits](./usage-limits) for the full default table.
+Trust levels: `0` = Untrusted, `1` = Basic, `2` = Regular, `3` = Trusted, `4` = Power User, `5` = Unlimited. See [Usage Limits](/self-hosting/usage-limits) for the full default table.
 
 ### Trust-Level Rate Limits
 
@@ -189,6 +210,20 @@ cache:
     respectCacheControl: true # Honor RFC 7234 headers
 ```
 
+### Review Thresholds
+
+Rates between 0 and 1 above which an import pauses for review instead of creating events:
+
+```yaml
+reviewThresholds:
+  highDuplicateRate: 0.8 # More than 80% of rows are duplicates
+  geocodingPartialFailureRate: 0.5 # More than 50% of geocoding fails
+  highRowErrorRate: 0.1 # More than 10% of rows fail during event creation
+  highEmptyRowRate: 0.2 # More than 20% of rows are empty
+```
+
+Scheduled ingests and scrapers can override these per source in the admin dashboard.
+
 ### Account Settings
 
 ```yaml
@@ -204,17 +239,18 @@ These are configured at runtime through the admin UI — no restart needed.
 
 Configure at `/dashboard/globals/settings` under "Feature Flags":
 
-| Flag                           | Default | Description                                   |
-| ------------------------------ | ------- | --------------------------------------------- |
-| Allow Private Imports          | On      | Users can create private imports              |
-| Enable Scheduled Ingests       | On      | Automated URL-based imports                   |
-| Enable Public Registration     | On      | Self-registration for new users               |
-| Enable Event Creation          | On      | Events can be created via import or API       |
-| Enable Dataset Creation        | On      | Users can create new datasets                 |
-| Enable Import Creation         | On      | Users can start new imports                   |
-| Enable Scheduled Job Execution | On      | Scheduled imports run automatically           |
-| Enable URL Fetch Caching       | On      | Cache URL fetches to reduce external requests |
-| Enable Scrapers                | Off     | Scraper repos and execution (trust level 3+)  |
+| Flag                           | Default | Description                                               |
+| ------------------------------ | ------- | --------------------------------------------------------- |
+| Allow Private Imports          | On      | Users can create private imports                          |
+| Enable Scheduled Ingests       | On      | Automated URL-based imports                               |
+| Enable Public Registration     | On      | Self-registration for new users                           |
+| Enable Event Creation          | On      | Events can be created via import or API                   |
+| Enable Dataset Creation        | On      | Users can create new datasets                             |
+| Enable Import Creation         | On      | Users can start new imports                               |
+| Enable Scheduled Job Execution | On      | Scheduled imports run automatically                       |
+| Enable URL Fetch Caching       | On      | Cache URL fetches to reduce external requests             |
+| Enable Scrapers                | Off     | Scraper repos and execution (trust level 3+)              |
+| Enable Expert Mode             | Off     | Clustering algorithm and parameter controls in the map UI |
 
 ### Geocoding
 
@@ -228,6 +264,7 @@ See the dedicated [Geocoding](/self-hosting/geocoding) page for provider configu
 - **Main Menu** (`/dashboard/globals/main-menu`) — navigation links
 - **Footer** (`/dashboard/globals/footer`) — tagline, social links, columns, copyright
 - **Newsletter** (`/dashboard/globals/settings`) — external newsletter service URL
+- **Legal Notices** (`/dashboard/globals/settings`) — terms and privacy links plus an optional disclaimer on the registration page
 
 ### Roles
 
@@ -239,7 +276,7 @@ See the dedicated [Geocoding](/self-hosting/geocoding) page for provider configu
 
 ## Next Steps
 
-- [Deploy to production](./deployment)
-- [Set up backups](./maintenance)
-- [Customize the UI](./ui-customization) with themes and branding
-- [Configure usage limits](./usage-limits) and trust levels
+- [Deploy to production](/self-hosting/deployment)
+- [Set up backups](/self-hosting/maintenance)
+- [Customize the UI](/self-hosting/ui-customization) with themes and branding
+- [Configure usage limits](/self-hosting/usage-limits) and trust levels

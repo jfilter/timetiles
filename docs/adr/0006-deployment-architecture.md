@@ -31,13 +31,13 @@ Internet → Nginx (SSL termination) → Next.js + Payload CMS → PostgreSQL + 
 
 ### Dockerfile: Multi-Stage Build
 
-| Stage   | Purpose                                                            |
-| ------- | ------------------------------------------------------------------ |
-| base    | pnpm setup via corepack                                            |
-| pruner  | `turbo prune web --docker` strips monorepo to web app dependencies |
-| deps    | Install production dependencies only                               |
-| builder | Next.js build with `SKIP_DB_CHECK=true` (no DB at build time)      |
-| runner  | Minimal runtime: standalone output + static files + uploads dir    |
+| Stage   | Purpose                                                              |
+| ------- | -------------------------------------------------------------------- |
+| base    | pnpm setup via corepack                                              |
+| pruner  | `turbo prune web --docker` strips monorepo to web app dependencies   |
+| deps    | Install production dependencies only                                 |
+| builder | `next build --experimental-build-mode compile` (no DB at build time) |
+| runner  | Minimal runtime: standalone output + static files + uploads dir      |
 
 The runner stage runs as `nextjs` user (UID 1001) for security.
 
@@ -101,15 +101,18 @@ Returns 200 (healthy/degraded) or 503 (error).
 
 ### Environment Variables
 
-| Variable                  | Required   | Purpose                                  |
-| ------------------------- | ---------- | ---------------------------------------- |
-| `DATABASE_URL`            | Yes        | PostgreSQL connection string             |
-| `PAYLOAD_SECRET`          | Yes        | Payload CMS encryption key               |
-| `NEXT_PUBLIC_PAYLOAD_URL` | Yes        | Public-facing URL (used in emails, CORS) |
-| `UPLOAD_DIR`              | No         | Upload directory (default: `uploads`)    |
-| `LOG_LEVEL`               | No         | Logging verbosity (default: `info`)      |
-| `EMAIL_SMTP_HOST`         | No         | SMTP server for transactional email      |
-| `SKIP_DB_CHECK`           | Build only | Skip DB connection during Next.js build  |
+| Variable                  | Required | Purpose                                  |
+| ------------------------- | -------- | ---------------------------------------- |
+| `DATABASE_URL`            | Yes      | PostgreSQL connection string             |
+| `PAYLOAD_SECRET`          | Yes      | Payload CMS encryption key               |
+| `NEXT_PUBLIC_PAYLOAD_URL` | Yes      | Public-facing URL (used in emails, CORS) |
+| `UPLOAD_DIR`              | No       | Upload directory (default: `uploads`)    |
+| `LOG_LEVEL`               | No       | Logging verbosity (default: `info`)      |
+| `EMAIL_SMTP_HOST`         | Yes*     | SMTP server for transactional email      |
+| `EMAIL_DISABLED`          | Yes*     | `true` runs without outgoing mail        |
+| `SKIP_DB_CHECK`           | No       | Build-phase config outside production    |
+
+\* Production needs exactly one of `EMAIL_SMTP_HOST` and `EMAIL_DISABLED=true`.
 
 **Reference:** `.env.example`, `deployment/.env.production.example`
 
@@ -117,8 +120,8 @@ Returns 200 (healthy/degraded) or 503 (error).
 
 During `next build`, the app must not connect to a database. This is handled by:
 
-- `SKIP_DB_CHECK=true` in Dockerfile builder stage
-- `NEXT_PHASE=phase-production-build` detection in config factory
+- `NEXT_PHASE=phase-production-build` detection in config factory (`isBuildPhase()` in `lib/config/env.ts`)
+- `SKIP_DB_CHECK=true` forces the same config outside production only
 - Minimal pool settings (`max: 0`) during build
 - Migrations skipped, run only at runtime startup
 

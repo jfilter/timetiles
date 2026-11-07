@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed
+Proposed — partially implemented. **Current state (2026-11-07):** the CI spec freshness check (section 4) runs in `build.yml`, and the three missing public v1 routes from Phase 1 are registered in `lib/openapi/registry.ts`. The Scalar UI at `/api-docs`, Phases 2 and 3, the `make openapi` target, and docs authentication are not implemented. The counts under Context describe the state when this was proposed.
 
 ## Date
 

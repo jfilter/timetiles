@@ -4,6 +4,8 @@
 
 Accepted
 
+**Current state (2026-11-07):** internal names were renamed from `import` to `ingest` (see [ADR 0030](0030-import-workflow-migration.md)), for example `import-files` → `ingest-files`, `import-jobs` → `ingest-jobs`, and `scheduled-imports` → `scheduled-ingests`. Names below are as they were when this was decided; user-facing copy still says import.
+
 ## Context
 
 TimeTiles supports automated data ingestion from remote URLs on a recurring basis. Users configure a schedule, provide a source URL with optional authentication, and the system periodically fetches the file and feeds it into the standard import pipeline (see ADR 0004). External systems can also trigger imports on demand via webhooks. This ADR documents the scheduling, webhook, authentication, and security mechanisms.

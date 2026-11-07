@@ -4,6 +4,7 @@
  * @module
  */
 import { createServer } from "node:http";
+import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
@@ -11,7 +12,9 @@ import {
   checkExternalLink,
   extractLinks,
   findRepoDocsSiteLinks,
+  pageUrlPath,
   resolveDocsSiteUrl,
+  resolveInternalLink,
 } from "../../../../docs/scripts/check-links";
 
 describe("documentation site URLs outside the docs content", () => {
@@ -28,6 +31,28 @@ describe("documentation site URLs outside the docs content", () => {
   it("finds no broken docs site URL in repository files", () => {
     const broken = findRepoDocsSiteLinks().filter((link) => !resolveDocsSiteUrl(link.url)?.valid);
     expect(broken).toEqual([]);
+  });
+});
+
+describe("relative links inside the docs content", () => {
+  const contentDir = path.resolve(import.meta.dirname, "../../../../docs/content");
+  const page = (relative: string) => path.join(contentDir, relative);
+
+  it("maps content files to their trailing-slash page URLs", () => {
+    expect(pageUrlPath(page("guide/getting-started.mdx"))).toBe("/guide/getting-started/");
+    expect(pageUrlPath(page("guide/index.mdx"))).toBe("/guide/");
+    expect(pageUrlPath(page("index.mdx"))).toBe("/");
+  });
+
+  it("resolves relative links against the page URL, as the browser does", () => {
+    // Sibling file on disk, but the browser resolves it to /guide/getting-started/data-import/.
+    expect(resolveInternalLink("./data-import", page("guide/getting-started.mdx"))?.valid).toBe(false);
+    expect(resolveInternalLink("../data-import", page("guide/getting-started.mdx"))?.valid).toBe(true);
+    expect(resolveInternalLink("./getting-started", page("guide/index.mdx"))?.valid).toBe(true);
+  });
+
+  it("accepts absolute links with the trailing slash and fragment of a published URL", () => {
+    expect(resolveInternalLink("/self-hosting/deployment/#updating", page("guide/index.mdx"))?.valid).toBe(true);
   });
 });
 

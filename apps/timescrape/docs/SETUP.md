@@ -101,8 +101,8 @@ SCRAPER_DEFAULT_MEMORY=512
 # Maximum Git repo clone size in MB (default: 50)
 SCRAPER_MAX_REPO_SIZE_MB=50
 
-# Maximum CSV output file size in MB (default: 100)
-SCRAPER_MAX_OUTPUT_SIZE_MB=100
+# Maximum CSV output file size in MB (default: 50)
+SCRAPER_MAX_OUTPUT_SIZE_MB=50
 
 # Run workspaces and downloadable outputs; required, absolute path
 SCRAPER_DATA_DIR=/tmp/timescrape
@@ -121,7 +121,7 @@ openssl rand -hex 32
 From the monorepo root:
 
 ```bash
-pnpm --filter scraper dev
+make timescrape-dev   # or: pnpm --filter timescrape dev
 ```
 
 The server starts on the port specified by `SCRAPER_PORT` (default 4000).
@@ -167,7 +167,7 @@ runtime images or the `scraper-sandbox` network Podman is missing.
 
 ## 6. Connect to TimeTiles
 
-Add two variables to the TimeTiles `.env` file (`apps/web/.env`):
+Add two variables to the TimeTiles environment file (`apps/web/.env.local`):
 
 ```bash
 # URL where TimeTiles can reach the runner
@@ -218,7 +218,7 @@ The `SCRAPER_API_KEY` is the sole authentication mechanism between TimeTiles and
 To rotate the key:
 
 1. Generate a new key: `openssl rand -hex 32`
-2. Update `SCRAPER_API_KEY` in both `apps/timescrape/.env` and `apps/web/.env`.
+2. Update `SCRAPER_API_KEY` in both `apps/timescrape/.env` and `apps/web/.env.local`.
 3. Restart both the runner and the TimeTiles web app.
 
 Rotate the key periodically and whenever you suspect it may have been exposed.

@@ -114,14 +114,14 @@ Key commands and what they run:
 
 | Make Command    | Underlying Tool                      | Scope                                                       |
 | --------------- | ------------------------------------ | ----------------------------------------------------------- |
-| `make dev`      | `turbo run dev`                      | All apps in parallel                                        |
+| `make dev`      | `pnpm --filter web dev`              | Web app only, after starting the database                   |
 | `make check`    | `turbo run lint typecheck`           | All packages (lint + tsgo)                                  |
 | `make check-ai` | Custom script wrapping Turbo         | AI-formatted output, supports `PACKAGE` and `FILES` filters |
 | `make test-ai`  | `turbo run test:ai` or direct Vitest | AI-formatted output, supports `FILTER` pattern              |
 | `make build`    | `turbo run build`                    | Full production build                                       |
 | `make lint`     | `turbo run lint`                     | Lint across all packages                                    |
 
-Typechecking now runs through `tsgo` in both local development and CI. The primary commands are `make check` and `make typecheck`.
+Typechecking runs through `tsgo` in both local development and CI. The primary commands are `make check` and `make typecheck`.
 
 ### CI/CD Pipeline
 
@@ -130,10 +130,12 @@ GitHub Actions workflows are organized as reusable workflows composed by a top-l
 ```
 ci.yml (push to main, PRs)
 ├── build.yml          Build & Quality Checks
-│   ├── Generate API docs (TypeDoc)
+│   ├── Check formatting (oxfmt)
 │   ├── Lint (oxlint, all packages)
 │   ├── Typecheck (tsgo full, all packages)
+│   ├── Check the committed OpenAPI spec
 │   ├── Lint infrastructure (actionlint, hadolint, checkmake, shellcheck)
+│   ├── Test UI package, scraper runner, and Python SDK; build Storybook
 │   └── Build web app (next build --experimental-build-mode compile)
 │
 ├── check-payload-types.yml
@@ -146,8 +148,7 @@ ci.yml (push to main, PRs)
 │
 └── test-e2e.yml  (needs: build, check-payload-types)
     ├── PostgreSQL + PostGIS service container
-    ├── Download build artifact from build job
-    ├── Playwright tests (parallel workers)
+    ├── Playwright tests (parallel workers; global setup builds the app)
     └── Upload failure artifacts (traces, screenshots)
 ```
 
@@ -163,7 +164,7 @@ Additional standalone workflows:
 | `publish-scraper-python.yml` | `python-v*` tags                    | Publish the Python SDK to PyPI                                                                      |
 | `logo-assets.yml`            | Manual                              | Generate logo assets                                                                                |
 
-The build artifact (`.next` directory) is shared between the build job and E2E tests via `actions/upload-artifact`, avoiding a redundant rebuild.
+The web build in `build.yml` is a gate only; the E2E workflow builds the app again in its global setup rather than downloading an artifact.
 
 ## Consequences
 

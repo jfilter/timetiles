@@ -11,7 +11,7 @@ TimeTiles uses standard [SemVer](https://semver.org/): `MAJOR.MINOR.PATCH` with 
 - **PATCH** — bug fixes only.
 - **Pre-release suffix** — `-alpha.N`, `-beta.N`, or `-rc.N` for unstable builds leading up to a target version.
 
-The current pre-1.0 phase is being shipped as `v0.1.0-alpha.<N>` while the API surface and data model stabilise. Once stable, releases will move to plain `MAJOR.MINOR.PATCH` tags.
+Release tags are the version with a `v` prefix, e.g. `v0.1.0-alpha.<N>` during the pre-1.0 phase and `v1.2.0` afterwards. The changelog headings and `TIMETILES_VERSION` use the version without the prefix.
 
 ## When to release
 
@@ -43,13 +43,13 @@ Edit `apps/docs/content/reference/changelog.mdx`:
 
 ```bash
 git add apps/docs/content/reference/changelog.mdx
-git commit -m "docs(docs): prepare <version> changelog"
+git commit -m "docs(docs): prepare v<version> changelog"
 ```
 
 ### 4. Tag the release commit
 
 ```bash
-git tag -a <version> -m "<version>
+git tag -a v<version> -m "v<version>
 
 <short summary of the release — copy the headline points from the
 changelog entry>"
@@ -61,16 +61,16 @@ Annotated tags (`-a`) are required so the message is preserved on GitHub.
 
 ```bash
 git push origin main
-git push origin <version>
+git push origin v<version>
 ```
 
-The `Deploy Documentation` workflow rebuilds the docs site (including the changelog) on push to `main`. The `Release Images` workflow builds and publishes container images on tag push.
+The `Deploy Documentation` workflow rebuilds the docs site (including the changelog) on push to `main`. The `Release Docker Images` workflow builds and publishes container images when a `v*` tag is pushed.
 
 ### 6. (Optional) Create a GitHub Release
 
 ```bash
-gh release create <version> \
-  --title "<version>" \
+gh release create v<version> \
+  --title "v<version>" \
   --notes-from-tag
 ```
 
@@ -81,7 +81,7 @@ Add `--prerelease` for any version with a pre-release suffix (`-alpha`, `-beta`,
 When tagging existing commits after the fact, use the same annotated-tag command but pointed at the historical commit:
 
 ```bash
-git tag -a <version> <commit-sha> -m "<message>"
+git tag -a v<version> <commit-sha> -m "<message>"
 ```
 
 The tagger date will reflect when the tag was created, which is fine — the commit date stays accurate.

@@ -17,6 +17,7 @@ All emails flow through Payload's `sendEmail` method, backed by `@payloadcms/ema
 | Environment | Transport      | Details                                                                                   |
 | ----------- | -------------- | ----------------------------------------------------------------------------------------- |
 | Production  | SMTP           | Configured via `EMAIL_SMTP_HOST`, `EMAIL_SMTP_PORT`, `EMAIL_SMTP_USER`, `EMAIL_SMTP_PASS` |
+| Disabled    | JSON transport | `EMAIL_DISABLED=true`; mail-only routes answer 503, startup fails without either setting  |
 | Development | ethereal.email | Auto-created test account, credentials cached to `.ethereal-credentials.json` and memory  |
 | Test        | JSON transport | In-memory `jsonTransport: true`, no network calls                                         |
 

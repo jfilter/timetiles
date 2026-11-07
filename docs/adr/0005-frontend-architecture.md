@@ -72,7 +72,7 @@ Context is a dependency injection mechanism, not a state management tool. It wor
 
 The design system (`packages/ui`) exports 120+ components following the Cartographic Design System: Playfair Display (serif), DM Sans (sans-serif), earth-tone palette.
 
-**Reference:** `packages/ui/src/components/`, `packages/ui/docs/DESIGN_SYSTEM.md`
+**Reference:** `packages/ui/src/components/`, `packages/ui/DESIGN_SYSTEM.md`
 
 ### View System
 

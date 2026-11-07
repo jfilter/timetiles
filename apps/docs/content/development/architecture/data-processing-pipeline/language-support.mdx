@@ -60,10 +60,10 @@ Confidence levels shown in UI:
 
 ## Key Files
 
-| File                                                     | Purpose                       |
-| -------------------------------------------------------- | ----------------------------- |
-| `lib/services/schema-builder/language-detection.ts`      | Language detection with franc |
-| `lib/services/schema-builder/field-mapping-detection.ts` | Field pattern matching        |
+| File                                                  | Purpose                       |
+| ----------------------------------------------------- | ----------------------------- |
+| `lib/services/schema-detection/utilities/language.ts` | Language detection with franc |
+| `lib/services/schema-detection/utilities/patterns.ts` | Field pattern matching        |
 
 ## Adding a New Language
 
@@ -71,10 +71,10 @@ To add support for a new language (e.g., Polish - `pol`):
 
 ### Step 1: Update Language Constants
 
-In `lib/services/schema-builder/language-detection.ts`:
+In `lib/services/schema-detection/utilities/language.ts`:
 
 ```typescript
-// Add to SUPPORTED_LANGUAGES array (line ~17)
+// Add to the SUPPORTED_LANGUAGES array
 export const SUPPORTED_LANGUAGES = [
   "eng",
   "deu",
@@ -86,7 +86,7 @@ export const SUPPORTED_LANGUAGES = [
   "pol", // Add new language
 ] as const;
 
-// Add to LANGUAGE_NAMES map (line ~24)
+// Add to the LANGUAGE_NAMES map
 export const LANGUAGE_NAMES: Record<string, string> = {
   eng: "English",
   deu: "German",
@@ -102,10 +102,10 @@ export const LANGUAGE_NAMES: Record<string, string> = {
 
 ### Step 2: Add Field Patterns
 
-In `lib/services/schema-builder/field-mapping-detection.ts`, add patterns for all 4 field types in the `FIELD_PATTERNS` object:
+In `lib/services/schema-detection/utilities/patterns.ts`, add patterns for every field type in the `FIELD_PATTERNS` object (the example shows four; `locationName` and `endTimestamp` need entries too):
 
 ```typescript
-const FIELD_PATTERNS = {
+export const FIELD_PATTERNS = {
   title: {
     // ... existing languages ...
     pol: [/^tytul$/i, /^nazwa$/i, /^wydarzenie.*nazwa$/i, /^wydarzenie.*tytul$/i, /^oznaczenie$/i, /^wydarzenie$/i],
@@ -146,7 +146,7 @@ const FIELD_PATTERNS = {
 
 ### Step 3: Add Tests
 
-Create test fixtures and cases in `tests/integration/services/multi-language-imports.test.ts`:
+Create test fixtures and cases in `tests/integration/services/multi-language-ingests.test.ts`:
 
 ```typescript
 describe("Polish language support", () => {

@@ -33,25 +33,29 @@ title,date,location,category,description
 
 <Steps>
 
-### Go to the import page
+### Sign in
 
-Navigate to `/ingest` or click the import button in the interface.
-
-### Choose or create a catalog
-
-Catalogs are project-level containers. Create one for your topic (e.g., "German Events 2024") or select an existing one.
+Navigate to `/ingest` or click the import button in the interface. Importing needs an account with a confirmed email address; the wizard asks you to sign in or register first.
 
 ### Upload your file
 
 Drag and drop your CSV, Excel, or ODS file. You can also paste a URL to fetch data from a remote source.
 
-### Review the detected schema
+### Choose a catalog and dataset
+
+Catalogs are project-level containers. Create one for your topic (e.g., "German Events 2024") or select an existing one, then choose the dataset the events go into.
+
+### Check the field mapping
 
 TimeTiles analyzes your data and identifies field types — dates, locations, categories, numbers. Verify the mappings look correct and adjust if needed, especially if your file includes start/end date pairs or a single combined coordinate column.
 
-### Start processing
+### Schedule and review
 
-Click **Start**. TimeTiles will:
+For a URL source, the **Schedule** step lets the import repeat; file uploads skip it. The **Review** step summarizes your choices.
+
+### Start the import
+
+Click **Start Import**. TimeTiles will:
 
 - Validate your data
 - Geocode text addresses to coordinates (or use coordinates directly if provided)
@@ -70,8 +74,6 @@ Once processing completes, your data is live on the map.
 **Timeline** — A histogram at the bottom shows event density over time. Drag the handles to filter to a specific date range. Watch how patterns shift as you narrow the window.
 
 **Filters** — Sidebar filters are generated from your data. If you have a "category" field, you'll see checkboxes for each value. Combine multiple filters to drill down.
-
-**Search** — Find specific events by text. Search works across all fields.
 
 **URL state** — As you pan the map, adjust the timeline, or toggle filters, the URL updates. Bookmark it to save your exact view.
 
@@ -92,6 +94,6 @@ You can also export all your data as a ZIP archive from your account settings.
 
 ## Next Steps
 
-- [Data Import](./data-import) — Scheduled imports, scrapers, deduplication, schema evolution
-- [Exploring Data](./exploring-data) — Map, timeline, filters, and sharing
-- [Use Cases](./use-cases) — Real-world examples
+- [Data Import](/guide/data-import) — Scheduled imports, scrapers, deduplication, schema evolution
+- [Exploring Data](/guide/exploring-data) — Map, timeline, filters, and sharing
+- [Use Cases](/guide/use-cases) — Real-world examples

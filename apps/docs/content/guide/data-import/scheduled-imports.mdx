@@ -4,12 +4,11 @@ Fetch data from a URL automatically on a recurring schedule — hourly, daily, w
 
 ## Setup
 
-1. In the Import wizard, choose **URL** as your data source
-2. Paste the URL and configure schema and field mappings as usual
-3. In the **Schedule** step, choose **Repeat on schedule**
-4. Set the frequency (e.g., every 6 hours, daily at midnight)
-5. Optionally add authentication headers for protected APIs
-6. Save
+1. In the **Upload** step of the import wizard, choose **URL** as your data source and paste the URL
+2. For a protected URL, set the authentication there (it can be adjusted again in the **Schedule** step)
+3. Configure the dataset and field mappings as usual
+4. In the **Schedule** step, choose **Repeat on schedule** and set the frequency (e.g., every 6 hours, daily at midnight)
+5. Review and start the import
 
 ## How It Works
 
@@ -25,7 +24,7 @@ Custom five-field cron schedules use Croner, the same engine used by Payload. Th
 
 For local-time schedules, Croner shifts a nonexistent spring-transition time forward by the clock change. For example, `30 2 * * *` in `Europe/Berlin` runs at 03:30 on the spring-transition day. During the autumn transition, the repeated hour does not produce a second occurrence: after the first 02:30 has passed, the next scheduled 02:30 is on the following day.
 
-This replaces TimeTiles' earlier custom cron behavior, which skipped nonexistent spring times and included the second occurrence of repeated autumn times. Use UTC if the schedule should be independent of these local clock changes.
+Use UTC if the schedule should be independent of these local clock changes.
 
 ## Authentication
 
@@ -39,6 +38,8 @@ Scheduled imports support several methods for protected URLs:
 | Basic Auth   | HTTP Basic authentication                                          |
 | OAuth 2.0    | Password-grant token exchange; access token sent as a Bearer token |
 
+The wizard offers None, API Key, Bearer Token, and Basic Auth. OAuth 2.0 is configured on the scheduled import in the admin dashboard.
+
 ## JSON API Pagination
 
 For paginated JSON sources, the scheduled import's JSON API configuration controls page size and stopping limits:
@@ -51,18 +52,20 @@ These counts must be positive integers. Reaching a configured limit stops the fe
 
 ## Managing Schedules
 
-From the **Scheduled Imports** section in your account:
+From the **Scheduled** tab of your imports page (`/account/imports`), each schedule's actions menu offers:
 
-- **Pause/resume** a schedule
-- **Trigger** an immediate run
-- **View history** of past runs
-- **Delete** a schedule
+- **Enable** / **Disable**
+- **Run now**
+- **Edit**, which reopens the wizard with the current settings
+- **Delete**
+
+Each schedule also shows its last and next run and the history of past runs.
 
 Admins can view all schedules at `/dashboard/collections/scheduled-ingests`.
 
 ## Webhook Triggers
 
-Each scheduled import can optionally expose a webhook URL. POST to it to trigger an immediate run — useful for CI/CD pipelines or external automation:
+Each scheduled import can optionally expose a webhook URL. An admin or editor enables it on the scheduled import in the admin dashboard. POST to it to trigger an immediate run — useful for CI/CD pipelines or external automation:
 
 ```bash
 curl -X POST https://your-instance.com/api/webhooks/trigger/{token}
@@ -78,6 +81,6 @@ Scheduled imports use HTTP caching (RFC 7234) to avoid re-downloading unchanged 
 
 ## Next Steps
 
-- [File Upload](./file-upload) — One-time manual imports
-- [Scrapers](./scrapers) — Custom scripts for non-tabular data sources
+- [File Upload](/guide/data-import/file-upload) — One-time manual imports
+- [Scrapers](/guide/data-import/scrapers) — Custom scripts for non-tabular data sources
 - [Exploring Data](/guide/exploring-data) — Map, timeline, filters, and sharing

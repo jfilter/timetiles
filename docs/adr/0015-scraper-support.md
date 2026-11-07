@@ -4,6 +4,8 @@
 
 Accepted
 
+**Current state (2026-11-07):** internal names were renamed from `import` to `ingest` (see [ADR 0030](0030-import-workflow-migration.md)), for example `import-files` → `ingest-files`, `import-jobs` → `ingest-jobs`, and `scheduled-imports` → `scheduled-ingests`. Names below are as they were when this was decided; user-facing copy still says import. The pipeline runs as Payload workflows and `lib/services/stage-transition.ts` does not exist; scraper output enters through the `scraper-ingest` workflow.
+
 ## Context
 
 TimeTiles ingests tabular data (CSV/Excel/ODS) from file uploads or scheduled URL fetches, but cannot scrape data from websites that do not expose clean tabular files. Many event sources publish data in HTML pages, APIs with pagination, or other formats that require custom extraction logic.

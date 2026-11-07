@@ -191,7 +191,7 @@ Without the feature flag, users cannot create scraper repos and execution jobs w
 From the monorepo root:
 
 ```bash
-pnpm --filter scraper dev
+make timescrape-dev   # or: pnpm --filter timescrape dev
 ```
 
 The server starts on the configured port (default 4000).
@@ -566,7 +566,7 @@ Old containers that are currently running are not affected -- they continue with
 
 ## Related Documentation
 
-- [Scrapers Overview](./) -- Feature overview and quick start
-- [Writing Scrapers](./writing-scrapers) -- Scraper authoring guide
+- [Scrapers Overview](/development/packages/scrapers) -- Feature overview and quick start
+- [Writing Scrapers](/development/packages/scrapers/writing-scrapers) -- Scraper authoring guide
 - [Production Deployment](/self-hosting/deployment) -- Main TimeTiles deployment guide
 - [Configuration](/self-hosting/configuration) -- Environment variables reference

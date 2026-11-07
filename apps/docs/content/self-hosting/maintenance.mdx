@@ -8,6 +8,14 @@ Backups, updates, monitoring, and troubleshooting for production instances.
 
 TimeTiles uses [restic](https://restic.net/) for encrypted, deduplicated backups with optional S3 offsite storage.
 
+Bootstrap installs restic and generates `RESTIC_PASSWORD`. On a manual install, install restic yourself (`sudo apt install restic`) and set `RESTIC_PASSWORD` in `.env.production`; the template leaves it empty and `timetiles backup` refuses to run without it.
+
+<Callout type="warning">
+  Backups contain the database and uploads, not `.env.production`. Keep a copy of `RESTIC_PASSWORD` and `PAYLOAD_SECRET`
+  off the host: without the first the snapshots cannot be decrypted, and without the second the restored database cannot
+  decrypt the stored credentials (for example scheduled-import authentication).
+</Callout>
+
 ### Commands
 
 ```bash
@@ -120,8 +128,8 @@ curl https://your-domain.com/api/health
 # Container status
 timetiles status
 
-# Live logs
-timetiles logs -f
+# Live logs (follows by default)
+timetiles logs
 ```
 
 **Recommended schedule**: health endpoint every 5 minutes, service status hourly, log review daily.
@@ -132,9 +140,9 @@ timetiles logs -f
 # Container CPU and memory
 docker stats
 
-# Database size
-docker compose -f deployment/docker-compose.prod.yml exec postgres \
-  psql -U timetiles_user -d timetiles -c \
+# Database size (run from the deployment directory; the image needs -h localhost)
+docker compose -f docker-compose.prod.yml --env-file .env.production exec postgres \
+  psql -h localhost -U timetiles_user -d timetiles -c \
   "SELECT pg_size_pretty(pg_database_size('timetiles'));"
 
 # Disk space
@@ -146,11 +154,14 @@ df -h
 All containers use JSON logging with 50 MB max per file, 5 files retained.
 
 ```bash
-timetiles logs web              # Web application logs
-timetiles logs worker-ingest    # Import worker logs
-timetiles logs postgres         # Database logs
-timetiles logs nginx            # Reverse proxy logs
+timetiles logs --web            # Web application logs
+timetiles logs --files          # Log files in /var/log/timetiles/
+
+# Any other service, from the deployment directory
+docker compose -f docker-compose.prod.yml --env-file .env.production logs -f worker-ingest
 ```
+
+Commands on this page that call `docker compose` directly use the deployment directory (`/opt/timetiles` on bootstrapped hosts) as the working directory and the default `DB_USER` and `DB_NAME`; adjust them if you changed those.
 
 ### Import Working Files
 
@@ -167,7 +178,7 @@ Do not clear the upload directory as if it were a cache: active or paused import
 Run weekly for optimal performance:
 
 ```sql
--- Connect: docker compose exec postgres psql -U timetiles_user timetiles
+-- Connect: docker compose -f docker-compose.prod.yml --env-file .env.production exec postgres psql -h localhost -U timetiles_user timetiles
 VACUUM ANALYZE;
 ```
 
@@ -184,15 +195,15 @@ LIMIT 10;
 
 ## SSL Certificates
 
-Certificates auto-renew every 12 hours via the certbot container. Verify monthly:
+The certbot container checks for renewal every 12 hours. nginx picks up a renewed certificate only when it reloads: bootstrap installs a daily reload cron job; on a manual install, add one yourself (see [SSL/TLS](/self-hosting/deployment#lets-encrypt-recommended)). Verify monthly:
 
 ```bash
 # Check certificate status
-timetiles logs certbot
+docker compose -f docker-compose.prod.yml --env-file .env.production logs certbot
 
 # Force renewal if needed
-docker compose -f deployment/docker-compose.prod.yml exec certbot certbot renew --force-renewal
-docker compose -f deployment/docker-compose.prod.yml restart nginx
+docker compose -f docker-compose.prod.yml --env-file .env.production exec certbot certbot renew --force-renewal
+timetiles restart nginx
 ```
 
 ## Health Check
@@ -203,16 +214,16 @@ TimeTiles exposes a health endpoint for monitoring and load balancer integration
 curl https://your-instance.com/api/health
 ```
 
-Returns `200` when the system is healthy. Use this for Docker health checks or uptime monitoring (e.g., [UptimeRobot](https://uptimerobot.com/), [Gatus](https://gatus.io/)).
+Returns `200` with `{"status":"ok","database":"connected"}` when the system is healthy and `503` when the database is unreachable. Use this for Docker health checks or uptime monitoring (e.g., [UptimeRobot](https://uptimerobot.com/), [Gatus](https://gatus.io/)).
 
 ## Troubleshooting
 
 | Problem         | Diagnosis                       | Solution                                                                                                                              |
 | --------------- | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| App won't start | `timetiles logs web`            | Check DATABASE_URL and PAYLOAD_SECRET in .env.production                                                                              |
+| App won't start | `timetiles logs --web`          | Check DATABASE_URL and PAYLOAD_SECRET in .env.production                                                                              |
 | Imports stuck   | Check `/dashboard/payload-jobs` | Workers may be down — `timetiles restart worker-ingest`                                                                               |
 | High memory     | `docker stats` and service logs | Identify the affected service and workload before restarting it; do not blindly increase the JavaScript heap limit                    |
-| SSL expired     | `timetiles logs certbot`        | DNS must resolve to your server. Force renewal (see above)                                                                            |
+| SSL expired     | certbot logs (see above)        | DNS must resolve to your server. Force renewal (see above)                                                                            |
 | Disk full       | `df -h` and `docker system df`  | Review unused Docker data and backup retention before removing anything; use `timetiles backup prune` for configured backup retention |
 | Slow queries    | Enable `pg_stat_statements`     | Add indexes, run `VACUUM ANALYZE`, check PostGIS query plans                                                                          |
 
@@ -226,11 +237,11 @@ Returns `200` when the system is healthy. Use this for Docker health checks or u
 LOG_LEVEL=debug
 
 timetiles restart
-timetiles logs -f web
+timetiles logs --web
 ```
 
 ## Next Steps
 
-- [Configure](./configuration) environment variables and feature flags
-- [Customize the UI](./ui-customization) with themes and branding
-- [Set usage limits](./usage-limits) for trust levels and quotas
+- [Configure](/self-hosting/configuration) environment variables and feature flags
+- [Customize the UI](/self-hosting/ui-customization) with themes and branding
+- [Set usage limits](/self-hosting/usage-limits) for trust levels and quotas

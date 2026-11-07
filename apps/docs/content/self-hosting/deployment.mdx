@@ -6,37 +6,55 @@ import { Callout, Tabs } from "nextra/components";
 
 ## Deployment Options
 
-| Option               | Best for             | What you get                                                 |
-| -------------------- | -------------------- | ------------------------------------------------------------ |
-| **Docker Compose**   | Production           | Separate containers, horizontal scaling, standard Docker ops |
-| **All-in-One**       | Demos, small teams   | Single container with everything, simplest setup             |
-| **Bootstrap Script** | Fresh Ubuntu servers | Automated setup including security hardening                 |
+| Option               | Best for             | What you get                                            |
+| -------------------- | -------------------- | ------------------------------------------------------- |
+| **Docker Compose**   | Production           | Separate containers, standard Docker ops                |
+| **All-in-One**       | Demos, small teams   | Single container with everything, simplest setup        |
+| **Bootstrap Script** | Fresh Ubuntu servers | Docker Compose setup plus security hardening, automated |
 
 ## Docker Compose (Recommended)
 
 <Tabs items={['Quick Start', 'Architecture']}>
 <Tabs.Tab>
 
+On a fresh Ubuntu server, the [bootstrap script](#bootstrap-script-ubuntu) performs all of these steps for you. For a manual install:
+
 ```bash
 # 1. Clone the deployment files
 git clone https://github.com/jfilter/timetiles.git
-cd timetiles
+cd timetiles/deployment
 
 # 2. Configure
-cp deployment/.env.production.example deployment/.env.production
-nano deployment/.env.production
-# Set at minimum: DOMAIN_NAME, DB_PASSWORD, PAYLOAD_SECRET, LETSENCRYPT_EMAIL
+./timetiles setup                 # Creates .env.production with a generated PAYLOAD_SECRET
+nano .env.production
+# Set at minimum: DOMAIN_NAME, DB_PASSWORD, LETSENCRYPT_EMAIL, RESTIC_PASSWORD,
+# and SMTP if registration stays enabled (see Configuration below)
 
-# 3. Pull images and start
-timetiles pull
-timetiles up
+# 3. Write your domain into the nginx site config
+DOMAIN=your-domain.com
+sed -i "s/\${DOMAIN_NAME}/$DOMAIN/g" nginx/sites-enabled/*.conf
 
-# 4. Set up SSL (after DNS is pointing to your server)
-timetiles ssl
+# 4. Temporary self-signed certificate, so nginx can start before Let's Encrypt
+mkdir -p "ssl/live/$DOMAIN"
+openssl req -x509 -nodes -days 30 -newkey rsa:2048 -subj "/CN=$DOMAIN" \
+  -keyout "ssl/live/$DOMAIN/privkey.pem" -out "ssl/live/$DOMAIN/fullchain.pem"
+printf 'services:\n  nginx:\n    volumes:\n      - ./ssl:/etc/letsencrypt:ro\n' \
+  > docker-compose.ssl-override.yml
 
-# 5. Create your admin account
-timetiles create-admin you@example.com
+# 5. Pull images and start
+./timetiles pull
+./timetiles up
+
+# 6. Replace the temporary certificate (after DNS points to your server)
+./timetiles ssl                   # Also removes docker-compose.ssl-override.yml
+
+# 7. Create your admin account
+./timetiles create-admin you@example.com
 ```
+
+The CLI is not on your `PATH` after a manual install. Run it as `./timetiles` from `deployment/`, or link it: `sudo ln -sf "$PWD/timetiles" /usr/local/bin/timetiles`. The remaining examples call it as `timetiles`.
+
+`timetiles update` resets the tracked nginx site files and substitutes `DOMAIN_NAME` again (see [Updating](#updating)).
 
 </Tabs.Tab>
 <Tabs.Tab>
@@ -56,7 +74,7 @@ timetiles create-admin you@example.com
         │                │                │
   ┌─────▼──────┐  ┌─────▼──────┐  ┌──────▼─────┐
   │  Worker:   │  │  Worker:   │  │  Worker:    │
-  │  Ingest    │  │  Default   │  │ Maintenance │
+  │  Ingest    │  │  General   │  │ Maintenance │
   └────────────┘  └────────────┘  └─────────────┘
 ```
 
@@ -69,21 +87,23 @@ Seven containers in production:
 | **nginx**              | Reverse proxy, SSL termination            | —             |
 | **certbot**            | Let's Encrypt auto-renewal (every 12h)    | —             |
 | **worker-ingest**      | File imports, geocoding, event creation   | `ingest`      |
-| **worker-default**     | Scheduled imports, webhooks               | `default`     |
+| **worker-general**     | Scheduled imports, webhooks, email        | `default`     |
 | **worker-maintenance** | Cleanup, cache expiry, audit log rotation | `maintenance` |
 
 </Tabs.Tab>
 </Tabs>
 
-### Horizontal Web Scaling
+### Multiple Web Processes
 
-If you run more than one `web` container or otherwise serve overlapping traffic from multiple Node.js processes, set:
+The Compose file assigns fixed container names, so `docker compose --scale` does not work without an override that removes them. If you run more than one `web` container or otherwise serve overlapping traffic from multiple Node.js processes, set:
 
 ```bash
 RATE_LIMIT_BACKEND=pg
 ```
 
 The default `memory` backend is only correct for single-web-instance deployments. In a multi-worker setup, leaving rate limits in memory would multiply the effective limit across workers.
+
+Each web process caches site and view settings for up to five minutes. A change saved through one process reaches the others when that cache expires, so a site setting such as branding or the default layout template can take up to five minutes to show everywhere.
 
 ## All-in-One Container
 
@@ -111,6 +131,10 @@ docker run -d --name timetiles \
 </Callout>
 
 Then create your admin account — see [First Admin Account](#first-admin-account).
+
+The container generates a self-signed certificate on first start. To serve a real one, place `fullchain.pem` and `privkey.pem` in `/data/ssl` and restart the container. The all-in-one image has no Let's Encrypt automation, so renew and replace these files yourself.
+
+For outgoing email (needed for public registration, see [Configuration](/self-hosting/configuration#email-smtp)), pass the `EMAIL_*` variables with `-e` as well.
 
 ### Persistent Data
 
@@ -152,7 +176,7 @@ docker cp ./timetiles.yml timetiles:/data/config/timetiles.yml
 docker restart timetiles
 ```
 
-See [Configuration](./configuration) for the full reference.
+See [Configuration](/self-hosting/configuration) for the full reference.
 
 ### Logs
 
@@ -163,15 +187,15 @@ to look and your Docker log driver handles rotation:
 docker logs -f timetiles
 ```
 
-## Bootstrap Script (Ubuntu 24.04)
+## Bootstrap Script (Ubuntu)
 
-Fully automated setup on a fresh Ubuntu server. Installs Docker, configures firewall, deploys TimeTiles, sets up SSL, and enables security hardening (fail2ban, SSH hardening).
+Fully automated setup on a fresh Ubuntu 22.04 or later server (24.04 LTS recommended). Installs Docker, configures firewall, deploys TimeTiles, sets up SSL, and enables security hardening (fail2ban, SSH hardening).
 
 ```bash
 curl -sSL https://raw.githubusercontent.com/jfilter/timetiles/main/deployment/bootstrap/install.sh | sudo bash
 ```
 
-The script prompts for your domain, email, and other settings interactively.
+The script prompts for your domain, email, and other settings interactively. It links the CLI to `/usr/local/bin/timetiles`, installs restic and generates `RESTIC_PASSWORD`, and installs the cron jobs for backups, health checks, and certificate reloads.
 
 ## First Admin Account
 
@@ -215,6 +239,20 @@ cp deployment/.env.production.example deployment/.env.production
 | `DB_PASSWORD`       | Database password (20+ chars, no `@ : / % +` — see note above; `openssl rand -hex 24`) |
 | `PAYLOAD_SECRET`    | Random secret (`openssl rand -base64 32`)                                              |
 | `LETSENCRYPT_EMAIL` | Email for SSL certificate notifications                                                |
+| `RESTIC_PASSWORD`   | Backup encryption password; `timetiles backup` refuses to run without it               |
+
+**Email (required: set either `EMAIL_SMTP_HOST` or `EMAIL_DISABLED=true`):**
+
+| Variable                              | Description                                    |
+| ------------------------------------- | ---------------------------------------------- |
+| `EMAIL_SMTP_HOST`                     | SMTP server                                    |
+| `EMAIL_SMTP_PORT`                     | SMTP port (default `587`)                      |
+| `EMAIL_SMTP_USER` / `EMAIL_SMTP_PASS` | SMTP credentials, if the server requires them  |
+| `EMAIL_FROM`                          | Sender address                                 |
+| `EMAIL_SMTP_REQUIRE_TLS`              | `false` allows plaintext SMTP (default `true`) |
+| `EMAIL_DISABLED`                      | `true` runs without outgoing mail              |
+
+Self-registered users must confirm their email address before they can sign in. With `EMAIL_DISABLED=true`, registration, password reset and email change answer `503`; turn off **Enable Public Registration** in the admin dashboard and create accounts yourself. The bootstrap installer writes the SMTP settings from `bootstrap.conf`, or `EMAIL_DISABLED=true` when none are set.
 
 **Shared-rate-limit setting for multi-web deployments:**
 
@@ -222,7 +260,7 @@ cp deployment/.env.production.example deployment/.env.production
 | -------------------- | ------------------------------------------------------------------------------- |
 | `RATE_LIMIT_BACKEND` | Set to `pg` when more than one web process/container serves overlapping traffic |
 
-See [Configuration](./configuration) for the full environment variable reference.
+See [Configuration](/self-hosting/configuration) for the full environment variable reference.
 
 ## SSL/TLS
 
@@ -234,7 +272,11 @@ After DNS is pointing to your server and services are running:
 timetiles ssl
 ```
 
-Certificates auto-renew every 12 hours via the certbot container.
+The certbot container checks for renewal every 12 hours. nginx only serves a renewed certificate after a reload: bootstrap installs a daily `nginx -s reload` cron job, and a manual install needs its own, for example:
+
+```bash
+0 6 * * * cd /path/to/timetiles/deployment && docker compose -f docker-compose.prod.yml --env-file .env.production exec -T nginx nginx -s reload
+```
 
 ### Custom Certificates
 
@@ -251,34 +293,47 @@ Then restart nginx: `timetiles restart nginx`
 
 The `timetiles` CLI wraps Docker Compose for common operations:
 
-| Command             | What it does                                       |
-| ------------------- | -------------------------------------------------- |
-| `timetiles up`      | Start all services                                 |
-| `timetiles down`    | Stop all services                                  |
-| `timetiles restart` | Restart services                                   |
-| `timetiles status`  | Check service health                               |
-| `timetiles logs`    | View logs (add `-f` to follow)                     |
-| `timetiles update`  | Pull latest images and redeploy                    |
-| `timetiles pull`    | Pull images without restarting                     |
-| `timetiles ssl`     | Initialize Let's Encrypt certificates              |
-| `timetiles backup`  | Create a backup (see [Maintenance](./maintenance)) |
-| `timetiles restore` | Restore from backup                                |
+| Command                          | What it does                                                    |
+| -------------------------------- | --------------------------------------------------------------- |
+| `timetiles setup`                | Create `.env.production` from the template with a fresh secret  |
+| `timetiles build`                | Build images locally if an override exists, otherwise pull them |
+| `timetiles pull`                 | Pull images without restarting                                  |
+| `timetiles up`                   | Start all services                                              |
+| `timetiles down`                 | Stop all services                                               |
+| `timetiles restart [service]`    | Restart all services, or one                                    |
+| `timetiles status`               | Check service health                                            |
+| `timetiles check`                | Verify the whole deployment (config, services, SSL, DNS, cron)  |
+| `timetiles logs`                 | Follow all container logs, merged with the scraper runner       |
+| `timetiles logs --web`           | Follow the web container only                                   |
+| `timetiles logs --scraper`       | Follow the scraper runner (journald)                            |
+| `timetiles logs --files`         | Follow the log files in `/var/log/timetiles/`                   |
+| `timetiles update`               | Refresh deployment files and images, then redeploy              |
+| `timetiles ssl`                  | Obtain a Let's Encrypt certificate                              |
+| `timetiles create-admin <email>` | Create an admin account                                         |
+| `timetiles backup`               | Create a backup (see [Maintenance](/self-hosting/maintenance))  |
+| `timetiles restore`              | Restore from backup                                             |
+| `timetiles version`              | Show the installed version                                      |
+
+For a single service other than `web`, use Docker Compose directly (below).
 
 ### Direct Docker Compose
 
 For advanced usage:
 
 ```bash
-alias dc="docker compose -f deployment/docker-compose.prod.yml --env-file deployment/.env.production"
+# Run from the deployment directory (/opt/timetiles on bootstrapped hosts)
+alias dc="docker compose -f docker-compose.prod.yml --env-file .env.production"
 
-dc ps              # List containers
-dc logs web        # View web logs
-dc exec web sh     # Shell into web container
+dc ps                        # List containers
+dc logs -f worker-ingest     # Follow one service's logs
+dc exec web sh               # Shell into web container
 ```
+
+The CLI also layers `docker-compose.override.yml` and `docker-compose.ssl-override.yml` when they exist; the alias does not, so use it for inspection and `exec`, and the CLI to start or recreate services.
 
 ## File Structure
 
-A bootstrapped host keeps the deployment files in a real git working tree at `/opt/timetiles-src/` and exposes them as `/opt/timetiles/` via a symlink. `timetiles update` runs `git pull` against that tree, so tracked files (compose, nginx, the CLI itself) stay in sync with the upstream branch. Operator state is `.gitignore`d inside `deployment/` and survives every pull.
+A bootstrapped host keeps the deployment files in a real git working tree at `/opt/timetiles-src/` and exposes them as `/opt/timetiles/` via a symlink. Operator state is `.gitignore`d inside `deployment/` and survives every update; see [Updating](#updating) for what happens to tracked files.
 
 ```
 /opt/timetiles-src/
@@ -296,7 +351,7 @@ A bootstrapped host keeps the deployment files in a real git working tree at `/o
 /opt/timetiles -> /opt/timetiles-src/deployment    # compat symlink
 ```
 
-A manual install just keeps the `deployment/` directory in your repo checkout and there is no symlink.
+A manual install keeps the `deployment/` directory in your repo checkout, with no symlink.
 
 ## Security
 
@@ -316,7 +371,7 @@ timetiles status
 
 # HTTP health endpoint
 curl https://your-domain.com/api/health
-# Returns: {"status":"ok","timestamp":"..."}
+# Returns: {"status":"ok","database":"connected"}  (503 when the database is unreachable)
 ```
 
 ## Updating
@@ -332,6 +387,10 @@ timetiles update
 curl https://your-domain.com/api/health
 ```
 
+`timetiles update` fetches the deployment files for the configured version and runs `git reset --hard` on the checkout, which discards local edits to tracked files (compose, nginx, the CLI). Keep your changes in `docker-compose.override.yml` and `.env.production`, which are ignored by git. It then pulls the images, recreates the services, and reloads nginx.
+
+The version comes from `TIMETILES_VERSION` in `.env.production`. Set it to a release such as `1.0.0` to pin both the images and the deployment files to the `v1.0.0` tag; with `latest` or `edge`, the deployment files follow the `main` branch.
+
 Database migrations run automatically on container startup.
 
 ## Troubleshooting
@@ -340,7 +399,7 @@ Database migrations run automatically on container startup.
 | ------------------------- | ------------------------------------------------------------------------------------------------- |
 | Build fails with OOM      | Add 4 GB swap: `sudo fallocate -l 4G /swapfile && sudo mkswap /swapfile && sudo swapon /swapfile` |
 | SSL certificate fails     | Verify DNS resolves to your server: `dig your-domain.com +short`                                  |
-| App won't start           | Check logs: `timetiles logs web`                                                                  |
+| App won't start           | Check logs: `timetiles logs --web`                                                                |
 | Database connection error | Check postgres is running: `timetiles status`                                                     |
 | Port already in use       | Stop existing services: `timetiles down`                                                          |
 
@@ -358,6 +417,6 @@ See [Scraper Deployment](/development/packages/scrapers/deployment) for full set
 
 ## Next Steps
 
-- [Configure](./configuration) environment variables, geocoding, and feature flags
-- [Set up backups](./maintenance) and monitoring
-- [Customize the UI](./ui-customization) with themes and branding
+- [Configure](/self-hosting/configuration) environment variables, geocoding, and feature flags
+- [Set up backups](/self-hosting/maintenance) and monitoring
+- [Customize the UI](/self-hosting/ui-customization) with themes and branding

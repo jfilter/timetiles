@@ -2,6 +2,8 @@
 
 TimeTiles provides a layered customization system — from simple color changes to full CSS overrides — with both built-in themes and admin dashboard controls.
 
+import { Callout } from "nextra/components";
+
 ## Built-in Themes
 
 The `@timetiles/ui` package ships two built-in themes that users can switch between at runtime:
@@ -24,7 +26,7 @@ Built-in themes support custom themes via CSS variables. See the [UI package doc
 | **Site Branding**    | Per-site color and style overrides        | `/dashboard/collections/sites`            |
 | **Block Styles**     | Per-block spacing, visibility, separators | Page builder (per block)                  |
 | **Custom CSS**       | Arbitrary CSS scoped to your site         | `/dashboard/collections/sites`            |
-| **Layout Templates** | Page structure (header, footer, width)    | `/dashboard/collections/layout-templates` |
+| **Layout Templates** | Page structure (stored, not applied)      | `/dashboard/collections/layout-templates` |
 
 Each layer overrides the one above it. CMS theme presets override the built-in themes. A site's inline colors override its theme preset. Custom CSS overrides everything.
 
@@ -91,7 +93,7 @@ Every block in the page builder has a **Block Style** section:
 
 ## Custom CSS
 
-For cases where structured controls aren't enough. Edit the **Custom Code** section on any site.
+For cases where structured controls aren't enough. Edit the **Custom Code** section on any site; only admins can change it.
 
 | Field           | Purpose                            |
 | --------------- | ---------------------------------- |
@@ -104,9 +106,16 @@ CSS is automatically scoped via `[data-site="your-site-slug"]`. Target blocks wi
 
 **Security** — these patterns are stripped automatically: `@import`, `url()`, `javascript:`, `expression()`, `position: fixed`.
 
+The HTML fields drop inline `<script>` blocks. External scripts are kept only with both `integrity` (an SRI hash) and `crossorigin` attributes, so snippets that inline their loader code, such as most tag-manager snippets, need rewriting to a pinned external script.
+
 ## Layout Templates
 
-Layout templates control the structural frame of pages. Create at `/dashboard/collections/layout-templates`:
+Layout templates describe the structural frame of pages and are created at `/dashboard/collections/layout-templates`.
+
+<Callout type="warning">
+  The frontend does not apply layout templates. The settings below are stored, but every page renders with the standard
+  header, footer, and content width.
+</Callout>
 
 | Setting           | Options                             | Default   |
 | ----------------- | ----------------------------------- | --------- |
