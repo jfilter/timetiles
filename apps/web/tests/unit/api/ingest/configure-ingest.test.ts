@@ -688,6 +688,31 @@ describe("POST /api/ingest/configure", () => {
 
       expect(response.status).toBe(429);
       expect(body.code).toBe("QUOTA_EXCEEDED");
+      expect(mocks.mockPayload.create).not.toHaveBeenCalledWith(
+        expect.objectContaining({ collection: "ingest-files" })
+      );
+    });
+
+    it("refuses a schedule while scheduled imports are disabled, before creating anything", async () => {
+      mocks.mockIsFeatureEnabled.mockImplementation((flag: string) =>
+        Promise.resolve(flag !== "enableScheduledIngests")
+      );
+      const req = createRequest({
+        ...baseBody,
+        createSchedule: {
+          enabled: true,
+          sourceUrl: "https://example.com/data.csv",
+          name: "Daily Import",
+          scheduleType: "frequency",
+          frequency: "daily",
+          schemaMode: "additive",
+        },
+      });
+
+      const response = await POST(req, routeContext);
+
+      expect(response.status).toBe(403);
+      expect(mocks.mockPayload.create).not.toHaveBeenCalled();
     });
 
     it("should not create scheduled ingest when createSchedule is not provided", async () => {

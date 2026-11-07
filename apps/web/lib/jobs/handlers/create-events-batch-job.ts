@@ -271,9 +271,11 @@ const completedRedeliveryOutput = async (
   };
 };
 
+const RETRIES = 1;
+
 export const createEventsBatchJob = {
   slug: JOB_TYPES.CREATE_EVENTS,
-  retries: 1,
+  retries: RETRIES,
   outputSchema: [
     { name: "eventCount", type: "number" as const },
     { name: "duplicatesSkipped", type: "number" as const },
@@ -281,6 +283,7 @@ export const createEventsBatchJob = {
     { name: "reason", type: "text" as const },
   ],
   onFail: createStandardOnFail("create-events-batch", {
+    retries: RETRIES,
     beforeFail: async (payload, ingestJobId) => {
       // Backstop rollback (the handler's catch is primary), run under the dataset
       // lease so restoring update snapshots can't race a concurrent import.

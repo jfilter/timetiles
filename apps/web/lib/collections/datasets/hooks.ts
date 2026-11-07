@@ -548,6 +548,8 @@ const syncDatasetChildAccessFields = async (
         where: { dataset: { equals: datasetId } },
         data: accessFields,
         overrideAccess: true,
+        // A restored child must come back with current access fields.
+        trash: true,
         req,
       });
       assertNoBulkErrors(result, `Dataset sync to ${collection}`);

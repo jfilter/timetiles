@@ -9,6 +9,7 @@ import { commitTransaction, initTransaction, killTransaction, type Payload, type
 import { AppError, ForbiddenError } from "@/lib/api/errors";
 import { isPrivileged } from "@/lib/collections/shared-fields";
 import { SKIP_LOGIN_AUDIT } from "@/lib/collections/users/hooks";
+import { getEnv } from "@/lib/config/env";
 import { logger } from "@/lib/logger";
 import { AUDIT_ACTIONS, auditLog } from "@/lib/services/audit-log-service";
 import { type FeatureFlags, getFeatureFlagService } from "@/lib/services/feature-flag-service";
@@ -55,6 +56,16 @@ export const requireOwnerOrAdmin = (user: { id: number; role?: string | null }, 
   if (user.role === "admin") return;
   if (ownerId != null && ownerId === user.id) return;
   throw new ForbiddenError("Access denied");
+};
+
+/**
+ * Refuse flows whose only outcome is an email when the deployment runs with EMAIL_DISABLED.
+ * @throws {AppError} 503 EMAIL_DISABLED
+ */
+export const requireEmailEnabled = (): void => {
+  if (getEnv().EMAIL_DISABLED) {
+    throw new AppError(503, "Email delivery is disabled on this server.", "EMAIL_DISABLED");
+  }
 };
 
 /**

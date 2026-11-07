@@ -97,11 +97,18 @@ import { TEST_CREDENTIALS, TEST_EMAILS } from "../../../constants/test-credentia
 
 const mockUser = { id: 1, email: TEST_EMAILS.user, role: "user" };
 
-const createUploadRequest = (formData: FormData) => {
+/** Encodes the form up front so the request carries Content-Length, as browsers and nginx send it. */
+const createUploadRequest = async (formData: FormData) => {
+  const encoded = new Response(formData);
+  const body = await encoded.arrayBuffer();
   return new Request("http://localhost/api/ingest/preview-schema/upload", {
     method: "POST",
-    body: formData,
-    headers: new Headers({ Authorization: `Bearer ${TEST_CREDENTIALS.bearer.token}` }),
+    body,
+    headers: new Headers({
+      Authorization: `Bearer ${TEST_CREDENTIALS.bearer.token}`,
+      "Content-Type": encoded.headers.get("content-type") ?? "",
+      "Content-Length": String(body.byteLength),
+    }),
   }) as unknown as NextRequest;
 };
 
@@ -145,7 +152,7 @@ describe("POST /api/ingest/preview-schema/upload", () => {
 
       const formData = new FormData();
       formData.append("file", new File(["test"], "test.csv", { type: "text/csv" }));
-      const request = createUploadRequest(formData);
+      const request = await createUploadRequest(formData);
 
       const response = await UploadPOST(request, {} as never);
       const body = await response.json();
@@ -158,7 +165,7 @@ describe("POST /api/ingest/preview-schema/upload", () => {
   describe("Validation", () => {
     it("should return 400 when no file provided", async () => {
       const formData = new FormData();
-      const request = createUploadRequest(formData);
+      const request = await createUploadRequest(formData);
 
       const response = await UploadPOST(request, {} as never);
       const body = await response.json();
@@ -167,9 +174,42 @@ describe("POST /api/ingest/preview-schema/upload", () => {
       expect(body.error).toBe("A file is required");
     });
 
+    it("rejects a body whose Content-Length exceeds the limit before reading it", async () => {
+      const request = new Request("http://localhost/api/ingest/preview-schema/upload", {
+        method: "POST",
+        body: "x",
+        headers: new Headers({
+          Authorization: `Bearer ${TEST_CREDENTIALS.bearer.token}`,
+          "Content-Length": String(2 * 1024 * 1024 * 1024),
+        }),
+      }) as unknown as NextRequest;
+      const formDataSpy = vi.spyOn(request, "formData");
+
+      const response = await UploadPOST(request, {} as never);
+
+      expect(response.status).toBe(400);
+      expect((await response.json()).error).toMatch(/exceeds maximum/);
+      expect(formDataSpy).not.toHaveBeenCalled();
+    });
+
+    it("rejects a body without Content-Length before reading it", async () => {
+      const request = new Request("http://localhost/api/ingest/preview-schema/upload", {
+        method: "POST",
+        body: createFileFormData("test.csv", "a,b\n1,2", "text/csv"),
+        headers: new Headers({ Authorization: `Bearer ${TEST_CREDENTIALS.bearer.token}` }),
+      }) as unknown as NextRequest;
+      const formDataSpy = vi.spyOn(request, "formData");
+
+      const response = await UploadPOST(request, {} as never);
+
+      expect(response.status).toBe(400);
+      expect((await response.json()).error).toMatch(/Content-Length/);
+      expect(formDataSpy).not.toHaveBeenCalled();
+    });
+
     it("should return 400 for unsupported file type", async () => {
       const formData = createFileFormData("test.txt", "content", "text/html");
-      const request = createUploadRequest(formData);
+      const request = await createUploadRequest(formData);
 
       const response = await UploadPOST(request, {} as never);
       const body = await response.json();
@@ -184,7 +224,7 @@ describe("POST /api/ingest/preview-schema/upload", () => {
       });
 
       const formData = createFileFormData("test.csv", "bad content", "text/csv");
-      const request = createUploadRequest(formData);
+      const request = await createUploadRequest(formData);
 
       const response = await UploadPOST(request, {} as never);
       const body = await response.json();
@@ -214,7 +254,7 @@ describe("POST /api/ingest/preview-schema/upload", () => {
       );
 
       const formData = createFileFormData("events.csv", "csv-content", "text/csv");
-      const request = createUploadRequest(formData);
+      const request = await createUploadRequest(formData);
 
       const response = await UploadPOST(request, {} as never);
       const body = await response.json();
@@ -244,7 +284,7 @@ describe("POST /api/ingest/preview-schema/upload", () => {
       mocks.mockReadFileSync.mockReturnValue(Buffer.from("title,date\nEvent 1,2024-01-01"));
 
       const formData = createFileFormData("events.csv", "csv-content", "text/csv");
-      const request = createUploadRequest(formData);
+      const request = await createUploadRequest(formData);
 
       await UploadPOST(request, {} as never);
 
@@ -269,7 +309,7 @@ describe("POST /api/ingest/preview-schema/upload", () => {
         "excel-content",
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
       );
-      const request = createUploadRequest(formData);
+      const request = await createUploadRequest(formData);
       const response = await UploadPOST(request, {} as never);
       const body = await response.json();
       expect(response.status).toBe(200);
@@ -287,7 +327,7 @@ describe("POST /api/ingest/preview-schema/upload", () => {
         "excel-content",
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
       );
-      const request = createUploadRequest(formData);
+      const request = await createUploadRequest(formData);
       const response = await UploadPOST(request, {} as never);
       const body = await response.json();
       expect(response.status).toBe(200);

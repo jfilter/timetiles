@@ -778,10 +778,14 @@ describe("SchemaDetectionJob Handler", () => {
   });
 
   describe("onFail Callback", () => {
+    // onFail only acts once Payload has used up the task's retries.
+    const finalAttempt = { totalTried: schemaDetectionJob.retries };
+
     it("should mark ingest job as failed with string error", async () => {
       const mockArgs = {
         input: { ingestJobId: "import-999" },
         req: { payload: mockPayload },
+        taskStatus: finalAttempt,
         job: { error: "Schema detection failed" },
       };
 
@@ -800,6 +804,7 @@ describe("SchemaDetectionJob Handler", () => {
       const mockArgs = {
         input: { ingestJobId: "import-999" },
         req: { payload: mockPayload },
+        taskStatus: finalAttempt,
         job: { error: { obj: true } },
       };
 
@@ -817,7 +822,12 @@ describe("SchemaDetectionJob Handler", () => {
     });
 
     it("should skip when ingestJobId is missing", async () => {
-      await schemaDetectionJob.onFail({ input: {}, req: { payload: mockPayload }, job: { error: "error" } } as any);
+      await schemaDetectionJob.onFail({
+        input: {},
+        req: { payload: mockPayload },
+        taskStatus: finalAttempt,
+        job: { error: "error" },
+      } as any);
 
       expect(mockPayload.update).not.toHaveBeenCalled();
     });
@@ -829,6 +839,7 @@ describe("SchemaDetectionJob Handler", () => {
       await schemaDetectionJob.onFail({
         input: { ingestJobId: 123 },
         req: { payload: mockPayload },
+        taskStatus: finalAttempt,
         job: { error: "error" },
       } as any);
 

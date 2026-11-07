@@ -120,17 +120,8 @@ describe("ingestJobsAccess", () => {
       expect(result).toBe(false);
     });
 
-    it("should allow when feature is enabled", async () => {
+    it("should deny a regular user even when the feature is enabled", async () => {
       mocks.mockIsEnabled.mockResolvedValue(true);
-      const req = { user: { id: 1, role: "user" }, payload: {} };
-
-      const result = await ingestJobsAccess.create({ req } as any);
-
-      expect(result).toBe(true);
-    });
-
-    it("should deny when feature is disabled", async () => {
-      mocks.mockIsEnabled.mockResolvedValue(false);
       const req = { user: { id: 1, role: "user" }, payload: {} };
 
       const result = await ingestJobsAccess.create({ req } as any);
@@ -138,9 +129,30 @@ describe("ingestJobsAccess", () => {
       expect(result).toBe(false);
     });
 
-    it("should deny a pending-deletion account even when the feature is enabled", async () => {
+    it("should allow an editor when the feature is enabled", async () => {
       mocks.mockIsEnabled.mockResolvedValue(true);
-      const req = { user: { id: 1, role: "user", deletionStatus: "pending_deletion" }, payload: {} };
+      mocks.isPrivileged.mockReturnValue(true);
+      const req = { user: { id: 1, role: "editor" }, payload: {} };
+
+      const result = await ingestJobsAccess.create({ req } as any);
+
+      expect(result).toBe(true);
+    });
+
+    it("should deny an editor when the feature is disabled", async () => {
+      mocks.mockIsEnabled.mockResolvedValue(false);
+      mocks.isPrivileged.mockReturnValue(true);
+      const req = { user: { id: 1, role: "editor" }, payload: {} };
+
+      const result = await ingestJobsAccess.create({ req } as any);
+
+      expect(result).toBe(false);
+    });
+
+    it("should deny a pending-deletion admin even when the feature is enabled", async () => {
+      mocks.mockIsEnabled.mockResolvedValue(true);
+      mocks.isPrivileged.mockReturnValue(true);
+      const req = { user: { id: 1, role: "admin", deletionStatus: "pending_deletion" }, payload: {} };
 
       const result = await ingestJobsAccess.create({ req } as any);
 

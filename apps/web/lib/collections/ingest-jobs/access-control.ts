@@ -5,7 +5,7 @@
  */
 import type { Access } from "payload";
 
-import { createFeatureFlaggedCreateAccess, isEditorOrAdmin, isPrivileged } from "../shared-fields";
+import { createPrivilegedFlaggedCreateAccess, isEditorOrAdmin, isPrivileged } from "../shared-fields";
 
 export const ingestJobsAccess = {
   // Import jobs can be read by the import file owner, editors, or admins
@@ -20,8 +20,9 @@ export const ingestJobsAccess = {
     return { "ingestFile.user": { equals: user.id } };
   }) as Access,
 
-  // Only authenticated users can create import jobs (denied for pending-deletion accounts, feature flag must be enabled)
-  create: createFeatureFlaggedCreateAccess("enableImportCreation"),
+  // Jobs are created by the pipeline through the Local API. The pipeline fields
+  // carry no write guard, so only privileged users may create jobs over REST.
+  create: createPrivilegedFlaggedCreateAccess("enableImportCreation"),
 
   // Only editors and admins can update via the generic REST API.
   //

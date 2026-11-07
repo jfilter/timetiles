@@ -82,6 +82,19 @@ describe("Import File Foreign Resource Vulnerability", () => {
   const csvBuffer = Buffer.from("name,location\nTest,Berlin");
 
   describe("Vulnerability: foreign catalog on ingest-file create", () => {
+    // The wizard creates files through the Local API with the user; raw REST is closed to non-privileged users.
+    it("refuses a non-privileged user's REST-style create", async () => {
+      await expect(
+        payload.create({
+          collection: "ingest-files",
+          data: { catalog: attackerCatalog.id },
+          file: { data: csvBuffer, mimetype: "text/csv", name: `rest-${Date.now()}.csv`, size: csvBuffer.length },
+          user: attackerUser,
+          overrideAccess: false,
+        })
+      ).rejects.toThrow(/not allowed/i);
+    });
+
     it("should reject creating ingest-file with another user's private catalog", async () => {
       await expect(
         payload.create({
@@ -89,7 +102,6 @@ describe("Import File Foreign Resource Vulnerability", () => {
           data: { catalog: ownerPrivateCatalog.id },
           file: { data: csvBuffer, mimetype: "text/csv", name: `attack-${Date.now()}.csv`, size: csvBuffer.length },
           user: attackerUser,
-          overrideAccess: false,
         })
       ).rejects.toThrow(/own or public/i);
     });
@@ -193,7 +205,6 @@ describe("Import File Foreign Resource Vulnerability", () => {
         data: { catalog: ownerPrivateCatalog.id },
         file: { data: csvBuffer, mimetype: "text/csv", name: `owner-${Date.now()}.csv`, size: csvBuffer.length },
         user: ownerUser,
-        overrideAccess: false,
       });
       expect(result.id).toBeDefined();
     });
@@ -204,7 +215,6 @@ describe("Import File Foreign Resource Vulnerability", () => {
         data: { catalog: ownerPublicCatalog.id },
         file: { data: csvBuffer, mimetype: "text/csv", name: `public-${Date.now()}.csv`, size: csvBuffer.length },
         user: attackerUser,
-        overrideAccess: false,
       });
       expect(result.id).toBeDefined();
     });
@@ -226,7 +236,6 @@ describe("Import File Foreign Resource Vulnerability", () => {
         data: { catalog: attackerCatalog.id },
         file: { data: csvBuffer, mimetype: "text/csv", name: `attacker-own-${Date.now()}.csv`, size: csvBuffer.length },
         user: attackerUser,
-        overrideAccess: false,
       });
       expect(result.id).toBeDefined();
     });

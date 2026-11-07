@@ -105,6 +105,8 @@ describe("createTestConfig", () => {
     const smtpOptions = {
       host: "smtp.internal.example",
       port: 465,
+      secure: true,
+      requireTLS: false,
       auth: { user: TEST_CREDENTIALS.basic.username, pass: TEST_CREDENTIALS.basic.password },
       tls: { servername: "mail.example.org" },
     };
@@ -113,6 +115,48 @@ describe("createTestConfig", () => {
     expect(nodemailerAdapterMock).toHaveBeenCalledWith(
       expect.objectContaining({ transport: expect.objectContaining({ transportOptions: smtpOptions }) })
     );
+  });
+
+  it.each([
+    { requireTls: undefined, expected: true },
+    { requireTls: "false", expected: false },
+  ])("requires STARTTLS on port 587 unless EMAIL_SMTP_REQUIRE_TLS=$requireTls", async ({ requireTls, expected }) => {
+    vi.stubEnv("EMAIL_SMTP_HOST", "smtp.internal.example");
+    vi.stubEnv("EMAIL_SMTP_PORT", "587");
+    vi.stubEnv("EMAIL_SMTP_REQUIRE_TLS", requireTls);
+    resetEnv();
+
+    await createTestConfig({ environment: "development" });
+
+    expect(createTransportMock).toHaveBeenCalledWith(
+      expect.objectContaining({ port: 587, secure: false, requireTLS: expected })
+    );
+  });
+
+  it("refuses to build a production config without SMTP", async () => {
+    vi.stubEnv("EMAIL_SMTP_HOST", undefined);
+    resetEnv();
+
+    await expect(createTestConfig({ environment: "production" })).rejects.toThrow(/EMAIL_SMTP_HOST is not set/);
+  });
+
+  it("uses the in-memory transport in production when email is explicitly disabled", async () => {
+    vi.stubEnv("EMAIL_SMTP_HOST", undefined);
+    vi.stubEnv("EMAIL_DISABLED", "true");
+    resetEnv();
+
+    await createTestConfig({ environment: "production" });
+
+    expect(createTestAccountMock).not.toHaveBeenCalled();
+    expect(createTransportMock).toHaveBeenCalledExactlyOnceWith({ jsonTransport: true });
+  });
+
+  it("rejects EMAIL_DISABLED together with an SMTP host", async () => {
+    vi.stubEnv("EMAIL_SMTP_HOST", "smtp.internal.example");
+    vi.stubEnv("EMAIL_DISABLED", "true");
+    resetEnv();
+
+    await expect(createTestConfig({ environment: "production" })).rejects.toThrow(/both set/);
   });
 
   it("uses native job scheduling for every development queue", async () => {
@@ -126,6 +170,8 @@ describe("createTestConfig", () => {
   });
 
   it.each(["test", "production"] as const)("does not start in-process workers in %s", async (environment) => {
+    vi.stubEnv("EMAIL_DISABLED", "true");
+    resetEnv();
     const config = await createTestConfig({ environment });
 
     expect(config.jobs?.autoRun).toBeUndefined();

@@ -681,10 +681,14 @@ describe("AnalyzeDuplicatesJob Handler", () => {
   });
 
   describe("onFail Callback", () => {
+    // onFail only acts once Payload has used up the task's retries.
+    const finalAttempt = { totalTried: analyzeDuplicatesJob.retries };
+
     it("should mark ingest job as failed when ingestJobId is a string", async () => {
       const mockArgs = {
         input: { ingestJobId: "import-999" },
         req: { payload: mockPayload },
+        taskStatus: finalAttempt,
         job: { error: "Some task failure" },
       };
 
@@ -700,7 +704,12 @@ describe("AnalyzeDuplicatesJob Handler", () => {
     });
 
     it("should mark ingest job as failed when ingestJobId is a number", async () => {
-      const mockArgs = { input: { ingestJobId: 123 }, req: { payload: mockPayload }, job: { error: "Task error" } };
+      const mockArgs = {
+        input: { ingestJobId: 123 },
+        req: { payload: mockPayload },
+        taskStatus: finalAttempt,
+        job: { error: "Task error" },
+      };
 
       mockPayload.update.mockResolvedValueOnce({});
 
@@ -717,6 +726,7 @@ describe("AnalyzeDuplicatesJob Handler", () => {
       const mockArgs = {
         input: { ingestJobId: "import-999" },
         req: { payload: mockPayload },
+        taskStatus: finalAttempt,
         job: { error: { complex: "object" } },
       };
 
@@ -734,7 +744,12 @@ describe("AnalyzeDuplicatesJob Handler", () => {
     });
 
     it("should skip when ingestJobId is not a string or number", async () => {
-      const mockArgs = { input: { ingestJobId: undefined }, req: { payload: mockPayload }, job: { error: "error" } };
+      const mockArgs = {
+        input: { ingestJobId: undefined },
+        req: { payload: mockPayload },
+        taskStatus: finalAttempt,
+        job: { error: "error" },
+      };
 
       await analyzeDuplicatesJob.onFail(mockArgs as any);
 
@@ -742,7 +757,12 @@ describe("AnalyzeDuplicatesJob Handler", () => {
     });
 
     it("should log and swallow the error when update fails in onFail", async () => {
-      const mockArgs = { input: { ingestJobId: "import-999" }, req: { payload: mockPayload }, job: { error: "error" } };
+      const mockArgs = {
+        input: { ingestJobId: "import-999" },
+        req: { payload: mockPayload },
+        taskStatus: finalAttempt,
+        job: { error: "error" },
+      };
       const dbError = new Error("DB error");
 
       mockPayload.update.mockRejectedValueOnce(dbError);

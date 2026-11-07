@@ -266,7 +266,7 @@ describe("Draft read access", () => {
           size: PNG_BUFFER.length,
         },
         user: owner,
-        overrideAccess: false,
+        overrideAccess: true,
       });
       expect(media).not.toHaveProperty("_status");
 

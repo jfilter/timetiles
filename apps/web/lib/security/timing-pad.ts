@@ -25,7 +25,15 @@ export const TIMING_PAD_MS = {
   PASSWORD_RESET: 1000,
   /** Account deletion scheduling — verify + eligibility check */
   ACCOUNT_DELETION: 1000,
+  /** Failed login: unknown emails skip the ~100 ms password hash that known ones pay */
+  LOGIN_FAILURE: 1000,
 } as const;
+
+/** Wait until `minDurationMs` have passed since `startTime` (a `Date.now()` value). */
+export const padSince = async (startTime: number, minDurationMs: number): Promise<void> => {
+  const elapsed = Date.now() - startTime;
+  if (elapsed < minDurationMs) await sleep(minDurationMs - elapsed);
+};
 
 /**
  * Execute a function with a minimum execution time guarantee.
@@ -49,9 +57,6 @@ export const withTimingPad = async <T>(minDurationMs: number, fn: () => Promise<
   try {
     return await fn();
   } finally {
-    const elapsed = Date.now() - startTime;
-    if (elapsed < minDurationMs) {
-      await sleep(minDurationMs - elapsed);
-    }
+    await padSince(startTime, minDurationMs);
   }
 };

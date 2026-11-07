@@ -10,7 +10,7 @@
  */
 import { z } from "zod";
 
-import { apiRoute } from "@/lib/api";
+import { apiRoute, requireEmailEnabled } from "@/lib/api";
 import { getEmailContext } from "@/lib/email/context";
 import { EMAIL_CONTEXTS, queueEmail } from "@/lib/email/send";
 import { buildResetPasswordEmailHtml } from "@/lib/email/templates";
@@ -24,6 +24,7 @@ export const POST = apiRoute({
   rateLimit: { configName: "FORGOT_PASSWORD" },
   body: z.object({ email: z.email().transform((value) => value.trim().toLowerCase()) }),
   handler: async ({ payload, body }) => {
+    requireEmailEnabled();
     return withTimingPad(TIMING_PAD_MS.FORGOT_PASSWORD, async () => {
       const successResponse = {
         message: "If an account exists for that email, we've sent password reset instructions.",

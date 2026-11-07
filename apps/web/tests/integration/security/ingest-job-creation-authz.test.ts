@@ -127,15 +127,21 @@ describe("Import Job Creation Authorization Vulnerability", () => {
     });
   });
 
-  describe("Legitimate access after fix", () => {
-    it("owner can create ingest job with their own ingestFile and dataset", async () => {
-      const job = await payload.create({
-        collection: "ingest-jobs",
-        data: { ingestFile: ownerIngestFile.id, dataset: ownerDataset.id, stage: PROCESSING_STAGE.ANALYZE_DUPLICATES },
-        user: ownerUser,
-        overrideAccess: false,
-      });
-      expect(job.id).toBeDefined();
+  describe("Create access", () => {
+    it("rejects an owner creating a job with forged pipeline state on their own file", async () => {
+      await expect(
+        payload.create({
+          collection: "ingest-jobs",
+          data: {
+            ingestFile: ownerIngestFile.id,
+            dataset: ownerDataset.id,
+            stage: PROCESSING_STAGE.NEEDS_REVIEW,
+            duplicates: { summary: { uniqueRows: 0 } },
+          },
+          user: ownerUser,
+          overrideAccess: false,
+        })
+      ).rejects.toThrow(/not allowed/i);
     });
 
     it("admin can create ingest job for any ingestFile/dataset", async () => {
@@ -146,6 +152,26 @@ describe("Import Job Creation Authorization Vulnerability", () => {
         overrideAccess: false,
       });
       expect(job.id).toBeDefined();
+    });
+
+    it("refuses an admin while import creation is disabled", async () => {
+      await payload.updateGlobal({ slug: "settings", data: { featureFlags: { enableImportCreation: false } } });
+      try {
+        await expect(
+          payload.create({
+            collection: "ingest-jobs",
+            data: {
+              ingestFile: ownerIngestFile.id,
+              dataset: ownerDataset.id,
+              stage: PROCESSING_STAGE.ANALYZE_DUPLICATES,
+            },
+            user: adminUser,
+            overrideAccess: false,
+          })
+        ).rejects.toThrow(/not allowed/i);
+      } finally {
+        await payload.updateGlobal({ slug: "settings", data: { featureFlags: { enableImportCreation: true } } });
+      }
     });
   });
 });

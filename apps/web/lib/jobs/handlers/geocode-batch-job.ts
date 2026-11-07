@@ -444,9 +444,11 @@ const checkGeocodingReview = async (
   return { needsReview: false };
 };
 
+const RETRIES = 3;
+
 export const geocodeBatchJob = {
   slug: JOB_TYPES.GEOCODE_BATCH,
-  retries: 3,
+  retries: RETRIES,
   outputSchema: [
     { name: "geocoded", type: "number" as const },
     { name: "failed", type: "number" as const },
@@ -458,7 +460,7 @@ export const geocodeBatchJob = {
   // Note: onFail does NOT fire when tasks run inside workflow handlers with Promise.allSettled.
   // Failure marking is handled by processSheets instead. This callback is kept for
   // standalone task execution (outside workflows).
-  onFail: createStandardOnFail("geocode-batch"),
+  onFail: createStandardOnFail("geocode-batch", { retries: RETRIES }),
 
   handler: async (context: JobHandlerContext): Promise<{ output: Record<string, unknown> }> => {
     const { payload } = context.req;

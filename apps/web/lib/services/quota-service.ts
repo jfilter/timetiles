@@ -54,6 +54,13 @@ const DAILY_USAGE_FIELDS: Array<keyof Omit<UserUsage, "lastResetDate">> = Object
 const DAILY_RESET_DATA = Object.fromEntries(DAILY_USAGE_FIELDS.map((f) => [f, 0]));
 
 /**
+ * True for rows whose daily counters belong to an earlier UTC day. Pinned to UTC:
+ * `CURRENT_DATE` follows the session timezone and would disagree with the JS checks.
+ */
+const needsDailyReset = (): SQL =>
+  sql`(${user_usage.lastResetDate} IS NULL OR (${user_usage.lastResetDate} AT TIME ZONE 'UTC')::date < (NOW() AT TIME ZONE 'UTC')::date)`;
+
+/**
  * Builds the SET clause for an atomic daily-counter UPDATE: every daily field
  * resets to 0 when stale, else keeps its value plus `usageField`'s increment.
  * Shared by incrementUsage and checkAndIncrementUsage so the two can't
@@ -63,10 +70,7 @@ const buildDailyResetSetClauses = (
   usageField: keyof Omit<UserUsage, "lastResetDate">,
   amount: number
 ): { setClauses: Record<string, unknown>; needsReset: SQL } => {
-  // Day boundaries are pinned to UTC — `::date < CURRENT_DATE` would use the
-  // DB session timezone and disagree with the UTC-based JS checks
-  // (shouldResetDailyUsage/getNextResetTime) for 1-2h around midnight.
-  const needsReset = sql`${user_usage.lastResetDate} IS NULL OR (${user_usage.lastResetDate} AT TIME ZONE 'UTC')::date < (NOW() AT TIME ZONE 'UTC')::date`;
+  const needsReset = needsDailyReset();
 
   const setClauses: Record<string, unknown> = {};
   for (const field of DAILY_USAGE_FIELDS) {
@@ -491,9 +495,8 @@ export class QuotaService {
   /**
    * Reset daily counters for all users (called by background job).
    *
-   * Uses a single Drizzle UPDATE to reset every user-usage row in one SQL
-   * statement. For 10k users this is 1 query vs. 10k queries via Payload's
-   * per-row ORM update path.
+   * Uses a single Drizzle UPDATE over the rows still on an earlier UTC day, so
+   * usage already counted after midnight by a lazy reset survives a late run.
    */
   async resetAllDailyCounters(): Promise<void> {
     try {
@@ -502,6 +505,7 @@ export class QuotaService {
       const result = await drizzle
         .update(user_usage)
         .set({ ...DAILY_RESET_DATA, lastResetDate: sql`NOW()`, updatedAt: sql`NOW()` })
+        .where(needsDailyReset())
         .returning({ id: user_usage.id });
 
       logger.info(`Daily counter reset completed for ${result.length} user-usage records`);

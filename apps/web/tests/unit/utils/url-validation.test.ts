@@ -265,6 +265,14 @@ describe("isPrivateIP", () => {
     expect(isPrivateIP("::1")).toBe(true);
   });
 
+  it.each(["fe90::1", "fea0::1", "febf:ffff::1", "fec0::1", "[fe90::1]"])("blocks link/site-local %s", (ip) => {
+    expect(isPrivateIP(ip)).toBe(true);
+  });
+
+  it.each(["fe7f::1", "ff02::1", "2001:db8::1", "feed.example.com"])("does not treat %s as link-local", (ip) => {
+    expect(isPrivateIP(ip)).toBe(false);
+  });
+
   it("blocks IPv6 link-local fe80::", () => {
     expect(isPrivateIP("fe80::1")).toBe(true);
   });

@@ -32,11 +32,11 @@ export const PRIVATE_IPV4_PATTERNS: readonly RegExp[] = [
 export const PRIVATE_IPV6_PATTERNS: readonly RegExp[] = [
   /^::1$/, // Loopback
   /^::$/, // Unspecified
-  /^fe80:/i, // Link-local
+  /^fe[89a-f][0-9a-f]:/i, // Link-local fe80::/10 and deprecated site-local fec0::/10
   /^f[cd][0-9a-f]{0,2}:/i, // Unique local (ULA, fc00::/7)
   /^\[::1\]$/, // Bracketed loopback
   /^\[::?\]$/, // Bracketed unspecified
-  /^\[fe80:/i, // Bracketed link-local
+  /^\[fe[89a-f][0-9a-f]:/i, // Bracketed link-local and site-local
   /^\[f[cd][0-9a-f]{0,2}:/i, // Bracketed ULA (fc00::/7)
 ];
 

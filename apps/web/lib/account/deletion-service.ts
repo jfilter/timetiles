@@ -13,11 +13,12 @@ import type { Payload } from "payload";
 import { commitTransaction, initTransaction, killTransaction } from "payload";
 
 import { ValidationError } from "@/lib/api/errors";
+import { assertNoBulkErrors } from "@/lib/collections/catalog-ownership";
 import { getAppConfig } from "@/lib/config/app-config";
 import { getTransactionAwareDrizzle } from "@/lib/database/drizzle-transaction";
 import { unlinkExportFile } from "@/lib/export/unlink-export-file";
 import { getBaseUrl } from "@/lib/utils/base-url";
-import { countUserDocs, findUserDocs } from "@/lib/utils/user-data";
+import { findUserDocs } from "@/lib/utils/user-data";
 import type { User } from "@/payload-types";
 
 import { PROCESSING_STAGE } from "../constants/ingest-constants";
@@ -27,7 +28,9 @@ import { disposeOfPrivateCatalog } from "./deletion-catalog-disposal";
 import { sendDeletionCancelledEmail, sendDeletionCompletedEmail, sendDeletionScheduledEmail } from "./deletion-emails";
 import type { DeletionRequest as TransactionReq } from "./deletion-state";
 import { cancelPendingDeletion, lockDeletionUser, withLockedDeletionUser } from "./deletion-state";
+import { buildDeletionSummary } from "./deletion-summary";
 import type { CanDeleteResult, DeletionSummary, ExecuteDeletionResult, ScheduleDeletionResult } from "./deletion-types";
+import { deleteDatasetJobRows, deleteUserUploadRows, removeUploadFiles } from "./deletion-uploads";
 import { createSystemUserService, SYSTEM_USER_EMAIL } from "./system-user";
 
 const DATA_EXPORTS = "data-exports";
@@ -122,65 +125,7 @@ export class AccountDeletionService {
    * Get a summary of data that will be affected by deletion.
    */
   async getDeletionSummary(userId: number): Promise<DeletionSummary> {
-    const isPublicFilter = [{ isPublic: { equals: true } }];
-    const isPrivateFilter = [{ isPublic: { equals: false } }];
-
-    // Count catalogs and datasets by visibility
-    const [publicCatalogs, privateCatalogs, publicDatasets, privateDatasets] = await Promise.all([
-      countUserDocs(this.payload, "catalogs", userId, { extraWhere: isPublicFilter }),
-      countUserDocs(this.payload, "catalogs", userId, { extraWhere: isPrivateFilter }),
-      countUserDocs(this.payload, "datasets", userId, { extraWhere: isPublicFilter }),
-      countUserDocs(this.payload, "datasets", userId, { extraWhere: isPrivateFilter }),
-    ]);
-
-    // No limit: findUserDocs only disables pagination when no limit is given.
-    const userDatasets = await findUserDocs(this.payload, "datasets", userId);
-
-    const publicDatasetIds = userDatasets.filter((d) => d.isPublic).map((d) => d.id);
-    const privateDatasetIds = userDatasets.filter((d) => !d.isPublic).map((d) => d.id);
-
-    let eventsInPublic = 0;
-    let eventsInPrivate = 0;
-
-    if (publicDatasetIds.length > 0) {
-      const publicEvents = await this.payload.count({
-        collection: "events",
-        where: { dataset: { in: publicDatasetIds } },
-        overrideAccess: true,
-      });
-      eventsInPublic = publicEvents.totalDocs;
-    }
-
-    if (privateDatasetIds.length > 0) {
-      const privateEvents = await this.payload.count({
-        collection: "events",
-        where: { dataset: { in: privateDatasetIds } },
-        overrideAccess: true,
-      });
-      eventsInPrivate = privateEvents.totalDocs;
-    }
-
-    // Count other entities
-    const [scheduledIngests, importFiles, media, views, dataExports, scraperRepos] = await Promise.all([
-      countUserDocs(this.payload, "scheduled-ingests", userId),
-      countUserDocs(this.payload, "ingest-files", userId, { userField: "user" }),
-      countUserDocs(this.payload, "media", userId),
-      countUserDocs(this.payload, "views", userId),
-      countUserDocs(this.payload, DATA_EXPORTS, userId, { userField: "user" }),
-      countUserDocs(this.payload, "scraper-repos", userId),
-    ]);
-
-    return {
-      catalogs: { public: publicCatalogs, private: privateCatalogs },
-      datasets: { public: publicDatasets, private: privateDatasets },
-      events: { inPublicDatasets: eventsInPublic, inPrivateDatasets: eventsInPrivate },
-      scheduledIngests,
-      importFiles,
-      media,
-      views,
-      dataExports,
-      scraperRepos,
-    };
+    return buildDeletionSummary(this.payload, userId);
   }
 
   /**
@@ -292,7 +237,7 @@ export class AccountDeletionService {
 
     // Filesystem deletions are irreversible, so they run only once the DB side is durable.
     const pendingUnlinks: Array<{ exportId: number | string; filePath: string }> = [];
-    const pendingMediaDeletes: Array<number | string> = [];
+    const pendingFileRemovals: string[] = [];
 
     try {
       // Begin a Payload-managed transaction
@@ -313,9 +258,12 @@ export class AccountDeletionService {
 
         await this.transferPublicData(userId, systemUser.id, user.email, result, req);
 
-        await this.deletePrivateData(userId, systemUser.id, result, req);
+        // Import jobs hold NOT NULL references to private datasets, so uploads go first.
+        pendingFileRemovals.push(...(await deleteUserUploadRows(this.payload, userId, result, req)));
 
-        await this.deleteUserResources(userId, result, req, pendingUnlinks, pendingMediaDeletes);
+        await this.deletePrivateData(userId, systemUser.id, result, req, pendingFileRemovals);
+
+        await this.deleteUserResources(userId, result, req, pendingUnlinks);
 
         await this.finalizeAndAudit(userId, user, deletedBy, deletionType, ipAddress, result, req);
 
@@ -336,26 +284,13 @@ export class AccountDeletionService {
       for (const { exportId, filePath } of pendingUnlinks) {
         if ((await unlinkExportFile(exportId, filePath, "account-deletion")) === "failed") continue;
         try {
-          await this.payload.delete({ collection: DATA_EXPORTS, id: exportId, overrideAccess: true });
+          await this.payload.delete({ collection: DATA_EXPORTS, trash: true, id: exportId, overrideAccess: true });
         } catch (error) {
           logError(error, "Failed to retire data export record after account deletion", { exportId });
         }
       }
 
-      // Best-effort and post-commit, for the same reason. A failure here leaves an orphaned
-      // media row rather than a rolled-back row whose file is already gone.
-      for (const mediaId of pendingMediaDeletes) {
-        try {
-          await this.payload.delete({ collection: "media", id: mediaId, overrideAccess: true });
-        } catch (error) {
-          result.dataDeleted.media--;
-          logError(error, "Failed to delete user media during account deletion", { userId, mediaId });
-        }
-      }
-
-      if (pendingMediaDeletes.length > 0) {
-        logger.info({ userId, mediaDeleted: result.dataDeleted.media }, "Deleted user media");
-      }
+      await removeUploadFiles(userId, pendingFileRemovals);
 
       logger.info({ userId, result }, "Account deletion completed");
 
@@ -393,7 +328,10 @@ export class AccountDeletionService {
     const isPublicFilter = [{ isPublic: { equals: true } }];
 
     // Transfer public catalogs
-    const publicCatalogs = await findUserDocs(this.payload, "catalogs", userId, { extraWhere: isPublicFilter });
+    const publicCatalogs = await findUserDocs(this.payload, "catalogs", userId, {
+      extraWhere: isPublicFilter,
+      trash: true,
+    });
 
     for (const catalog of publicCatalogs) {
       await this.payload.update({
@@ -401,6 +339,7 @@ export class AccountDeletionService {
         id: catalog.id,
         data: { createdBy: systemUserId },
         overrideAccess: true,
+        trash: true,
         req,
       });
       await auditLog(
@@ -417,7 +356,10 @@ export class AccountDeletionService {
     }
 
     // Transfer public datasets
-    const publicDatasets = await findUserDocs(this.payload, "datasets", userId, { extraWhere: isPublicFilter });
+    const publicDatasets = await findUserDocs(this.payload, "datasets", userId, {
+      extraWhere: isPublicFilter,
+      trash: true,
+    });
 
     for (const dataset of publicDatasets) {
       await this.payload.update({
@@ -425,6 +367,7 @@ export class AccountDeletionService {
         id: dataset.id,
         data: { createdBy: systemUserId },
         overrideAccess: true,
+        trash: true,
         req,
       });
       await auditLog(
@@ -448,12 +391,16 @@ export class AccountDeletionService {
     userId: number,
     systemUserId: number,
     result: ExecuteDeletionResult,
-    req: TransactionReq
+    req: TransactionReq,
+    pendingFileRemovals: string[]
   ): Promise<void> {
     const isPrivateFilter = [{ isPublic: { equals: false } }];
 
     // Delete private datasets and their events
-    const privateDatasets = await findUserDocs(this.payload, "datasets", userId, { extraWhere: isPrivateFilter });
+    const privateDatasets = await findUserDocs(this.payload, "datasets", userId, {
+      extraWhere: isPrivateFilter,
+      trash: true,
+    });
 
     for (const dataset of privateDatasets) {
       // Delete events in this dataset
@@ -462,21 +409,42 @@ export class AccountDeletionService {
         where: { dataset: { equals: dataset.id } },
         pagination: false,
         overrideAccess: true,
+        trash: true,
         req,
       });
 
       for (const event of events.docs) {
-        await this.payload.delete({ collection: "events", id: event.id, overrideAccess: true, req });
+        await this.payload.delete({ collection: "events", trash: true, id: event.id, overrideAccess: true, req });
         result.dataDeleted.events++;
       }
 
-      // Delete the dataset
-      await this.payload.delete({ collection: "datasets", id: dataset.id, overrideAccess: true, req });
+      // Jobs (live and versions) reference the dataset NOT NULL, also when another user's file fed it.
+      pendingFileRemovals.push(...(await deleteDatasetJobRows(this.payload, dataset.id, req)));
+      // Schemas and versions of schemas moved elsewhere would keep its field metadata.
+      assertNoBulkErrors(
+        await this.payload.delete({
+          collection: "dataset-schemas",
+          where: { dataset: { equals: dataset.id } },
+          overrideAccess: true,
+          trash: true,
+          req,
+        }),
+        "Account deletion of dataset schemas"
+      );
+      await this.payload.db.deleteVersions({
+        collection: "dataset-schemas",
+        where: { "version.dataset": { equals: dataset.id } },
+        req,
+      });
+      await this.payload.delete({ collection: "datasets", trash: true, id: dataset.id, overrideAccess: true, req });
       result.dataDeleted.datasets++;
     }
 
     // Delete private catalogs — but only the ones nothing points at any more.
-    const privateCatalogs = await findUserDocs(this.payload, "catalogs", userId, { extraWhere: isPrivateFilter });
+    const privateCatalogs = await findUserDocs(this.payload, "catalogs", userId, {
+      extraWhere: isPrivateFilter,
+      trash: true,
+    });
 
     for (const catalog of privateCatalogs) {
       await disposeOfPrivateCatalog(this.payload, catalog.id, { userId, systemUserId, result, req });
@@ -502,20 +470,25 @@ export class AccountDeletionService {
   }
 
   /**
-   * Delete scheduled ingests, import files, scrapers, views, and data exports.
+   * Delete scheduled ingests, scrapers, views, and data exports.
    */
   private async deleteUserResources(
     userId: number,
     result: ExecuteDeletionResult,
     req: TransactionReq,
-    pendingUnlinks: Array<{ exportId: number | string; filePath: string }>,
-    pendingMediaDeletes: Array<number | string>
+    pendingUnlinks: Array<{ exportId: number | string; filePath: string }>
   ): Promise<void> {
     // Delete scheduled ingests
-    const scheduledIngests = await findUserDocs(this.payload, "scheduled-ingests", userId);
+    const scheduledIngests = await findUserDocs(this.payload, "scheduled-ingests", userId, { trash: true });
 
     for (const schedule of scheduledIngests) {
-      await this.payload.delete({ collection: "scheduled-ingests", id: schedule.id, overrideAccess: true, req });
+      await this.payload.delete({
+        collection: "scheduled-ingests",
+        trash: true,
+        id: schedule.id,
+        overrideAccess: true,
+        req,
+      });
       result.dataDeleted.scheduledIngests++;
     }
 
@@ -524,29 +497,11 @@ export class AccountDeletionService {
     // and a claim wedged by a killed worker would otherwise roll back the whole deletion.
     await this.releaseRunningScraperClaims(userId, req);
 
-    const scraperRepos = await findUserDocs(this.payload, "scraper-repos", userId);
+    const scraperRepos = await findUserDocs(this.payload, "scraper-repos", userId, { trash: true });
 
     for (const repo of scraperRepos) {
-      await this.payload.delete({ collection: "scraper-repos", id: repo.id, overrideAccess: true, req });
+      await this.payload.delete({ collection: "scraper-repos", trash: true, id: repo.id, overrideAccess: true, req });
       result.dataDeleted.scraperRepos++;
-    }
-
-    // Delete import files
-    const importFiles = await findUserDocs(this.payload, "ingest-files", userId, { userField: "user" });
-
-    for (const file of importFiles) {
-      await this.payload.delete({ collection: "ingest-files", id: file.id, overrideAccess: true, req });
-      result.dataDeleted.importFiles++;
-    }
-
-    // finalizeAndAudit only anonymizes the user row, and media is publicly readable, so
-    // media is deleted explicitly. Payload's upload adapter unlinks files on delete, so the
-    // deletes run post-commit; they are counted here because the audit row is written inside
-    // the transaction. The post-commit loop decrements if a delete fails.
-    const mediaDocs = await findUserDocs(this.payload, "media", userId);
-    for (const item of mediaDocs) {
-      pendingMediaDeletes.push(item.id);
-      result.dataDeleted.media++;
     }
 
     // Delete views created by this user
@@ -555,11 +510,12 @@ export class AccountDeletionService {
       where: { createdBy: { equals: userId } },
       pagination: false,
       overrideAccess: true,
+      trash: true,
       req,
     });
 
     for (const view of views.docs) {
-      await this.payload.delete({ collection: "views", id: view.id, overrideAccess: true, req });
+      await this.payload.delete({ collection: "views", trash: true, id: view.id, overrideAccess: true, req });
     }
 
     if (views.docs.length > 0) {
@@ -574,6 +530,7 @@ export class AccountDeletionService {
       where: { user: { equals: userId } },
       pagination: false,
       overrideAccess: true,
+      trash: true,
       req,
     });
 
@@ -587,11 +544,18 @@ export class AccountDeletionService {
           id: exportRecord.id,
           data: { status: "expired" },
           overrideAccess: true,
+          trash: true,
           req,
         });
         pendingUnlinks.push({ exportId: exportRecord.id, filePath });
       } else {
-        await this.payload.delete({ collection: DATA_EXPORTS, id: exportRecord.id, overrideAccess: true, req });
+        await this.payload.delete({
+          collection: DATA_EXPORTS,
+          trash: true,
+          id: exportRecord.id,
+          overrideAccess: true,
+          req,
+        });
       }
     }
 

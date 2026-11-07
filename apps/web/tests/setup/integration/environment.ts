@@ -955,9 +955,7 @@ const createIngestFileWithUpload = async (
 
   const file = { data: data_buf, mimetype: mimeType, name: fileName, size: data_buf.length };
 
-  // If user is provided, pass it to make req.user available in hooks
-  // Otherwise use overrideAccess to bypass authentication requirements
-  //
+  // Mirrors the wizard's Local API create: the user is set for hooks, collection access is bypassed.
   // By default, skip the afterChange hook that queues manual-ingest workflows.
   // Tests that need the full pipeline should pass triggerWorkflow: true and
   // drain jobs with payload.jobs.run() or runJobsUntilImportSettled().
@@ -966,7 +964,6 @@ const createIngestFileWithUpload = async (
     data,
     file,
     user,
-    overrideAccess: !user, // Only override when no user is provided
     context: triggerWorkflow ? {} : { skipIngestFileHooks: true },
   });
 };

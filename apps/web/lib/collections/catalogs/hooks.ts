@@ -88,6 +88,7 @@ const syncDatasetsWithCatalog = async (
         where: { catalog: { equals: catalogId } },
         data: datasetUpdates,
         overrideAccess: true,
+        trash: true,
         req,
       });
       assertNoBulkErrors(result, "Catalog sync to datasets");
@@ -118,6 +119,7 @@ const bulkSyncCollection = async (
         where: { dataset: { in: ids } },
         data,
         overrideAccess: true,
+        trash: true,
         req,
       });
       assertNoBulkErrors(result, `Catalog sync to ${collection}`);
@@ -242,13 +244,14 @@ export const catalogAfterChangeHooks: CollectionAfterChangeHook[] = [
       }
     }
 
-    // Get all datasets in this catalog (needed for events update)
+    // Trashed children are synced too: a restored row must carry current access fields.
     const datasets = await req.payload.find({
       collection: "datasets",
       where: { catalog: { equals: doc.id } },
       pagination: false,
       depth: 0,
       overrideAccess: true,
+      trash: true,
       req,
     });
 

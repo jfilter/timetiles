@@ -95,20 +95,43 @@ export interface ErrorRequestContext {
   method?: string;
   /** Authenticated user id, if known at the time of failure. */
   userId?: string | number;
+  /** Raw route params; their values are replaced by `[name]` in the logged path. */
+  params?: Record<string, string | string[]>;
 }
+
+const decodeSegment = (segment: string): string => {
+  try {
+    return decodeURIComponent(segment);
+  } catch {
+    return segment;
+  }
+};
+
+/** Route params and query values can carry bearer tokens, so only their names are logged. */
+const redactPath = (pathname: string, params: ErrorRequestContext["params"]): string => {
+  if (!params) return pathname;
+  const names = new Map<string, string>();
+  for (const [name, value] of Object.entries(params)) {
+    for (const v of Array.isArray(value) ? value : [value]) names.set(v, `[${name}]`);
+  }
+  // Compared decoded, since the same value has many percent-encodings (%61bc is abc).
+  return pathname
+    .split("/")
+    .map((segment) => names.get(decodeSegment(segment)) ?? segment)
+    .join("/");
+};
 
 const buildErrorMetadata = (req?: ErrorRequestContext): Record<string, unknown> | undefined => {
   if (!req) return undefined;
   const meta: Record<string, unknown> = {};
   if (req.url) {
     try {
-      // Strip origin so logs stay compact and don't accidentally leak the host
-      // when forwarded; keep the path + searchParams.
       const parsed = new URL(req.url);
-      meta.path = parsed.pathname;
-      if (parsed.search) meta.query = parsed.search;
+      meta.path = redactPath(parsed.pathname, req.params);
+      const queryKeys = [...new Set(parsed.searchParams.keys())];
+      if (queryKeys.length > 0) meta.queryKeys = queryKeys;
     } catch {
-      meta.url = req.url;
+      meta.path = "[unparseable url]";
     }
   }
   if (req.method) meta.method = req.method;

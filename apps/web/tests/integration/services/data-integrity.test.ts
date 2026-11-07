@@ -166,6 +166,40 @@ describe("Data Integrity Tests", () => {
       expect(secondOutput.skippedReason).toContain("Duplicate");
     });
 
+    it("imports content again when it differs from the latest completed run (A, B, A)", async () => {
+      const { scheduledIngest } = await withScheduledIngest(testEnv, testCatalogId, `${testServerUrl}/flip.csv`, {
+        user: testUser,
+        name: "Flip-Flop Import",
+        frequency: "hourly",
+        additionalData: { advancedOptions: { useHttpCache: false } },
+      });
+      const { urlFetchJob } = await import("@/lib/jobs/handlers/url-fetch-job");
+      const fetchOnce = async (content: string, n: number) => {
+        testServer.respondWithCSV("/flip.csv", content);
+        const result = await urlFetchJob.handler({
+          job: { id: `test-job-flip-${n}` },
+          req: { payload },
+          input: {
+            scheduledIngestId: scheduledIngest.id,
+            sourceUrl: scheduledIngest.sourceUrl,
+            catalogId: testCatalogId as any,
+            originalName: `Flip ${n}`,
+            userId: testUser.id,
+          },
+        });
+        const output = result.output as any;
+        if (!output.isDuplicate) {
+          await payload.update({ collection: "ingest-files", id: output.ingestFileId, data: { status: "completed" } });
+        }
+        return output;
+      };
+
+      expect((await fetchOnce("id,name\n1,A", 1)).isDuplicate).toBe(false);
+      expect((await fetchOnce("id,name\n1,B", 2)).isDuplicate).toBe(false);
+      expect((await fetchOnce("id,name\n1,A", 3)).isDuplicate).toBe(false);
+      expect((await fetchOnce("id,name\n1,A", 4)).isDuplicate).toBe(true);
+    });
+
     it("should handle hash calculation for large files", async () => {
       // Generate 5MB of CSV data
       const header = "id,data1,data2,data3,data4,data5\n";

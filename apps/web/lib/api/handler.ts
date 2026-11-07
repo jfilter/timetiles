@@ -245,7 +245,8 @@ export const apiRoute = <
       }
       return Response.json(result);
     } catch (err) {
-      return handleError(err, { url: req.url, method: req.method, userId: authedUser?.id });
+      const params = await Promise.resolve(context.params).catch(() => undefined);
+      return handleError(err, { url: req.url, method: req.method, userId: authedUser?.id, params });
     }
   };
 

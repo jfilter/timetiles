@@ -7,6 +7,7 @@
 import type { Payload } from "payload";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
+import { PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
 import { createDatabaseClient } from "@/lib/database/client";
 import { cleanupStuckScheduledIngestsJob } from "@/lib/jobs/handlers/cleanup-stuck-scheduled-ingests-job";
 import { reconcileFailedScheduledIngests } from "@/lib/jobs/handlers/schedule-manager/reconcile-failed-ingests";
@@ -16,6 +17,8 @@ import type { Catalog, User } from "@/payload-types";
 import {
   createIntegrationTestEnvironment,
   withCatalog,
+  withDataset,
+  withIngestFile,
   withScheduledIngest,
   withUsers,
 } from "../../setup/integration/environment";
@@ -208,6 +211,49 @@ describe("Cleanup Stuck Imports Job Integration", () => {
 
       expect(resetImport.lastStatus).toBe("failed");
       expect(resetImport.lastError).toContain("stuck and automatically reset");
+    });
+
+    it("fails only the stuck run's files and keeps an earlier run's pending review", async () => {
+      const fiveHoursAgo = new Date(Date.now() - 5 * 60 * 60 * 1000);
+      const { scheduledIngest } = await withScheduledIngest(testEnv, testCatalog.id, "https://example.com/r.csv", {
+        user: testUser,
+        name: "Stuck After Paused Run",
+        frequency: "daily",
+        additionalData: { lastStatus: "running", lastRun: fiveHoursAgo.toISOString() },
+      });
+      const { dataset } = await withDataset(testEnv, testCatalog.id, { name: "Reaper Scope Dataset" });
+      const createRunFile = async (createdAt: Date) => {
+        const { ingestFile } = await withIngestFile(testEnv, testCatalog.id, "title,date\nA,2024-01-01\n", {
+          user: testUser.id,
+          status: "processing",
+          additionalData: { scheduledIngest: scheduledIngest.id, createdAt: createdAt.toISOString() },
+        });
+        const job = await payload.create({
+          collection: "ingest-jobs",
+          data: { ingestFile: ingestFile.id, dataset: dataset.id, stage: PROCESSING_STAGE.NEEDS_REVIEW },
+        });
+        return { ingestFile, job };
+      };
+      const earlier = await createRunFile(new Date(fiveHoursAgo.getTime() - 24 * 60 * 60 * 1000));
+      const current = await createRunFile(new Date(fiveHoursAgo.getTime() + 60_000));
+      await payload.update({
+        collection: "ingest-jobs",
+        id: current.job.id,
+        data: { stage: PROCESSING_STAGE.CREATE_EVENTS },
+      });
+
+      await cleanupStuckScheduledIngestsJob.handler({
+        req: { payload },
+        job: { id: "cleanup-scope", task: "cleanup-stuck-scheduled-ingests" },
+      });
+
+      const earlierFile = await payload.findByID({ collection: "ingest-files", id: earlier.ingestFile.id });
+      const earlierJob = await payload.findByID({ collection: "ingest-jobs", id: earlier.job.id });
+      const currentFile = await payload.findByID({ collection: "ingest-files", id: current.ingestFile.id });
+      expect(new Date(earlierFile.createdAt).getTime()).toBeLessThan(fiveHoursAgo.getTime());
+      expect(earlierFile.status).toBe("processing");
+      expect(earlierJob.stage).toBe(PROCESSING_STAGE.NEEDS_REVIEW);
+      expect(currentFile.status).toBe("failed");
     });
 
     it("should not reset imports running for less than 4 hours", async () => {

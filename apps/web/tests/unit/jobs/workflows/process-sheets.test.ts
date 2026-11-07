@@ -1,10 +1,16 @@
 /**
  * @module
  */
+import "@/tests/mocks/services/logger";
+
+const mocks = vi.hoisted(() => ({ failIngestJob: vi.fn() }));
+vi.mock("@/lib/jobs/utils/resource-loading", () => ({ failIngestJob: mocks.failIngestJob }));
+
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { SheetInfo } from "@/lib/jobs/types/task-outputs";
 import { processSheets } from "@/lib/jobs/workflows/process-sheets";
+import { mockLogger } from "@/tests/mocks/services/logger";
 
 /** Creates a mock tasks object with all task handlers as vi.fn(). */
 const createMockTasks = () => ({
@@ -133,6 +139,21 @@ describe("processSheets", () => {
     expect(tasks["detect-schema"]).toHaveBeenCalledWith("detect-schema-1", { input: { ingestJobId: "j1" } });
     expect(tasks["create-events"]).toHaveBeenCalledTimes(1);
     expect(tasks["create-events"]).toHaveBeenCalledWith("create-events-1", { input: { ingestJobId: "j1" } });
+  });
+
+  it("marks a throwing sheet FAILED and logs when that marking itself fails", async () => {
+    tasks["analyze-duplicates"].mockRejectedValueOnce(new Error("analyze failed"));
+    const markError = new Error("db down");
+    mocks.failIngestJob.mockRejectedValueOnce(markError);
+
+    await processSheets(tasks as any, [makeSheet(0, "j0")], mockReq);
+
+    expect(mocks.failIngestJob).toHaveBeenCalledWith(mockReq.payload, "j0", expect.any(Error), "pipeline");
+    expect(mockLogger.logError).toHaveBeenCalledWith(
+      markError,
+      "Failed to mark sheet as FAILED",
+      expect.objectContaining({ ingestJobId: "j0", originalError: "analyze failed" })
+    );
   });
 
   // ── 5. Detect-schema fails — same skip behavior ──────────────────────

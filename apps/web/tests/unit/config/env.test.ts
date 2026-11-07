@@ -10,7 +10,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ZodError } from "zod";
 
-import { getEnv, resetEnv } from "@/lib/config/env";
+import { getEnv, isBuildPhase, resetEnv } from "@/lib/config/env";
 import { TEST_SECRETS } from "@/tests/constants/test-credentials";
 
 describe("getEnv", () => {
@@ -196,6 +196,32 @@ describe("getEnv", () => {
         }
         Object.assign(process.env, saved);
       }
+    });
+  });
+
+  describe("isBuildPhase", () => {
+    afterEach(() => {
+      vi.unstubAllEnvs();
+    });
+
+    it("ignores SKIP_DB_CHECK in production, so Payload keeps the real secret", () => {
+      vi.stubEnv("NODE_ENV", "production");
+      vi.stubEnv("NEXT_PHASE", "");
+      vi.stubEnv("SKIP_DB_CHECK", "true");
+      expect(isBuildPhase()).toBe(false);
+    });
+
+    it("is true during next build in production", () => {
+      vi.stubEnv("NODE_ENV", "production");
+      vi.stubEnv("NEXT_PHASE", "phase-production-build");
+      expect(isBuildPhase()).toBe(true);
+    });
+
+    it("honours SKIP_DB_CHECK outside production", () => {
+      vi.stubEnv("NODE_ENV", "development");
+      vi.stubEnv("NEXT_PHASE", "");
+      vi.stubEnv("SKIP_DB_CHECK", "true");
+      expect(isBuildPhase()).toBe(true);
     });
   });
 

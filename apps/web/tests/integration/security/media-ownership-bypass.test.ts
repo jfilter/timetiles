@@ -35,7 +35,7 @@ const createMediaForUser = (payload: any, user: User, alt: string): Promise<Medi
       size: 68,
     },
     user,
-    overrideAccess: false,
+    overrideAccess: true,
   });
 };
 
@@ -71,6 +71,31 @@ describe("Media Ownership Bypass Vulnerability", () => {
 
   beforeEach(async () => {
     ownerMedia = await createMediaForUser(payload, ownerUser, "owner photo");
+  });
+
+  describe("Create access", () => {
+    it("rejects a media upload by a regular user", async () => {
+      await expect(
+        payload.create({
+          collection: "media",
+          data: { alt: "spam" },
+          file: { data: createTestImageBuffer(), mimetype: "image/png", name: `spam-${Date.now()}.png`, size: 68 },
+          user: attackerUser,
+          overrideAccess: false,
+        })
+      ).rejects.toThrow(/not allowed/i);
+    });
+
+    it("lets an admin upload media", async () => {
+      const media = await payload.create({
+        collection: "media",
+        data: { alt: "logo" },
+        file: { data: createTestImageBuffer(), mimetype: "image/png", name: `logo-${Date.now()}.png`, size: 68 },
+        user: adminUser,
+        overrideAccess: false,
+      });
+      expect(media.id).toBeDefined();
+    });
   });
 
   describe("Vulnerability: attacker-controlled createdBy in update", () => {

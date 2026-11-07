@@ -376,6 +376,69 @@ describe("Visibility and ownership sync cascade", () => {
     });
   });
 
+  describe("Trashed children", () => {
+    // A restored row must come back with current access fields, not the ones from before it was trashed.
+    const trash = async (collection: "datasets" | "events" | "dataset-schemas", id: number) =>
+      payload.update({ collection, id, data: { deletedAt: new Date().toISOString() }, overrideAccess: true });
+    const readTrashed = async (collection: "events" | "dataset-schemas", id: number) =>
+      payload.findByID({ collection, id, overrideAccess: true, trash: true });
+
+    it("catalog going private and changing owner reaches trashed datasets, events and schemas", async () => {
+      const catalog = await createCatalog(`Cat ${Date.now()}`, true, ownerUser.id);
+      const dataset = await createDataset(catalog.id, `DS ${Date.now()}`, true);
+      const event = await createEvent(dataset.id, "trashed-catalog");
+      const schema = await createSchema(dataset.id);
+      await trash("events", event.id);
+      await trash("dataset-schemas", schema.id);
+      await trash("datasets", dataset.id);
+
+      await payload.update({
+        collection: "catalogs",
+        id: catalog.id,
+        data: { isPublic: false, createdBy: adminUser.id },
+        overrideAccess: true,
+      });
+
+      const trashedDataset = await payload.findByID({
+        collection: "datasets",
+        id: dataset.id,
+        overrideAccess: true,
+        trash: true,
+      });
+      expect(trashedDataset.catalogIsPublic).toBe(false);
+      expect(trashedDataset.catalogCreatorId).toBe(adminUser.id);
+      expect(trashedDataset.deletedAt).toBeTruthy();
+      for (const child of [await readTrashed("events", event.id), await readTrashed("dataset-schemas", schema.id)]) {
+        expect(child.datasetIsPublic).toBe(false);
+        expect(child.catalogOwnerId).toBe(adminUser.id);
+        expect(child.deletedAt).toBeTruthy();
+      }
+    });
+
+    it("moving a dataset to another owner's private catalog reaches its trashed events and schemas", async () => {
+      const source = await createCatalog(`Source ${Date.now()}`, true, ownerUser.id);
+      const target = await createCatalog(`Target ${Date.now()}`, false, adminUser.id);
+      const dataset = await createDataset(source.id, `DS ${Date.now()}`, true);
+      const event = await createEvent(dataset.id, "trashed-dataset");
+      const schema = await createSchema(dataset.id);
+      await trash("events", event.id);
+      await trash("dataset-schemas", schema.id);
+
+      await payload.update({
+        collection: "datasets",
+        id: dataset.id,
+        data: { catalog: target.id },
+        overrideAccess: true,
+      });
+
+      for (const child of [await readTrashed("events", event.id), await readTrashed("dataset-schemas", schema.id)]) {
+        expect(child.datasetIsPublic).toBe(false);
+        expect(child.catalogOwnerId).toBe(adminUser.id);
+        expect(child.deletedAt).toBeTruthy();
+      }
+    });
+  });
+
   describe("Access control verification (end-to-end)", () => {
     it("after catalog goes private, anonymous users cannot read its events", async () => {
       const catalog = await createCatalog(`AC Cat ${Date.now()}`, true, ownerUser.id);

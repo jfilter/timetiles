@@ -49,7 +49,7 @@ export const disposeOfPrivateCatalog = async (
   });
 
   if (remaining.totalDocs === 0) {
-    await payload.delete({ collection: "catalogs", id: catalogId, overrideAccess: true, req });
+    await payload.delete({ collection: "catalogs", id: catalogId, overrideAccess: true, trash: true, req });
     result.dataDeleted.catalogs++;
     return;
   }
@@ -59,6 +59,7 @@ export const disposeOfPrivateCatalog = async (
     id: catalogId,
     data: { createdBy: systemUserId },
     overrideAccess: true,
+    trash: true,
     req,
   });
   result.dataTransferred.catalogs++;

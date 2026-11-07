@@ -86,6 +86,18 @@ const baseSchema = {
   // public DNS name (e.g., reaching a Cloudron mailserver at 10.x via
   // its public hostname `daten.cool`).
   EMAIL_SMTP_TLS_SERVERNAME: z.string().optional(),
+  // Plain SMTP on 587 upgrades through STARTTLS; this refuses a server that does not offer it.
+  // Port 465 uses implicit TLS regardless. Set to "false" only for a trusted relay without TLS.
+  EMAIL_SMTP_REQUIRE_TLS: z
+    .string()
+    .default("true")
+    .transform((v) => v !== "false"),
+  // Production refuses to start without EMAIL_SMTP_HOST unless this is "true"; mail is then
+  // dropped and the routes that depend on it (signup, password reset, email change) refuse.
+  EMAIL_DISABLED: z
+    .string()
+    .default("false")
+    .transform((v) => v === "true"),
   EMAIL_FROM_ADDRESS: z.string().default("noreply@timetiles.io"),
   EMAIL_FROM_NAME: z.string().default("TimeTiles"),
 
@@ -174,16 +186,13 @@ export type Env = z.infer<typeof runtimeEnvSchema>;
  * production process must never reach it. SKIP_DB_CHECK reads as "skip a
  * startup probe", which is exactly why it must not silently unlock this.
  */
-const shouldRelaxSchema = (): boolean => {
-  if (process.env.NODE_ENV === "production") {
-    return process.env.NEXT_PHASE === "phase-production-build";
-  }
-  return (
-    process.env.NEXT_PHASE === "phase-production-build" ||
-    process.env.SKIP_DB_CHECK === "true" ||
-    process.env.VITEST === "true"
-  );
-};
+const shouldRelaxSchema = (): boolean =>
+  isBuildPhase() || (process.env.NODE_ENV !== "production" && process.env.VITEST === "true");
+
+/** True while `next build` runs, or with SKIP_DB_CHECK outside production. */
+export const isBuildPhase = (): boolean =>
+  process.env.NEXT_PHASE === "phase-production-build" ||
+  (process.env.NODE_ENV !== "production" && process.env.SKIP_DB_CHECK === "true");
 
 let _env: Env | null = null;
 

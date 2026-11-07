@@ -19,12 +19,16 @@ import {
   BoundsResponseSchema,
   ClusterStatsQuerySchema,
   ClusterStatsResponseSchema,
+  ClusterSummaryQuerySchema,
+  ClusterSummaryResponseSchema,
   EventListQuerySchema,
   EventListResponseSchema,
   HistogramQuerySchema,
   HistogramResponseSchema,
   MapClustersQuerySchema,
   MapClustersResponseSchema,
+  TemporalClustersQuerySchema,
+  TemporalClustersResponseSchema,
 } from "../schemas/events";
 import { SchemaInferenceBodySchema, SchemaInferenceResponseSchema } from "../schemas/schema-inference";
 
@@ -100,6 +104,39 @@ registry.registerPath({
       description: "Temporal histogram data",
       content: { "application/json": { schema: HistogramResponseSchema } },
     },
+    422: { description: DESCRIPTIONS.INVALID_PARAMETERS, ...errorResponse() },
+    500: { description: DESCRIPTIONS.INTERNAL_ERROR, ...errorResponse() },
+  },
+});
+
+registry.registerPath({
+  method: "get",
+  path: "/api/v1/events/temporal-clusters",
+  tags: ["Events"],
+  summary: "Get events or per-group clusters over time",
+  description:
+    "Returns individual events when the match count is at or below `individualThreshold`, otherwise per-group counts per time bucket. Groups by dataset, catalog, or a field path.",
+  request: { query: TemporalClustersQuerySchema },
+  responses: {
+    200: {
+      description: "Individual events or temporal clusters",
+      content: { "application/json": { schema: TemporalClustersResponseSchema } },
+    },
+    422: { description: DESCRIPTIONS.INVALID_PARAMETERS, ...errorResponse() },
+    500: { description: DESCRIPTIONS.INTERNAL_ERROR, ...errorResponse() },
+  },
+});
+
+registry.registerPath({
+  method: "get",
+  path: "/api/v1/events/cluster-summary",
+  tags: ["Events"],
+  summary: "Summarize the events in a set of H3 cells",
+  description:
+    "Returns counts, temporal range, dataset, catalog and category breakdowns, and an event preview for the given comma-separated H3 cells at `h3Resolution`.",
+  request: { query: ClusterSummaryQuerySchema },
+  responses: {
+    200: { description: "Cluster summary", content: { "application/json": { schema: ClusterSummaryResponseSchema } } },
     422: { description: DESCRIPTIONS.INVALID_PARAMETERS, ...errorResponse() },
     500: { description: DESCRIPTIONS.INTERNAL_ERROR, ...errorResponse() },
   },

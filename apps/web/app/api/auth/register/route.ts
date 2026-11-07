@@ -15,7 +15,7 @@
 import type { Payload } from "payload";
 import { z } from "zod";
 
-import { apiRoute, requireFeatureEnabled } from "@/lib/api";
+import { apiRoute, requireEmailEnabled, requireFeatureEnabled } from "@/lib/api";
 import { TRUST_LEVELS } from "@/lib/constants/trust-levels";
 import { getEmailContext } from "@/lib/email/context";
 import { EMAIL_CONTEXTS, queueEmail } from "@/lib/email/send";
@@ -170,6 +170,7 @@ export const POST = apiRoute({
   }),
   handler: async ({ payload, body, req }) => {
     await requireFeatureEnabled(payload, "enableRegistration", "Registration is currently disabled.");
+    requireEmailEnabled();
 
     const { email: normalizedEmail, password } = body;
 

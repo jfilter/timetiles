@@ -262,7 +262,7 @@ describe("Quota System", () => {
       expect(result.remaining).toBe(2);
     });
 
-    it("should reset daily counters for all users efficiently", async () => {
+    it("resets rows from an earlier UTC day and keeps usage counted since midnight", async () => {
       const { payload } = testEnv;
       const quotaService = createQuotaService(payload);
 
@@ -295,7 +295,12 @@ describe("Quota System", () => {
       expect(beforeReset2?.totalEventsCreated).toBe(22);
       expect(beforeReset3?.totalEventsCreated).toBe(33);
 
-      // Reset all daily counters using Payload's bulk update API
+      // Users 1 and 2 were last reset yesterday; user 3 was already reset today.
+      const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      for (const usage of [beforeReset1, beforeReset2]) {
+        await payload.update({ collection: "user-usage", id: usage!.id, data: { lastResetDate: yesterday } });
+      }
+
       await quotaService.resetAllDailyCounters();
 
       const afterReset1 = await getUserUsage(payload, testUser.id);
@@ -304,11 +309,10 @@ describe("Quota System", () => {
 
       expectDailyCountersReset(afterReset1);
       expectDailyCountersReset(afterReset2);
-      expectDailyCountersReset(afterReset3);
+      expect(afterReset3?.urlFetchesToday).toBe(7);
+      expect(afterReset3?.lastResetDate).toBe(beforeReset3?.lastResetDate);
 
-      expect(afterReset1?.lastResetDate).toBeDefined();
-      expect(afterReset2?.lastResetDate).toBeDefined();
-      expect(afterReset3?.lastResetDate).toBeDefined();
+      expect(new Date(afterReset1!.lastResetDate!).getTime()).toBeGreaterThan(new Date(yesterday).getTime());
 
       // Total events should NOT be reset — each retains its pre-reset value
       expect(afterReset1?.totalEventsCreated).toBe(beforeReset1?.totalEventsCreated);

@@ -29,7 +29,6 @@ import type {
   SheetMapping,
 } from "@/lib/ingest/types/wizard";
 import { createLogger } from "@/lib/logger";
-import { createQuotaService } from "@/lib/services/quota-service";
 import { extractRelationId } from "@/lib/utils/relation-id";
 import type { Dataset, IngestFile, User } from "@/payload-types";
 
@@ -413,7 +412,7 @@ interface CreateScheduledIngestArgs {
 
 /**
  * Create scheduled ingest from wizard configuration.
- * Checks the active-schedules quota before creation to prevent bypass (Bug 15).
+ * The caller checks the feature flag and the ACTIVE_SCHEDULES quota before creating the ingest file.
  */
 export const createScheduledIngest = async ({
   payload,
@@ -427,10 +426,6 @@ export const createScheduledIngest = async ({
   if (!scheduleConfig.enabled || !scheduleConfig.sourceUrl) {
     return null;
   }
-
-  // Enforce scheduled-ingest quota before creation
-  const quotaService = createQuotaService(payload);
-  await quotaService.validateQuota(user, "ACTIVE_SCHEDULES", 1);
 
   const authConfig = scheduleConfig.authConfig ?? { type: "none" as const };
 

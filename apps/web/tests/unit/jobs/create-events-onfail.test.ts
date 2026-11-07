@@ -102,7 +102,17 @@ describe("create-events-batch onFail isolation", () => {
     input: { ingestJobId: "import-onfail-1" },
     job: { id: "job-1", error: "Something went wrong" },
     req: { payload: mockPayload as any },
+    taskStatus: { totalTried: createEventsBatchJob.retries },
     ...overrides,
+  });
+
+  it("leaves the job and its events alone on a failed attempt that Payload will retry", async () => {
+    mockPayload.db.drizzle = createDrizzleMock({ selectResult: [{ id: 1 }] });
+
+    await createEventsBatchJob.onFail(buildArgs({ taskStatus: null }));
+
+    expect(mockPayload.update).not.toHaveBeenCalled();
+    expect(mockPayload.db.drizzle.select).not.toHaveBeenCalled();
   });
 
   it("should update status to FAILED even when cleanup throws", async () => {

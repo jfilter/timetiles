@@ -7,12 +7,11 @@
  *
  * @module
  */
-import { getEnv } from "./lib/config/env";
+import { getEnv, isBuildPhase as detectBuildPhase } from "./lib/config/env";
 import { buildConfigWithDefaults } from "./lib/config/payload-config-factory";
 
-// During build phase, Next.js sets NEXT_PHASE environment variable or SKIP_DB_CHECK.
-// Must use raw process.env here because getEnv() itself checks NEXT_PHASE to pick schema.
-const isBuildPhase = process.env.NEXT_PHASE === "phase-production-build" || process.env.SKIP_DB_CHECK === "true";
+// The build-phase config carries a public dummy secret, so production never enters it via SKIP_DB_CHECK.
+const isBuildPhase = detectBuildPhase();
 
 // Validate required environment variables outside build phase
 // (getEnv() enforces this via Zod, but we keep an explicit check for a clear error message)

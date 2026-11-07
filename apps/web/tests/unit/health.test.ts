@@ -162,31 +162,35 @@ describe("health", () => {
       expect(results.env.message).toContain("DATABASE_URL");
     });
 
-    // Degraded, not error: running without outgoing mail is a supported configuration. A
-    // placeholder SMTP host made every send fail, including the first-admin registration mail.
-    it("should report degraded for email in production without SMTP", async () => {
-      const mockPayload = {
-        find: vi.fn().mockResolvedValue({ totalDocs: 1, docs: [] }),
-        db: {
-          drizzle: { execute: vi.fn().mockResolvedValue({ rowCount: 1, rows: [{ exists: true, size: "50 MB" }] }) },
-        },
-      };
-      mockGetPayload.mockResolvedValue(mockPayload);
-      vi.mocked(fs.access).mockResolvedValue(undefined);
-      vi.mocked(fs.readdir).mockResolvedValue([] as never);
+    it.each([
+      { emailDisabled: undefined, status: "error", message: "EMAIL_DISABLED is not true" },
+      { emailDisabled: "true", status: "degraded", message: "EMAIL_DISABLED=true" },
+    ])(
+      "reports $status for email in production without SMTP when EMAIL_DISABLED=$emailDisabled",
+      async ({ emailDisabled, status, message }) => {
+        const mockPayload = {
+          find: vi.fn().mockResolvedValue({ totalDocs: 1, docs: [] }),
+          db: {
+            drizzle: { execute: vi.fn().mockResolvedValue({ rowCount: 1, rows: [{ exists: true, size: "50 MB" }] }) },
+          },
+        };
+        mockGetPayload.mockResolvedValue(mockPayload);
+        vi.mocked(fs.access).mockResolvedValue(undefined);
+        vi.mocked(fs.readdir).mockResolvedValue([] as never);
 
-      vi.stubEnv("PAYLOAD_SECRET", "test-secret");
-      vi.stubEnv("DATABASE_URL", "postgres://localhost/test");
-      vi.stubEnv("NODE_ENV", "production");
-      vi.stubEnv("EMAIL_SMTP_HOST", undefined);
-      resetEnv();
+        vi.stubEnv("PAYLOAD_SECRET", "test-secret");
+        vi.stubEnv("DATABASE_URL", "postgres://localhost/test");
+        vi.stubEnv("NODE_ENV", "production");
+        vi.stubEnv("EMAIL_SMTP_HOST", undefined);
+        vi.stubEnv("EMAIL_DISABLED", emailDisabled);
+        resetEnv();
 
-      const results = await runHealthChecks();
+        const results = await runHealthChecks();
 
-      expect(results.email.status).toBe("degraded");
-      expect(results.email.message).toContain("SMTP not configured");
-      expect(results.email.message).toContain("disabled");
-    });
+        expect(results.email.status).toBe(status);
+        expect(results.email.message).toContain(message);
+      }
+    );
 
     it("should report error when EMAIL_SMTP_HOST is a placeholder", async () => {
       const mockPayload = {

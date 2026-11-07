@@ -46,11 +46,19 @@ export interface CleanupStuckScheduledIngestsJobInput {
  * this, the CSV on disk and the stale rows leak forever for every killed run. Mirrors
  * `failStuckScraperRuns` in cleanup-stuck-scrapers-job.ts.
  */
-const failStuckIngestFile = async (payload: Payload, scheduledIngestId: number | string): Promise<number> => {
+const failStuckIngestFile = async (payload: Payload, scheduledIngest: ScheduledIngest): Promise<number> => {
   const sys = asSystem(payload);
+  // Only the stuck run's own files: an earlier paused run may still hold a pending review.
+  const sinceLastRun = scheduledIngest.lastRun ? [{ createdAt: { greater_than_equal: scheduledIngest.lastRun } }] : [];
   const stuckFiles = await sys.find({
     collection: COLLECTION_NAMES.INGEST_FILES,
-    where: { scheduledIngest: { equals: scheduledIngestId }, status: { not_in: ["completed", "failed"] } },
+    where: {
+      and: [
+        { scheduledIngest: { equals: scheduledIngest.id } },
+        { status: { not_in: ["completed", "failed"] } },
+        ...sinceLastRun,
+      ],
+    },
     limit: 0,
     pagination: false,
   });
@@ -101,7 +109,7 @@ const getReviewReason = (reviewJob: { reviewReason?: unknown }): string =>
  * reached `completed` means the import worked, and a job parked at NEEDS_REVIEW means
  * it is waiting on a human. Recording either as failed burns a retry towards
  * auto-disable — and for a review it also destroys the pending review, because
- * `failStuckIngestFile` fails every non-terminal job it finds.
+ * `failStuckIngestFile` fails every non-terminal job of the run.
  */
 const resolveUnreconciledOutcome = async (
   payload: Payload,
@@ -200,7 +208,7 @@ const resetStuckImport = async (
         currentTime,
         thresholdHours
       );
-      failedFiles = await failStuckIngestFile(payload, scheduledIngest.id);
+      failedFiles = await failStuckIngestFile(payload, scheduledIngest);
     } catch (error) {
       if (!mayForce) throw error;
       // A schedule that can never run again is worse than a leftover job record.

@@ -393,10 +393,14 @@ describe("CreateSchemaVersionJob Handler", () => {
   });
 
   describe("onFail Callback", () => {
+    // onFail only acts once Payload has used up the task's retries.
+    const finalAttempt = { totalTried: createSchemaVersionJob.retries };
+
     it("should mark ingest job as failed with string error", async () => {
       const mockArgs = {
         input: { ingestJobId: "import-999" },
         req: { payload: mockPayload },
+        taskStatus: finalAttempt,
         job: { error: "Schema version creation failed" },
       };
 
@@ -418,6 +422,7 @@ describe("CreateSchemaVersionJob Handler", () => {
       await createSchemaVersionJob.onFail({
         input: { ingestJobId: undefined },
         req: { payload: mockPayload },
+        taskStatus: finalAttempt,
         job: { error: "error" },
       } as any);
 
@@ -431,6 +436,7 @@ describe("CreateSchemaVersionJob Handler", () => {
       await createSchemaVersionJob.onFail({
         input: { ingestJobId: 123 },
         req: { payload: mockPayload },
+        taskStatus: finalAttempt,
         job: { error: "error" },
       } as any);
 

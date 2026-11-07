@@ -769,10 +769,28 @@ describe("GeocodeBatchJob Handler", () => {
   });
 
   describe("onFail Callback", () => {
+    // onFail only acts once Payload has used up the task's retries.
+    const finalAttempt = { totalTried: geocodeBatchJob.retries };
+
+    it.each([null, { totalTried: 1 }, { totalTried: geocodeBatchJob.retries - 1 }])(
+      "leaves the job alone while Payload still retries (taskStatus %o)",
+      async (taskStatus) => {
+        await geocodeBatchJob.onFail({
+          input: { ingestJobId: "import-999" },
+          req: { payload: mockPayload },
+          job: { error: "error" },
+          taskStatus,
+        } as any);
+
+        expect(mockPayload.update).not.toHaveBeenCalled();
+      }
+    );
+
     it("should mark ingest job as failed with string error", async () => {
       const mockArgs = {
         input: { ingestJobId: "import-999" },
         req: { payload: mockPayload },
+        taskStatus: finalAttempt,
         job: { error: "Geocoding task failed" },
       };
 
@@ -788,7 +806,12 @@ describe("GeocodeBatchJob Handler", () => {
     });
 
     it("should use fallback message when job.error is not a string", async () => {
-      const mockArgs = { input: { ingestJobId: "import-999" }, req: { payload: mockPayload }, job: { error: null } };
+      const mockArgs = {
+        input: { ingestJobId: "import-999" },
+        req: { payload: mockPayload },
+        taskStatus: finalAttempt,
+        job: { error: null },
+      };
 
       mockPayload.update.mockResolvedValueOnce({});
 
@@ -804,7 +827,7 @@ describe("GeocodeBatchJob Handler", () => {
     });
 
     it("should skip when ingestJobId is missing", async () => {
-      const mockArgs = { input: {}, req: { payload: mockPayload }, job: { error: "error" } };
+      const mockArgs = { input: {}, req: { payload: mockPayload }, taskStatus: finalAttempt, job: { error: "error" } };
 
       await geocodeBatchJob.onFail(mockArgs as any);
 
@@ -812,7 +835,12 @@ describe("GeocodeBatchJob Handler", () => {
     });
 
     it("should log and swallow the error when update fails", async () => {
-      const mockArgs = { input: { ingestJobId: 123 }, req: { payload: mockPayload }, job: { error: "error" } };
+      const mockArgs = {
+        input: { ingestJobId: 123 },
+        req: { payload: mockPayload },
+        taskStatus: finalAttempt,
+        job: { error: "error" },
+      };
       const dbError = new Error("DB error");
 
       mockPayload.update.mockRejectedValueOnce(dbError);

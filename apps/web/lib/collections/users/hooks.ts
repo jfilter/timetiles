@@ -15,6 +15,7 @@ import type {
 } from "payload";
 import { APIError, AuthenticationError, LockedAuth } from "payload";
 
+import { getEnv } from "@/lib/config/env";
 import { DEFAULT_QUOTAS, normalizeTrustLevel } from "@/lib/constants/quota-constants";
 import { RATE_LIMITS } from "@/lib/constants/rate-limits";
 import { TRUST_LEVELS } from "@/lib/constants/trust-levels";
@@ -360,6 +361,10 @@ export const usersAfterErrorHook: CollectionAfterErrorHook[] = [
 export const usersBeforeOperationHook: CollectionBeforeOperationHook[] = [
   async ({ args, operation, req }) => {
     if (operation !== "login" && operation !== "forgotPassword") return args;
+    // Covers Payload's own REST endpoint, which the admin login screen uses.
+    if (operation === "forgotPassword" && getEnv().EMAIL_DISABLED) {
+      throw new APIError("Email delivery is disabled on this server.", 503);
+    }
     if (req.payloadAPI !== "REST") return args;
 
     const configName = operation === "login" ? "LOGIN" : "FORGOT_PASSWORD";

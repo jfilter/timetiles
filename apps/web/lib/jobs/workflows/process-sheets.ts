@@ -48,8 +48,9 @@ const markSheetFailed = async (
   try {
     await failIngestJob(payload, ingestJobId, error, context);
     logger.info(`Sheet marked as FAILED`, { ingestJobId, context, error: message });
-  } catch {
-    // Best-effort — don't mask the original error
+  } catch (markError) {
+    // Not rethrown, so the pipeline error stays the reported one; this job is left non-terminal.
+    logError(markError, "Failed to mark sheet as FAILED", { ingestJobId, context, originalError: message });
   }
 };
 

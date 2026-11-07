@@ -66,19 +66,43 @@ describe("handleError", () => {
     expect(mockLogger.logError).toHaveBeenCalledWith(
       err,
       "Unhandled error in API route",
-      expect.objectContaining({ path: "/api/ingest/configure", query: "?foo=bar", method: "POST", userId: 42 })
+      expect.objectContaining({ path: "/api/ingest/configure", queryKeys: ["foo"], method: "POST", userId: 42 })
     );
   });
 
-  it("falls back to raw url when URL parsing fails", () => {
+  it("logs route param names and query keys, never their values", () => {
+    const token = "a1b2c3 secret/token";
+    handleError(new Error("boom"), {
+      url: `http://localhost/api/users/verify/${encodeURIComponent(token)}?token=leak&token=again`,
+      method: "GET",
+      params: { token },
+    });
+
+    const metaArg = mockLogger.logError.mock.calls.at(-1)?.[2] as Record<string, unknown>;
+    expect(metaArg).toEqual({ path: "/api/users/verify/[token]", queryKeys: ["token"], method: "GET" });
+    expect(JSON.stringify(metaArg)).not.toContain("a1b2c3");
+    expect(JSON.stringify(metaArg)).not.toContain("leak");
+  });
+
+  it.each(["%61bc-token", "%61%62c-token", "abc%2dtoken"])("redacts a param sent as %s", (segment) => {
+    handleError(new Error("boom"), {
+      url: `http://localhost/api/webhooks/trigger/${segment}`,
+      method: "POST",
+      params: { token: "abc-token" },
+    });
+
+    const metaArg = mockLogger.logError.mock.calls.at(-1)?.[2] as Record<string, unknown>;
+    expect(metaArg.path).toBe("/api/webhooks/trigger/[token]");
+  });
+
+  it("does not log the raw url when URL parsing fails", () => {
     const err = new Error("connection refused");
     handleError(err, { url: "not a valid url", method: "POST" });
 
-    expect(mockLogger.logError).toHaveBeenCalledWith(
-      err,
-      "Unhandled error in API route",
-      expect.objectContaining({ url: "not a valid url", method: "POST" })
-    );
+    expect(mockLogger.logError).toHaveBeenCalledWith(err, "Unhandled error in API route", {
+      path: "[unparseable url]",
+      method: "POST",
+    });
   });
 
   it("preserves actionable validation details without logging a server error", async () => {
@@ -167,8 +191,28 @@ describe("apiRoute integration: error context is forwarded to handleError", () =
     expect(mockLogger.logError).toHaveBeenCalledWith(
       expect.objectContaining({ message: "synthetic db timeout in handler" }),
       "Unhandled error in API route",
-      expect.objectContaining({ path: "/api/synthetic-route", query: "?retry=1", method: "POST", userId: 7 })
+      expect.objectContaining({ path: "/api/synthetic-route", queryKeys: ["retry"], method: "POST", userId: 7 })
     );
+  });
+
+  it("redacts route params resolved from the route context", async () => {
+    const route = apiRoute({
+      auth: "required",
+      handler: () => {
+        throw new Error("synthetic failure");
+      },
+    });
+    const req = {
+      url: "http://localhost/api/webhooks/trigger/tok-123",
+      method: "POST",
+      headers: new Headers({ host: "localhost" }),
+      json: vi.fn().mockResolvedValue({}),
+    } as never;
+
+    await route(req, { params: Promise.resolve({ token: "tok-123" }) });
+
+    const metaArg = mockLogger.logError.mock.calls.at(-1)?.[2] as Record<string, unknown>;
+    expect(metaArg.path).toBe("/api/webhooks/trigger/[token]");
   });
 
   it("logs request URL even when auth itself throws (userId is omitted)", async () => {

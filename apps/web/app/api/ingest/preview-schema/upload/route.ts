@@ -59,6 +59,9 @@ const convertUploadToCsv = async (
   return { buffer: fileBuffer, extension: fileExtension };
 };
 
+/** Room for multipart boundaries and part headers around the file itself. */
+const MULTIPART_OVERHEAD_BYTES = 64 * 1024;
+
 /**
  * Preview file schema from upload.
  *
@@ -70,6 +73,15 @@ export const POST = apiRoute({
   site: "default",
   rateLimit: { type: "FILE_UPLOAD", keyPrefix: (u) => `preview-upload:${u!.id}` },
   handler: async ({ req, user, payload }) => {
+    const maxFileSize = getPreviewFileSizeLimit(payload, user);
+    // formData() buffers the whole body, so its size is bounded by the header first;
+    // nginx always sends Content-Length upstream because it buffers request bodies.
+    const contentLengthHeader = req.headers.get("content-length");
+    if (contentLengthHeader == null) throw new ValidationError("A Content-Length header is required");
+    if (Number(contentLengthHeader) > maxFileSize + MULTIPART_OVERHEAD_BYTES) {
+      throw new ValidationError(`File size exceeds maximum of ${Math.floor(maxFileSize / 1024 / 1024)}MB`);
+    }
+
     const formData = await req.formData();
     const file = formData.get("file");
 
@@ -77,7 +89,6 @@ export const POST = apiRoute({
       throw new ValidationError("A file is required");
     }
 
-    const maxFileSize = getPreviewFileSizeLimit(payload, user);
     if (file.size > maxFileSize) {
       throw new ValidationError(`File size exceeds maximum of ${Math.floor(maxFileSize / 1024 / 1024)}MB`);
     }

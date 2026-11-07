@@ -395,9 +395,11 @@ const handleAnalyzeReviewError = async (
   return { needsReview: true, reason: error.reason };
 };
 
+const RETRIES = 1;
+
 export const analyzeDuplicatesJob = {
   slug: JOB_TYPES.ANALYZE_DUPLICATES,
-  retries: 1,
+  retries: RETRIES,
   outputSchema: [
     { name: "totalRows", type: "number" as const },
     { name: "uniqueRows", type: "number" as const },
@@ -408,7 +410,7 @@ export const analyzeDuplicatesJob = {
     { name: "skipped", type: "checkbox" as const },
     { name: "reason", type: "text" as const },
   ],
-  onFail: createStandardOnFail("analyze-duplicates"),
+  onFail: createStandardOnFail("analyze-duplicates", { retries: RETRIES }),
   handler: async (context: JobHandlerContext) => {
     const { payload } = context.req;
     const input = (context.input ?? context.job?.input) as AnalyzeDuplicatesJobInput["input"];

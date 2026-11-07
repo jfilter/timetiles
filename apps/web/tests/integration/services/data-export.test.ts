@@ -277,6 +277,33 @@ describe("Data Export Service", () => {
       expect(updated.status).toBe("processing");
     });
 
+    it("ignores an admin API write to filePath", async () => {
+      const env = { payload, seedManager: { truncate } } as any;
+      const { users } = await withUsers(env, { admin: { role: "admin" } });
+
+      const exportRecord = await payload.create({
+        collection: "data-exports",
+        data: {
+          user: users.admin.id,
+          status: "ready",
+          requestedAt: new Date().toISOString(),
+          filePath: "/exports/a.zip",
+        },
+        overrideAccess: true,
+      });
+
+      await payload.update({
+        collection: "data-exports",
+        id: exportRecord.id,
+        data: { filePath: "/etc/passwd" },
+        user: users.admin,
+        overrideAccess: false,
+      });
+
+      const stored = await payload.findByID({ collection: "data-exports", id: exportRecord.id, overrideAccess: true });
+      expect(stored.filePath).toBe("/exports/a.zip");
+    });
+
     it("should enforce user can only read own exports", async () => {
       const env = { payload, seedManager: { truncate } } as any;
       const { users } = await withUsers(env, { user1: { role: "user" }, user2: { role: "user" } });

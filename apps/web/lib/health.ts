@@ -429,15 +429,17 @@ const checkEmailConfiguration = (): HealthCheckResult => {
     };
   }
 
-  if (isProduction && !hasSmtpHost) {
-    // Degraded rather than error: running without outgoing mail is a supported
-    // configuration, not a fault. The app works; account verification and
-    // password resets simply are not delivered.
-    logger.warn("SMTP not configured in production - outgoing email is disabled");
+  if (env.EMAIL_DISABLED) {
+    logger.warn("Outgoing email is disabled by EMAIL_DISABLED");
     return {
       status: "degraded",
-      message: "SMTP not configured (EMAIL_SMTP_HOST not set) - outgoing email is disabled",
+      message: "Outgoing email is disabled (EMAIL_DISABLED=true) - signup and password reset are unavailable",
     };
+  }
+
+  if (isProduction && !hasSmtpHost) {
+    logger.warn("SMTP not configured in production");
+    return { status: "error", message: "EMAIL_SMTP_HOST is not set and EMAIL_DISABLED is not true" };
   }
 
   if (hasSmtpHost) {

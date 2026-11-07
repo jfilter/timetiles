@@ -22,7 +22,7 @@ import type { Config, Plugin } from "payload";
 import { buildConfig } from "payload";
 import sharp from "sharp";
 
-import { isAdmin } from "@/lib/collections/shared-fields";
+import { isAdmin, isEditorOrAdmin } from "@/lib/collections/shared-fields";
 import Users from "@/lib/collections/users";
 import { getEnv } from "@/lib/config/env";
 import { ADMIN_ROUTE } from "@/lib/constants/routes";
@@ -184,29 +184,46 @@ const configureProduction = (config: Config, serverURL: string) => {
   config.csrf = [serverURL];
 };
 
+// Renders each message to JSON in memory; nothing leaves the process.
+const createInMemoryEmailAdapter = (env: ReturnType<typeof getEnv>) =>
+  nodemailerAdapter({
+    defaultFromAddress: env.EMAIL_FROM_ADDRESS,
+    defaultFromName: env.EMAIL_FROM_NAME,
+    // oxlint-disable-next-line sonarjs/no-clear-text-protocols -- JSON transport is in-memory; nothing is sent over the wire
+    transport: createTransport({ jsonTransport: true }),
+    skipVerify: true,
+  });
+
 const configureEmail = async (config: Config, env: ReturnType<typeof getEnv>, environment: string) => {
   // Build phase has no DB, no SMTP env, and no network access in CI; the
   // ethereal fallback below tries to provision an SMTP test account via
   // api.nodemailer.com and fails the whole `next build`. Use the in-memory
   // jsonTransport during build so config evaluation completes.
   if (environment === "test" || env.NEXT_PHASE === "phase-production-build") {
-    config.email = nodemailerAdapter({
-      defaultFromAddress: env.EMAIL_FROM_ADDRESS,
-      defaultFromName: env.EMAIL_FROM_NAME,
-      // oxlint-disable-next-line sonarjs/no-clear-text-protocols -- JSON transport is in-memory and test-only
-      transport: createTransport({ jsonTransport: true }),
-      skipVerify: true,
-    });
+    config.email = createInMemoryEmailAdapter(env);
+    return;
+  }
+
+  if (env.EMAIL_DISABLED) {
+    if (env.EMAIL_SMTP_HOST) {
+      throw new Error("EMAIL_DISABLED=true and EMAIL_SMTP_HOST are both set; remove one of them.");
+    }
+    // A no-op transport rather than none: Payload sends the verification email before it
+    // auto-verifies the first user, so a throwing transport locks out a fresh deployment.
+    config.email = createInMemoryEmailAdapter(env);
     return;
   }
 
   if (env.EMAIL_SMTP_HOST) {
+    const implicitTls = env.EMAIL_SMTP_PORT === 465;
     config.email = nodemailerAdapter({
       defaultFromAddress: env.EMAIL_FROM_ADDRESS,
       defaultFromName: env.EMAIL_FROM_NAME,
       transport: createTransport({
         host: env.EMAIL_SMTP_HOST,
         port: env.EMAIL_SMTP_PORT,
+        secure: implicitTls,
+        requireTLS: !implicitTls && env.EMAIL_SMTP_REQUIRE_TLS,
         auth: env.EMAIL_SMTP_USER ? { user: env.EMAIL_SMTP_USER, pass: env.EMAIL_SMTP_PASS } : undefined,
         // When the SMTP host is reached by a private IP but the server cert
         // names a public hostname, override the SNI/cert-validation name.
@@ -216,32 +233,12 @@ const configureEmail = async (config: Config, env: ReturnType<typeof getEnv>, en
     return;
   }
 
-  // Production without SMTP disables outgoing mail rather than falling through
-  // to Ethereal. Ethereal provisions a throwaway inbox through a third-party
-  // service, which is a development convenience and has no business being a
-  // production dependency -- and mail routed there is invisible to the operator
-  // anyway, so it only looks like it works.
-  //
-  // Disabling is deliberately not the same as leaving `config.email` unset:
-  // a configured no-op transport keeps sends from throwing, which is what
-  // matters for `registerFirstUser`. Payload sends the verification email
-  // before it auto-verifies the first user, so a transport that throws locks
-  // the operator out of a fresh deployment entirely.
+  // Ethereal is a third-party test inbox: mail sent there only looks delivered.
   if (environment === "production") {
-    // The logger is not built yet at config time, so this has to be console.
-    // oxlint-disable-next-line no-console
-    console.warn(
-      "EMAIL_SMTP_HOST is not set — outgoing email is disabled. " +
-        "Account verification and password-reset messages will not be delivered."
+    throw new Error(
+      "EMAIL_SMTP_HOST is not set. Configure SMTP, or set EMAIL_DISABLED=true to run without " +
+        "outgoing mail (signup, password reset and email change are then unavailable)."
     );
-    config.email = nodemailerAdapter({
-      defaultFromAddress: env.EMAIL_FROM_ADDRESS,
-      defaultFromName: env.EMAIL_FROM_NAME,
-      // oxlint-disable-next-line sonarjs/no-clear-text-protocols -- JSON transport is in-memory; nothing is sent over the wire
-      transport: createTransport({ jsonTransport: true }),
-      skipVerify: true,
-    });
-    return;
   }
 
   config.email = nodemailerAdapter({
@@ -320,6 +317,8 @@ export const buildConfigWithDefaults = async (options: PayloadConfigOptions = {}
   // downgrade to a known-public default.
   const config: Config = {
     secret: secret ?? getEnv().PAYLOAD_SECRET,
+    // Read by the patched payload-locked-documents collection (patches/payload@3.92.0.patch).
+    custom: { lockedDocumentsAccess: isEditorOrAdmin },
     i18n: { supportedLanguages: { en, de } },
     localization: {
       locales: [

@@ -24,6 +24,7 @@ import { POST as loginPOST } from "@/app/api/auth/login/route";
 import { POST as registerPOST } from "@/app/api/auth/register/route";
 import { TRUST_LEVELS } from "@/lib/constants/trust-levels";
 import { hashEmail } from "@/lib/security/hash";
+import { TIMING_PAD_MS } from "@/lib/security/timing-pad";
 import { AUDIT_ACTIONS } from "@/lib/services/audit-log-service";
 import { resetRateLimitService } from "@/lib/services/rate-limit-service";
 
@@ -148,10 +149,13 @@ describe("Audit log — authentication events", () => {
   it("records LOGIN_FAILED on non-existent user (no enumeration leak)", async () => {
     const nonexistent = `never-existed-${Date.now()}@test.com`;
 
+    const startedAt = performance.now();
     const response = await loginPOST(buildLoginRequest(nonexistent, TEST_CREDENTIALS.auth.any), {
       params: Promise.resolve({}),
     });
     expect(response.status).toBeGreaterThanOrEqual(400);
+    // Unknown emails skip password hashing; the failure floor hides that difference.
+    expect(performance.now() - startedAt).toBeGreaterThanOrEqual(TIMING_PAD_MS.LOGIN_FAILURE - 5);
 
     const entries = await findAuditEntries(AUDIT_ACTIONS.LOGIN_FAILED);
     // userId is 0 for all failed logins, so the audit record on its own

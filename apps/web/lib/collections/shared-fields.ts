@@ -159,6 +159,15 @@ export const createFeatureFlaggedCreateAccess = (flag: keyof FeatureFlags): Acce
   });
 
 /**
+ * Create access for pipeline collections whose fields carry no write guard:
+ * privileged users only, still behind the feature flag and the deletion check.
+ */
+export const createPrivilegedFlaggedCreateAccess = (flag: keyof FeatureFlags): Access => {
+  const flagged = createFeatureFlaggedCreateAccess(flag);
+  return async (args) => isPrivileged(args.req.user) && (await flagged(args)) === true;
+};
+
+/**
  * Factory for ownership-based access control.
  * Returns true for editors/admins, or a WHERE clause filtering by ownership field.
  * Uses zero-query approach (WHERE clause) instead of per-document DB lookup.

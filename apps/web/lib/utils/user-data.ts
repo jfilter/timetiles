@@ -23,22 +23,23 @@ type CollectionSlug = keyof Config["collections"];
  * @param options - Optional configuration
  * @param options.userField - Field name that stores the user reference (default: "createdBy")
  * @param options.extraWhere - Additional where conditions to apply
+ * @param options.trash - Include documents in the trash
  * @returns The total number of matching documents
  */
 export const countUserDocs = async (
   payload: Payload,
   collection: CollectionSlug,
   userId: number,
-  options: { userField?: string; extraWhere?: Where[] } = {}
+  options: { userField?: string; extraWhere?: Where[]; trash?: boolean } = {}
 ): Promise<number> => {
-  const { userField = "createdBy", extraWhere = [] } = options;
+  const { userField = "createdBy", extraWhere = [], trash = false } = options;
 
   const where: Where =
     extraWhere.length > 0
       ? { and: [{ [userField]: { equals: userId } }, ...extraWhere] }
       : { [userField]: { equals: userId } };
 
-  const result = await payload.count({ collection, where, overrideAccess: true });
+  const result = await payload.count({ collection, where, overrideAccess: true, trash });
 
   return result.totalDocs;
 };
@@ -56,15 +57,16 @@ export const countUserDocs = async (
  * @param options.userField - Field name that stores the user reference (default: "createdBy")
  * @param options.extraWhere - Additional where conditions to apply
  * @param options.limit - Maximum number of documents to return (default: no limit)
+ * @param options.trash - Include documents in the trash
  * @returns Array of matching documents
  */
 export const findUserDocs = async <T extends CollectionSlug>(
   payload: Payload,
   collection: T,
   userId: number,
-  options: { userField?: string; extraWhere?: Where[]; limit?: number } = {}
+  options: { userField?: string; extraWhere?: Where[]; limit?: number; trash?: boolean } = {}
 ): Promise<Config["collections"][T][]> => {
-  const { userField = "createdBy", extraWhere = [], limit } = options;
+  const { userField = "createdBy", extraWhere = [], limit, trash = false } = options;
 
   const where: Where =
     extraWhere.length > 0
@@ -77,6 +79,7 @@ export const findUserDocs = async <T extends CollectionSlug>(
     depth: 0,
     ...(limit == null ? { pagination: false } : { limit }),
     overrideAccess: true,
+    trash,
   });
 
   return result.docs;

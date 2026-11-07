@@ -21,6 +21,7 @@ import { validateRequest } from "@/lib/ingest/preview-validation";
 import type { IngestTransform } from "@/lib/ingest/types/transforms";
 import type { ConfigureIngestRequest } from "@/lib/ingest/types/wizard";
 import { createLogger } from "@/lib/logger";
+import { createQuotaService } from "@/lib/services/quota-service";
 
 import { parseFileSheets } from "../preview-schema/helpers";
 import { ConfigureImportBodySchema } from "./helpers";
@@ -42,6 +43,11 @@ export const POST = apiRoute({
     await requireFeatureEnabled(payload, "enableImportCreation", "Import creation is currently disabled.");
     if (user.deletionScheduledAt) {
       throw new ForbiddenError("Account scheduled for deletion cannot create imports");
+    }
+    // Checked before anything is created, so a refused schedule normally leaves no import behind.
+    if (body.createSchedule?.enabled && body.createSchedule.sourceUrl) {
+      await requireFeatureEnabled(payload, "enableScheduledIngests", "Scheduled imports are currently disabled.");
+      await createQuotaService(payload).validateQuota(user, "ACTIVE_SCHEDULES", 1);
     }
 
     logger.debug(
@@ -110,7 +116,6 @@ export const POST = apiRoute({
 
       let scheduledIngestId: number | null = null;
       if (body.createSchedule?.enabled) {
-        await requireFeatureEnabled(payload, "enableScheduledIngests", "Scheduled imports are currently disabled.");
         scheduledIngestId = await createScheduledIngest({
           payload,
           req,

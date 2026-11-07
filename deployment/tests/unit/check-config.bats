@@ -22,3 +22,9 @@ teardown() {
     run "$TEST_CLI" check
     assert_contains "$output" "Missing/unconfigured vars: PAYLOAD_SECRET"
 }
+
+@test "check names a missing public URL (Compose has no default for it)" {
+    printf 'PAYLOAD_SECRET=s\nDB_PASSWORD=test\nDOMAIN_NAME=test.local\n' > "$TEST_TEMP_DIR/deployment/.env.production"
+    run "$TEST_CLI" check
+    assert_contains "$output" "Missing/unconfigured vars: NEXT_PUBLIC_PAYLOAD_URL"
+}

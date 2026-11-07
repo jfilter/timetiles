@@ -106,7 +106,7 @@ services:
 
       # Payload CMS
       PAYLOAD_SECRET: ${PAYLOAD_SECRET}
-      NEXT_PUBLIC_PAYLOAD_URL: ${NEXT_PUBLIC_PAYLOAD_URL:-http://localhost:3000}
+      NEXT_PUBLIC_PAYLOAD_URL: ${NEXT_PUBLIC_PAYLOAD_URL}
 
       # Application
       NODE_ENV: ${NODE_ENV:-production}
@@ -146,6 +146,8 @@ services:
       EMAIL_SMTP_HOST: ${EMAIL_SMTP_HOST}
       EMAIL_SMTP_PORT: ${EMAIL_SMTP_PORT:-587}
       EMAIL_SMTP_TLS_SERVERNAME: ${EMAIL_SMTP_TLS_SERVERNAME:-}
+      EMAIL_SMTP_REQUIRE_TLS: ${EMAIL_SMTP_REQUIRE_TLS:-true}
+      EMAIL_DISABLED: ${EMAIL_DISABLED:-false}
       EMAIL_FROM: ${EMAIL_FROM}
       EMAIL_FROM_ADDRESS: ${EMAIL_FROM_ADDRESS:-${EMAIL_FROM}}
       EMAIL_FROM_NAME: ${EMAIL_FROM_NAME:-TimeTiles}
@@ -229,7 +231,7 @@ services:
     environment:
       DATABASE_URL: postgresql://${DB_USER:-timetiles_user}:${DB_PASSWORD}@postgres:5432/${DB_NAME:-timetiles}
       PAYLOAD_SECRET: ${PAYLOAD_SECRET}
-      NEXT_PUBLIC_PAYLOAD_URL: ${NEXT_PUBLIC_PAYLOAD_URL:-http://localhost:3000}
+      NEXT_PUBLIC_PAYLOAD_URL: ${NEXT_PUBLIC_PAYLOAD_URL}
       NODE_ENV: ${NODE_ENV:-production}
       LOG_LEVEL: ${LOG_LEVEL:-info}
       LOG_FILE: /var/log/timetiles/worker-ingest.log
@@ -250,6 +252,8 @@ services:
       EMAIL_SMTP_HOST: ${EMAIL_SMTP_HOST}
       EMAIL_SMTP_PORT: ${EMAIL_SMTP_PORT:-587}
       EMAIL_SMTP_TLS_SERVERNAME: ${EMAIL_SMTP_TLS_SERVERNAME:-}
+      EMAIL_SMTP_REQUIRE_TLS: ${EMAIL_SMTP_REQUIRE_TLS:-true}
+      EMAIL_DISABLED: ${EMAIL_DISABLED:-false}
       EMAIL_FROM: ${EMAIL_FROM}
       EMAIL_FROM_ADDRESS: ${EMAIL_FROM_ADDRESS:-${EMAIL_FROM}}
       EMAIL_FROM_NAME: ${EMAIL_FROM_NAME:-TimeTiles}
@@ -313,7 +317,7 @@ services:
     environment:
       DATABASE_URL: postgresql://${DB_USER:-timetiles_user}:${DB_PASSWORD}@postgres:5432/${DB_NAME:-timetiles}
       PAYLOAD_SECRET: ${PAYLOAD_SECRET}
-      NEXT_PUBLIC_PAYLOAD_URL: ${NEXT_PUBLIC_PAYLOAD_URL:-http://localhost:3000}
+      NEXT_PUBLIC_PAYLOAD_URL: ${NEXT_PUBLIC_PAYLOAD_URL}
       NODE_ENV: ${NODE_ENV:-production}
       LOG_LEVEL: ${LOG_LEVEL:-info}
       LOG_FILE: /var/log/timetiles/worker-general.log
@@ -336,6 +340,8 @@ services:
       EMAIL_SMTP_HOST: ${EMAIL_SMTP_HOST}
       EMAIL_SMTP_PORT: ${EMAIL_SMTP_PORT:-587}
       EMAIL_SMTP_TLS_SERVERNAME: ${EMAIL_SMTP_TLS_SERVERNAME:-}
+      EMAIL_SMTP_REQUIRE_TLS: ${EMAIL_SMTP_REQUIRE_TLS:-true}
+      EMAIL_DISABLED: ${EMAIL_DISABLED:-false}
       EMAIL_FROM: ${EMAIL_FROM}
       EMAIL_FROM_ADDRESS: ${EMAIL_FROM_ADDRESS:-${EMAIL_FROM}}
       EMAIL_FROM_NAME: ${EMAIL_FROM_NAME:-TimeTiles}
@@ -411,7 +417,7 @@ services:
     environment:
       DATABASE_URL: postgresql://${DB_USER:-timetiles_user}:${DB_PASSWORD}@postgres:5432/${DB_NAME:-timetiles}
       PAYLOAD_SECRET: ${PAYLOAD_SECRET}
-      NEXT_PUBLIC_PAYLOAD_URL: ${NEXT_PUBLIC_PAYLOAD_URL:-http://localhost:3000}
+      NEXT_PUBLIC_PAYLOAD_URL: ${NEXT_PUBLIC_PAYLOAD_URL}
       NODE_ENV: ${NODE_ENV:-production}
       LOG_LEVEL: ${LOG_LEVEL:-info}
       LOG_FILE: /var/log/timetiles/worker-maintenance.log
@@ -436,6 +442,8 @@ services:
       EMAIL_SMTP_HOST: ${EMAIL_SMTP_HOST}
       EMAIL_SMTP_PORT: ${EMAIL_SMTP_PORT:-587}
       EMAIL_SMTP_TLS_SERVERNAME: ${EMAIL_SMTP_TLS_SERVERNAME:-}
+      EMAIL_SMTP_REQUIRE_TLS: ${EMAIL_SMTP_REQUIRE_TLS:-true}
+      EMAIL_DISABLED: ${EMAIL_DISABLED:-false}
       EMAIL_FROM: ${EMAIL_FROM}
       EMAIL_FROM_ADDRESS: ${EMAIL_FROM_ADDRESS:-${EMAIL_FROM}}
       EMAIL_FROM_NAME: ${EMAIL_FROM_NAME:-TimeTiles}

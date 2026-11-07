@@ -14,13 +14,14 @@ import type { Payload } from "payload";
 import { COLLECTION_NAMES, PROCESSING_STAGE, type ProcessingStage } from "@/lib/constants/ingest-constants";
 import { cleanupSidecarFiles } from "@/lib/ingest/file-readers";
 import { readDuplicateStrategy } from "@/lib/ingest/import-quota";
+import { updateIngestFileStatusForJob } from "@/lib/ingest/ingest-file-status";
 import { getIngestFilePath } from "@/lib/ingest/upload-path";
 import { logError } from "@/lib/logger";
 import { isRecord } from "@/lib/utils/is-record";
 import type { Dataset, IngestFile, IngestJob } from "@/payload-types";
 
 import type { ConfigSnapshot } from "../handlers/dataset-detection/catalog-dataset-helpers";
-import type { TaskCallbackArgs } from "./job-context";
+import { isFinalAttempt, type TaskCallbackArgs } from "./job-context";
 
 /**
  * Read a job config snapshot from JSON storage.
@@ -195,18 +196,20 @@ const extractErrorMessage = (error: unknown): string => {
  * INGEST_FILES instead.
  *
  * @param context - Error context string identifying the handler (e.g. "schema-detection")
+ * @param options.retries - The task's `retries` setting; earlier attempts leave the job untouched.
  * @param options.beforeFail - Optional async callback invoked before marking the job as failed.
  *   Runs in a separate try/catch so cleanup failures don't prevent the status update.
  */
 export const createStandardOnFail = (
   context: string,
-  options?: { beforeFail?: (payload: Payload, ingestJobId: string | number) => Promise<void> }
+  options: { retries: number; beforeFail?: (payload: Payload, ingestJobId: string | number) => Promise<void> }
 ): ((args: TaskCallbackArgs) => Promise<void>) => {
   return async (args: TaskCallbackArgs) => {
+    if (!isFinalAttempt(args, options.retries)) return;
     const ingestJobId = extractIngestJobId(args);
     if (ingestJobId == null) return;
 
-    if (options?.beforeFail) {
+    if (options.beforeFail) {
       try {
         await options.beforeFail(args.req.payload, ingestJobId);
       } catch (error) {
@@ -224,7 +227,10 @@ export const createStandardOnFail = (
     } catch (error) {
       // Best-effort — don't throw in onFail, but log so silent failures are observable
       logError(error, "Failed to mark ingest job as failed in onFail", { context, ingestJobId });
+      return;
     }
+    // Payload calls onFail after the workflow's own status update has run, so derive the file status here.
+    await updateIngestFileStatusForJob(args.req.payload, ingestJobId);
   };
 };
 

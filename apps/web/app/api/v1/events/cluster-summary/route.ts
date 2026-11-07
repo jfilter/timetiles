@@ -29,8 +29,8 @@ import { resolveEventQueryContext } from "@/lib/services/resolve-event-query-con
  * Responses vary by the caller's access scope (owner-visible events are
  * mixed into the results via `ownerId` in the canonical filters), so we
  * cannot share them publicly. `private` limits caching to the caller's
- * own browser/HTTP cache. A short `max-age` avoids repeated recomputation
- * during rapid pan/zoom while keeping the data fresh.
+ * own browser/HTTP cache, and `Vary: Cookie` keeps a signed-out or switched
+ * session from reusing it. A short `max-age` absorbs rapid pan/zoom.
  */
 const CLUSTER_SUMMARY_CACHE_CONTROL = "private, max-age=30, stale-while-revalidate=60";
 
@@ -51,7 +51,7 @@ export const GET = apiRoute({
 
     return new Response(JSON.stringify(body), {
       status: 200,
-      headers: { "Content-Type": "application/json", "Cache-Control": CLUSTER_SUMMARY_CACHE_CONTROL },
+      headers: { "Content-Type": "application/json", "Cache-Control": CLUSTER_SUMMARY_CACHE_CONTROL, Vary: "Cookie" },
     });
   },
 });

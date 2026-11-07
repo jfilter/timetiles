@@ -36,3 +36,27 @@ index 820887e76b0c50d9be729da289394a843f564249..838541c022adbcb963ae8742dafbf752
              req,
              returning: false
          });
+diff --git a/dist/locked-documents/config.js b/dist/locked-documents/config.js
+index e8e531fe11b19b9dc0a805552a68b90683c6fe10..daadae757d3ced1ba2d7306a94ad797ade32a913 100644
+--- a/dist/locked-documents/config.js
++++ b/dist/locked-documents/config.js
+@@ -38,13 +38,15 @@ export const getLockedDocumentsCollection = (config)=>{
+         relationTo: authCollections,
+         required: true
+     });
++    // Locks name the editing user and block other editors; let the app narrow who may touch them.
++    const access = config.custom?.lockedDocumentsAccess ?? defaultAccess;
+     return {
+         slug: lockedDocumentsCollectionSlug,
+         access: {
+-            create: defaultAccess,
+-            delete: defaultAccess,
+-            read: defaultAccess,
+-            update: defaultAccess
++            create: access,
++            delete: access,
++            read: access,
++            update: access
+         },
+         admin: {
+             hidden: true

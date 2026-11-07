@@ -276,16 +276,31 @@ export const ClusterSummaryQuerySchema = EventFiltersSchema.extend({
 
 export type ClusterSummaryQuery = z.infer<typeof ClusterSummaryQuerySchema>;
 
+const ClusterSummaryCountSchema = z.object({ id: z.number().int(), name: z.string(), count: z.number().int() });
+
 /** Response for GET /api/v1/events/cluster-summary */
-export type ClusterSummaryResponse = {
-  totalCount: number;
-  locationCount: number;
-  temporalRange: { earliest: string; latest: string } | null;
-  datasets: Array<{ id: number; name: string; count: number }>;
-  catalogs: Array<{ id: number; name: string; count: number }>;
-  categories: Array<{ field: string; values: Array<{ value: string; count: number }> }>;
-  preview: Array<{ id: number; title?: string; timestamp?: string; datasetName: string }>;
-};
+export const ClusterSummaryResponseSchema = z
+  .object({
+    totalCount: z.number().int(),
+    locationCount: z.number().int(),
+    temporalRange: z.object({ earliest: z.string(), latest: z.string() }).nullable(),
+    datasets: z.array(ClusterSummaryCountSchema),
+    catalogs: z.array(ClusterSummaryCountSchema),
+    categories: z.array(
+      z.object({ field: z.string(), values: z.array(z.object({ value: z.string(), count: z.number().int() })) })
+    ),
+    preview: z.array(
+      z.object({
+        id: z.number().int(),
+        title: z.string().optional(),
+        timestamp: z.string().optional(),
+        datasetName: z.string(),
+      })
+    ),
+  })
+  .openapi("ClusterSummaryResponse");
+
+export type ClusterSummaryResponse = z.infer<typeof ClusterSummaryResponseSchema>;
 
 // =============================================================================
 // Temporal Clusters Endpoint

@@ -9,8 +9,8 @@
  * - `create-events`: only create-events (e.g. after geocoding partial approval)
  *
  * Tasks throw on error — since there's no Promise.allSettled here,
- * errors propagate to Payload's top-level handler which calls onFail.
- * try/finally ensures updateIngestFileStatusForJob runs even on failure.
+ * errors propagate to Payload, which retries the task and calls onFail on the
+ * last attempt; onFail then marks the job FAILED and derives the file status.
  *
  * @module
  * @category Jobs
@@ -43,7 +43,7 @@ export const ingestProcessWorkflow: WorkflowConfig<"ingest-process"> = {
     logger.info("ingest-process workflow started (post-review)", { ingestJobId: id, resumeFrom });
 
     try {
-      // Tasks throw on error → propagates to Payload → onFail marks IngestJob FAILED
+      // Tasks throw on error → Payload retries, then onFail marks IngestJob FAILED
       if (resumeFrom === "analyze-duplicates") {
         const analyze = (await tasks["analyze-duplicates"]("analyze", {
           input: { ingestJobId: id },
@@ -103,7 +103,7 @@ export const ingestProcessWorkflow: WorkflowConfig<"ingest-process"> = {
 
       logger.info("ingest-process workflow completed", { ingestJobId: id });
     } finally {
-      // Always update file status — even if a task threw (IngestJob marked FAILED by onFail)
+      // Covers completion and review pauses; a final task failure is handled by onFail, which runs later.
       await updateIngestFileStatusForJob(req.payload, id);
     }
   },

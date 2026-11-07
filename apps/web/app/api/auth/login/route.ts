@@ -17,6 +17,7 @@ import { z } from "zod";
 import { apiRoute } from "@/lib/api";
 import { logger } from "@/lib/logger";
 import { maskEmail } from "@/lib/security/masking";
+import { padSince, TIMING_PAD_MS } from "@/lib/security/timing-pad";
 import { AUDIT_ACTIONS, auditLog } from "@/lib/services/audit-log-service";
 import { getClientIdentifier } from "@/lib/services/rate-limit-service";
 
@@ -28,6 +29,7 @@ export const POST = apiRoute({
     const { email, password } = body;
     const clientIp = getClientIdentifier(req);
     const ipAddress = clientIp === "unknown" ? undefined : clientIp;
+    const startTime = Date.now();
 
     try {
       const result = await payload.login({ collection: "users", data: { email, password }, req });
@@ -54,6 +56,8 @@ export const POST = apiRoute({
       // `afterLogin` hook handles the LOGIN_SUCCESS audit — no duplicate here.
       return Response.json(responseBody, { headers: new Headers({ "Set-Cookie": cookie }) });
     } catch (error) {
+      // Failures share one latency floor, so response time does not reveal whether the email exists.
+      await padSince(startTime, TIMING_PAD_MS.LOGIN_FAILURE);
       // Audit the failed attempt. userId=0 is the canonical "no associated
       // user" marker so we don't accidentally reveal which emails exist.
       await auditLog(payload, {

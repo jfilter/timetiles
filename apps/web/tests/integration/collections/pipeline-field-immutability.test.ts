@@ -124,7 +124,6 @@ describe("Pipeline field immutability", () => {
       data: { catalog: ownCatalog.id },
       file: { data: csvBuffer, mimetype: "text/csv", name: `immutability-${Date.now()}.csv`, size: csvBuffer.length },
       user: owner,
-      overrideAccess: false,
     });
 
     await expect(

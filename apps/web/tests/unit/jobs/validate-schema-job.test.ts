@@ -756,10 +756,14 @@ describe("ValidateSchemaJob Handler", () => {
   });
 
   describe("onFail Callback", () => {
+    // onFail only acts once Payload has used up the task's retries.
+    const finalAttempt = { totalTried: validateSchemaJob.retries };
+
     it("should mark ingest job as failed with string error", async () => {
       const mockArgs = {
         input: { ingestJobId: "import-999" },
         req: { payload: mockPayload },
+        taskStatus: finalAttempt,
         job: { error: "Validation failed" },
       };
 
@@ -775,7 +779,12 @@ describe("ValidateSchemaJob Handler", () => {
     });
 
     it("should skip when ingestJobId is missing", async () => {
-      await validateSchemaJob.onFail({ input: {}, req: { payload: mockPayload }, job: { error: "error" } } as any);
+      await validateSchemaJob.onFail({
+        input: {},
+        req: { payload: mockPayload },
+        taskStatus: finalAttempt,
+        job: { error: "error" },
+      } as any);
 
       expect(mockPayload.update).not.toHaveBeenCalled();
     });
@@ -787,6 +796,7 @@ describe("ValidateSchemaJob Handler", () => {
       await validateSchemaJob.onFail({
         input: { ingestJobId: 123 },
         req: { payload: mockPayload },
+        taskStatus: finalAttempt,
         job: { error: "error" },
       } as any);
 

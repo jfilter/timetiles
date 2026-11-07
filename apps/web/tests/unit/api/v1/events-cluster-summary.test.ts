@@ -102,6 +102,7 @@ describe("GET /api/v1/events/cluster-summary", () => {
     expect(cacheControl).toContain("private");
     expect(cacheControl).toContain("max-age=30");
     expect(cacheControl).toContain("stale-while-revalidate=60");
+    expect(response.headers.get("Vary")).toBe("Cookie");
   });
 
   it("returns Cache-Control header when the requested catalog is inaccessible", async () => {

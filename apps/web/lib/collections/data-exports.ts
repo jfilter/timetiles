@@ -87,7 +87,8 @@ const DataExports: CollectionConfig = {
     {
       name: "filePath",
       type: "text",
-      access: { read: ({ req: { user } }) => user?.role === "admin" },
+      // Download and cleanup stream or unlink this path, so only the export job may set it.
+      access: { read: ({ req: { user } }) => user?.role === "admin", create: () => false, update: () => false },
       admin: {
         description: "Internal file path for the export ZIP (for cleanup)",
         condition: () => false, // Hidden from admin UI
@@ -104,7 +105,7 @@ const DataExports: CollectionConfig = {
     {
       name: "errorLog",
       type: "textarea",
-      access: { read: ({ req: { user } }) => user?.role === "admin" },
+      access: { read: ({ req: { user } }) => user?.role === "admin", create: () => false, update: () => false },
       admin: {
         description: "Error details if export failed",
         condition: (data) => data.status === "failed",

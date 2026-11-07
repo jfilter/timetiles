@@ -13,7 +13,7 @@ import { randomBytes } from "node:crypto";
 import type { Payload } from "payload";
 import { z } from "zod";
 
-import { apiRoute, ValidationError } from "@/lib/api";
+import { apiRoute, requireEmailEnabled, ValidationError } from "@/lib/api";
 import { verifyPasswordWithAudit } from "@/lib/api/auth-helpers";
 import { getEmailContext } from "@/lib/email/context";
 import { EMAIL_CONTEXTS, queueEmail } from "@/lib/email/send";
@@ -104,6 +104,7 @@ export const POST = apiRoute({
   rateLimit: { configName: "EMAIL_CHANGE", keyPrefix: (u) => `email-change:${u!.id}` },
   body: z.object({ newEmail: z.email().transform((s) => s.trim().toLowerCase()), password: z.string().min(1) }),
   handler: async ({ payload, user, req, body }) => {
+    requireEmailEnabled();
     const clientId = getClientIdentifier(req);
     const { newEmail, password } = body;
 

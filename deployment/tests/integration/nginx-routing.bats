@@ -79,6 +79,20 @@ curl_https_head() {
     [[ "$output" == *"X-Frame-Options"* ]] || [[ "$output" == *"x-frame-options"* ]]
 }
 
+@test "embed pages can be framed by other origins" {
+    run curl_https_head /embed
+    echo "$output"
+    [[ "${output,,}" != *"x-frame-options"* ]]
+    [[ "${output,,}" == *"frame-ancestors *"* ]]
+    [[ "${output,,}" != *"frame-ancestors 'self'"* ]]
+}
+
+@test "non-embed pages keep the same-origin frame policy" {
+    run curl_https_head /explore
+    [[ "${output,,}" == *"x-frame-options"* ]]
+    [[ "${output,,}" == *"frame-ancestors 'self'"* ]]
+}
+
 @test "X-Content-Type-Options header present" {
     run curl_https_head /api/health
     [[ "$output" == *"X-Content-Type-Options"* ]] || [[ "$output" == *"x-content-type-options"* ]]

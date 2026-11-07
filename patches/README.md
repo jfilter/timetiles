@@ -22,6 +22,23 @@ Remove this patch only when the unpatched Payload passes:
 make test-ai FILTER=concurrent-login-sessions
 ```
 
+### Access to document locks
+
+Payload adds the `payload-locked-documents` collection itself, with every
+operation open to any logged-in user and no override. A regular account could
+therefore list which editor is editing which document and create or delete
+locks, blocking editors out of documents.
+
+The patch lets the root config's server-only `custom.lockedDocumentsAccess`
+replace that default; `lib/config/payload-config-factory.ts` sets it to editors
+and admins. The admin UI takes locks as the logged-in user, so editors keep
+working. Remove this part only when upstream offers its own override and this
+passes against it:
+
+```sh
+make test-ai FILTER=locked-documents-access
+```
+
 pnpm applies the patch through `package.json` and the lockfile. Reassess it when
 upgrading Payload.
 

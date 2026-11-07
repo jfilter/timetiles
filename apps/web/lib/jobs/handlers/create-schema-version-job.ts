@@ -81,15 +81,17 @@ const getApprovedById = (approvedBy: unknown): number | null => {
   return null;
 };
 
+const RETRIES = 1;
+
 export const createSchemaVersionJob = {
   slug: JOB_TYPES.CREATE_SCHEMA_VERSION,
-  retries: 1,
+  retries: RETRIES,
   outputSchema: [
     { name: "versionNumber", type: "number" as const },
     { name: "skipped", type: "checkbox" as const },
     { name: "reason", type: "text" as const },
   ],
-  onFail: createStandardOnFail("create-schema-version"),
+  onFail: createStandardOnFail("create-schema-version", { retries: RETRIES }),
   handler: async (context: JobHandlerContext) => {
     const { payload } = context.req;
     const input = (context.input ?? context.job?.input) as CreateSchemaVersionJobInput["input"];

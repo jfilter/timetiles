@@ -954,10 +954,25 @@ describe("DatasetDetectionJob Handler", () => {
   });
 
   describe("onFail Callback", () => {
+    // onFail only acts once Payload has used up the task's retries.
+    const finalAttempt = { totalTried: datasetDetectionJob.retries };
+
+    it("leaves the ingest file alone on a failed attempt that Payload will retry", async () => {
+      await datasetDetectionJob.onFail({
+        input: { ingestFileId: "file-123" },
+        req: { payload: mockPayload },
+        job: { error: "error" },
+        taskStatus: null,
+      } as any);
+
+      expect(mockPayload.update).not.toHaveBeenCalled();
+    });
+
     it("should update ingest file status to failed with string error", async () => {
       const mockArgs = {
         input: { ingestFileId: "file-123" },
         req: { payload: mockPayload },
+        taskStatus: finalAttempt,
         job: { error: "Some failure reason" },
       };
 
@@ -973,7 +988,12 @@ describe("DatasetDetectionJob Handler", () => {
     });
 
     it("should use fallback message when job.error is not a string", async () => {
-      const mockArgs = { input: { ingestFileId: "file-123" }, req: { payload: mockPayload }, job: { error: 42 } };
+      const mockArgs = {
+        input: { ingestFileId: "file-123" },
+        req: { payload: mockPayload },
+        taskStatus: finalAttempt,
+        job: { error: 42 },
+      };
 
       mockPayload.update.mockResolvedValueOnce({});
 
@@ -985,7 +1005,12 @@ describe("DatasetDetectionJob Handler", () => {
     });
 
     it("should skip when ingestFileId is not a string or number", async () => {
-      const mockArgs = { input: { ingestFileId: undefined }, req: { payload: mockPayload }, job: { error: "error" } };
+      const mockArgs = {
+        input: { ingestFileId: undefined },
+        req: { payload: mockPayload },
+        taskStatus: finalAttempt,
+        job: { error: "error" },
+      };
 
       await datasetDetectionJob.onFail(mockArgs as any);
 
@@ -993,7 +1018,12 @@ describe("DatasetDetectionJob Handler", () => {
     });
 
     it("should log and swallow the error when update fails in onFail", async () => {
-      const mockArgs = { input: { ingestFileId: "file-123" }, req: { payload: mockPayload }, job: { error: "error" } };
+      const mockArgs = {
+        input: { ingestFileId: "file-123" },
+        req: { payload: mockPayload },
+        taskStatus: finalAttempt,
+        job: { error: "error" },
+      };
       const dbError = new Error("DB error");
 
       mockPayload.update.mockRejectedValueOnce(dbError);
@@ -1007,7 +1037,12 @@ describe("DatasetDetectionJob Handler", () => {
     });
 
     it("should handle numeric ingestFileId", async () => {
-      const mockArgs = { input: { ingestFileId: 123 }, req: { payload: mockPayload }, job: { error: "error message" } };
+      const mockArgs = {
+        input: { ingestFileId: 123 },
+        req: { payload: mockPayload },
+        taskStatus: finalAttempt,
+        job: { error: "error message" },
+      };
 
       mockPayload.update.mockResolvedValueOnce({});
 

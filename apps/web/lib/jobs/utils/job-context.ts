@@ -20,4 +20,15 @@ export interface TaskCallbackArgs {
   input?: object;
   job: { error?: unknown; id: number | string };
   req: { payload: Payload };
+  /** Attempts recorded before the current one; null on the first attempt. */
+  taskStatus?: { totalTried: number } | null;
 }
+
+/**
+ * Whether Payload will give up on the task after this failure.
+ *
+ * Payload calls `onFail` on every failed attempt, before it decides to retry; this
+ * mirrors its check (`totalTried` counts earlier attempts, `retries` the allowed retries).
+ */
+export const isFinalAttempt = (args: TaskCallbackArgs, retries: number): boolean =>
+  (args.taskStatus?.totalTried ?? 0) >= retries;

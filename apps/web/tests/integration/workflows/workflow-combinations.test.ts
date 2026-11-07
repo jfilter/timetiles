@@ -145,6 +145,39 @@ describe("Workflow Combinations (Integration)", () => {
     }
   });
 
+  /** A locked dataset whose published schema has title, date and location. */
+  const createLockedDatasetWithSchema = async () => {
+    const { dataset } = await withDataset(testEnv, testCatalogId, {
+      schemaConfig: { locked: true, autoGrow: false, autoApproveNonBreaking: false },
+    });
+    await payload.create({
+      collection: "dataset-schemas",
+      data: {
+        dataset: dataset.id,
+        versionNumber: 1,
+        _status: "published",
+        schema: {
+          type: "object",
+          properties: {
+            title: { type: "string" },
+            date: { type: "string", format: "date" },
+            location: { type: "string" },
+          },
+          required: ["title", "date"],
+        },
+        fieldMetadata: {
+          title: { occurrences: 100, occurrencePercent: 100 },
+          date: { occurrences: 100, occurrencePercent: 100 },
+          location: { occurrences: 100, occurrencePercent: 100 },
+        },
+        schemaSummary: { totalFields: 3, newFields: [], removedFields: [], typeChanges: [], enumChanges: [] },
+      },
+    });
+    const schemas = await payload.find({ collection: "dataset-schemas", where: { dataset: { equals: dataset.id } } });
+    await payload.update({ collection: "datasets", id: dataset.id, data: { currentSchema: schemas.docs[0].id } });
+    return dataset;
+  };
+
   beforeEach(async () => {
     mockGeocodingSuccess();
     await testEnv.seedManager.truncate(IMPORT_PIPELINE_COLLECTIONS_TO_RESET);
@@ -188,39 +221,8 @@ describe("Workflow Combinations (Integration)", () => {
   // ── 2. Schema drift → NEEDS_REVIEW → approve → completes ──
 
   it("should pause at NEEDS_REVIEW for schema drift and complete after approval", async () => {
-    // Create a dataset with a locked schema (schema drift will require approval)
-    const { dataset } = await withDataset(testEnv, testCatalogId, {
-      schemaConfig: { locked: true, autoGrow: false, autoApproveNonBreaking: false },
-    });
-
-    // Create a published schema version for this dataset
-    await payload.create({
-      collection: "dataset-schemas",
-      data: {
-        dataset: dataset.id,
-        versionNumber: 1,
-        _status: "published",
-        schema: {
-          type: "object",
-          properties: {
-            title: { type: "string" },
-            date: { type: "string", format: "date" },
-            location: { type: "string" },
-          },
-          required: ["title", "date"],
-        },
-        fieldMetadata: {
-          title: { occurrences: 100, occurrencePercent: 100 },
-          date: { occurrences: 100, occurrencePercent: 100 },
-          location: { occurrences: 100, occurrencePercent: 100 },
-        },
-        schemaSummary: { totalFields: 3, newFields: [], removedFields: [], typeChanges: [], enumChanges: [] },
-      },
-    });
-
-    // Link published schema to dataset
-    const schemas = await payload.find({ collection: "dataset-schemas", where: { dataset: { equals: dataset.id } } });
-    await payload.update({ collection: "datasets", id: dataset.id, data: { currentSchema: schemas.docs[0].id } });
+    // A locked dataset with a published schema, so schema drift requires approval
+    const dataset = await createLockedDatasetWithSchema();
 
     // CSV with a new column (category) that differs from the existing schema
     const csvContent = `title,date,location,category
@@ -284,37 +286,8 @@ describe("Workflow Combinations (Integration)", () => {
   // ── 3. Schema drift → NEEDS_REVIEW → NOT approved → stays paused ──
 
   it("should stay at NEEDS_REVIEW when schema drift is not approved", async () => {
-    // Create a locked dataset with an existing schema
-    const { dataset } = await withDataset(testEnv, testCatalogId, {
-      schemaConfig: { locked: true, autoGrow: false, autoApproveNonBreaking: false },
-    });
-
-    await payload.create({
-      collection: "dataset-schemas",
-      data: {
-        dataset: dataset.id,
-        versionNumber: 1,
-        _status: "published",
-        schema: {
-          type: "object",
-          properties: {
-            title: { type: "string" },
-            date: { type: "string", format: "date" },
-            location: { type: "string" },
-          },
-          required: ["title", "date"],
-        },
-        fieldMetadata: {
-          title: { occurrences: 100, occurrencePercent: 100 },
-          date: { occurrences: 100, occurrencePercent: 100 },
-          location: { occurrences: 100, occurrencePercent: 100 },
-        },
-        schemaSummary: { totalFields: 3, newFields: [], removedFields: [], typeChanges: [], enumChanges: [] },
-      },
-    });
-
-    const schemas = await payload.find({ collection: "dataset-schemas", where: { dataset: { equals: dataset.id } } });
-    await payload.update({ collection: "datasets", id: dataset.id, data: { currentSchema: schemas.docs[0].id } });
+    // A locked dataset with a published schema, so schema drift requires approval
+    const dataset = await createLockedDatasetWithSchema();
 
     // CSV with schema drift (new "priority" column)
     const csvContent = `title,date,location,priority
@@ -352,6 +325,62 @@ describe("Workflow Combinations (Integration)", () => {
     const file = await payload.findByID({ collection: "ingest-files", id: ingestFile.id });
     expect(file.status).toBe("processing");
     expect(file.datasetsProcessed).toBe(1);
+  }, 60000);
+
+  it("marks a resumed import and its file failed only after the last retry", async () => {
+    const dataset = await createLockedDatasetWithSchema();
+    const csvContent = `title,date,location,category
+"Retry Event","2024-04-01","Berlin","tech"`;
+    const ingestFile = await createIngestFileForWorkflow(payload, testCatalogId, csvContent, testUser, {
+      datasetId: dataset.id,
+    });
+    await payload.jobs.queue({ workflow: "manual-ingest", input: { ingestFileId: String(ingestFile.id) } });
+    const reviewResult = await runJobsUntilIngestJobStage(
+      payload,
+      ingestFile.id,
+      (ingestJob) => ingestJob.stage === PROCESSING_STAGE.NEEDS_REVIEW,
+      { maxIterations: 40 }
+    );
+    expect(reviewResult.matched).toBe(true);
+    const ingestJobId = reviewResult.ingestJob!.id;
+
+    // Every geocode-batch attempt of the post-review workflow fails.
+    vi.spyOn(geocodingModule, "createGeocodingService").mockReturnValue({
+      isEnabled: () => Promise.resolve(true),
+      geocode: vi.fn().mockRejectedValue(new Error("Geocoding service unavailable")),
+      batchGeocode: vi.fn().mockRejectedValue(new Error("Geocoding service unavailable")),
+      testConfiguration: vi.fn().mockResolvedValue({}),
+    } as unknown as geocodingModule.GeocodingService);
+    const currentJob = await payload.findByID({ collection: "ingest-jobs", id: ingestJobId });
+    await payload.update({
+      collection: "ingest-jobs",
+      id: ingestJobId,
+      data: {
+        schemaValidation: {
+          ...currentJob.schemaValidation,
+          approved: true,
+          approvedBy: testUser.id,
+          approvedAt: new Date().toISOString(),
+        },
+      },
+      user: testUser,
+    });
+
+    // The first failed attempt is retried: the job is not yet terminal.
+    await payload.jobs.run({ allQueues: true, limit: 100 });
+    const afterFirstAttempt = await payload.findByID({ collection: "ingest-jobs", id: ingestJobId });
+    expect(afterFirstAttempt.stage).not.toBe(PROCESSING_STAGE.FAILED);
+
+    const finalResult = await runUntilSettled(payload, ingestFile.id, 20);
+    expect(finalResult.ingestFile.status).toBe("failed");
+    const failedJob = await payload.findByID({ collection: "ingest-jobs", id: ingestJobId });
+    expect(failedJob.stage).toBe(PROCESSING_STAGE.FAILED);
+    const processJobs = await payload.find({
+      collection: "payload-jobs",
+      where: { workflowSlug: { equals: "ingest-process" } },
+    });
+    expect(processJobs.docs).toHaveLength(1);
+    expect(processJobs.docs[0].hasError).toBe(true);
   }, 60000);
 
   // ── 4. create-events marks IngestJob as COMPLETED ──

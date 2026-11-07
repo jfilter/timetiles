@@ -13,6 +13,9 @@
  * @module
  */
 
+import { existsSync, writeFileSync } from "node:fs";
+import path from "node:path";
+
 import { sql } from "@payloadcms/db-postgres";
 import type { CollectionAfterChangeHook } from "payload";
 import { commitTransaction, createLocalReq, initTransaction, killTransaction } from "payload";
@@ -22,10 +25,11 @@ import type { AccountDeletionService } from "@/lib/account/deletion-service";
 import { createAccountDeletionService } from "@/lib/account/deletion-service";
 import { createSystemUserService, SYSTEM_USER_EMAIL } from "@/lib/account/system-user";
 import { getAppConfig } from "@/lib/config/app-config";
+import { PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
 import { getTransactionAwareDrizzle } from "@/lib/database/drizzle-transaction";
 import { extractRelationId } from "@/lib/utils/relation-id";
 import type { User } from "@/payload-types";
-import { createIntegrationTestEnvironment, withUsers } from "@/tests/setup/integration/environment";
+import { createIntegrationTestEnvironment, withIngestFile, withUsers } from "@/tests/setup/integration/environment";
 
 describe("Account Deletion Service", () => {
   let payload: any;
@@ -48,6 +52,9 @@ describe("Account Deletion Service", () => {
     await truncate();
     deletionService = createAccountDeletionService(payload);
   });
+
+  const storedIngestFilePath = (filename: string) =>
+    path.join(payload.collections["ingest-files"].config.upload.staticDir, filename);
 
   describe("System User Service", () => {
     it("should create system user on first call", async () => {
@@ -545,6 +552,7 @@ describe("Account Deletion Service", () => {
           collection: "catalogs",
           id: privateCatalog.id,
           overrideAccess: true,
+          trash: true,
         });
       } catch {
         // Expected - record was deleted
@@ -557,6 +565,7 @@ describe("Account Deletion Service", () => {
           collection: "datasets",
           id: privateDataset.id,
           overrideAccess: true,
+          trash: true,
         });
       } catch {
         // Expected - record was deleted
@@ -721,6 +730,273 @@ describe("Account Deletion Service", () => {
       expect((auditLogs.docs[0].details as Record<string, unknown>).deletionType).toBe("self");
     });
 
+    it("deletes the user's import files and their stored files after commit", async () => {
+      const env = { payload, seedManager: { truncate } } as any;
+      const { users } = await withUsers(env, { testUser: { role: "user" } });
+      const catalog = await payload.create({
+        collection: "catalogs",
+        data: { name: "Imported Catalog", isPublic: true },
+        user: users.testUser,
+      });
+      const dataset = await payload.create({
+        collection: "datasets",
+        data: { name: "Imported Dataset", catalog: catalog.id, isPublic: true, language: "eng" },
+        user: users.testUser,
+      });
+      const { ingestFile } = await withIngestFile(env, catalog.id, "title,date\nA,2024-01-01", {
+        user: users.testUser.id,
+      });
+      // A finished import keeps its job, whose file reference is NOT NULL.
+      const ingestJob = await payload.create({
+        collection: "ingest-jobs",
+        data: { ingestFile: ingestFile.id, dataset: dataset.id, stage: PROCESSING_STAGE.COMPLETED },
+        overrideAccess: true,
+      });
+      const countFileVersions = async () =>
+        (
+          await payload.findVersions({
+            collection: "ingest-files",
+            where: { "version.filename": { equals: ingestFile.filename } },
+            overrideAccess: true,
+          })
+        ).totalDocs;
+      expect(await countFileVersions()).toBeGreaterThan(0);
+      const sidecarPath = `${storedIngestFilePath(ingestFile.filename)}.sheet0.csv`;
+      writeFileSync(sidecarPath, "title,date\nA,2024-01-01");
+
+      const result = await deletionService.executeDeletion(users.testUser.id, { deletionType: "self" });
+
+      expect(result.dataDeleted.importFiles).toBe(1);
+      for (const [collection, id] of [
+        ["ingest-files", ingestFile.id],
+        ["ingest-jobs", ingestJob.id],
+      ] as const) {
+        const remaining = await payload.find({ collection, where: { id: { equals: id } }, trash: true });
+        expect(remaining.totalDocs).toBe(0);
+      }
+      expect(existsSync(storedIngestFilePath(ingestFile.filename))).toBe(false);
+      expect(existsSync(sidecarPath)).toBe(false);
+      // A deleted parent nulls parent_id, so leftover versions are found by their content.
+      expect(await countFileVersions()).toBe(0);
+      const datasetAfter = await payload.findByID({ collection: "datasets", id: dataset.id, overrideAccess: true });
+      expect(datasetAfter.id).toBe(dataset.id);
+    });
+
+    it("deletes the user's media and its stored image sizes after commit", async () => {
+      const env = { payload, seedManager: { truncate } } as any;
+      const { users } = await withUsers(env, { testUser: { role: "user" } });
+      const image = Buffer.from(
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==",
+        "base64"
+      );
+      const media = await payload.create({
+        collection: "media",
+        data: { alt: "Avatar" },
+        file: { data: image, mimetype: "image/png", name: `avatar-${Date.now()}.png`, size: image.length },
+        user: users.testUser,
+        overrideAccess: true,
+      });
+      const staticDir = payload.collections.media.config.upload.staticDir;
+      const sizes = [media.sizes?.thumbnail, media.sizes?.card, media.sizes?.tablet];
+      const storedPaths = [media.filename, ...sizes.map((size) => size?.filename)]
+        .filter((name): name is string => Boolean(name))
+        .map((name) => path.join(staticDir, name));
+      expect(storedPaths.length).toBeGreaterThan(0);
+      expect(storedPaths.every((storedPath) => existsSync(storedPath))).toBe(true);
+
+      const result = await deletionService.executeDeletion(users.testUser.id, { deletionType: "self" });
+
+      expect(result.dataDeleted.media).toBe(1);
+      const remaining = await payload.find({ collection: "media", where: { id: { equals: media.id } }, trash: true });
+      expect(remaining.totalDocs).toBe(0);
+      expect(storedPaths.filter((storedPath) => existsSync(storedPath))).toEqual([]);
+    });
+
+    it("deletes a private dataset whose completed import job came from the user's file", async () => {
+      const env = { payload, seedManager: { truncate } } as any;
+      const { users } = await withUsers(env, { testUser: { role: "user" } });
+      const catalog = await payload.create({
+        collection: "catalogs",
+        data: { name: "Private Import Catalog", isPublic: false },
+        user: users.testUser,
+      });
+      const dataset = await payload.create({
+        collection: "datasets",
+        data: { name: "Private Import Dataset", catalog: catalog.id, isPublic: false, language: "eng" },
+        user: users.testUser,
+      });
+      const { ingestFile } = await withIngestFile(env, catalog.id, "title,date\nA,2024-01-01", {
+        user: users.testUser.id,
+      });
+      const ingestJob = await payload.create({
+        collection: "ingest-jobs",
+        data: { ingestFile: ingestFile.id, dataset: dataset.id, stage: PROCESSING_STAGE.COMPLETED },
+        overrideAccess: true,
+      });
+
+      const result = await deletionService.executeDeletion(users.testUser.id, { deletionType: "self" });
+
+      expect(result.success).toBe(true);
+      for (const [collection, id] of [
+        ["datasets", dataset.id],
+        ["ingest-jobs", ingestJob.id],
+        ["ingest-files", ingestFile.id],
+      ] as const) {
+        const remaining = await payload.find({ collection, where: { id: { equals: id } }, trash: true });
+        expect(remaining.totalDocs).toBe(0);
+      }
+    });
+
+    it("deletes jobs, job versions and schemas that reference a private dataset, whoever imported them", async () => {
+      const env = { payload, seedManager: { truncate } } as any;
+      const { users } = await withUsers(env, { testUser: { role: "user" }, otherUser: { role: "user" } });
+      const catalog = await payload.create({
+        collection: "catalogs",
+        data: { name: "Private Target Catalog", isPublic: false },
+        user: users.testUser,
+      });
+      const dataset = await payload.create({
+        collection: "datasets",
+        data: { name: "Private Target Dataset", catalog: catalog.id, isPublic: false, language: "eng" },
+        user: users.testUser,
+      });
+      const otherCatalog = await payload.create({
+        collection: "catalogs",
+        data: { name: "Other Catalog", isPublic: true },
+        user: users.otherUser,
+      });
+      const otherDataset = await payload.create({
+        collection: "datasets",
+        data: { name: "Other Dataset", catalog: otherCatalog.id, isPublic: true, language: "eng" },
+        user: users.otherUser,
+      });
+      const { ingestFile: otherFile } = await withIngestFile(env, otherCatalog.id, "title,date\nA,2024-01-01", {
+        user: users.otherUser.id,
+      });
+      const createJob = (datasetId: number) =>
+        payload.create({
+          collection: "ingest-jobs",
+          data: { ingestFile: otherFile.id, dataset: datasetId, stage: PROCESSING_STAGE.COMPLETED },
+          overrideAccess: true,
+        });
+      const liveJob = await createJob(dataset.id);
+      // Retargeting leaves a version that still points at the private dataset.
+      const movedJob = await createJob(dataset.id);
+      await payload.update({
+        collection: "ingest-jobs",
+        id: movedJob.id,
+        data: { dataset: otherDataset.id },
+        overrideAccess: true,
+      });
+      const schema = await payload.create({
+        collection: "dataset-schemas",
+        data: {
+          dataset: dataset.id,
+          versionNumber: 1,
+          schema: { type: "object", properties: { title: { type: "string" } } },
+          fieldMetadata: { title: { type: "string" } },
+        },
+        overrideAccess: true,
+      });
+      // A schema moved to another dataset keeps a version that points at the private one.
+      const movedSchema = await payload.create({
+        collection: "dataset-schemas",
+        data: { dataset: dataset.id, versionNumber: 2, schema: { type: "object" }, fieldMetadata: {} },
+        overrideAccess: true,
+      });
+      await payload.update({
+        collection: "dataset-schemas",
+        id: movedSchema.id,
+        data: { dataset: otherDataset.id },
+        overrideAccess: true,
+      });
+      const sidecarPath = `${storedIngestFilePath(otherFile.filename)}.sheet0.csv`;
+      writeFileSync(sidecarPath, "title,date\nA,2024-01-01");
+      // Deleting the dataset nulls version references, so versions are checked by their parent.
+      const versionDatasets = async (
+        collection: "ingest-jobs" | "dataset-schemas",
+        parent: number
+      ): Promise<Array<number | null>> => {
+        const versions = await payload.findVersions({
+          collection,
+          where: { parent: { equals: parent } },
+          pagination: false,
+          overrideAccess: true,
+        });
+        const docs = versions.docs as Array<{ version: { dataset?: number | { id: number } | null } }>;
+        return docs.map(({ version: { dataset: ref } }) =>
+          typeof ref === "object" && ref !== null ? ref.id : (ref ?? null)
+        );
+      };
+      expect(await versionDatasets("ingest-jobs", movedJob.id)).toContain(dataset.id);
+      expect(await versionDatasets("dataset-schemas", movedSchema.id)).toContain(dataset.id);
+
+      const result = await deletionService.executeDeletion(users.testUser.id, { deletionType: "self" });
+
+      expect(result.success).toBe(true);
+      expect(existsSync(sidecarPath)).toBe(false);
+      expect(existsSync(storedIngestFilePath(otherFile.filename))).toBe(true);
+      for (const [collection, id] of [
+        ["datasets", dataset.id],
+        ["ingest-jobs", liveJob.id],
+        ["dataset-schemas", schema.id],
+      ] as const) {
+        const remaining = await payload.find({ collection, where: { id: { equals: id } }, trash: true });
+        expect(remaining.totalDocs).toBe(0);
+      }
+      for (const [collection, parent] of [
+        ["ingest-jobs", movedJob.id],
+        ["dataset-schemas", movedSchema.id],
+      ] as const) {
+        const datasets = await versionDatasets(collection, parent);
+        expect(datasets.length).toBeGreaterThan(0);
+        expect(datasets.every((id) => id === otherDataset.id)).toBe(true);
+      }
+      const kept = await payload.findByID({ collection: "ingest-jobs", id: movedJob.id, overrideAccess: true });
+      expect(kept.id).toBe(movedJob.id);
+      const keptSchema = await payload.findByID({
+        collection: "dataset-schemas",
+        id: movedSchema.id,
+        overrideAccess: true,
+      });
+      expect(keptSchema.id).toBe(movedSchema.id);
+    });
+
+    it("permanently deletes the user's trashed private data and uploads", async () => {
+      const env = { payload, seedManager: { truncate } } as any;
+      const { users } = await withUsers(env, { testUser: { role: "user" } });
+      const catalog = await payload.create({
+        collection: "catalogs",
+        data: { name: "Trashed Private Catalog", isPublic: false },
+        user: users.testUser,
+      });
+      const dataset = await payload.create({
+        collection: "datasets",
+        data: { name: "Trashed Private Dataset", catalog: catalog.id, isPublic: false, language: "eng" },
+        user: users.testUser,
+      });
+      const { ingestFile } = await withIngestFile(env, catalog.id, "title,date\nA,2024-01-01", {
+        user: users.testUser.id,
+      });
+      const trashed = [
+        ["ingest-files", ingestFile.id],
+        ["datasets", dataset.id],
+        ["catalogs", catalog.id],
+      ] as const;
+      for (const [collection, id] of trashed) {
+        await payload.update({ collection, id, data: { deletedAt: new Date().toISOString() }, overrideAccess: true });
+      }
+
+      const result = await deletionService.executeDeletion(users.testUser.id, { deletionType: "self" });
+
+      expect(result.dataDeleted.importFiles).toBe(1);
+      for (const [collection, id] of trashed) {
+        const remaining = await payload.find({ collection, where: { id: { equals: id } }, trash: true });
+        expect(remaining.totalDocs).toBe(0);
+      }
+      expect(existsSync(storedIngestFilePath(ingestFile.filename))).toBe(false);
+    });
+
     it("should roll back all changes when an error occurs mid-deletion", async () => {
       const env = { payload, seedManager: { truncate } } as any;
       const { users } = await withUsers(env, { testUser: { role: "user" } });
@@ -745,6 +1021,11 @@ describe("Account Deletion Service", () => {
         data: { name: "Private Dataset", catalog: privateCatalog.id, isPublic: false, language: "eng" },
         user: users.testUser,
       });
+
+      const { ingestFile } = await withIngestFile(env, privateCatalog.id, "title,date\nA,2024-01-01", {
+        user: users.testUser.id,
+      });
+      expect(existsSync(storedIngestFilePath(ingestFile.filename))).toBe(true);
 
       // Fail after the real anonymization write and its normal hooks have run.
       const hooks = payload.collections.users.config.hooks;
@@ -791,6 +1072,15 @@ describe("Account Deletion Service", () => {
       });
       expect(privateDatasetAfter).toBeDefined();
       expect(privateDatasetAfter.name).toBe("Private Dataset");
+
+      // The import file keeps both its row and its stored file
+      const ingestFileAfter = await payload.findByID({
+        collection: "ingest-files",
+        id: ingestFile.id,
+        overrideAccess: true,
+      });
+      expect(ingestFileAfter.id).toBe(ingestFile.id);
+      expect(existsSync(storedIngestFilePath(ingestFile.filename))).toBe(true);
 
       // Verify user was NOT anonymized (rolled back)
       const userAfter = await payload.findByID({ collection: "users", id: users.testUser.id, overrideAccess: true });

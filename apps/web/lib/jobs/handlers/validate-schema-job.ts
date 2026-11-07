@@ -74,9 +74,11 @@ const getCurrentSchema = async (payload: Payload, datasetId: number | string): P
   return typeof currentSchemaRaw === "object" && !Array.isArray(currentSchemaRaw) ? currentSchemaRaw : {};
 };
 
+const RETRIES = 1;
+
 export const validateSchemaJob = {
   slug: JOB_TYPES.VALIDATE_SCHEMA,
-  retries: 1,
+  retries: RETRIES,
   outputSchema: [
     { name: "needsReview", type: "checkbox" as const },
     { name: "requiresApproval", type: "checkbox" as const },
@@ -87,7 +89,7 @@ export const validateSchemaJob = {
     { name: "failureReason", type: "text" as const },
     { name: "reason", type: "text" as const },
   ],
-  onFail: createStandardOnFail("validate-schema"),
+  onFail: createStandardOnFail("validate-schema", { retries: RETRIES }),
   handler: async (context: JobHandlerContext) => {
     const { payload } = context.req;
     const input = (context.input ?? context.job?.input) as ValidateSchemaJobInput["input"];

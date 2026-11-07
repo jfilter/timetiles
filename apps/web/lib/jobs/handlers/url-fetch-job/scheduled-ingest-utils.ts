@@ -20,6 +20,7 @@ import {
   recordScheduledIngestSuccess,
   resolveScheduledIngestStats,
 } from "@/lib/types/run-statistics";
+import { isRecord } from "@/lib/utils/is-record";
 import { extractRelationId } from "@/lib/utils/relation-id";
 import type { ScheduledIngest } from "@/payload-types";
 
@@ -307,9 +308,10 @@ export const updateScheduledIngestFailure = async (
 };
 
 /**
- * Checks for duplicate content based on hash.
+ * Checks whether the fetched content equals the latest completed import in scope.
  *
- * The match must be scoped to where the data actually lands: a bare
+ * Only the latest one counts: content that reappears after a different version
+ * (A, B, A) must be imported again. The match is scoped to where the data lands: a bare
  * (catalog, hash) match would skip the import when a DIFFERENT schedule in the
  * same catalog already imported the same content into ANOTHER dataset, or when
  * the schedule was re-pointed at a new dataset — leaving the new target empty
@@ -327,11 +329,7 @@ export const checkForDuplicateContent = async (
   }
 
   try {
-    const where: Where = {
-      catalog: { equals: catalogId },
-      "metadata.urlFetch.contentHash": { equals: dataHash },
-      status: { equals: "completed" },
-    };
+    const where: Where = { catalog: { equals: catalogId }, status: { equals: "completed" } };
     if (scope?.targetDatasetId != null) {
       where.targetDataset = { equals: scope.targetDatasetId };
     } else if (scope?.scheduledIngestId != null) {
@@ -345,14 +343,13 @@ export const checkForDuplicateContent = async (
       limit: 1,
     });
 
-    if (recentFiles.docs.length > 0) {
-      const existingFile = recentFiles.docs[0];
-      if (existingFile) {
-        return {
-          isDuplicate: true,
-          existingFile: { id: existingFile.id.toString(), filename: existingFile.filename ?? "unknown" },
-        };
-      }
+    const latestFile = recentFiles.docs[0];
+    const urlFetch = isRecord(latestFile?.metadata) ? latestFile.metadata.urlFetch : undefined;
+    if (latestFile && isRecord(urlFetch) && urlFetch.contentHash === dataHash) {
+      return {
+        isDuplicate: true,
+        existingFile: { id: latestFile.id.toString(), filename: latestFile.filename ?? "unknown" },
+      };
     }
   } catch (error) {
     logError(error, "Failed to check for duplicate content");

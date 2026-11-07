@@ -218,16 +218,18 @@ const runSchemaReviewChecks = async ({
   return null;
 };
 
+const RETRIES = 1;
+
 export const schemaDetectionJob = {
   slug: JOB_TYPES.DETECT_SCHEMA,
-  retries: 1,
+  retries: RETRIES,
   outputSchema: [
     { name: "fieldCount", type: "number" as const },
     { name: "totalRowsProcessed", type: "number" as const },
     { name: "needsReview", type: "checkbox" as const },
     { name: "reason", type: "text" as const },
   ],
-  onFail: createStandardOnFail("schema-detection"),
+  onFail: createStandardOnFail("schema-detection", { retries: RETRIES }),
   handler: async (context: JobHandlerContext) => {
     const { payload } = context.req;
     const input = (context.input ?? context.job?.input) as SchemaDetectionJobInput["input"];

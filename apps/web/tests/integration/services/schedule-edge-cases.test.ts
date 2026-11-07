@@ -176,6 +176,27 @@ describe("Schedule Edge Case Tests", () => {
     });
   });
 
+  describe("Schedule edits before the first run", () => {
+    it.each([
+      ["frequency", { frequency: "hourly" }, { frequency: "daily" }],
+      ["cron", { scheduleType: "cron", cronExpression: "0 0 * * *" }, { cronExpression: "30 6 * * *" }],
+    ] as const)("recomputes nextRun after a partial %s change", async (_label, initial, change) => {
+      vi.setSystemTime(new Date("2024-01-01T13:30:00Z"));
+      const { scheduledIngest } = await withScheduledIngest(testEnv, testCatalogId, "https://example.com/data.csv", {
+        user: testUser,
+        name: `Edit Before First Run ${_label}`,
+        ...initial,
+      });
+      expect(scheduledIngest.nextRun).toBeTruthy();
+
+      const updated = await payload.update({ collection: "scheduled-ingests", id: scheduledIngest.id, data: change });
+
+      expect(updated.lastRun ?? null).toBeNull();
+      expect(updated.nextRun).toBeTruthy();
+      expect(new Date(updated.nextRun).getTime()).toBeGreaterThan(Date.now());
+    });
+  });
+
   describe("Schedule Manager Execution", () => {
     it("should handle multiple schedules due at the same time", async () => {
       // Set current time to just before midnight UTC

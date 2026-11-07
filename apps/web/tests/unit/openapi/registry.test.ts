@@ -29,6 +29,8 @@ const PUBLIC_V1_PATHS = [
   "/api/v1/events/geo/stats",
   "/api/v1/events/bounds",
   "/api/v1/events/temporal",
+  "/api/v1/events/temporal-clusters",
+  "/api/v1/events/cluster-summary",
   "/api/v1/events/stats",
   "/api/v1/data-sources",
   "/api/v1/sources/stats",

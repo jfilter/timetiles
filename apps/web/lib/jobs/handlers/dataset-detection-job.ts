@@ -25,7 +25,7 @@ import { requireStrictInteger } from "@/lib/utils/event-params";
 import { extractRelationId, requireRelationId } from "@/lib/utils/relation-id";
 
 import type { DatasetDetectionJobInput } from "../types/job-inputs";
-import type { JobHandlerContext, TaskCallbackArgs } from "../utils/job-context";
+import { isFinalAttempt, type JobHandlerContext, type TaskCallbackArgs } from "../utils/job-context";
 import {
   buildConfigSnapshot,
   findOrCreateDataset,
@@ -380,9 +380,11 @@ const markIngestFileFailed = async (payload: Payload, ingestFileId: string | num
   });
 };
 
+const RETRIES = 1;
+
 export const datasetDetectionJob = {
   slug: JOB_TYPES.DATASET_DETECTION,
-  retries: 1,
+  retries: RETRIES,
   outputSchema: [
     { name: "sheetsDetected", type: "number" as const },
     { name: "ingestJobsCreated", type: "number" as const },
@@ -391,6 +393,7 @@ export const datasetDetectionJob = {
     { name: "noRecords", type: "checkbox" as const },
   ],
   onFail: async (args: TaskCallbackArgs) => {
+    if (!isFinalAttempt(args, RETRIES)) return;
     const ingestFileId = (args.input as Record<string, unknown> | undefined)?.ingestFileId;
     if (typeof ingestFileId !== "string" && typeof ingestFileId !== "number") return;
     try {

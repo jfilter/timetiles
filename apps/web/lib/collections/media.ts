@@ -16,7 +16,7 @@ import {
   createCommonConfig,
   createCreatedByField,
   createOwnershipAccess,
-  isAuthenticated,
+  isEditorOrAdmin,
   setCreatedByHook,
 } from "./shared-fields";
 
@@ -60,8 +60,8 @@ const Media: CollectionConfig = {
       return true;
     },
 
-    // Only authenticated users can upload media
-    create: isAuthenticated,
+    // Media are CMS assets; only editors and admins have the admin UI that uses them.
+    create: isEditorOrAdmin,
 
     // Only owner, editors, or admins can update/delete
     update: createOwnershipAccess(),

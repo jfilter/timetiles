@@ -1108,7 +1108,7 @@ EOF
 
             # Check required vars
             MISSING_VARS=""
-            for var in PAYLOAD_SECRET DB_PASSWORD DOMAIN_NAME; do
+            for var in PAYLOAD_SECRET DB_PASSWORD DOMAIN_NAME NEXT_PUBLIC_PAYLOAD_URL; do
                 val=$(env_get "$ENV_FILE" "$var")
                 if [[ -z "$val" ]] || [[ "$val" == *"CHANGE_ME"* ]] || [[ "$val" == *"your-domain"* ]]; then
                     MISSING_VARS="${MISSING_VARS:+$MISSING_VARS, }$var"
