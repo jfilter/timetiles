@@ -8,6 +8,21 @@ See the [release process](/development/contributing/release-process) for how new
 
 Changes landed on `main` since the last tagged release.
 
+## [0.1.0-alpha.24] - 2026-11-07
+
+### Changed
+
+- Linting runs on oxlint alone; the remaining ESLint plugins run as oxlint JS plugins, and layer boundaries are now also checked for `@/` imports
+- Minor and patch dependency updates, tsup 9; Dependabot skips Payload, which is upgraded as one unit
+
+### Fixed
+
+- Explore: a click on the map/list switch is no longer lost when the map writes its position at the same moment; the destination opens where the map came to rest
+- Footer funding logos render through `next/image`, and the global error page reloads home without the router
+- Request timing padding no longer swallows falsy rejections
+- DNS lookups for URL validation and the TimeScrape SSRF guard use `order: "verbatim"` instead of the deprecated flag
+- TimeScrape: the node scraper image installs its build tools at the versions locked in `pnpm-lock.yaml`, so tool updates no longer break the image build
+
 ## [0.1.0-alpha.23] - 2026-10-30
 
 ### Fixed
