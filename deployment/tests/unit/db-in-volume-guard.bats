@@ -36,7 +36,7 @@ teardown() {
     run "$TEST_CLI" down
     [ "$status" -eq 1 ]
     [[ "$output" == *"not in the postgres_data volume"* ]]
-    ! grep -q " down " "$CALLS"
+    assert_file_lacks "$CALLS" " down "
 }
 
 @test "down runs when postgres writes into the volume via DATADIR" {
@@ -56,7 +56,7 @@ teardown() {
 @test "update refuses before touching images when the postgres container predates DATADIR" {
     run "$TEST_CLI" update --no-self-update
     [ "$status" -eq 1 ]
-    ! grep -qE " (pull|up) " "$CALLS"
+    assert_file_lacks "$CALLS" -E " (pull|up) "
 }
 
 @test "the official image's PGDATA counts as volume-backed" {

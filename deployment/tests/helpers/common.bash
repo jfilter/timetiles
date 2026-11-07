@@ -89,6 +89,24 @@ assert_not_contains() {
     fi
 }
 
+# Assert an existing file has no line matching the grep arguments
+# Usage: assert_file_lacks "$file" -E "pattern"
+assert_file_lacks() {
+    local file="$1" rc=0
+    shift
+    if [[ ! -f "$file" ]]; then
+        echo "Expected file to exist: $file"
+        return 1
+    fi
+    grep -q "$@" "$file" || rc=$?
+    if [[ $rc -eq 0 ]]; then
+        echo "Expected no match for: $* in $file"
+        grep "$@" "$file"
+        return 1
+    fi
+    [[ $rc -eq 1 ]] || { echo "grep failed ($rc) on $file"; return 1; }
+}
+
 # Assert file exists
 assert_file_exists() {
     local file="$1"

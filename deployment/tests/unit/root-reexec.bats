@@ -39,5 +39,5 @@ teardown() {
     unset TIMETILES_DISCARD_CONTAINER_DB
     run "$TEST_TEMP_DIR/timetiles" update
     [ "$status" -eq 0 ]
-    ! grep -q "=1" "$TEST_TEMP_DIR/sudo-env"
+    assert_file_lacks "$TEST_TEMP_DIR/sudo-env" "=1"
 }

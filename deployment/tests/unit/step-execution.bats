@@ -169,7 +169,7 @@ run_execute_step() {
     run_execute_step 'run_step() { print_info "value: $(definitely-not-a-real-command)"; print_info "kept going"; }'
 
     [ "$status" -ne 0 ]
-    ! assert_contains "$output" "MARKED:test-step"
+    assert_not_contains "$output" "MARKED:test-step"
 }
 
 @test "an unescaped backtick in an unquoted heredoc does not mark the step completed" {
@@ -182,7 +182,7 @@ EOF
 }'
 
     [ "$status" -ne 0 ]
-    ! assert_contains "$output" "MARKED:test-step"
+    assert_not_contains "$output" "MARKED:test-step"
 }
 
 @test "no step script has an unescaped backtick inside an unquoted heredoc" {

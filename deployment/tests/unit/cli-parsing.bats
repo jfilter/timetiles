@@ -222,7 +222,7 @@ EOF
     run "$TEST_CLI" backup uploads --offsite
     [ "$status" -eq 1 ]
     grep -q '^Offsite Backup Failed|' "$TEST_TEMP_DIR/alerts"
-    ! grep -q "^-r s3:fixture.test/backups backup" "$TEST_TEMP_DIR/restic-calls"
+    assert_file_lacks "$TEST_TEMP_DIR/restic-calls" "^-r s3:fixture.test/backups backup"
 }
 
 @test "backup with offsite fails when no offsite repository is configured" {
@@ -295,7 +295,7 @@ EOF
     printf '0 2 * * * %s/deployment/backups/auto-backup.sh\n' "$TEST_TEMP_DIR" > "$TEST_CRONTAB"
     run "$TEST_CLI" backup auto --disable
     [ "$status" -eq 0 ]
-    ! grep -q '[^[:space:]]' "$TEST_CRONTAB"
+    assert_file_lacks "$TEST_CRONTAB" '[^[:space:]]'
 }
 
 @test "backup auto preserves unrelated jobs and does not duplicate its own job" {
@@ -606,7 +606,7 @@ EOF
     [ "$status" -eq 0 ]
     grep -qxF -e "-C $TEST_TEMP_DIR fetch --depth 1 origin v1.4.0" "$TEST_TEMP_DIR/git-calls"
     grep -qxF -e "-C $TEST_TEMP_DIR reset --hard FETCH_HEAD" "$TEST_TEMP_DIR/git-calls"
-    ! grep -q 'origin main' "$TEST_TEMP_DIR/git-calls"
+    assert_file_lacks "$TEST_TEMP_DIR/git-calls" 'origin main'
 }
 
 @test "update follows the tracked branch for edge deployments" {
