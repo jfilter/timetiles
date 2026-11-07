@@ -3,7 +3,8 @@
  *
  * Fetches main menu data, user auth state, catalogs, and datasets from
  * Payload CMS and renders the adaptive header which shows marketing
- * navigation or app controls based on the current route.
+ * navigation or app controls based on the current route, or the header a
+ * CMS page's layout template asks for.
  *
  * @module
  * @category Components
@@ -13,6 +14,7 @@ import { getLocale } from "next-intl/server";
 import { getPayload } from "payload";
 
 import type { Locale } from "@/i18n/config";
+import type { LayoutSettings } from "@/lib/services/resolution/layout-resolver";
 import config from "@/payload.config";
 import type { Catalog, Dataset, MainMenu, User } from "@/payload-types";
 
@@ -54,14 +56,20 @@ const getDatasets = async (): Promise<Dataset[]> => {
   return result.docs;
 };
 
-export const ConditionalTopMenuBar = async () => {
+interface ConditionalTopMenuBarProps {
+  /** Layout template of a CMS page; `null`/omitted keeps the route-based header. */
+  layout?: LayoutSettings | null;
+}
+
+export const ConditionalTopMenuBar = async ({ layout = null }: Readonly<ConditionalTopMenuBarProps>) => {
   const locale = (await getLocale()) as Locale;
+  // Catalogs and datasets only feed the explore header, which templated pages never show.
   const [mainMenu, user, catalogs, datasets] = await Promise.all([
     getMainMenu(locale),
     getUser(),
-    getCatalogs(),
-    getDatasets(),
+    layout == null ? getCatalogs() : [],
+    layout == null ? getDatasets() : [],
   ]);
 
-  return <AdaptiveHeader mainMenu={mainMenu} user={user} catalogs={catalogs} datasets={datasets} />;
+  return <AdaptiveHeader mainMenu={mainMenu} user={user} catalogs={catalogs} datasets={datasets} layout={layout} />;
 };

@@ -47,7 +47,7 @@ vi.mock("@/lib/ingest/field-mapping-utils", async (importOriginal) => ({
 
 vi.mock("@/lib/ingest/types/transforms", () => ({ createTransform: vi.fn() }));
 
-import { useFlowEditor } from "@/app/[locale]/(frontend)/ingest/flow-editor/_components/use-flow-editor";
+import { useFlowEditor } from "@/app/[locale]/(frontend)/(app)/ingest/flow-editor/_components/use-flow-editor";
 
 const makeSheet = (index: number, name: string, headers: string[] = ["title", "date"]) => ({
   index,

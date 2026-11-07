@@ -87,10 +87,10 @@ CMS-managed layout templates controlling header style, footer variant, content w
 
 - New `LayoutTemplates` collection with `headerVariant`, `footerVariant`, `contentMaxWidth`, `stickyHeader` fields
 - `defaultLayout` relationship on Sites, `layoutOverride` on Pages
-- `LayoutShell` component in the frontend layout resolves the active template and renders the appropriate header/footer/content structure
+- CMS pages resolve the active template server-side and render the matching header/footer/content structure; app routes keep their route-based chrome
 - Template inheritance: page override > site default > platform default
 
-Source: `lib/collections/layout-templates.ts`, `components/layout/layout-shell.tsx`, `app/[locale]/(frontend)/layout.tsx`
+Source: `lib/collections/layout-templates.ts`, `lib/services/resolution/layout-resolver.ts`, `components/layout/layout-frame.tsx`, `app/_components/page-chrome.tsx`
 
 ## Consequences
 

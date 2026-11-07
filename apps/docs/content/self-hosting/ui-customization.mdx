@@ -115,13 +115,15 @@ Layout templates control the structural frame of pages. Create at `/dashboard/co
 | Footer variant    | Full, Compact, None                 | Full      |
 | Content max width | 768px, 1024px, 1152px, 1280px, Full | 1152px    |
 
-**Assignment**: Set a site-wide default on the site, then override per page. Resolution order: page override > site default > platform default.
+**Assignment**: Set a site-wide default on the site, then override per page. Resolution order: page override > site default > platform default. Only published templates apply on the live site; drafts show in previews only.
+
+Templates frame CMS pages (the home page and pages under `/<slug>`). App pages — explore, import, account, and sign-in — keep their own header and footer.
 
 | Template example | Header    | Footer  | Width  | Use case              |
 | ---------------- | --------- | ------- | ------ | --------------------- |
 | Landing Page     | Marketing | Full    | Full   | Homepage, marketing   |
 | Documentation    | Minimal   | Compact | Medium | Help pages, guides    |
-| App View         | App       | None    | Full   | Explore/map interface |
+| App View         | App       | None    | Full   | Map-centric CMS pages |
 | Clean            | None      | None    | Full   | Embeds, iframes       |
 
 ## Priority Order

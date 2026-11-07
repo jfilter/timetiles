@@ -10,7 +10,7 @@ import { ArrowLeft, Filter, X } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import React, { useEffect, useState } from "react";
 
-import { ViewToggle } from "@/app/[locale]/(frontend)/explore/_components/view-toggle";
+import { ViewToggle } from "@/app/[locale]/(frontend)/(app)/explore/_components/view-toggle";
 import { Link } from "@/i18n/navigation";
 import { formatCenterCoordinates, formatEventCount } from "@/lib/geospatial/formatting";
 import { useFilters } from "@/lib/hooks/use-filters";

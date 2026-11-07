@@ -1,0 +1,117 @@
+/**
+ * Expandable row detail showing ingest jobs for a given ingest file.
+ *
+ * Renders a compact list of processing jobs with stage, dataset, error count,
+ * and timestamps. Designed to sit inside an expanded table row.
+ *
+ * @module
+ * @category Components
+ */
+"use client";
+
+import { ErrorMessage } from "@timetiles/ui";
+import { ExternalLinkIcon } from "lucide-react";
+// The Payload dashboard lives outside the [locale] tree — the i18n-aware
+// Link would prefix /de/dashboard/... and 404.
+import Link from "next/link";
+import { useLocale, useTranslations } from "next-intl";
+
+import { StatusBadge, type StatusVariant } from "@/components/ui/status-badge";
+import { STAGE_I18N_KEYS } from "@/lib/constants/ingest-stage-labels";
+import { useErrorMessage } from "@/lib/hooks/use-error-message";
+import { useIngestJobsByFileQuery } from "@/lib/hooks/use-ingest-jobs-query";
+import { formatDateLocale } from "@/lib/utils/date";
+import type { Dataset, IngestJob } from "@/payload-types";
+
+interface IngestJobsDetailProps {
+  readonly ingestFileId: number;
+  readonly isFileActive?: boolean;
+}
+
+const STAGE_VARIANT_MAP: Record<string, StatusVariant> = {
+  completed: "success",
+  failed: "error",
+  "needs-review": "warning",
+};
+
+const getStageVariant = (stage: IngestJob["stage"]): StatusVariant => STAGE_VARIANT_MAP[stage] ?? "info";
+
+// The relation is ON DELETE SET NULL and nothing cleans up old jobs when a
+// dataset is deleted, so `dataset` can be null at runtime (the generated type
+// is wrong about this) — and `typeof null === "object"` would crash on .name.
+const getDatasetLabel = (dataset: number | Dataset | null | undefined): string => {
+  if (dataset == null) {
+    return "—";
+  }
+  if (typeof dataset === "object") {
+    return dataset.name;
+  }
+  return `#${String(dataset)}`;
+};
+
+const MAX_VISIBLE_ERRORS = 3;
+
+const JobRow = ({ job }: { readonly job: IngestJob }) => {
+  const t = useTranslations("ImportActivity");
+  const tIngest = useTranslations("Ingest");
+  const locale = useLocale();
+  const errorCount = job.errors?.length ?? 0;
+
+  return (
+    <div className="border-border border-b py-2 last:border-b-0">
+      <div className="flex flex-wrap items-center gap-2 text-xs">
+        <span className="font-medium">{getDatasetLabel(job.dataset)}</span>
+        <StatusBadge variant={getStageVariant(job.stage)} label={tIngest(STAGE_I18N_KEYS[job.stage])} />
+        {errorCount > 0 && <span className="text-destructive text-xs">{t("errorCount", { count: errorCount })}</span>}
+        <span className="text-muted-foreground ml-auto flex items-center gap-2">
+          {formatDateLocale(job.createdAt, locale)}
+          <Link
+            href={`/dashboard/collections/ingest-jobs/${job.id}`}
+            className="text-muted-foreground hover:text-foreground"
+            onClick={(e) => e.stopPropagation()}
+            title={t("viewInDashboard")}
+          >
+            <ExternalLinkIcon className="h-3 w-3" />
+          </Link>
+        </span>
+      </div>
+      {errorCount > 0 && job.errors && (
+        <div className="mt-1 space-y-0.5 pl-2">
+          {job.errors.slice(0, MAX_VISIBLE_ERRORS).map((err) => (
+            <div key={err.id ?? err.row} className="text-muted-foreground truncate text-xs">
+              {t("errorRow", { row: err.row, error: err.error })}
+            </div>
+          ))}
+          {errorCount > MAX_VISIBLE_ERRORS && (
+            <div className="text-muted-foreground text-xs">
+              {t("moreErrors", { count: errorCount - MAX_VISIBLE_ERRORS })}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
+export const IngestJobsDetail = ({ ingestFileId, isFileActive = false }: IngestJobsDetailProps) => {
+  const t = useTranslations("ImportActivity");
+  const formatError = useErrorMessage();
+  const { data: jobs = [], isLoading, error } = useIngestJobsByFileQuery(ingestFileId, isFileActive);
+
+  if (isLoading) {
+    return <div className="text-muted-foreground py-2 text-xs">{t("loadingJobs")}</div>;
+  }
+
+  if (jobs.length === 0 && !error) {
+    return <div className="text-muted-foreground py-2 text-xs">{t("noJobs")}</div>;
+  }
+
+  return (
+    <div className="space-y-0">
+      {error && <ErrorMessage message={formatError(error)} />}
+      {jobs.map((job) => (
+        <JobRow key={job.id} job={job} />
+      ))}
+    </div>
+  );
+};

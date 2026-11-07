@@ -14,6 +14,9 @@ import { fetchJson } from "@/lib/api/http-error";
 import type { DataPackageListItem } from "@/lib/data-packages/types";
 
 import { QUERY_PRESETS } from "./query-presets";
+import { catalogsQueryKeys } from "./use-catalogs-query";
+import { dataSourcesKeys } from "./use-data-sources-query";
+import { scheduledIngestKeys } from "./use-scheduled-ingest-mutations";
 
 interface DataPackagesResponse {
   packages: DataPackageListItem[];
@@ -55,7 +58,15 @@ export const useActivateDataPackageMutation = () => {
       });
     },
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: dataPackageKeys.all });
+      // Activation creates a catalog, a dataset and a scheduled ingest.
+      for (const queryKey of [
+        dataPackageKeys.all,
+        catalogsQueryKeys.all,
+        dataSourcesKeys.all,
+        scheduledIngestKeys.all,
+      ]) {
+        void queryClient.invalidateQueries({ queryKey });
+      }
     },
   });
 };
@@ -68,7 +79,9 @@ export const useDeactivateDataPackageMutation = () => {
       await fetchJson(`/api/data-packages/${slug}/deactivate`, { method: "POST", credentials: "include" });
     },
     onSuccess: () => {
+      // Deactivation disables the package's scheduled ingests.
       void queryClient.invalidateQueries({ queryKey: dataPackageKeys.all });
+      void queryClient.invalidateQueries({ queryKey: scheduledIngestKeys.all });
     },
   });
 };

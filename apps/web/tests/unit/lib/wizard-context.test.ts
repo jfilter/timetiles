@@ -38,13 +38,13 @@ vi.mock("zustand/middleware", async (importOriginal) => {
   };
 });
 
-import { canProceedFromStep } from "../../../app/[locale]/(frontend)/ingest/_components/wizard-selectors";
+import { canProceedFromStep } from "../../../app/[locale]/(frontend)/(app)/ingest/_components/wizard-selectors";
 import {
   initialState,
   type WizardState,
   type WizardStep,
-} from "../../../app/[locale]/(frontend)/ingest/_components/wizard-state";
-import { useWizardStore } from "../../../app/[locale]/(frontend)/ingest/_components/wizard-store";
+} from "../../../app/[locale]/(frontend)/(app)/ingest/_components/wizard-state";
+import { useWizardStore } from "../../../app/[locale]/(frontend)/(app)/ingest/_components/wizard-store";
 
 /** Reset the store to a known state before each test */
 const resetStore = (overrides?: Partial<WizardState>) => {

@@ -5,14 +5,18 @@
  * @category Tests
  */
 
+import { useLocale } from "next-intl";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { ReviewPanel } from "@/components/ingest/review-panel";
+import { HttpError } from "@/lib/api/http-error";
 import { REVIEW_REASONS } from "@/lib/constants/review-reasons";
 
+import de from "../../../messages/de.json";
 import { renderWithProviders, userEvent, within } from "../../setup/unit/react-render";
 
 const approveMutate = vi.fn();
+const approval = vi.hoisted(() => ({ error: null as Error | null }));
 
 // jsdom does not implement pointer capture or layout scrolling.
 beforeAll(() => {
@@ -28,7 +32,12 @@ afterAll(() => {
 });
 
 vi.mock("@/lib/hooks/use-ingest-approval", () => ({
-  useApproveIngestJobMutation: () => ({ mutate: approveMutate, isPending: false, isError: false, error: null }),
+  useApproveIngestJobMutation: () => ({
+    mutate: approveMutate,
+    isPending: false,
+    isError: approval.error !== null,
+    error: approval.error,
+  }),
 }));
 
 const createJob = () => ({
@@ -70,6 +79,24 @@ const createStartDateOrderJob = () => ({
 
 // These tests share the approval mock and query dropdown portals in the document.
 describe("ReviewPanel", () => {
+  it("describes the review reason in the UI locale and names the column picker by its label", () => {
+    vi.mocked(useLocale).mockReturnValue("de");
+    const { container } = renderWithProviders(<ReviewPanel job={createJob()} />, { locale: "de", messages: de });
+
+    expect(container).toHaveTextContent(de.Ingest.reviewMessageNoLocation);
+    expect(container).not.toHaveTextContent("No location fields detected.");
+    expect(within(container).getByRole("combobox", { name: de.Ingest.selectLocationColumn })).toBeInTheDocument();
+    vi.mocked(useLocale).mockReturnValue("en");
+  });
+
+  it("announces a failed approval as an alert", () => {
+    approval.error = new HttpError(500, "Internal Server Error");
+    const { container } = renderWithProviders(<ReviewPanel job={createJob()} />);
+
+    expect(within(container).getByRole("alert")).toHaveTextContent("Internal Server Error");
+    approval.error = null;
+  });
+
   it("shows the full row error count and rate rather than the retained detail count", () => {
     const job = {
       ...createJob(),

@@ -202,11 +202,20 @@ const FooterCredits = ({ className, children, ref, ...props }: React.ComponentPr
 );
 FooterCredits.displayName = "FooterCredits";
 
+/** Slim footer bar without decoration, for a single line such as a copyright notice. */
+const FooterCompact = ({ className, children, ref, ...props }: React.ComponentProps<"footer">) => (
+  <footer ref={ref} className={cn("border-border bg-background border-t py-6", className)} {...props}>
+    <div className="text-muted-foreground container mx-auto max-w-7xl px-8 font-sans text-sm">{children}</div>
+  </footer>
+);
+FooterCompact.displayName = "FooterCompact";
+
 export {
   Footer,
   FooterBottom,
   FooterBrand,
   FooterColumn,
+  FooterCompact,
   FooterContent,
   footerContentVariants,
   FooterCredits,

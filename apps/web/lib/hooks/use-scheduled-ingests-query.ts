@@ -13,14 +13,14 @@ import { skipToken, useQuery } from "@tanstack/react-query";
 import { fetchCollectionDocs } from "@/lib/api/payload-collection";
 import type { ScheduledIngest } from "@/payload-types";
 
+import { type AccountListInitial, useAccountListScope } from "./account-list-scope";
 import { createActivePollingInterval, QUERY_PRESETS } from "./query-presets";
-import { useAuthState } from "./use-auth-queries";
 import { scheduledIngestKeys } from "./use-scheduled-ingest-mutations";
 
 const POLL_INTERVAL = 5000;
 
-export const useScheduledIngestsQuery = (initialData?: ScheduledIngest[]) => {
-  const { userId } = useAuthState();
+export const useScheduledIngestsQuery = (initial?: AccountListInitial<ScheduledIngest>) => {
+  const { userId, initialData } = useAccountListScope(initial);
   return useQuery({
     queryKey: [...scheduledIngestKeys.all, "user", userId],
     queryFn:
@@ -30,7 +30,7 @@ export const useScheduledIngestsQuery = (initialData?: ScheduledIngest[]) => {
             fetchCollectionDocs<ScheduledIngest>(
               `/api/scheduled-ingests?sort=-updatedAt&limit=200&where[createdBy][equals]=${userId}`
             ),
-    initialData: userId == null ? undefined : initialData,
+    initialData,
     ...QUERY_PRESETS.standard,
     refetchInterval: createActivePollingInterval<ScheduledIngest>((d) => d.lastStatus === "running", POLL_INTERVAL),
   });

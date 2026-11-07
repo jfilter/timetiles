@@ -17,7 +17,7 @@ import { NuqsTestingAdapter } from "nuqs/adapters/testing";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { useExplorerViewport } from "@/app/[locale]/(frontend)/explore/_components/use-explorer-viewport";
+import { useExplorerViewport } from "@/app/[locale]/(frontend)/(app)/explore/_components/use-explorer-viewport";
 import { useUIStore } from "@/lib/store";
 
 const fakeLngLatBounds = {

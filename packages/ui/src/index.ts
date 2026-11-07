@@ -78,6 +78,7 @@ export {
   FooterBottom,
   FooterBrand,
   FooterColumn,
+  FooterCompact,
   FooterContent,
   FooterLink,
   FooterLinks,

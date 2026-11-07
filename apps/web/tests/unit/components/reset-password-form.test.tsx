@@ -6,7 +6,7 @@
  */
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { NextIntlClientProvider } from "next-intl";
+import { NextIntlClientProvider, useLocale } from "next-intl";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ResetPasswordForm } from "@/components/auth/reset-password-form";
@@ -23,7 +23,10 @@ describe.each([
   { locale: "en", messages: en },
   { locale: "de", messages: de },
 ])("ResetPasswordForm ($locale)", ({ locale, messages }) => {
-  beforeEach(() => vi.resetAllMocks());
+  beforeEach(() => {
+    vi.resetAllMocks();
+    vi.mocked(useLocale).mockReturnValue(locale);
+  });
   afterEach(cleanup);
 
   const renderForm = () => {
@@ -51,7 +54,8 @@ describe.each([
     const { onSuccess, onError } = renderForm();
 
     fireEvent.click(screen.getByRole("button", { name: messages.Auth.resetPassword }));
-    expect(await screen.findByRole("alert")).toHaveTextContent(error.message);
+    const shown = locale === "en" ? error.message : messages.Errors.serverError;
+    expect(await screen.findByRole("alert")).toHaveTextContent(shown);
     expect(onError).toHaveBeenCalledWith(error.message);
     expect(onSuccess).not.toHaveBeenCalled();
     const retry = screen.getByRole("button", { name: messages.Auth.resetPassword });
@@ -65,6 +69,16 @@ describe.each([
       password: TEST_CREDENTIALS.basic.strongPassword,
     });
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("explains a rejected reset link in the UI locale", async () => {
+    mocks.resetPasswordRequest.mockRejectedValueOnce(
+      new HttpError(400, "This password reset link is invalid or has expired.")
+    );
+    renderForm();
+
+    fireEvent.click(screen.getByRole("button", { name: messages.Auth.resetPassword }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(messages.Auth.resetLinkExpired);
   });
 
   it("localizes mismatched passwords without sending a request", async () => {

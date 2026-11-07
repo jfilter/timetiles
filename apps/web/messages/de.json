@@ -10,6 +10,7 @@
     "signUp": "Registrieren",
     "dashboard": "Dashboard",
     "theme": "Design",
+    "skipToContent": "Zum Hauptinhalt springen",
     "cancel": "Abbrechen",
     "close": "Schliessen",
     "back": "Zurück",
@@ -107,7 +108,9 @@
     "resetPassword": "Passwort zurücksetzen",
     "passwordResetSuccess": "Passwort zurückgesetzt",
     "passwordResetSuccessMessage": "Ihr Passwort wurde erfolgreich zurückgesetzt. Sie werden zur Anmeldung weitergeleitet...",
-    "goToLogin": "Zur Anmeldung"
+    "goToLogin": "Zur Anmeldung",
+    "invalidCredentials": "E-Mail-Adresse oder Passwort ist falsch.",
+    "resetLinkExpired": "Dieser Link zum Zurücksetzen des Passworts ist ungültig oder abgelaufen. Bitte fordern Sie einen neuen an."
   },
   "VerifyEmail": {
     "pageTitle": "E-Mail-Verifizierung",
@@ -408,7 +411,8 @@
     "cannotDeleteSystemUser": "Systemkonten können nicht gelöscht werden.",
     "cannotDeleteAlreadyDeleted": "Dieses Konto ist bereits gelöscht.",
     "cannotDeleteLastAdmin": "Sie sind der letzte Administrator und können Ihr Konto nicht löschen. Bestimmen Sie zuerst einen anderen Administrator.",
-    "cannotDeleteActiveJobs": "Es laufen noch aktive Importe. Bitte warten Sie, bis diese abgeschlossen sind, bevor Sie Ihr Konto löschen."
+    "cannotDeleteActiveJobs": "Es laufen noch aktive Importe. Bitte warten Sie, bis diese abgeschlossen sind, bevor Sie Ihr Konto löschen.",
+    "passwordIncorrect": "Das aktuelle Passwort ist falsch."
   },
   "DataExport": {
     "title": "Meine Daten herunterladen",
@@ -450,6 +454,7 @@
     "editMode": "Bearbeiten",
     "loadingSchedule": "Zeitplan wird geladen...",
     "failedToLoadSchedule": "Dieser geplante Import konnte nicht geladen werden. Er wurde möglicherweise gelöscht oder Sie haben keinen Zugriff.",
+    "scheduleNotEditable": "Dieser geplante Import kann nicht bearbeitet werden, weil sein Katalog nicht mehr existiert.",
     "refetchRequired": "Rufen Sie die URL ab, um Ihre Datenquelle zu überprüfen und die Feldzuordnungen vor dem Speichern zu aktualisieren.",
     "failedToUpdateSchedule": "Zeitplan konnte nicht aktualisiert werden",
     "stepOfTotal": "Schritt {current} von {total}",
@@ -829,6 +834,11 @@
     "maxPages": "Maximale Seiten",
     "reviewRequired": "Aktion erforderlich",
     "reviewRequiredDescription": "Ihr Import benötigt Ihre Aufmerksamkeit, bevor er fortgesetzt werden kann.",
+    "reviewMessageNoTimestamp": "In Ihren Daten wurde keine Spalte mit Datum oder Uhrzeit erkannt.",
+    "reviewMessageNoLocation": "In Ihren Daten wurden keine Spalten mit Ort, Adresse oder Koordinaten erkannt.",
+    "reviewMessageCoordinateOrder": "Eine Spalte enthält beide Koordinaten, aber ihre Reihenfolge (Breitengrad,Längengrad oder Längengrad,Breitengrad) konnte nicht bestimmt werden. Bitte bestätigen Sie die Reihenfolge.",
+    "reviewMessageDateOrder": "Eine Datumsspalte wurde erkannt, aber ihre Reihenfolge (Tag/Monat oder Monat/Tag) konnte nicht bestimmt werden. Bitte bestätigen Sie die Reihenfolge.",
+    "reviewMessageEndDateOrder": "Eine Spalte mit Enddaten wurde erkannt, aber ihre Reihenfolge (Tag/Monat oder Monat/Tag) konnte nicht bestimmt werden. Bitte bestätigen Sie die Reihenfolge.",
     "selectTimestampColumn": "Welche Spalte enthält das Datum oder die Uhrzeit?",
     "selectLocationColumn": "Welche Spalte enthält den Ort, den Veranstaltungsort oder die Adresse?",
     "totalRows": "Gesamtzeilen",
@@ -1080,11 +1090,30 @@
     "fundingText": "Gefördert 2025–2026 vom BMFTR (FKZ 16IS25S03)",
     "bmftrAlt": "Gefördert vom Bundesministerium für Forschung, Technologie und Raumfahrt",
     "openSource": "Open Source",
-    "madeIn": "Made in Berlin"
+    "madeIn": "Made in Berlin",
+    "visitUsOn": "Besuchen Sie uns auf {platform}"
   },
   "EnvironmentBanner": {
     "staging": "Staging — Testumgebung, Daten können jederzeit zurückgesetzt werden",
     "preview": "Preview — unveröffentlichter Build, kann noch ruckeln",
     "development": "Development-Build"
+  },
+  "Errors": {
+    "unexpected": "Etwas ist schiefgelaufen. Bitte versuchen Sie es erneut.",
+    "network": "Der Server ist nicht erreichbar. Bitte prüfen Sie Ihre Verbindung und versuchen Sie es erneut.",
+    "invalidRequest": "Die Anfrage konnte nicht verarbeitet werden. Bitte prüfen Sie Ihre Eingaben.",
+    "unauthorized": "Bitte melden Sie sich an, um fortzufahren.",
+    "forbidden": "Sie haben keine Berechtigung für diese Aktion.",
+    "notFound": "Dieser Eintrag wurde nicht gefunden. Er wurde möglicherweise gelöscht.",
+    "conflict": "Diese Aktion steht im Konflikt mit dem aktuellen Stand. Bitte laden Sie die Seite neu und versuchen Sie es erneut.",
+    "expired": "Dieser Link oder Eintrag ist abgelaufen.",
+    "tooLarge": "Der Upload ist zu groß.",
+    "tooManyRequests": "Zu viele Versuche. Bitte warten Sie einen Moment und versuchen Sie es erneut.",
+    "serverError": "Ein Serverfehler ist aufgetreten. Bitte versuchen Sie es später erneut.",
+    "quotaExceeded": "Sie haben Ihr Nutzungslimit erreicht.",
+    "emailDisabled": "Diese Seite kann keine E-Mails versenden. Registrierung, Passwort-Zurücksetzen und E-Mail-Änderung sind deshalb nicht verfügbar. Bitte wenden Sie sich an den Betreiber der Seite.",
+    "passwordTooShort": "Das Passwort muss mindestens {length} Zeichen lang sein.",
+    "passwordTooLong": "Das Passwort darf höchstens {length} Zeichen lang sein.",
+    "passwordCompromised": "Dieses Passwort ist in einem bekannten Datenleck aufgetaucht. Bitte wählen Sie ein anderes."
   }
 }

@@ -10,7 +10,7 @@ import { NuqsTestingAdapter } from "nuqs/adapters/testing";
 import type { ReactNode } from "react";
 import { describe, expect, it } from "vitest";
 
-import { useExplorerViewport } from "@/app/[locale]/(frontend)/explore/_components/use-explorer-viewport";
+import { useExplorerViewport } from "@/app/[locale]/(frontend)/(app)/explore/_components/use-explorer-viewport";
 
 const wrapper = ({ children }: { children: ReactNode }) => <NuqsTestingAdapter>{children}</NuqsTestingAdapter>;
 

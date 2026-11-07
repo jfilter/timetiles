@@ -86,6 +86,16 @@ describe("EventFilters", () => {
     expect(container).toHaveTextContent("Clear date filters");
   });
 
+  test("renders the clear date filters button in the muted token without opacity dimming", () => {
+    const searchParams = new URLSearchParams("startDate=2024-01-01&endDate=2024-12-31");
+
+    const { getByRole } = renderWithProviders(<EventFilters />, { searchParams });
+
+    const clear = getByRole("button", { name: "Clear date filters" });
+    expect(clear).toHaveClass("text-muted-foreground");
+    expect(clear.className).not.toMatch(/text-[\w-]+\/\d+/);
+  });
+
   test("clears date filters when no visible dataset has temporal data", async () => {
     dataSourcesState.current = {
       ...mockDataSources,

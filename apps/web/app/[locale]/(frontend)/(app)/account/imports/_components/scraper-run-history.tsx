@@ -1,0 +1,87 @@
+/**
+ * Expandable row detail showing recent scraper runs.
+ *
+ * Renders inside an expanded table row without Card wrappers.
+ *
+ * @module
+ * @category Components
+ */
+"use client";
+
+import { ErrorMessage } from "@timetiles/ui";
+import { ExternalLinkIcon } from "lucide-react";
+// The Payload dashboard lives outside the [locale] tree — the i18n-aware
+// Link would prefix /de/dashboard/... and 404.
+import Link from "next/link";
+import { useLocale, useTranslations } from "next-intl";
+
+import { useErrorMessage } from "@/lib/hooks/use-error-message";
+import { useScraperRunsQuery } from "@/lib/hooks/use-scrapers-query";
+import { formatDateLocale, formatDuration } from "@/lib/utils/date";
+import type { ScraperRun } from "@/payload-types";
+
+import { RunStatus } from "./run-status";
+
+interface ScraperRunHistoryProps {
+  readonly scraperId: number;
+}
+
+const RunRow = ({ run }: { readonly run: ScraperRun }) => {
+  const t = useTranslations("ImportActivity");
+  const locale = useLocale();
+
+  return (
+    <div className="border-border border-b py-1.5 last:border-b-0">
+      <div className="flex flex-wrap items-center gap-2 text-xs">
+        <RunStatus status={run.status} />
+        <span className="text-muted-foreground">{formatDateLocale(run.startedAt ?? run.createdAt, locale)}</span>
+        <span className="text-muted-foreground">{formatDuration(run.durationMs)}</span>
+        {run.triggeredBy && (
+          <span className="text-muted-foreground rounded bg-gray-100 px-1.5 py-0.5 dark:bg-gray-800">
+            {run.triggeredBy}
+          </span>
+        )}
+        {run.outputRows != null && run.outputRows > 0 && (
+          <span className="text-muted-foreground">{t("rowCount", { count: run.outputRows })}</span>
+        )}
+        <Link
+          href={`/dashboard/collections/scraper-runs/${run.id}`}
+          className="text-muted-foreground hover:text-foreground ml-auto"
+          onClick={(e) => e.stopPropagation()}
+          title={t("viewInDashboard")}
+        >
+          <ExternalLinkIcon className="h-3 w-3" />
+        </Link>
+      </div>
+      {/* Not gated on "failed": a run whose scrape succeeded but whose auto-import did not
+          carries an error while staying a successful run, and that is precisely the case where
+          the user otherwise sees a green run with a row count and never receives any data. */}
+      {run.error != null && run.error !== "" && (
+        <div className="text-destructive mt-0.5 truncate pl-4 text-xs">{run.error}</div>
+      )}
+    </div>
+  );
+};
+
+export const ScraperRunHistory = ({ scraperId }: ScraperRunHistoryProps) => {
+  const t = useTranslations("ImportActivity");
+  const formatError = useErrorMessage();
+  const { data: runs = [], isLoading, error } = useScraperRunsQuery(scraperId);
+
+  if (isLoading) {
+    return <div className="text-muted-foreground py-2 text-xs">{t("loadingRuns")}</div>;
+  }
+
+  if (runs.length === 0 && !error) {
+    return <div className="text-muted-foreground py-2 text-xs">{t("noRuns")}</div>;
+  }
+
+  return (
+    <div className="space-y-0">
+      {error && <ErrorMessage message={formatError(error)} />}
+      {runs.map((run) => (
+        <RunRow key={run.id} run={run} />
+      ))}
+    </div>
+  );
+};

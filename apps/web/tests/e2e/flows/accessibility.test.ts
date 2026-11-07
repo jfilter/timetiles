@@ -11,6 +11,8 @@
 import { AxeBuilder } from "@axe-core/playwright";
 import type { Page } from "@playwright/test";
 
+import { MAIN_CONTENT_ID } from "@/components/layout/layout-frame";
+
 import { expect, test } from "../fixtures";
 import { showExplorerSurface } from "../pages/responsive-layout";
 
@@ -159,6 +161,10 @@ const analyzeAccessibility = async (testPage: Page, pageConfig: PageConfig, them
   } else {
     await testPage.waitForLoadState("networkidle");
   }
+
+  // axe's landmark rules are best practices outside the WCAG tags, so they are pinned here.
+  await expect(testPage.getByRole("main")).toHaveCount(1);
+  await expect(testPage.locator(`a[href="#${MAIN_CONTENT_ID}"]`)).toHaveCount(1);
 
   let builder = new AxeBuilder({ page: testPage }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]);
 

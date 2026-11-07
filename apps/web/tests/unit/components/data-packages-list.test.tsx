@@ -9,12 +9,17 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-li
 import { NextIntlClientProvider } from "next-intl";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { DataPackagesList } from "@/app/[locale]/(frontend)/account/data-packages/_components/data-packages-list";
+import { DataPackagesList } from "@/app/[locale]/(frontend)/(app)/account/data-packages/_components/data-packages-list";
+import type * as HttpErrorModule from "@/lib/api/http-error";
+import { HttpError } from "@/lib/api/http-error";
 
 import en from "../../../messages/en.json";
 
 const mocks = vi.hoisted(() => ({ fetchJson: vi.fn() }));
-vi.mock("@/lib/api/http-error", () => ({ fetchJson: mocks.fetchJson }));
+vi.mock("@/lib/api/http-error", async (importOriginal) => ({
+  ...(await importOriginal<typeof HttpErrorModule>()),
+  fetchJson: mocks.fetchJson,
+}));
 
 describe("data package activation form", () => {
   beforeEach(() => {
@@ -71,7 +76,7 @@ describe("data package activation form", () => {
     });
     renderPackages();
     const deactivate = await screen.findByRole("button", { name: "Deactivate" });
-    mocks.fetchJson.mockRejectedValueOnce(new Error("Deactivation rejected"));
+    mocks.fetchJson.mockRejectedValueOnce(new HttpError(409, "Deactivation rejected"));
     fireEvent.click(deactivate);
     expect(await screen.findByRole("alert")).toHaveTextContent("Deactivation rejected");
     await waitFor(() => expect(deactivate).toBeEnabled());
@@ -101,7 +106,7 @@ describe("data package activation form", () => {
 
   it("keeps entered values visible when activation fails", async () => {
     const dialog = await openForm();
-    mocks.fetchJson.mockRejectedValueOnce(new Error("Activation rejected"));
+    mocks.fetchJson.mockRejectedValueOnce(new HttpError(400, "Activation rejected"));
     fireEvent.change(within(dialog).getByLabelText("City"), { target: { value: "Berlin" } });
     fireEvent.click(within(dialog).getByRole("button", { name: "Activate" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("Activation rejected");

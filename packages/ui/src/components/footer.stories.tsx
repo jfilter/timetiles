@@ -10,6 +10,7 @@ import {
   FooterBottom,
   FooterBrand,
   FooterColumn,
+  FooterCompact,
   FooterContent,
   FooterCredits,
   FooterLink,
@@ -112,3 +113,8 @@ export const Default: Story = { render: (args) => renderFooter(args) };
 export const Compact: Story = { args: { size: "sm" }, render: (args) => renderFooter(args, 2) };
 
 export const Expanded: Story = { args: { size: "lg" }, render: (args) => renderFooter(args) };
+
+/** Slim copyright-only bar used by the compact layout footer. */
+export const CopyrightOnly: Story = {
+  render: () => <FooterCompact>© 2026 TimeTiles. Open data, open source.</FooterCompact>,
+};

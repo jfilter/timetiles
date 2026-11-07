@@ -8,7 +8,7 @@ import { act, cleanup, render, screen } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { DataExportCard } from "@/app/[locale]/(frontend)/account/settings/_components/data-export-card";
+import { DataExportCard } from "@/app/[locale]/(frontend)/(app)/account/settings/_components/data-export-card";
 import type { DataExport } from "@/lib/export/api-types";
 
 import de from "../../../messages/de.json";

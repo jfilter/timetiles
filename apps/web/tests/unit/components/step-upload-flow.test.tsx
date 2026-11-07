@@ -7,16 +7,18 @@
  *
  * @module
  */
-import { StepUpload } from "@/app/[locale]/(frontend)/ingest/_components/steps/step-upload";
-import { initialState, type WizardState } from "@/app/[locale]/(frontend)/ingest/_components/wizard-state";
-import { useWizardStore } from "@/app/[locale]/(frontend)/ingest/_components/wizard-store";
+import { StepUpload } from "@/app/[locale]/(frontend)/(app)/ingest/_components/steps/step-upload";
+import { initialState, type WizardState } from "@/app/[locale]/(frontend)/(app)/ingest/_components/wizard-state";
+import { useWizardStore } from "@/app/[locale]/(frontend)/(app)/ingest/_components/wizard-store";
 
 import { fireEvent, renderWithProviders, screen, waitFor } from "../../setup/unit/react-render";
 
 // ---------------------------------------------------------------------------
 // Mock use-wizard-effects (useWizardCanProceed depends on useAuthState)
 // ---------------------------------------------------------------------------
-vi.mock("@/app/[locale]/(frontend)/ingest/_components/use-wizard-effects", () => ({ useWizardCanProceed: () => true }));
+vi.mock("@/app/[locale]/(frontend)/(app)/ingest/_components/use-wizard-effects", () => ({
+  useWizardCanProceed: () => true,
+}));
 
 // ---------------------------------------------------------------------------
 // Mock localStorage for Zustand persist middleware

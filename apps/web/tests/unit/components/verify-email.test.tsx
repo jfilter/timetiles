@@ -9,7 +9,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-libra
 import { NextIntlClientProvider } from "next-intl";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import VerifyEmailPage from "@/app/[locale]/(frontend)/verify-email/page";
+import VerifyEmailPage from "@/app/[locale]/(frontend)/(app)/verify-email/page";
 import { TEST_TOKENS } from "@/tests/constants/test-credentials";
 
 import en from "../../../messages/en.json";

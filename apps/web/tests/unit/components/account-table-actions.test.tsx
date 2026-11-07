@@ -10,21 +10,26 @@ import userEvent from "@testing-library/user-event";
 import { NextIntlClientProvider } from "next-intl";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { ScheduledIngestsTable } from "@/app/[locale]/(frontend)/account/imports/_components/scheduled-ingests-table";
-import { ScrapersTable } from "@/app/[locale]/(frontend)/account/imports/_components/scrapers-table";
+import { ScheduledIngestsTable } from "@/app/[locale]/(frontend)/(app)/account/imports/_components/scheduled-ingests-table";
+import { ScrapersTable } from "@/app/[locale]/(frontend)/(app)/account/imports/_components/scrapers-table";
+import type * as HttpErrorModule from "@/lib/api/http-error";
+import { HttpError } from "@/lib/api/http-error";
 import type { ScheduledIngest, Scraper, ScraperRepo } from "@/payload-types";
 
 import en from "../../../messages/en.json";
 
 const mocks = vi.hoisted(() => ({ fetchJson: vi.fn() }));
-vi.mock("@/lib/api/http-error", () => mocks);
+vi.mock("@/lib/api/http-error", async (importOriginal) => ({
+  ...(await importOriginal<typeof HttpErrorModule>()),
+  fetchJson: mocks.fetchJson,
+}));
 vi.mock("@/i18n/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
 vi.mock("@/lib/hooks/use-scheduled-ingests-query", () => ({
-  useScheduledIngestsQuery: (data: unknown) => ({ data, isLoading: false }),
+  useScheduledIngestsQuery: (initial: { data: unknown }) => ({ data: initial.data, isLoading: false }),
 }));
 vi.mock("@/lib/hooks/use-scrapers-query", () => ({
-  useScraperReposQuery: (data: unknown) => ({ data }),
-  useScrapersQuery: (_repoId: unknown, data: unknown) => ({ data }),
+  useScraperReposQuery: (initial: { data: unknown }) => ({ data: initial.data }),
+  useScrapersQuery: (_repoId: unknown, initial: { data: unknown }) => ({ data: initial.data }),
   useScraperRunsQuery: () => ({ data: [], isLoading: false }),
 }));
 
@@ -38,6 +43,7 @@ describe("Account table actions", () => {
       <QueryClientProvider client={client}>
         <NextIntlClientProvider locale="en" messages={en}>
           <ScrapersTable
+            ownerId={1}
             initialRepos={[
               {
                 id: 2,
@@ -83,10 +89,12 @@ describe("Account table actions", () => {
         <NextIntlClientProvider locale="en" messages={en}>
           {table === "schedule" ? (
             <ScheduledIngestsTable
+              ownerId={1}
               initialData={[{ id: 1, name: "Schedule", enabled: false, frequency: "daily" } as ScheduledIngest]}
             />
           ) : (
             <ScrapersTable
+              ownerId={1}
               initialRepos={[{ id: 2, name: "Repository" } as ScraperRepo]}
               initialScrapers={[{ id: 3, repo: 2, name: "Scraper" } as Scraper]}
             />
@@ -104,7 +112,7 @@ describe("Account table actions", () => {
     };
     await performAction();
     await waitFor(() => expect(screen.getByRole("button", { name: en.ImportActivity.actions })).toBeDisabled());
-    act(() => rejectRequest(new Error("Request failed. Please retry.")));
+    act(() => rejectRequest(new HttpError(500, "Request failed. Please retry.")));
     expect(await screen.findByRole("alert")).toHaveTextContent("Request failed. Please retry.");
     expect(screen.queryByRole("menu")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: en.ImportActivity.actions })).toBeEnabled();

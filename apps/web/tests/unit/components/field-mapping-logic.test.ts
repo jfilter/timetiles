@@ -26,51 +26,57 @@ vi.mock("react", async (importOriginal) => {
 vi.mock("@/i18n/navigation", () => ({ useRouter: vi.fn(() => ({ push: vi.fn() })) }));
 
 // Mock local component imports from step-field-mapping.tsx
-vi.mock("@/app/[locale]/(frontend)/ingest/_components/use-wizard-effects", () => ({
+vi.mock("@/app/[locale]/(frontend)/(app)/ingest/_components/use-wizard-effects", () => ({
   useWizardCanProceed: vi.fn(() => false),
 }));
-vi.mock("@/app/[locale]/(frontend)/ingest/_components/wizard-store", () => ({ useWizardStore: vi.fn(() => null) }));
+vi.mock("@/app/[locale]/(frontend)/(app)/ingest/_components/wizard-store", () => ({
+  useWizardStore: vi.fn(() => null),
+}));
 // column-mapping-table: mock the component, re-export pure functions via dynamic import
-vi.mock("@/app/[locale]/(frontend)/ingest/_components/steps/column-mapping-table", async () => {
+vi.mock("@/app/[locale]/(frontend)/(app)/ingest/_components/steps/column-mapping-table", async () => {
   // Dynamic import bypasses Vite's static JSX analysis
   const mod = await vi.importActual<Record<string, unknown>>(
-    "@/app/[locale]/(frontend)/ingest/_components/steps/column-mapping-table"
+    "@/app/[locale]/(frontend)/(app)/ingest/_components/steps/column-mapping-table"
   );
   return { ...mod, ColumnMappingTable: vi.fn() };
 });
-vi.mock("@/app/[locale]/(frontend)/ingest/_components/steps/field-mapping-sections", () => ({
+vi.mock("@/app/[locale]/(frontend)/(app)/ingest/_components/steps/field-mapping-sections", () => ({
   CompletionStatusBar: vi.fn(),
   ConfigSuggestionBanner: vi.fn(),
   DataPreviewSection: vi.fn(),
   LanguageDetectionBanner: vi.fn(),
 }));
-vi.mock("@/app/[locale]/(frontend)/ingest/_components/steps/id-strategy-card", () => ({ IdStrategyCard: vi.fn() }));
-vi.mock("@/app/[locale]/(frontend)/ingest/_components/steps/sheet-tab-button", () => ({ SheetTabButton: vi.fn() }));
+vi.mock("@/app/[locale]/(frontend)/(app)/ingest/_components/steps/id-strategy-card", () => ({
+  IdStrategyCard: vi.fn(),
+}));
+vi.mock("@/app/[locale]/(frontend)/(app)/ingest/_components/steps/sheet-tab-button", () => ({
+  SheetTabButton: vi.fn(),
+}));
 
 // Mock local component imports from column-mapping-table.tsx
-vi.mock("@/app/[locale]/(frontend)/ingest/_components/steps/column-mapping-shared", () => ({
+vi.mock("@/app/[locale]/(frontend)/(app)/ingest/_components/steps/column-mapping-shared", () => ({
   TargetSelect: vi.fn(),
   TRANSFORM_COLORS: {},
   TRANSFORM_ICONS: {},
 }));
-vi.mock("@/app/[locale]/(frontend)/ingest/_components/steps/column-row", async () => {
+vi.mock("@/app/[locale]/(frontend)/(app)/ingest/_components/steps/column-row", async () => {
   const mod = await vi.importActual<Record<string, unknown>>(
-    "@/app/[locale]/(frontend)/ingest/_components/steps/column-row"
+    "@/app/[locale]/(frontend)/(app)/ingest/_components/steps/column-row"
   );
   return { ...mod, ColumnRow: vi.fn() };
 });
 
 // Mock local component imports from column-row.tsx
-vi.mock("@/app/[locale]/(frontend)/ingest/_components/transforms/transform-editor", () => ({
+vi.mock("@/app/[locale]/(frontend)/(app)/ingest/_components/transforms/transform-editor", () => ({
   TransformEditor: vi.fn(),
 }));
-vi.mock("@/app/[locale]/(frontend)/ingest/_components/steps/field-select", () => ({ ConfidenceBadge: vi.fn() }));
+vi.mock("@/app/[locale]/(frontend)/(app)/ingest/_components/steps/field-select", () => ({ ConfidenceBadge: vi.fn() }));
 
 // ---------------------------------------------------------------------------
 // Imports
 // ---------------------------------------------------------------------------
 
-import { getTransformChipLabel } from "@/app/[locale]/(frontend)/ingest/_components/steps/column-row";
+import { getTransformChipLabel } from "@/app/[locale]/(frontend)/(app)/ingest/_components/steps/column-row";
 import { buildColumnView, findTargetForColumn, getSampleValue } from "@/lib/ingest/column-view";
 import { applyPreviewTransforms } from "@/lib/ingest/transforms";
 import type { IngestTransform } from "@/lib/ingest/types/transforms";

@@ -1,7 +1,7 @@
 /**
  * Header component for cartographic-themed applications.
  *
- * Provides sticky top navigation with marketing and app variants.
+ * Provides top navigation with marketing and app variants, sticky by default.
  * Features full-width edge-to-edge design, backdrop blur, and optional
  * cartographic decorative elements (grid overlay, coordinates, compass).
  *
@@ -15,15 +15,16 @@ import * as React from "react";
 import { headerGridStyle } from "../lib/grid-backgrounds";
 import { cn } from "../lib/utils";
 
-const headerVariants = cva("sticky top-0 z-50 w-full border-b backdrop-blur-sm transition-all duration-200", {
+const headerVariants = cva("z-50 w-full border-b backdrop-blur-sm transition-all duration-200", {
   variants: {
+    sticky: { true: "sticky top-0", false: "relative" },
     variant: {
       marketing: "bg-card/95 border-primary/20 dark:bg-background/95 dark:border-primary/40",
       app: "bg-background/95 border-primary/30 dark:bg-card/95 dark:border-primary/50",
     },
     decorative: { true: "relative overflow-hidden", false: "" },
   },
-  defaultVariants: { variant: "marketing", decorative: false },
+  defaultVariants: { variant: "marketing", sticky: true, decorative: false },
 });
 
 export interface HeaderProps extends React.ComponentProps<"header">, VariantProps<typeof headerVariants> {
@@ -52,9 +53,9 @@ export interface HeaderProps extends React.ComponentProps<"header">, VariantProp
  * </Header>
  * ```
  */
-const Header = ({ className, variant, decorative, children, ref, ...props }: HeaderProps) => {
+const Header = ({ className, variant, sticky, decorative, children, ref, ...props }: HeaderProps) => {
   return (
-    <header ref={ref} className={cn(headerVariants({ variant, decorative }), className)} {...props}>
+    <header ref={ref} className={cn(headerVariants({ variant, sticky, decorative }), className)} {...props}>
       {/* Cartographic grid overlay (when decorative) */}
       {decorative && (
         <div className="absolute inset-0 opacity-100 dark:opacity-50" style={headerGridStyle} aria-hidden="true" />

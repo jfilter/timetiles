@@ -73,7 +73,7 @@ export const LoginForm = ({ onSuccess, onError, className }: Readonly<LoginFormP
         autoComplete="current-password"
       />
 
-      <FormError error={error} />
+      <FormError error={error} byStatus={{ 401: t("invalidCredentials") }} />
 
       <Button type="submit" className="w-full" disabled={isPending}>
         {isPending ? t("signingIn") : tCommon("signIn")}

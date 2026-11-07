@@ -8,9 +8,9 @@
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { initialState } from "@/app/[locale]/(frontend)/ingest/_components/wizard-state";
-import { useWizardStore } from "@/app/[locale]/(frontend)/ingest/_components/wizard-store";
-import { useFlowEditor } from "@/app/[locale]/(frontend)/ingest/flow-editor/_components/use-flow-editor";
+import { initialState } from "@/app/[locale]/(frontend)/(app)/ingest/_components/wizard-state";
+import { useWizardStore } from "@/app/[locale]/(frontend)/(app)/ingest/_components/wizard-store";
+import { useFlowEditor } from "@/app/[locale]/(frontend)/(app)/ingest/flow-editor/_components/use-flow-editor";
 import { createEmptyFieldMapping } from "@/lib/ingest/field-mapping-utils";
 import type { TargetFieldNodeData } from "@/lib/ingest/types/flow-mapping";
 

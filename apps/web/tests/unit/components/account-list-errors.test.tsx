@@ -9,24 +9,33 @@ import { cleanup, render, screen } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { ManualImportsTable } from "@/app/[locale]/(frontend)/account/imports/_components/manual-imports-table";
-import { ScheduledIngestsTable } from "@/app/[locale]/(frontend)/account/imports/_components/scheduled-ingests-table";
-import { ScrapersTable } from "@/app/[locale]/(frontend)/account/imports/_components/scrapers-table";
+import { ManualImportsTable } from "@/app/[locale]/(frontend)/(app)/account/imports/_components/manual-imports-table";
+import { ScheduledIngestsTable } from "@/app/[locale]/(frontend)/(app)/account/imports/_components/scheduled-ingests-table";
+import { ScrapersTable } from "@/app/[locale]/(frontend)/(app)/account/imports/_components/scrapers-table";
 import type { IngestFile, ScheduledIngest, Scraper, ScraperRepo } from "@/payload-types";
 
 import en from "../../../messages/en.json";
 
 const mocks = vi.hoisted(() => ({ source: "", error: new Error("List unavailable") }));
 vi.mock("@/lib/hooks/use-ingest-files-query", () => ({
-  useIngestFilesQuery: (data: unknown) => ({ data, error: mocks.source === "manual" ? mocks.error : null }),
+  useIngestFilesQuery: (initial: { data: unknown }) => ({
+    data: initial.data,
+    error: mocks.source === "manual" ? mocks.error : null,
+  }),
 }));
 vi.mock("@/lib/hooks/use-scheduled-ingests-query", () => ({
-  useScheduledIngestsQuery: (data: unknown) => ({ data, error: mocks.source === "schedule" ? mocks.error : null }),
+  useScheduledIngestsQuery: (initial: { data: unknown }) => ({
+    data: initial.data,
+    error: mocks.source === "schedule" ? mocks.error : null,
+  }),
 }));
 vi.mock("@/lib/hooks/use-scrapers-query", () => ({
-  useScraperReposQuery: (data: unknown) => ({ data, error: mocks.source === "repos" ? mocks.error : null }),
-  useScrapersQuery: (_id: unknown, data: unknown) => ({
-    data,
+  useScraperReposQuery: (initial: { data: unknown }) => ({
+    data: initial.data,
+    error: mocks.source === "repos" ? mocks.error : null,
+  }),
+  useScrapersQuery: (_id: unknown, initial: { data: unknown }) => ({
+    data: initial.data,
     error: mocks.source === "scrapers" ? mocks.error : null,
   }),
   useScraperRunsQuery: () => ({ data: [] }),
@@ -43,15 +52,20 @@ describe.each(["manual", "schedule", "repos", "scrapers"])("Account list fetch f
       <QueryClientProvider client={client}>
         <NextIntlClientProvider locale="en" messages={en}>
           {source === "manual" && (
-            <ManualImportsTable initialData={cached ? [{ id: 1, filename: "Cached record" } as IngestFile] : []} />
+            <ManualImportsTable
+              ownerId={1}
+              initialData={cached ? [{ id: 1, filename: "Cached record" } as IngestFile] : []}
+            />
           )}
           {source === "schedule" && (
             <ScheduledIngestsTable
+              ownerId={1}
               initialData={cached ? [{ id: 1, name: "Cached record", frequency: "daily" } as ScheduledIngest] : []}
             />
           )}
           {(source === "repos" || source === "scrapers") && (
             <ScrapersTable
+              ownerId={1}
               initialRepos={cached ? [{ id: 2, name: "Repository" } as ScraperRepo] : []}
               initialScrapers={cached ? [{ id: 1, name: "Cached record", repo: 2 } as Scraper] : []}
             />

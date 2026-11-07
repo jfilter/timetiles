@@ -15,7 +15,11 @@ const meta: Meta<typeof Header> = {
   title: "Layout/Header",
   component: Header,
   tags: ["autodocs"],
-  argTypes: { variant: { control: "select", options: ["marketing", "app"] }, decorative: { control: "boolean" } },
+  argTypes: {
+    variant: { control: "select", options: ["marketing", "app"] },
+    sticky: { control: "boolean" },
+    decorative: { control: "boolean" },
+  },
   parameters: { layout: "fullscreen" },
 };
 
@@ -134,3 +138,28 @@ export const Default: Story = { render: (args) => renderMarketingHeader(args) };
 export const DecorativeMarketing: Story = { args: { decorative: true }, render: (args) => renderMarketingHeader(args) };
 
 export const AppShell: Story = { args: { variant: "app" }, render: (args) => renderAppHeader(args) };
+
+export const NonSticky: Story = { args: { sticky: false }, render: (args) => renderMarketingHeader(args) };
+
+/** Logo-only header: the brand link is the single way back to the main navigation. */
+export const Minimal: Story = {
+  render: (args) => (
+    <div className="bg-background min-h-[20rem]">
+      <Header {...args}>
+        <HeaderBrand>
+          <a href="#home" className="flex items-center gap-3" aria-label="TimeTiles home">
+            <span className="bg-primary text-primary-foreground flex size-9 items-center justify-center rounded-full">
+              <MapPinned className="size-4" />
+            </span>
+            <span className="text-lg">TimeTiles</span>
+          </a>
+        </HeaderBrand>
+      </Header>
+      <main className="mx-auto max-w-5xl px-6 py-12 md:px-8">
+        <p className="text-muted-foreground max-w-2xl text-base leading-relaxed">
+          The minimal header keeps only the brand, for focused pages such as documentation or landing pages.
+        </p>
+      </main>
+    </div>
+  ),
+};

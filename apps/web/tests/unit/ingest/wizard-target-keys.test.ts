@@ -6,7 +6,7 @@
  */
 import { describe, expect, it } from "vitest";
 
-import { TARGET_OPTIONS } from "@/app/[locale]/(frontend)/ingest/_components/steps/column-mapping-shared";
+import { TARGET_OPTIONS } from "@/app/[locale]/(frontend)/(app)/ingest/_components/steps/column-mapping-shared";
 import { WIZARD_TARGET_KEYS } from "@/lib/ingest/column-view";
 
 describe("WIZARD_TARGET_KEYS", () => {

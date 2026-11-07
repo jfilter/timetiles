@@ -6,8 +6,8 @@
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { wizardPersistOptions } from "@/app/[locale]/(frontend)/ingest/_components/wizard-persistence";
-import { initialState, type WizardStore } from "@/app/[locale]/(frontend)/ingest/_components/wizard-state";
+import { wizardPersistOptions } from "@/app/[locale]/(frontend)/(app)/ingest/_components/wizard-persistence";
+import { initialState, type WizardStore } from "@/app/[locale]/(frontend)/(app)/ingest/_components/wizard-state";
 import { TEST_TOKENS } from "@/tests/constants/test-credentials";
 
 const { partialize, merge } = wizardPersistOptions;
@@ -42,5 +42,9 @@ describe("wizard persistence", () => {
 
     expect(merge!({ currentStep: 4, _savedAt: 10 * DAY_MS - DAY_MS + 1 }, current).currentStep).toBe(4);
     expect(merge!({ currentStep: 4, _savedAt: 10 * DAY_MS - DAY_MS - 1 }, current)).toBe(current);
+  });
+
+  it("saves the draft owner with the draft", () => {
+    expect(partialize!(store({ currentStep: 3, draftOwnerId: 9 }))).toMatchObject({ draftOwnerId: 9 });
   });
 });

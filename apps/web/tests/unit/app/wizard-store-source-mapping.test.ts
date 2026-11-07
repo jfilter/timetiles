@@ -6,8 +6,8 @@
  */
 import { afterEach, describe, expect, it } from "vitest";
 
-import { initialState } from "@/app/[locale]/(frontend)/ingest/_components/wizard-state";
-import { useWizardStore } from "@/app/[locale]/(frontend)/ingest/_components/wizard-store";
+import { initialState } from "@/app/[locale]/(frontend)/(app)/ingest/_components/wizard-state";
+import { useWizardStore } from "@/app/[locale]/(frontend)/(app)/ingest/_components/wizard-store";
 import { createEmptyFieldMapping } from "@/lib/ingest/field-mapping-utils";
 import type { IngestTransform } from "@/lib/ingest/types/transforms";
 import type { SheetInfo, UrlAuthConfig } from "@/lib/ingest/types/wizard";
@@ -92,7 +92,7 @@ describe("initialize", () => {
   it("sends an unauthenticated user to the auth step even from a restored later step", () => {
     useWizardStore.setState({ currentStep: 4 });
 
-    useWizardStore.getState().initialize({ isAuthenticated: false, isEmailVerified: false });
+    useWizardStore.getState().initialize({ isAuthenticated: false, isEmailVerified: false, userId: null });
 
     expect(useWizardStore.getState()).toMatchObject({ currentStep: 1, startedAuthenticated: false });
   });
@@ -100,9 +100,58 @@ describe("initialize", () => {
   it("keeps a restored step for a verified user and runs only once", () => {
     useWizardStore.setState({ currentStep: 4 });
 
-    useWizardStore.getState().initialize({ isAuthenticated: true, isEmailVerified: true });
-    useWizardStore.getState().initialize({ isAuthenticated: false, isEmailVerified: false });
+    useWizardStore.getState().initialize({ isAuthenticated: true, isEmailVerified: true, userId: 1 });
+    useWizardStore.getState().initialize({ isAuthenticated: false, isEmailVerified: false, userId: 1 });
 
     expect(useWizardStore.getState()).toMatchObject({ currentStep: 4, startedAuthenticated: true });
+  });
+});
+
+describe("draft ownership", () => {
+  const draft = {
+    currentStep: 4 as const,
+    previewId: "preview-of-user-1",
+    file: { name: "user-1.csv", size: 10, mimeType: "text/csv" },
+    sheets: [sheet(0, "name")],
+  };
+
+  it("discards a restored draft of another user on initialize", () => {
+    useWizardStore.setState({ ...draft, draftOwnerId: 1 });
+
+    useWizardStore.getState().initialize({ isAuthenticated: true, isEmailVerified: true, userId: 2 });
+
+    expect(useWizardStore.getState()).toMatchObject({
+      currentStep: 2,
+      previewId: null,
+      file: null,
+      sheets: [],
+      draftOwnerId: 2,
+    });
+  });
+
+  it("keeps the draft for its owner and binds an unowned one to the signed-in user", () => {
+    useWizardStore.setState({ ...draft, draftOwnerId: 1 });
+    useWizardStore.getState().initialize({ isAuthenticated: true, isEmailVerified: true, userId: 1 });
+    expect(useWizardStore.getState()).toMatchObject({ currentStep: 4, previewId: "preview-of-user-1" });
+
+    useWizardStore.setState({ draftOwnerId: null });
+    useWizardStore.getState().claimDraft(3);
+    expect(useWizardStore.getState()).toMatchObject({ previewId: "preview-of-user-1", draftOwnerId: 3 });
+  });
+
+  it("discards another user's draft when a different user signs in inside the wizard", () => {
+    useWizardStore.setState({ ...draft, _initialized: true, startedAuthenticated: true, draftOwnerId: 1 });
+
+    useWizardStore.getState().claimDraft(2);
+
+    expect(useWizardStore.getState()).toMatchObject({ currentStep: 2, file: null, draftOwnerId: 2 });
+  });
+
+  it("keeps the owner across a reset so the next draft stays bound", () => {
+    useWizardStore.setState({ ...draft, _initialized: true, startedAuthenticated: true, draftOwnerId: 1 });
+
+    useWizardStore.getState().reset();
+
+    expect(useWizardStore.getState()).toMatchObject({ file: null, draftOwnerId: 1 });
   });
 });

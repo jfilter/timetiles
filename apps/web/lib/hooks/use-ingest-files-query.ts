@@ -13,8 +13,8 @@ import { skipToken, useQuery } from "@tanstack/react-query";
 import { fetchCollectionDocs } from "@/lib/api/payload-collection";
 import type { IngestFile } from "@/payload-types";
 
+import { type AccountListInitial, useAccountListScope } from "./account-list-scope";
 import { createActivePollingInterval, QUERY_PRESETS } from "./query-presets";
-import { useAuthState } from "./use-auth-queries";
 
 export const ingestFileKeys = { all: ["ingest-files"] as const };
 
@@ -30,8 +30,8 @@ const hasSettledWithoutBackgroundWork = (file: IngestFile): boolean => {
 export const isIngestFileActive = (file: IngestFile): boolean =>
   !TERMINAL_STATUSES.has(file.status ?? "") && !hasSettledWithoutBackgroundWork(file);
 
-export const useIngestFilesQuery = (initialData?: IngestFile[]) => {
-  const { userId } = useAuthState();
+export const useIngestFilesQuery = (initial?: AccountListInitial<IngestFile>) => {
+  const { userId, initialData } = useAccountListScope(initial);
   return useQuery({
     queryKey: [...ingestFileKeys.all, "user", userId],
     queryFn:
@@ -41,7 +41,7 @@ export const useIngestFilesQuery = (initialData?: IngestFile[]) => {
             fetchCollectionDocs<IngestFile>(
               `/api/ingest-files?sort=-createdAt&limit=200&where[user][equals]=${userId}`
             ),
-    initialData: userId == null ? undefined : initialData,
+    initialData,
     ...QUERY_PRESETS.standard,
     refetchInterval: createActivePollingInterval<IngestFile>(isIngestFileActive, POLL_INTERVAL),
   });

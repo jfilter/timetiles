@@ -6,7 +6,7 @@
  */
 import { describe, expect, it } from "vitest";
 
-import { mapScheduleToEditData } from "@/app/[locale]/(frontend)/ingest/_components/edit-schedule-mapper";
+import { mapScheduleToEditData } from "@/app/[locale]/(frontend)/(app)/ingest/_components/edit-schedule-mapper";
 import type { ScheduledIngest } from "@/payload-types";
 
 const baseSchedule: ScheduledIngest = {
@@ -54,6 +54,32 @@ describe("mapScheduleToEditData", () => {
     const schedule = { ...baseSchedule, dataset: 99 };
     const result = mapScheduleToEditData(schedule);
     expect(result.datasetId).toBe(99);
+  });
+
+  it("carries the saved config of a populated dataset", () => {
+    const plan = { ops: [], columns: [], roles: { title: "headline" }, ambiguityResolution: "strict" };
+    const schedule = {
+      ...baseSchedule,
+      dataset: {
+        id: 99,
+        interpretationPlan: plan,
+        idStrategy: { type: "external", externalIdPath: "uid", duplicateStrategy: "update" },
+        geoFieldDetection: { autoDetect: false },
+      } as unknown as ScheduledIngest["dataset"],
+    };
+
+    const result = mapScheduleToEditData(schedule);
+
+    expect(result.datasetId).toBe(99);
+    expect(result.datasetConfig).toEqual({
+      interpretationPlan: plan,
+      idStrategy: { type: "external", externalIdPath: "uid", duplicateStrategy: "update" },
+      geocodingEnabled: false,
+    });
+  });
+
+  it("has no saved config when the dataset is only an ID", () => {
+    expect(mapScheduleToEditData({ ...baseSchedule, dataset: 99 }).datasetConfig).toBeNull();
   });
 
   it("returns null datasetId when no dataset set", () => {

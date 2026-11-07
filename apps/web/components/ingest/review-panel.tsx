@@ -16,9 +16,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { cn } from "@timetiles/ui/lib/utils";
 import { AlertTriangleIcon, CalendarOffIcon, CheckIcon, MapPinOffIcon, XIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useState } from "react";
+import { useId, useState } from "react";
 
 import { REVIEW_REASONS } from "@/lib/constants/review-reasons";
+import { useErrorMessage } from "@/lib/hooks/use-error-message";
 import { type ApproveIngestJobRequest, useApproveIngestJobMutation } from "@/lib/hooks/use-ingest-approval";
 import type { FormattedJobProgress } from "@/lib/ingest/types/progress-tracking";
 
@@ -85,6 +86,22 @@ const isEndDateOrderReview = (reason: string, details: Record<string, unknown> |
   Boolean(details?.endTimestampPath) &&
   details?.timestampPath == null;
 
+/** Localized explanation of why the import paused; the server's `details.message` is English-only. */
+const reasonDescription = (t: ReturnType<typeof useTranslations>, reason: string, isEndDate: boolean): string => {
+  switch (reason) {
+    case REVIEW_REASONS.NO_TIMESTAMP_DETECTED:
+      return t("reviewMessageNoTimestamp");
+    case REVIEW_REASONS.NO_LOCATION_DETECTED:
+      return t("reviewMessageNoLocation");
+    case REVIEW_REASONS.AMBIGUOUS_COORDINATE_ORDER:
+      return t("reviewMessageCoordinateOrder");
+    case REVIEW_REASONS.AMBIGUOUS_DATE_ORDER:
+      return isEndDate ? t("reviewMessageEndDateOrder") : t("reviewMessageDateOrder");
+    default:
+      return t("reviewRequiredDescription");
+  }
+};
+
 /** Build the approve request for a column/order pick. Kept outside the component to bound its complexity. */
 const buildApproveRequest = (
   ingestJobId: string,
@@ -129,23 +146,28 @@ const ColumnPicker = ({
   placeholder: string;
   value: string;
   onChange: (value: string) => void;
-}) => (
-  <div className="space-y-2">
-    <Label className="text-sm font-medium">{label}</Label>
-    <Select value={value} onValueChange={onChange}>
-      <SelectTrigger className="w-full">
-        <SelectValue placeholder={placeholder} />
-      </SelectTrigger>
-      <SelectContent>
-        {columns.map((col) => (
-          <SelectItem key={col} value={col}>
-            {col}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-  </div>
-);
+}) => {
+  const triggerId = useId();
+  return (
+    <div className="space-y-2">
+      <Label htmlFor={triggerId} className="text-sm font-medium">
+        {label}
+      </Label>
+      <Select value={value} onValueChange={onChange}>
+        <SelectTrigger id={triggerId} className="w-full">
+          <SelectValue placeholder={placeholder} />
+        </SelectTrigger>
+        <SelectContent>
+          {columns.map((col) => (
+            <SelectItem key={col} value={col}>
+              {col}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+};
 
 /** Stats row for threshold-based reviews. */
 const StatRow = ({ label, value }: { label: string; value: string }) => (
@@ -380,6 +402,7 @@ export const ReviewPanel = ({ job, className }: Readonly<ReviewPanelProps>) => {
   const [coordinateOrder, setCoordinateOrder] = useState("");
   const [dateOrder, setDateOrder] = useState("");
   const approveMutation = useApproveIngestJobMutation();
+  const formatError = useErrorMessage();
 
   if (!reason || !config) return null;
 
@@ -422,9 +445,7 @@ export const ReviewPanel = ({ job, className }: Readonly<ReviewPanelProps>) => {
           </div>
           <div>
             <h3 className="text-foreground font-serif text-lg font-semibold">{t("reviewRequired")}</h3>
-            <p className="text-muted-foreground mt-1 text-sm">
-              {(details?.message as string) ?? t("reviewRequiredDescription")}
-            </p>
+            <p className="text-muted-foreground mt-1 text-sm">{reasonDescription(t, reason, isEndDate)}</p>
           </div>
         </div>
 
@@ -447,8 +468,8 @@ export const ReviewPanel = ({ job, className }: Readonly<ReviewPanelProps>) => {
 
         {/* Error message from mutation */}
         {approveMutation.isError && (
-          <div className="bg-destructive/10 text-destructive rounded-sm p-3 text-sm">
-            {approveMutation.error instanceof Error ? approveMutation.error.message : t("approvalFailed")}
+          <div role="alert" className="bg-destructive/10 text-destructive rounded-sm p-3 text-sm">
+            {formatError(approveMutation.error, t("approvalFailed"))}
           </div>
         )}
 

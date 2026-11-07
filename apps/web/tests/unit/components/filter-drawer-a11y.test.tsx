@@ -12,8 +12,8 @@
 
 import { describe, expect, it, vi } from "vitest";
 
-import { FilterPanel } from "../../../app/[locale]/(frontend)/explore/_components/filter-panel";
-import { MobileFilterSheet } from "../../../app/[locale]/(frontend)/explore/_components/mobile-filter-sheet";
+import { FilterPanel } from "../../../app/[locale]/(frontend)/(app)/explore/_components/filter-panel";
+import { MobileFilterSheet } from "../../../app/[locale]/(frontend)/(app)/explore/_components/mobile-filter-sheet";
 import { renderWithProviders, within } from "../../setup/unit/react-render";
 
 describe("FilterPanel", () => {

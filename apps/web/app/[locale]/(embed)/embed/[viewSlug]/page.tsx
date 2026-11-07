@@ -7,8 +7,8 @@
  */
 import { EmbedAttribution } from "@/components/embed/embed-attribution";
 
-import { ExploreContent } from "../../../(frontend)/explore/_components/explore-content";
-import { ExploreViewResolver } from "../../../(frontend)/explore/_components/explore-view-resolver";
+import { ExploreContent } from "../../../(frontend)/(app)/explore/_components/explore-content";
+import { ExploreViewResolver } from "../../../(frontend)/(app)/explore/_components/explore-view-resolver";
 
 interface EmbedViewPageProps {
   readonly params: Promise<{ viewSlug: string }>;

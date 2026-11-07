@@ -10,7 +10,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-libra
 import { NextIntlClientProvider } from "next-intl";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { DeleteAccountModal } from "@/app/[locale]/(frontend)/account/settings/_components/delete-account-modal";
+import { DeleteAccountModal } from "@/app/[locale]/(frontend)/(app)/account/settings/_components/delete-account-modal";
 import type * as HttpError from "@/lib/api/http-error";
 import { accountKeys } from "@/lib/hooks/use-account-mutations";
 import { TEST_CREDENTIALS } from "@/tests/constants/test-credentials";

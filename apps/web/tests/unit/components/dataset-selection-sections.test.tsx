@@ -8,7 +8,7 @@ import {
   DatasetSuggestionBanner,
   SheetDatasetCard,
   SingleSheetDatasetForm,
-} from "@/app/[locale]/(frontend)/ingest/_components/steps/dataset-selection-sections";
+} from "@/app/[locale]/(frontend)/(app)/ingest/_components/steps/dataset-selection-sections";
 import type { ConfigSuggestion, SheetInfo, SheetMapping } from "@/lib/ingest/types/wizard";
 
 import { fireEvent, renderWithProviders, screen } from "../../setup/unit/react-render";

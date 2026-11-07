@@ -4,17 +4,28 @@
  * @module
  * @category Components
  */
+"use client";
+
 import { cn } from "@timetiles/ui/lib/utils";
 import type { LucideIcon } from "lucide-react";
 import { Check } from "lucide-react";
 
-/** Inline error message for form mutations. */
-export const FormError = ({ error }: { error: Error | null }) => {
+import { useErrorMessage } from "@/lib/hooks/use-error-message";
+
+interface FormErrorProps {
+  error: Error | null;
+  /** Form-specific messages per HTTP status, e.g. 401 for a wrong password. */
+  byStatus?: Partial<Record<number, string>>;
+}
+
+/** Inline error message for form mutations, in the UI locale. */
+export const FormError = ({ error, byStatus }: FormErrorProps) => {
+  const formatError = useErrorMessage();
   if (!error) return null;
   // `role="alert"` so the failure is announced, matching packages/ui's ErrorMessage.
   return (
     <div className="bg-destructive/10 text-destructive rounded-md p-3 text-sm" role="alert">
-      {error.message}
+      {formatError(error, { byStatus })}
     </div>
   );
 };
@@ -45,10 +56,9 @@ interface FormSuccessProps {
  *   like "check your email" after registration or password reset.
  */
 export const FormSuccess = ({ show, message, title, description, icon: Icon, className }: FormSuccessProps) => {
-  if (!show) return null;
-
   // Card variant: large centered feedback with icon, title, and description
   if (title) {
+    if (!show) return null;
     const CardIcon = Icon ?? Check;
     return (
       <div className={cn("space-y-4 text-center", className)}>
@@ -61,11 +71,15 @@ export const FormSuccess = ({ show, message, title, description, icon: Icon, cla
     );
   }
 
-  // Inline variant: compact green banner
+  // Inline variant: compact green banner inside a live region that stays mounted, so it is announced
   return (
-    <div className="flex items-center gap-2 rounded-md bg-green-50 p-3 text-sm text-green-700 dark:bg-green-950/30 dark:text-green-300">
-      <Check className="h-4 w-4" />
-      {message}
-    </div>
+    <output className={cn("block empty:my-0", className)}>
+      {show && (
+        <div className="flex items-center gap-2 rounded-md bg-green-50 p-3 text-sm text-green-700 dark:bg-green-950/30 dark:text-green-300">
+          <Check className="h-4 w-4" aria-hidden="true" />
+          {message}
+        </div>
+      )}
+    </output>
   );
 };

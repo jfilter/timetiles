@@ -11,7 +11,7 @@
  */
 "use client";
 
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import type {
   ConfigureIngestRequest,
@@ -22,6 +22,10 @@ import type {
 } from "@/lib/ingest/types/wizard";
 
 import { fetchJson } from "../api/http-error";
+import { catalogsQueryKeys } from "./use-catalogs-query";
+import { dataSourcesKeys } from "./use-data-sources-query";
+import { ingestFileKeys } from "./use-ingest-files-query";
+import { scheduledIngestKeys } from "./use-scheduled-ingest-mutations";
 
 export const previewSchemaUpload = async (formData: FormData): Promise<PreviewSchemaUploadResponse> => {
   return fetchJson<PreviewSchemaUploadResponse>("/api/ingest/preview-schema/upload", {
@@ -60,9 +64,25 @@ export const usePreviewSchemaUrlMutation = () => {
   return useMutation({ mutationFn: previewSchemaUrl });
 };
 
+/** Query groups an ingest configuration writes to: catalogs, datasets, the import and its schedule. */
+const INGEST_CONFIGURE_AFFECTED_KEYS = [
+  catalogsQueryKeys.all,
+  dataSourcesKeys.all,
+  ingestFileKeys.all,
+  scheduledIngestKeys.all,
+] as const;
+
 /**
  * Mutation hook for configuring and starting an ingest.
  */
 export const useIngestConfigureMutation = () => {
-  return useMutation({ mutationFn: ingestConfigure });
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ingestConfigure,
+    onSuccess: () => {
+      for (const queryKey of INGEST_CONFIGURE_AFFECTED_KEYS) {
+        void queryClient.invalidateQueries({ queryKey });
+      }
+    },
+  });
 };

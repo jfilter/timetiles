@@ -14,8 +14,8 @@
  */
 import { describe, expect, it } from "vitest";
 
-import type { ProceedState } from "@/app/[locale]/(frontend)/ingest/_components/wizard-selectors";
-import { canProceedFromStep } from "@/app/[locale]/(frontend)/ingest/_components/wizard-selectors";
+import type { ProceedState } from "@/app/[locale]/(frontend)/(app)/ingest/_components/wizard-selectors";
+import { canProceedFromStep } from "@/app/[locale]/(frontend)/(app)/ingest/_components/wizard-selectors";
 
 const baseState: ProceedState = {
   currentStep: 3,

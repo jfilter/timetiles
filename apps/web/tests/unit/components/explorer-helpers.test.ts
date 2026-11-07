@@ -16,7 +16,7 @@ import {
   getInitialViewState,
   shouldResetGroupBy,
   type TranslateFn,
-} from "../../../app/[locale]/(frontend)/explore/_components/explorer-helpers";
+} from "../../../app/[locale]/(frontend)/(app)/explore/_components/explorer-helpers";
 
 /** Simple passthrough translator that interpolates {key} placeholders */
 const mockT: TranslateFn = (key, values) => {

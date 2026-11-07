@@ -88,7 +88,7 @@ export const ResetPasswordForm = ({ token, onSuccess, onError, className }: Read
         autoComplete="new-password"
       />
 
-      <FormError error={error} />
+      <FormError error={error} byStatus={{ 400: t("resetLinkExpired") }} />
 
       <Button type="submit" className="w-full" disabled={isPending}>
         {isPending ? t("resetting") : t("resetPassword")}

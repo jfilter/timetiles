@@ -11,12 +11,12 @@ import { skipToken, useQuery } from "@tanstack/react-query";
 import { fetchCollectionDocs } from "@/lib/api/payload-collection";
 import type { Scraper, ScraperRepo, ScraperRun } from "@/payload-types";
 
+import { type AccountListInitial, useAccountListScope } from "./account-list-scope";
 import { createActivePollingInterval, QUERY_PRESETS } from "./query-presets";
-import { useAuthState } from "./use-auth-queries";
 import { scraperKeys } from "./use-scraper-mutations";
 
-export const useScraperReposQuery = (initialData?: ScraperRepo[]) => {
-  const { userId } = useAuthState();
+export const useScraperReposQuery = (initial?: AccountListInitial<ScraperRepo>) => {
+  const { userId, initialData } = useAccountListScope(initial);
   return useQuery({
     queryKey: [...scraperKeys.repos, "user", userId],
     queryFn:
@@ -26,15 +26,15 @@ export const useScraperReposQuery = (initialData?: ScraperRepo[]) => {
             fetchCollectionDocs<ScraperRepo>(
               `/api/scraper-repos?sort=-updatedAt&limit=200&where[createdBy][equals]=${userId}`
             ),
-    initialData: userId == null ? undefined : initialData,
+    initialData,
     ...QUERY_PRESETS.standard,
   });
 };
 
 const POLL_INTERVAL = 5000;
 
-export const useScrapersQuery = (repoId?: number, initialData?: Scraper[]) => {
-  const { userId } = useAuthState();
+export const useScrapersQuery = (repoId?: number, initial?: AccountListInitial<Scraper>) => {
+  const { userId, initialData } = useAccountListScope(initial);
   return useQuery({
     queryKey: [...scraperKeys.byRepo(repoId), "user", userId],
     queryFn:
@@ -46,7 +46,7 @@ export const useScrapersQuery = (repoId?: number, initialData?: Scraper[]) => {
               : "/api/scrapers?sort=-updatedAt&limit=200";
             return fetchCollectionDocs<Scraper>(`${url}&where[repoCreatedBy][equals]=${userId}`);
           },
-    initialData: userId == null ? undefined : initialData,
+    initialData,
     ...QUERY_PRESETS.standard,
     refetchInterval: createActivePollingInterval<Scraper>((d) => d.lastRunStatus === "running", POLL_INTERVAL),
   });

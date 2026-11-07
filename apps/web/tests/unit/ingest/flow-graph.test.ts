@@ -14,8 +14,8 @@ import {
   connectionNodeUpdate,
   edgeDeletionNodeUpdate,
   type FlowNode,
-} from "@/app/[locale]/(frontend)/ingest/flow-editor/_components/flow-graph";
-import { serializeFlow } from "@/app/[locale]/(frontend)/ingest/flow-editor/_components/flow-serialization";
+} from "@/app/[locale]/(frontend)/(app)/ingest/flow-editor/_components/flow-graph";
+import { serializeFlow } from "@/app/[locale]/(frontend)/(app)/ingest/flow-editor/_components/flow-serialization";
 import { createEmptyFieldMapping } from "@/lib/ingest/field-mapping-utils";
 import type { TargetFieldNodeData } from "@/lib/ingest/types/flow-mapping";
 import type { IngestTransform } from "@/lib/ingest/types/transforms";

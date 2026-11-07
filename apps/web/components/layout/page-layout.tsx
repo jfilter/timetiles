@@ -20,6 +20,8 @@ interface PageLayoutProps {
   title?: string;
   titleClassName?: string;
   contentClassName?: string;
+  /** Classes of the outer width container. */
+  containerClassName?: string;
   maxWidth?: "sm" | "md" | "lg" | "xl" | "2xl" | "3xl" | "4xl" | "full";
   centered?: boolean;
   showTitle?: boolean;
@@ -30,6 +32,7 @@ export const PageLayout = ({
   title,
   titleClassName = "mb-8 text-center text-4xl font-bold",
   contentClassName = "text-left",
+  containerClassName = "container mx-auto max-w-4xl px-6",
   maxWidth = "3xl",
   centered = true,
   showTitle = true,
@@ -47,7 +50,7 @@ export const PageLayout = ({
 
   return (
     <div className="min-h-screen pt-20 pb-12">
-      <div className="container mx-auto max-w-4xl px-6">
+      <div className={containerClassName}>
         {centered ? (
           <div className="flex justify-center">
             <div className={`w-full ${getMaxWidthClass(maxWidth, maxWidthClasses)}`}>

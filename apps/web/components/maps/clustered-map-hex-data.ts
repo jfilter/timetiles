@@ -72,7 +72,8 @@ export const buildHoverFetchParams = (
   scope?: ViewScope
 ): URLSearchParams => {
   const params = new URLSearchParams();
-  for (const key of ["catalog", "datasets", "startDate", "endDate", "ff", "rf"]) {
+  // Exactly the URL filters the main event queries apply (see useFilters).
+  for (const key of ["datasets", "startDate", "endDate", "ff", "rf"]) {
     const val = pageParams.get(key);
     if (val) params.set(key, val);
   }

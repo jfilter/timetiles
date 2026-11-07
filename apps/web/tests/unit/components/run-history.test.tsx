@@ -7,8 +7,8 @@ import { cleanup, render, screen } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { ScheduleRunHistory } from "@/app/[locale]/(frontend)/account/imports/_components/schedule-run-history";
-import { ScraperRunHistory } from "@/app/[locale]/(frontend)/account/imports/_components/scraper-run-history";
+import { ScheduleRunHistory } from "@/app/[locale]/(frontend)/(app)/account/imports/_components/schedule-run-history";
+import { ScraperRunHistory } from "@/app/[locale]/(frontend)/(app)/account/imports/_components/scraper-run-history";
 
 import de from "../../../messages/de.json";
 import en from "../../../messages/en.json";

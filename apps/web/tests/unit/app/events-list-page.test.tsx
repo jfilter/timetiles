@@ -24,7 +24,7 @@ vi.mock("@/i18n/navigation", () => ({
   ),
 }));
 
-import EventsListPage from "@/app/[locale]/(frontend)/events/page";
+import EventsListPage from "@/app/[locale]/(frontend)/(app)/events/page";
 
 const baseEvent = { eventTimestamp: null, location: null, validationStatus: "valid" };
 

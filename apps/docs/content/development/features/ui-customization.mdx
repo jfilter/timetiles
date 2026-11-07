@@ -25,26 +25,27 @@ TimeTiles implements a six-layer UI customization system documented in ADR 0035.
 
 ### Key Files
 
-| File                                      | Purpose                                                            |
-| ----------------------------------------- | ------------------------------------------------------------------ |
-| `packages/ui/src/themes/cartographic.css` | Cartographic theme (default) — all tokens                          |
-| `packages/ui/src/themes/modern.css`       | Modern theme — scoped to `.theme-modern`                           |
-| `packages/ui/src/styles/globals.css`      | Tailwind setup, imports theme, `@theme inline` bridge              |
-| `packages/ui/src/provider.tsx`            | UIProvider — chart themes, map colors, newsletter, UI texts        |
-| `lib/hooks/use-theme-preset.ts`           | Runtime theme switching via CSS class                              |
-| `lib/constants/theme-presets.ts`          | Shared preset definitions, chart/map colors, initialization script |
-| `app/_components/theme-preset-picker.tsx` | Palette icon UI for theme switching                                |
-| `lib/blocks/registry.ts`                  | Block plugin registry                                              |
-| `lib/blocks/block-style-fields.ts`        | Shared block style field definitions                               |
-| `lib/blocks/*.ts`                         | Individual block definitions                                       |
-| `lib/collections/themes.ts`               | Themes collection (CMS presets)                                    |
-| `lib/collections/layout-templates.ts`     | Layout templates collection                                        |
-| `lib/collections/sites/index.ts`          | Sites with branding + custom code                                  |
-| `lib/context/site-context.tsx`            | Site context with expanded branding types                          |
-| `components/site-branding.tsx`            | CSS custom property injection                                      |
-| `components/block-renderer.tsx`           | Block rendering with style wrapper                                 |
-| `components/layout/layout-shell.tsx`      | Layout template resolution                                         |
-| `lib/utils/css-sanitizer.ts`              | CSS sanitization for injection                                     |
+| File                                         | Purpose                                                            |
+| -------------------------------------------- | ------------------------------------------------------------------ |
+| `packages/ui/src/themes/cartographic.css`    | Cartographic theme (default) — all tokens                          |
+| `packages/ui/src/themes/modern.css`          | Modern theme — scoped to `.theme-modern`                           |
+| `packages/ui/src/styles/globals.css`         | Tailwind setup, imports theme, `@theme inline` bridge              |
+| `packages/ui/src/provider.tsx`               | UIProvider — chart themes, map colors, newsletter, UI texts        |
+| `lib/hooks/use-theme-preset.ts`              | Runtime theme switching via CSS class                              |
+| `lib/constants/theme-presets.ts`             | Shared preset definitions, chart/map colors, initialization script |
+| `app/_components/theme-preset-picker.tsx`    | Palette icon UI for theme switching                                |
+| `lib/blocks/registry.ts`                     | Block plugin registry                                              |
+| `lib/blocks/block-style-fields.ts`           | Shared block style field definitions                               |
+| `lib/blocks/*.ts`                            | Individual block definitions                                       |
+| `lib/collections/themes.ts`                  | Themes collection (CMS presets)                                    |
+| `lib/collections/layout-templates.ts`        | Layout templates collection                                        |
+| `lib/collections/sites/index.ts`             | Sites with branding + custom code                                  |
+| `lib/context/site-context.tsx`               | Site context with expanded branding types                          |
+| `components/site-branding.tsx`               | CSS custom property injection                                      |
+| `components/block-renderer.tsx`              | Block rendering with style wrapper                                 |
+| `lib/services/resolution/layout-resolver.ts` | Layout template resolution                                         |
+| `components/layout/layout-frame.tsx`         | Skip link, header, main landmark and footer per template           |
+| `lib/utils/css-sanitizer.ts`                 | CSS sanitization for injection                                     |
 
 For the full theming API (semantic tokens, UIProvider, dark mode, fonts), see the [UI package documentation](/development/packages/ui).
 
@@ -338,55 +339,40 @@ interface SiteContextValue {
 
 ## Layout Templates
 
+Layout templates frame **CMS pages** only: the home page (`app/[locale]/(frontend)/page.tsx`) and `[slug]` pages. App routes (explore, ingest, account, auth) live in the `(app)` route group, whose layout always renders the route-based header and the full footer — their headers carry route-specific controls and the explore map fills the viewport, so a template would break them.
+
 ### Resolution Logic
 
-Layout templates resolve using a priority chain:
-
 ```typescript
-import {
-  resolveLayoutTemplate,
-  getContentMaxWidthClass,
-  shouldShowHeader,
-  shouldShowFooter,
-  DEFAULT_LAYOUT,
-} from "@/components/layout/layout-shell";
+import { resolveLayoutTemplate } from "@/lib/services/resolution/layout-resolver";
 
-// Resolution: page override > site default > platform default
-const template = resolveLayoutTemplate(pageLayout ?? siteLayout ?? null);
+// page override > site default > platform default (null)
+const layout = await resolveLayoutTemplate(payload, {
+  pageOverride: page.layoutOverride,
+  siteDefault: site?.defaultLayout,
+  user, // null outside Draft Mode, the editor inside it
+  draft: isDraftMode,
+});
 
-// Use in layout
-if (shouldShowHeader(template)) {
-  /* render header */
-}
-if (shouldShowFooter(template)) {
-  /* render footer */
-}
-const widthClass = getContentMaxWidthClass(template.contentMaxWidth);
+return <PageChrome layout={layout}>{content}</PageChrome>;
 ```
 
-### LayoutTemplateConfig
+Candidates are re-read with `overrideAccess: false`, so a template the viewer may not read — an unpublished draft for anonymous visitors — is skipped and the next candidate applies. The live site resolves as an anonymous visitor even for logged-in editors; Draft Mode previews use the editor's access and the latest draft versions.
 
-```typescript
-interface LayoutTemplateConfig {
-  headerVariant: "marketing" | "app" | "minimal" | "none";
-  footerVariant: "full" | "compact" | "none";
-  contentMaxWidth: "sm" | "md" | "lg" | "xl" | "full";
-  stickyHeader: boolean;
-}
-```
+### Variants
 
-### Platform Defaults
+| Setting           | Values                                                                                                  |
+| ----------------- | ------------------------------------------------------------------------------------------------------- |
+| `headerVariant`   | `marketing` (full navigation), `app` (app styling, full navigation), `minimal` (logo link only), `none` |
+| `stickyHeader`    | Sticky (`true`) or scrolling (`false`) header                                                           |
+| `footerVariant`   | `full`, `compact` (Footer global's copyright line), `none`                                              |
+| `contentMaxWidth` | `sm` = `max-w-3xl`, `md` = `max-w-5xl`, `lg` = `max-w-6xl`, `xl` = `max-w-7xl`, `full` = no limit       |
 
-When no layout template is assigned:
+Every CMS page renders a skip link and a `<main id="main-content">` landmark, whatever the header variant.
 
-```typescript
-const DEFAULT_LAYOUT: LayoutTemplateConfig = {
-  headerVariant: "marketing",
-  footerVariant: "full",
-  contentMaxWidth: "lg",
-  stickyHeader: true,
-};
-```
+### Platform Default
+
+Without a template (`null`) a CMS page renders exactly as an unconfigured site: the route-based header (`AdaptiveHeader`), the full footer, and the page's own content width (`PageLayout` for `[slug]` pages, full width for the home page).
 
 ---
 

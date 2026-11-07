@@ -3,7 +3,7 @@
  */
 import { screen } from "@testing-library/react";
 
-import { EventsListPaginated } from "@/app/[locale]/(frontend)/explore/_components/events-list-paginated";
+import { EventsListPaginated } from "@/app/[locale]/(frontend)/(app)/explore/_components/events-list-paginated";
 import type { FilterState } from "@/lib/hooks/use-filters";
 
 import { useEventsInfiniteQuery, useEventsTotalQuery } from "../../../lib/hooks/use-events-list-queries";

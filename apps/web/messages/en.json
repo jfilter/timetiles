@@ -10,6 +10,7 @@
     "signUp": "Sign Up",
     "dashboard": "Dashboard",
     "theme": "Theme",
+    "skipToContent": "Skip to main content",
     "cancel": "Cancel",
     "close": "Close",
     "back": "Back",
@@ -107,7 +108,9 @@
     "resetPassword": "Reset Password",
     "passwordResetSuccess": "Password Reset",
     "passwordResetSuccessMessage": "Your password has been successfully reset. Redirecting you to login...",
-    "goToLogin": "Go to login"
+    "goToLogin": "Go to login",
+    "invalidCredentials": "The email or password is incorrect.",
+    "resetLinkExpired": "This password reset link is invalid or has expired. Please request a new one."
   },
   "VerifyEmail": {
     "pageTitle": "Email Verification",
@@ -408,7 +411,8 @@
     "cannotDeleteSystemUser": "System accounts cannot be deleted.",
     "cannotDeleteAlreadyDeleted": "This account is already deleted.",
     "cannotDeleteLastAdmin": "You are the last administrator and cannot delete your account. Assign another admin first.",
-    "cannotDeleteActiveJobs": "You have active imports running. Please wait for them to finish before deleting your account."
+    "cannotDeleteActiveJobs": "You have active imports running. Please wait for them to finish before deleting your account.",
+    "passwordIncorrect": "The current password is incorrect."
   },
   "DataExport": {
     "title": "Download My Data",
@@ -450,6 +454,7 @@
     "editMode": "Editing",
     "loadingSchedule": "Loading schedule...",
     "failedToLoadSchedule": "Could not load this scheduled import. It may have been deleted or you may not have access.",
+    "scheduleNotEditable": "This scheduled import can't be edited because its catalog no longer exists.",
     "refetchRequired": "Fetch the URL to verify your data source and update field mappings before saving changes.",
     "failedToUpdateSchedule": "Failed to update schedule",
     "stepOfTotal": "Step {current} of {total}",
@@ -829,6 +834,11 @@
     "maxPages": "Max pages",
     "reviewRequired": "Action required",
     "reviewRequiredDescription": "Your import needs attention before it can continue.",
+    "reviewMessageNoTimestamp": "No date or time column was detected in your data.",
+    "reviewMessageNoLocation": "No location, address, or coordinate columns were detected in your data.",
+    "reviewMessageCoordinateOrder": "A single column holds both coordinates, but their order (latitude,longitude vs longitude,latitude) could not be determined. Please confirm the order.",
+    "reviewMessageDateOrder": "A date column was detected, but its order (day/month vs month/day) could not be determined. Please confirm the order.",
+    "reviewMessageEndDateOrder": "An end-date column was detected, but its order (day/month vs month/day) could not be determined. Please confirm the order.",
     "selectTimestampColumn": "Which column contains the date or time?",
     "selectLocationColumn": "Which column contains the location, venue, or address?",
     "totalRows": "Total rows",
@@ -1080,11 +1090,30 @@
     "fundingText": "Funded 2025–2026 by the BMFTR (FKZ 16IS25S03)",
     "bmftrAlt": "Funded by the German Federal Ministry for Research, Technology and Space",
     "openSource": "Open source",
-    "madeIn": "Made in Berlin"
+    "madeIn": "Made in Berlin",
+    "visitUsOn": "Visit us on {platform}"
   },
   "EnvironmentBanner": {
     "staging": "Staging — test environment, data may be reset at any time",
     "preview": "Preview — unreleased build, expect rough edges",
     "development": "Development build"
+  },
+  "Errors": {
+    "unexpected": "Something went wrong. Please try again.",
+    "network": "The server could not be reached. Please check your connection and try again.",
+    "invalidRequest": "The request could not be processed. Please check your input.",
+    "unauthorized": "Please sign in to continue.",
+    "forbidden": "You don't have permission to do this.",
+    "notFound": "This item could not be found. It may have been deleted.",
+    "conflict": "This action conflicts with the current state. Please reload and try again.",
+    "expired": "This link or item has expired.",
+    "tooLarge": "The upload is too large.",
+    "tooManyRequests": "Too many attempts. Please wait a moment and try again.",
+    "serverError": "A server error occurred. Please try again later.",
+    "quotaExceeded": "You have reached your usage limit.",
+    "emailDisabled": "This site cannot send email, so sign-up, password reset and email changes are unavailable. Please contact the site operator.",
+    "passwordTooShort": "Password must be at least {length, plural, one {# character} other {# characters}}.",
+    "passwordTooLong": "Password must be at most {length, plural, one {# character} other {# characters}}.",
+    "passwordCompromised": "This password has appeared in a known data breach. Please choose a different one."
   }
 }

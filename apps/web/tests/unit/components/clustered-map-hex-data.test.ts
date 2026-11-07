@@ -25,7 +25,8 @@ describe("buildHoverFetchParams", () => {
 
     const params = buildHoverFetchParams(pageParams, parentCells, 9.4, bounds, scope);
 
-    expect(params.get("catalog")).toBe("7");
+    // The main event queries ignore `catalog`, so hover must not narrow by it either.
+    expect(params.has("catalog")).toBe(false);
     expect(params.get("datasets")).toBe("10,11");
     expect(params.get("startDate")).toBe("2024-01-01");
     expect(params.get("endDate")).toBe("2024-12-31");

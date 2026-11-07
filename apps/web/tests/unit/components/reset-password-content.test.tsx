@@ -8,7 +8,7 @@ import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { NextIntlClientProvider } from "next-intl";
 import { afterEach, expect, it, vi } from "vitest";
 
-import { ResetPasswordContent } from "@/app/[locale]/(frontend)/reset-password/_components/reset-password-content";
+import { ResetPasswordContent } from "@/app/[locale]/(frontend)/(app)/reset-password/_components/reset-password-content";
 import { TEST_TOKENS } from "@/tests/constants/test-credentials";
 
 import en from "../../../messages/en.json";
