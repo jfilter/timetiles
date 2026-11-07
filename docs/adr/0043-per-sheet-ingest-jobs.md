@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed (2026-11-07). Plan only; nothing below is implemented yet. Open decisions are listed at the end.
+Accepted (2026-11-07). Plan only; nothing below is implemented yet.
 
 ## Context
 
@@ -46,7 +46,7 @@ A new collection `ingest-runs` holds one row per source run:
 | `ingestFile`     | The file that was split into sheets                                     |
 | `expectedSheets` | Number of IngestJobs the dispatch must create                           |
 | `dispatchedAt`   | Set once every child is queued; a run without it is incomplete          |
-| `outcome`        | `pending`, `awaiting_review`, `completed`, `failed`, `partially_failed` |
+| `outcome`        | `pending`, `awaiting_review`, `completed`, `failed`                     |
 | `accountedAt`    | Set once the source bookkeeping has run, so it runs exactly once        |
 
 IngestJobs gain a `run` relation and an integer `generation`. Each child job carries the generation in its input.
@@ -59,10 +59,10 @@ IngestJobs gain a `run` relation and an integer `generation`. Each child job car
 
 `reconcileRun(runId)` derives the file status and the run outcome from the IngestJobs of a run. It runs after every child transition (in the `finally` of `ingest-process` and in `onFail`) and periodically from the maintenance queue. It takes a row lock on the run and is idempotent.
 
-Once every expected sheet is completed, failed or awaiting review, it sets `outcome`. It then runs the source bookkeeping exactly once and sets `accountedAt`:
+Once every expected sheet is completed, failed or awaiting review, it sets `outcome`: `failed` when any sheet failed, even if others completed, otherwise `awaiting_review` when any sheet awaits review, otherwise `completed`. It then runs the source bookkeeping exactly once and sets `accountedAt`:
 
-- **Scheduled:** `lastStatus` stays `running` until the run settles. Success resets `currentRetries`, a review pause leaves it unchanged, and a failed run increments it once, regardless of how many sheets failed. Auto-disable keeps its threshold (`currentRetries > maxRetries`). Empty and unchanged-source runs keep succeeding immediately. A review that resolves later updates that run's history entry without counting it again and without overwriting a newer run's status.
-- **Scheduled feed halt:** while a run of a schedule is `awaiting_review`, `schedule-manager` does not trigger that schedule. The UI shows the schedule as waiting for review. Resolving or discarding the review releases it.
+- **Scheduled:** `lastStatus` stays `running` until the run settles. Success resets `currentRetries`, a review pause leaves it unchanged, and a failed run increments it once, regardless of how many sheets failed. A sheet that fails on every run therefore disables the whole feed and notifies its owner. Auto-disable keeps its threshold (`currentRetries > maxRetries`). Empty and unchanged-source runs keep succeeding immediately. A review that resolves later updates that run's history entry without counting it again and without overwriting a newer run's status.
+- **Scheduled feed halt:** while any sheet of a schedule's run awaits review, `schedule-manager` does not trigger that schedule. The UI shows the schedule as waiting for review. Resolving or discarding the review releases it.
 - **Scraper:** scrape success and import success are separate. `scraper-runs` links its run through `resultFile` and shows the import outcome. Scrape statistics are never incremented per child.
 - **Manual:** the file status follows the run outcome; the existing IngestJob-driven progress UI stays.
 
@@ -74,9 +74,9 @@ A `quota-reservations` table records each `TOTAL_EVENTS` reservation keyed by `(
 
 ### Orphaned jobs
 
-- **Leases.** Every long task stage writes `heartbeatAt` on its IngestJob at least once per batch. A Payload job counts as abandoned when it is `processing`, its IngestJob's `heartbeatAt` is older than the lease (default 15 minutes, configurable), and its generation is still current.
-- **Recovery.** For an abandoned job, the recovery job first runs the snapshot rollback and the quota release of that generation. It then either bumps the generation and requeues the sheet (attempts left) or marks it `FAILED` (budget used up). It never touches a job with a fresh heartbeat, a job waiting for its retry backoff, or a sheet awaiting review.
-- **Mode.** The recovery job starts in report mode: it writes what it would do to a persistent run history and changes nothing. Applying is a separate switch (see open decisions). The existing production job is resolved by this recovery job after the release, not by hand.
+- **Leases.** Every long task stage writes `heartbeatAt` on its IngestJob at least once per batch, geocode-batch included. A Payload job counts as abandoned when it is `processing`, its IngestJob's `heartbeatAt` is older than the lease (default 15 minutes, configurable in the app config), and its generation is still current. The geocoding batch size keeps the rate-limit wait of one batch well below the lease.
+- **Recovery.** For an abandoned job, recovery first runs the snapshot rollback and the quota release of that generation. It then either bumps the generation and requeues the sheet (attempts left) or marks it `FAILED` (budget used up). It never touches a job with a fresh heartbeat, a job waiting for its retry backoff, or a sheet awaiting review.
+- **Report only.** A scheduled recovery job finds abandoned jobs and writes what recovery would do to a persistent run history; it changes nothing. Applying is the documented manual command `timetiles ingest recover`, which prints the same report with counters and changes state only with `--apply`. The existing production job is resolved through this command after the release, not by hand.
 - **Graceful shutdown.** Workers stop claiming new jobs on `SIGTERM` and wait for running tasks up to the container stop timeout. This shrinks the window but does not replace recovery.
 
 ### Idempotency fixes
@@ -109,7 +109,7 @@ Each step ends with `make check-ai`, `make test-ai` and a review round, and is m
 2. `ingest-runs`, generations and transactional dispatch; children run as `ingest-process`; `processSheets` is deleted.
 3. `reconcileRun` with manual, scheduled and scraper bookkeeping, the scheduled feed halt and the reconcile-failed-ingests switch.
 4. Quota reservation ledger.
-5. Heartbeats, the recovery job in report mode, and graceful shutdown.
+5. Heartbeats, the report-only recovery job, `timetiles ingest recover`, and graceful shutdown.
 6. Docs: pipeline architecture pages, the scheduled-import guide (review halt), the operator notes on the recovery job, and an update to ADR 0041's alternatives section.
 
 ## Tests
@@ -127,17 +127,14 @@ Integration tests against real PostgreSQL and Payload, no mocks:
 - Scraper: scrape success with import failure shows both.
 - Every approval resume point starts a new generation and completes.
 - Progress counters reset on retry.
-- Recovery job: live, backing off, paused, crashed and obsolete executions; report mode changes nothing.
-
-## Open decisions
-
-- **Recovery job mode.** Leave it in report mode and recover through a documented manual command (`timetiles ingest recover`), or let it apply automatically once report mode has run cleanly in production.
-- **Partial runs.** Whether a scheduled run with some failed and some completed sheets counts as failed (increments `currentRetries`) or as its own `partially_failed` outcome that does not count toward auto-disable.
-- **Lease length.** 15 minutes covers the slowest batch measured so far only if every batch writes a heartbeat; geocoding against a rate-limited provider may need a longer default.
+- Recovery: live, backing off, paused, crashed and obsolete executions; the scheduled job and the command without `--apply` change nothing.
+- A geocoding batch against a rate-limited provider writes its heartbeat within the lease.
 
 ## Consequences
 
 - Every first import gets the retry behaviour that only resumptions had, and one bad sheet no longer takes its siblings down.
 - The pipeline gains three tables and a reconciliation step; the source workflows shrink to dispatch.
 - Scheduled feeds stop fetching while a review is open, which delays data for feeds whose reviews sit unattended.
+- A sheet that keeps failing disables its whole feed, including the sheets that import fine.
+- Abandoned jobs stay stuck until an operator runs `timetiles ingest recover --apply`.
 - Payload upgrades must recheck task restoration, `onFail` ordering and workflow error handling, on which this design depends.
