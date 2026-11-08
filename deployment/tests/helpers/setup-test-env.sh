@@ -40,6 +40,9 @@ fi
 echo "Creating test .env.production..."
 cp "$DEPLOY_DIR/.env.production.example" "$ENV_FILE"
 
+# The template leaves mail unconfigured and production refuses to start that way.
+echo "EMAIL_DISABLED=true" >> "$ENV_FILE"
+
 # Carry the scraper wiring over from the backup. Bootstrap step 13 writes
 # SCRAPER_RUNNER_URL and SCRAPER_API_KEY into .env.production after the runner
 # is installed; the template has both commented out. Regenerating from the
