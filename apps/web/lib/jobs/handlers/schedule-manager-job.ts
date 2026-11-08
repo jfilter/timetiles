@@ -13,6 +13,7 @@ import type { Payload } from "payload";
 
 import { COLLECTION_NAMES } from "@/lib/constants/ingest-constants";
 import { normalizeIngestErrorMessage } from "@/lib/ingest/error-message";
+import { hasScheduledRunAwaitingReview } from "@/lib/ingest/ingest-runs";
 import { sendScheduledIngestConfigInvalidEmail } from "@/lib/ingest/scheduled-ingest-emails";
 import { claimAndQueueScheduledIngest, isScheduledIngestBusyError } from "@/lib/ingest/trigger-service";
 import type { JobHandlerContext } from "@/lib/jobs/utils/job-context";
@@ -89,6 +90,14 @@ const processScheduledIngest = async (
   // Not a guarantee (stale data), but avoids unnecessary SQL round-trips.
   if (scheduledIngest.lastStatus === "running") {
     logger.info("Skipping scheduled ingest - already running", {
+      scheduledIngestId: scheduledIngest.id,
+      name: scheduledIngest.name,
+    });
+    return false;
+  }
+
+  if (await hasScheduledRunAwaitingReview(payload, scheduledIngest.id)) {
+    logger.info("Skipping scheduled ingest - an earlier run awaits review", {
       scheduledIngestId: scheduledIngest.id,
       name: scheduledIngest.name,
     });

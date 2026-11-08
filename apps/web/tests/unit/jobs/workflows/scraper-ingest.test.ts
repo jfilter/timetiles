@@ -9,24 +9,17 @@ import { scraperIngestWorkflow } from "@/lib/jobs/workflows/scraper-ingest";
 // Extract handler with correct type (WorkflowConfig.handler is a union with string)
 const handler = scraperIngestWorkflow.handler as WorkflowHandler<"scraper-ingest">;
 
-// Mock processSheets so we can verify it's called without running the real pipeline
-vi.mock("@/lib/jobs/workflows/process-sheets", () => ({ processSheets: vi.fn().mockResolvedValue(undefined) }));
-
-// Mock completion helpers (tested separately)
-vi.mock("@/lib/jobs/workflows/completion", () => ({ updateIngestFileStatus: vi.fn().mockResolvedValue(undefined) }));
-
-import { processSheets } from "@/lib/jobs/workflows/process-sheets";
-
 /** Creates a mock tasks object with all task handlers as vi.fn(). */
 const createMockTasks = () => ({
-  "scraper-execution": vi.fn().mockResolvedValue({ ingestFileId: "scraper-file-1", hasOutput: true }),
+  "scraper-execution": vi.fn().mockResolvedValue({ runId: 31, ingestFileId: 64, hasOutput: true }),
   "dataset-detection": vi
     .fn()
     .mockResolvedValue({
       sheetsDetected: 1,
       ingestJobsCreated: 1,
-      sheets: [{ index: 0, ingestJobId: "ij-scrape-1", name: "Sheet1", rowCount: 75 }],
+      sheets: [{ index: 0, ingestJobId: 8, name: "Sheet1", rowCount: 75 }],
     }),
+  "dispatch-ingest-run": vi.fn().mockResolvedValue({ runId: 2, dispatched: true }),
   "analyze-duplicates": vi.fn(),
   "detect-schema": vi.fn(),
   "validate-schema": vi.fn(),
@@ -48,7 +41,7 @@ describe("scraperIngestWorkflow", () => {
 
   // ── 1. Happy path — scraper succeeds, detection, sheets processed ─────
 
-  it("should run scraper, detection, then process sheets on happy path", async () => {
+  it("should run scraper and detection, then dispatch the run linked to the scraper run", async () => {
     await handler({ job: mockJob, tasks: tasks as any, inlineTask: vi.fn() as any, req: {} as any });
 
     // scraper-execution called with correct input
@@ -59,17 +52,11 @@ describe("scraperIngestWorkflow", () => {
 
     // dataset-detection called with ingestFileId from scraper
     expect(tasks["dataset-detection"]).toHaveBeenCalledOnce();
-    expect(tasks["dataset-detection"]).toHaveBeenCalledWith("detect-sheets", {
-      input: { ingestFileId: "scraper-file-1" },
-    });
+    expect(tasks["dataset-detection"]).toHaveBeenCalledWith("detect-sheets", { input: { ingestFileId: "64" } });
 
-    // processSheets called with detected sheets
-    expect(processSheets).toHaveBeenCalledOnce();
-    expect(processSheets).toHaveBeenCalledWith(
-      tasks,
-      [{ index: 0, ingestJobId: "ij-scrape-1", name: "Sheet1", rowCount: 75 }],
-      expect.anything()
-    );
+    expect(tasks["dispatch-ingest-run"]).toHaveBeenCalledExactlyOnceWith("dispatch-sheets", {
+      input: { ingestFileId: 64, source: "scraper", scraperRunId: 31, ingestJobIds: [8] },
+    });
   });
 
   // ── 2. Scraper fails — no detection ───────────────────────────────────
@@ -83,7 +70,7 @@ describe("scraperIngestWorkflow", () => {
 
     expect(tasks["scraper-execution"]).toHaveBeenCalledOnce();
     expect(tasks["dataset-detection"]).not.toHaveBeenCalled();
-    expect(processSheets).not.toHaveBeenCalled();
+    expect(tasks["dispatch-ingest-run"]).not.toHaveBeenCalled();
   });
 
   // ── 3. Scraper succeeds but no ingestFileId (no autoImport) ───────────
@@ -95,7 +82,7 @@ describe("scraperIngestWorkflow", () => {
 
     expect(tasks["scraper-execution"]).toHaveBeenCalledOnce();
     expect(tasks["dataset-detection"]).not.toHaveBeenCalled();
-    expect(processSheets).not.toHaveBeenCalled();
+    expect(tasks["dispatch-ingest-run"]).not.toHaveBeenCalled();
   });
 
   // ── 4. Detection fails — no sheets ────────────────────────────────────
@@ -109,7 +96,7 @@ describe("scraperIngestWorkflow", () => {
 
     expect(tasks["scraper-execution"]).toHaveBeenCalledOnce();
     expect(tasks["dataset-detection"]).toHaveBeenCalledOnce();
-    expect(processSheets).not.toHaveBeenCalled();
+    expect(tasks["dispatch-ingest-run"]).not.toHaveBeenCalled();
   });
 
   // ── 6. Scraper returns numeric ingestFileId — converted to string ─────
@@ -131,6 +118,6 @@ describe("scraperIngestWorkflow", () => {
 
     expect(tasks["scraper-execution"]).toHaveBeenCalledOnce();
     expect(tasks["dataset-detection"]).toHaveBeenCalledOnce();
-    expect(processSheets).not.toHaveBeenCalled();
+    expect(tasks["dispatch-ingest-run"]).not.toHaveBeenCalled();
   });
 });

@@ -18,14 +18,15 @@ export interface FileJobInput extends BaseJobInput {
   input: { ingestFileId: string; catalogId?: string };
 }
 
-// For jobs that operate on import jobs (most pipeline jobs)
+// For jobs that operate on import jobs (most pipeline jobs). `generation` is the
+// IngestJob generation the task was started for; absent on tasks queued without it.
 export interface IngestJobInput extends BaseJobInput {
-  input: { ingestJobId: string | number };
+  input: { ingestJobId: string | number; generation?: number };
 }
 
 // For jobs that process data in batches
 export interface BatchJobInput extends BaseJobInput {
-  input: { ingestJobId: string | number; batchNumber: number };
+  input: { ingestJobId: string | number; generation?: number; batchNumber: number };
 }
 
 // Specific job input types

@@ -3,7 +3,7 @@
  *
  * Triggered by manual scraper run, schedule, or webhook.
  * Executes the scraper, then if auto-import is enabled, runs
- * dataset-detection and processes all sheets in parallel.
+ * dataset-detection and dispatches one `ingest-process` job per sheet.
  *
  * @module
  * @category Jobs
@@ -13,8 +13,7 @@ import type { WorkflowConfig } from "payload";
 import { logger } from "@/lib/logger";
 
 import type { DatasetDetectionOutput, ScraperExecutionOutput } from "../types/task-outputs";
-import { updateIngestFileStatus } from "./completion";
-import { processSheets } from "./process-sheets";
+import { dispatchSheets } from "./dispatch";
 
 export const scraperIngestWorkflow: WorkflowConfig<"scraper-ingest"> = {
   slug: "scraper-ingest",
@@ -25,7 +24,7 @@ export const scraperIngestWorkflow: WorkflowConfig<"scraper-ingest"> = {
     { name: "triggeredBy", type: "text", required: true },
   ],
   concurrency: ({ input }) => `ingest:scraper:${input.scraperId}`,
-  handler: async ({ job, tasks, req }) => {
+  handler: async ({ job, tasks }) => {
     const { scraperId, triggeredBy } = job.input;
     logger.info("scraper-ingest workflow started", { scraperId, triggeredBy });
 
@@ -59,9 +58,11 @@ export const scraperIngestWorkflow: WorkflowConfig<"scraper-ingest"> = {
       return;
     }
 
-    await processSheets(tasks, detection.sheets, req);
-    await updateIngestFileStatus(req.payload, detection.sheets);
-
-    logger.info("scraper-ingest workflow completed", { scraperId });
+    await dispatchSheets(tasks, detection.sheets, {
+      ingestFileId: Number(scraperResult.ingestFileId),
+      source: "scraper",
+      scraperRunId: scraperResult.runId,
+    });
+    logger.info("scraper-ingest: sheets dispatched", { scraperId });
   },
 };

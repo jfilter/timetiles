@@ -16,6 +16,8 @@
 import type { Payload } from "payload";
 
 import { COLLECTION_NAMES, PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
+import { hasUnsettledScheduledRun } from "@/lib/ingest/ingest-runs";
+import { getReviewReason } from "@/lib/jobs/utils/reconcile-run";
 import { failIngestJob } from "@/lib/jobs/utils/resource-loading";
 import { logError, logger } from "@/lib/logger";
 import { hasActivePayloadJob } from "@/lib/services/payload-job-queries";
@@ -93,11 +95,6 @@ interface UnreconciledOutcome {
   duration: number;
   reason: string;
 }
-
-const getReviewReason = (reviewJob: { reviewReason?: unknown }): string =>
-  typeof reviewJob.reviewReason === "string" && reviewJob.reviewReason.length > 0
-    ? reviewJob.reviewReason
-    : "manual review required";
 
 /**
  * Reconstruct the outcome of a run that finished but never got its status written.
@@ -351,6 +348,16 @@ const processStuckImport = async (
   const isActive = await hasActivePayloadJob(payload, "input.scheduledIngestId", scheduledIngest.id);
   if (isActive) {
     logger.info("Scheduled ingest appears stuck but has active Payload job, skipping reset", {
+      scheduledIngestId: scheduledIngest.id,
+      name: scheduledIngest.name,
+      stuckMinutes,
+    });
+    return "active";
+  }
+
+  // A dispatched run settles through reconcileRun; its sheets have their own recovery.
+  if (await hasUnsettledScheduledRun(payload, scheduledIngest.id)) {
+    logger.info("Scheduled ingest has an unsettled ingest run, leaving it alone", {
       scheduledIngestId: scheduledIngest.id,
       name: scheduledIngest.name,
       stuckMinutes,

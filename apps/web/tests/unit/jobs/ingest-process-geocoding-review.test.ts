@@ -13,10 +13,15 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ingestProcessWorkflow } from "@/lib/jobs/workflows/ingest-process";
 
-// Mock completion helpers (tested separately)
-vi.mock("@/lib/jobs/workflows/completion", () => ({
-  updateIngestFileStatusForJob: vi.fn().mockResolvedValue(undefined),
+// Run reconciliation is covered by its own tests.
+vi.mock("@/lib/jobs/utils/reconcile-run", () => ({
+  reconcileAfterJobTransition: vi.fn().mockResolvedValue(undefined),
 }));
+
+/** A request whose IngestJob is current at generation 0 and awaits its resumption. */
+const currentJobReq = () => ({
+  payload: { findByID: vi.fn().mockResolvedValue({ id: 1, generation: 0, stage: "needs-review" }) },
+});
 
 // Extract handler with correct type
 const handler = ingestProcessWorkflow.handler as WorkflowHandler<"ingest-process">;
@@ -47,7 +52,7 @@ describe("ingest-process: geocoding review bypass", () => {
   it("should NOT call create-events when geocode-batch returns needsReview: true", async () => {
     tasks["geocode-batch"].mockResolvedValueOnce({ needsReview: true, geocoded: 10, failed: 5 });
 
-    await handler({ job: mockJob, tasks: tasks as any, inlineTask: vi.fn() as any, req: {} as any });
+    await handler({ job: mockJob, tasks: tasks as any, inlineTask: vi.fn() as any, req: currentJobReq() as any });
 
     expect(tasks["create-schema-version"]).toHaveBeenCalledOnce();
     expect(tasks["geocode-batch"]).toHaveBeenCalledOnce();
@@ -58,7 +63,7 @@ describe("ingest-process: geocoding review bypass", () => {
   it("should call create-events when geocode-batch returns needsReview: false", async () => {
     tasks["geocode-batch"].mockResolvedValueOnce({ needsReview: false, geocoded: 50, failed: 0 });
 
-    await handler({ job: mockJob, tasks: tasks as any, inlineTask: vi.fn() as any, req: {} as any });
+    await handler({ job: mockJob, tasks: tasks as any, inlineTask: vi.fn() as any, req: currentJobReq() as any });
 
     expect(tasks["create-schema-version"]).toHaveBeenCalledOnce();
     expect(tasks["geocode-batch"]).toHaveBeenCalledOnce();
@@ -68,7 +73,7 @@ describe("ingest-process: geocoding review bypass", () => {
   it("should call create-events when geocode-batch returns no needsReview field", async () => {
     tasks["geocode-batch"].mockResolvedValueOnce({ geocoded: 50, failed: 0 });
 
-    await handler({ job: mockJob, tasks: tasks as any, inlineTask: vi.fn() as any, req: {} as any });
+    await handler({ job: mockJob, tasks: tasks as any, inlineTask: vi.fn() as any, req: currentJobReq() as any });
 
     expect(tasks["create-schema-version"]).toHaveBeenCalledOnce();
     expect(tasks["geocode-batch"]).toHaveBeenCalledOnce();
@@ -80,7 +85,7 @@ describe("ingest-process: geocoding review bypass", () => {
     tasks["detect-schema"].mockResolvedValueOnce({});
     tasks["validate-schema"].mockResolvedValueOnce({ needsReview: true });
 
-    await handler({ job: mockJob, tasks: tasks as any, inlineTask: vi.fn() as any, req: {} as any });
+    await handler({ job: mockJob, tasks: tasks as any, inlineTask: vi.fn() as any, req: currentJobReq() as any });
 
     expect(tasks["detect-schema"]).toHaveBeenCalledOnce();
     expect(tasks["validate-schema"]).toHaveBeenCalledOnce();
@@ -93,7 +98,7 @@ describe("ingest-process: geocoding review bypass", () => {
   it("should skip geocode and schema-version when resumeFrom is create-events", async () => {
     mockJob.input = { ingestJobId: "ij-geo-3", resumeFrom: "create-events" };
 
-    await handler({ job: mockJob, tasks: tasks as any, inlineTask: vi.fn() as any, req: {} as any });
+    await handler({ job: mockJob, tasks: tasks as any, inlineTask: vi.fn() as any, req: currentJobReq() as any });
 
     expect(tasks["create-schema-version"]).not.toHaveBeenCalled();
     expect(tasks["geocode-batch"]).not.toHaveBeenCalled();

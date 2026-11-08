@@ -35,7 +35,10 @@ const isNotFoundError = (error: unknown): boolean =>
  * participating in an ongoing transaction — callers can pass a slim literal
  * or a full PayloadRequest.
  */
-type PartialReq = { transactionID?: number | string | Promise<number | string>; context?: Record<string, unknown> };
+export type PartialReq = {
+  transactionID?: number | string | Promise<number | string>;
+  context?: Record<string, unknown>;
+};
 
 /**
  * Loads scheduled ingest configuration.
@@ -75,14 +78,19 @@ export const loadScheduledIngestConfig = async (
  */
 export const loadScheduledIngestForLifecycle = async (
   payload: Payload,
-  scheduledIngestId: number | undefined
+  scheduledIngestId: number | undefined,
+  req?: PartialReq
 ): Promise<ScheduledIngest | null> => {
   if (!scheduledIngestId) {
     return null;
   }
 
   try {
-    return await asSystem(payload).findByID({ collection: COLLECTION_NAMES.SCHEDULED_INGESTS, id: scheduledIngestId });
+    return await asSystem(payload).findByID({
+      collection: COLLECTION_NAMES.SCHEDULED_INGESTS,
+      id: scheduledIngestId,
+      ...(req ? { req } : {}),
+    });
   } catch (error) {
     logError(error, "Failed to load scheduled ingest for lifecycle update", { scheduledIngestId });
 
@@ -98,6 +106,32 @@ export const loadScheduledIngestForLifecycle = async (
 /** An ingest file id, absent when a run produced no file (an empty source). */
 type OptionalIngestFileId = number | string | undefined;
 
+type HistoryEntry = NonNullable<ScheduledIngest["executionHistory"]>[number];
+
+/** Options of a counted run outcome. `amend` replaces the run's earlier (paused) entry. */
+type RunUpdateOptions = { req?: PartialReq; amend?: boolean };
+
+/**
+ * Place a run's history entry: new runs go first (keeping the last 10), an amended run
+ * replaces its own entry. `isNewest` decides whether the schedule's last status follows;
+ * an amended run never takes it over from a newer run that is still running.
+ */
+const placeHistoryEntry = (
+  scheduledIngest: ScheduledIngest,
+  entry: HistoryEntry,
+  amend: boolean
+): { executionHistory: HistoryEntry[]; isNewest: boolean } => {
+  const executionHistory = [...(scheduledIngest.executionHistory ?? [])];
+  if (!amend) {
+    executionHistory.unshift(entry);
+    return { executionHistory: executionHistory.slice(0, 10), isNewest: true };
+  }
+  const index = executionHistory.findIndex((existing) => entry.jobId != null && existing.jobId === entry.jobId);
+  const existing = executionHistory[index];
+  if (existing) executionHistory[index] = { ...existing, ...entry, executedAt: existing.executedAt };
+  return { executionHistory, isNewest: index === 0 && scheduledIngest.lastStatus !== "running" };
+};
+
 /**
  * Updates scheduled ingest status on successful execution.
  */
@@ -105,37 +139,36 @@ export const updateScheduledIngestSuccess = async (
   payload: Payload,
   scheduledIngest: ScheduledIngest,
   importFileId: OptionalIngestFileId,
-  duration: number
+  duration: number,
+  { req, amend = false }: RunUpdateOptions = {}
 ): Promise<void> => {
   try {
     const stats = resolveScheduledIngestStats(scheduledIngest.statistics);
     const updatedStats = recordScheduledIngestSuccess(stats, duration);
-
-    // Update execution history
-    const executionHistory = scheduledIngest.executionHistory ?? [];
-    executionHistory.unshift({
-      executedAt: new Date().toISOString(),
-      status: "success",
-      jobId: importFileId?.toString(),
-      duration,
-    });
-
-    // Keep only last 10 executions
-    if (executionHistory.length > 10) {
-      executionHistory.splice(10);
-    }
+    const { executionHistory, isNewest } = placeHistoryEntry(
+      scheduledIngest,
+      {
+        executedAt: new Date().toISOString(),
+        status: "success",
+        jobId: importFileId?.toString(),
+        duration,
+        error: null,
+      },
+      amend
+    );
 
     await payload.update({
       collection: COLLECTION_NAMES.SCHEDULED_INGESTS,
       id: scheduledIngest.id,
       data: {
-        lastRun: new Date().toISOString(),
-        lastStatus: "success", // CRITICAL: Reset from "running" to "success"
-        lastError: null,
+        // CRITICAL: a new run resets lastStatus from "running" to "success"
+        ...(isNewest ? { lastStatus: "success" as const, lastError: null } : {}),
+        ...(amend ? {} : { lastRun: new Date().toISOString() }),
         currentRetries: 0,
         executionHistory,
         statistics: updatedStats,
       },
+      ...(req ? { req } : {}),
     });
   } catch (error) {
     logError(error, "Failed to update scheduled ingest success status", { scheduledIngestId: scheduledIngest.id });
@@ -156,7 +189,8 @@ export const updateScheduledIngestPaused = async (
   scheduledIngest: ScheduledIngest,
   importFileId: OptionalIngestFileId,
   duration: number,
-  reason: string
+  reason: string,
+  req?: PartialReq
 ): Promise<void> => {
   try {
     const executionHistory = scheduledIngest.executionHistory ?? [];
@@ -176,11 +210,42 @@ export const updateScheduledIngestPaused = async (
       collection: COLLECTION_NAMES.SCHEDULED_INGESTS,
       id: scheduledIngest.id,
       data: { lastRun: new Date().toISOString(), lastStatus: "paused", lastError: reason, executionHistory },
+      ...(req ? { req } : {}),
     });
   } catch (error) {
     logError(error, "Failed to update scheduled ingest paused status", { scheduledIngestId: scheduledIngest.id });
     throw error;
   }
+};
+
+/** Status of one entry in a schedule's execution history. */
+export type ScheduledRunStatus = "success" | "paused" | "failed";
+
+/**
+ * Rewrite the history entry of an already counted run whose outcome changed later,
+ * e.g. a retried sheet. Counters stay untouched; `lastStatus` follows only when
+ * that run is still the newest entry and no newer run is running.
+ */
+export const amendScheduledIngestRun = async (
+  payload: Payload,
+  scheduledIngest: ScheduledIngest,
+  ingestFileId: number | string,
+  status: ScheduledRunStatus,
+  error: string | null,
+  req?: PartialReq
+): Promise<void> => {
+  const executionHistory = [...(scheduledIngest.executionHistory ?? [])];
+  const index = executionHistory.findIndex((entry) => entry.jobId === String(ingestFileId));
+  const entry = executionHistory[index];
+  if (!entry) return;
+  executionHistory[index] = { ...entry, status, error };
+  const isNewest = index === 0 && scheduledIngest.lastStatus !== "running";
+  await payload.update({
+    collection: COLLECTION_NAMES.SCHEDULED_INGESTS,
+    id: scheduledIngest.id,
+    data: { executionHistory, ...(isNewest ? { lastStatus: status, lastError: error } : {}) },
+    ...(req ? { req } : {}),
+  });
 };
 
 /**
@@ -246,7 +311,7 @@ export const updateScheduledIngestFailure = async (
   payload: Payload,
   scheduledIngest: ScheduledIngest,
   error: Error,
-  req?: PartialReq
+  { req, ingestFileId, amend = false }: RunUpdateOptions & { ingestFileId?: OptionalIngestFileId } = {}
 ): Promise<void> => {
   try {
     const stats = resolveScheduledIngestStats(scheduledIngest.statistics);
@@ -258,22 +323,19 @@ export const updateScheduledIngestFailure = async (
     const retriesExhausted = currentRetries > maxRetries;
     const retryBudgetJustExhausted = previousRetries <= maxRetries && retriesExhausted;
 
-    // Update execution history
-    const executionHistory = [...(scheduledIngest.executionHistory ?? [])];
-    executionHistory.unshift({ executedAt: new Date().toISOString(), status: "failed", error: error.message });
-
-    // Keep only last 10 executions
-    if (executionHistory.length > 10) {
-      executionHistory.splice(10);
-    }
+    const { executionHistory, isNewest } = placeHistoryEntry(
+      scheduledIngest,
+      { executedAt: new Date().toISOString(), status: "failed", jobId: ingestFileId?.toString(), error: error.message },
+      amend
+    );
 
     await payload.update({
       collection: COLLECTION_NAMES.SCHEDULED_INGESTS,
       id: scheduledIngest.id,
       data: {
-        lastRun: new Date().toISOString(),
-        lastStatus: "failed", // CRITICAL: Reset from "running" to "failed"
-        lastError: error.message,
+        // CRITICAL: a new run resets lastStatus from "running" to "failed"
+        ...(isNewest ? { lastStatus: "failed" as const, lastError: error.message } : {}),
+        ...(amend ? {} : { lastRun: new Date().toISOString() }),
         currentRetries,
         executionHistory,
         statistics: updatedStats,

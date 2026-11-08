@@ -155,6 +155,12 @@ describe("getAppConfig", () => {
     });
   });
 
+  describe("ingest defaults", () => {
+    it("leaseMinutes defaults to 15", () => {
+      expect(getAppConfig().ingest.leaseMinutes).toBe(15);
+    });
+  });
+
   describe("cache defaults", () => {
     it("urlFetch.defaultTtlSeconds defaults to 3600", () => {
       const config = getAppConfig();
@@ -271,6 +277,14 @@ account:
       expect(config.account.deletionGracePeriodDays).toBe(7);
     });
 
+    it("YAML ingest lease override merges with defaults", () => {
+      existsSyncSpy.mockReturnValue(true);
+      readFileSyncSpy.mockReturnValue(JSON.stringify({ ingest: { leaseMinutes: 30 } }));
+      resetAppConfig();
+
+      expect(getAppConfig().ingest.leaseMinutes).toBe(30);
+    });
+
     it("YAML batch sizes can be partially overridden", () => {
       existsSyncSpy.mockReturnValue(true);
       readFileSyncSpy.mockReturnValue(`
@@ -289,6 +303,20 @@ batchSizes:
   });
 
   describe("YAML validation (strict mode)", () => {
+    it.each([4, 7.5])("rejects ingest lease of %s minutes", (leaseMinutes) => {
+      existsSyncSpy.mockReturnValue(true);
+      readFileSyncSpy.mockReturnValue(JSON.stringify({ ingest: { leaseMinutes } }));
+
+      expect(() => getAppConfig()).toThrow();
+    });
+
+    it("accepts the shortest ingest lease of five minutes", () => {
+      existsSyncSpy.mockReturnValue(true);
+      readFileSyncSpy.mockReturnValue(JSON.stringify({ ingest: { leaseMinutes: 5 } }));
+
+      expect(getAppConfig().ingest.leaseMinutes).toBe(5);
+    });
+
     it.each([-2, -1, 0])("rejects unsupported file-size quota %s", (maxFileSizeMB) => {
       existsSyncSpy.mockReturnValue(true);
       readFileSyncSpy.mockReturnValue(JSON.stringify({ quotas: { "2": { maxFileSizeMB } } }));

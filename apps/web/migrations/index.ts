@@ -82,6 +82,9 @@ import * as migration_20261020_120000_cluster_events_cluster_cells from './20261
 import * as migration_20261026_173346_payload_3_92 from './20261026_173346_payload_3_92';
 import * as migration_20261028_192009_drop_duplicate_events_gin_index from './20261028_192009_drop_duplicate_events_gin_index';
 import * as migration_20261028_200000_pg_functions_tag_path_prefilter from './20261028_200000_pg_functions_tag_path_prefilter';
+import * as migration_20261107_220930_ingest_runs from './20261107_220930_ingest_runs';
+import * as migration_20261107_233852_quota_reservations from './20261107_233852_quota_reservations';
+import * as migration_20261108_001824_ingest_recovery from './20261108_001824_ingest_recovery';
 
 export const migrations = [
   {
@@ -503,5 +506,20 @@ export const migrations = [
     up: migration_20261028_200000_pg_functions_tag_path_prefilter.up,
     down: migration_20261028_200000_pg_functions_tag_path_prefilter.down,
     name: '20261028_200000_pg_functions_tag_path_prefilter',
+  },
+  {
+    up: migration_20261107_220930_ingest_runs.up,
+    down: migration_20261107_220930_ingest_runs.down,
+    name: '20261107_220930_ingest_runs',
+  },
+  {
+    up: migration_20261107_233852_quota_reservations.up,
+    down: migration_20261107_233852_quota_reservations.down,
+    name: '20261107_233852_quota_reservations',
+  },
+  {
+    up: migration_20261108_001824_ingest_recovery.up,
+    down: migration_20261108_001824_ingest_recovery.down,
+    name: '20261108_001824_ingest_recovery'
   },
 ];

@@ -123,6 +123,18 @@ export const enum__ingest_jobs_v_version_stage = db_schema.enum(
     "failed",
   ],
 );
+export const enum_ingest_runs_source = db_schema.enum(
+  "enum_ingest_runs_source",
+  ["manual", "scheduled", "scraper"],
+);
+export const enum_ingest_runs_outcome = db_schema.enum(
+  "enum_ingest_runs_outcome",
+  ["pending", "awaiting_review", "completed", "failed"],
+);
+export const enum_ingest_recovery_runs_mode = db_schema.enum(
+  "enum_ingest_recovery_runs_mode",
+  ["report", "apply"],
+);
 export const enum_scheduled_ingests_execution_history_status = db_schema.enum(
   "enum_scheduled_ingests_execution_history_status",
   ["success", "failed", "paused"],
@@ -233,6 +245,10 @@ export const enum_scraper_runs_status = db_schema.enum(
 export const enum_scraper_runs_triggered_by = db_schema.enum(
   "enum_scraper_runs_triggered_by",
   ["schedule", "manual", "webhook"],
+);
+export const enum_scraper_runs_import_outcome = db_schema.enum(
+  "enum_scraper_runs_import_outcome",
+  ["pending", "awaiting_review", "completed", "failed"],
 );
 export const enum_events_coordinate_source_type = db_schema.enum(
   "enum_events_coordinate_source_type",
@@ -816,6 +832,7 @@ export const enum_payload_jobs_log_task_slug = db_schema.enum(
   [
     "inline",
     "dataset-detection",
+    "dispatch-ingest-run",
     "detect-schema",
     "analyze-duplicates",
     "validate-schema",
@@ -825,6 +842,8 @@ export const enum_payload_jobs_log_task_slug = db_schema.enum(
     "url-fetch",
     "schedule-manager",
     "cleanup-stuck-scheduled-ingests",
+    "reconcile-ingest-runs",
+    "ingest-recovery",
     "cleanup-stuck-scrapers",
     "quota-reset",
     "rate-limit-cleanup",
@@ -855,6 +874,7 @@ export const enum_payload_jobs_task_slug = db_schema.enum(
   [
     "inline",
     "dataset-detection",
+    "dispatch-ingest-run",
     "detect-schema",
     "analyze-duplicates",
     "validate-schema",
@@ -864,6 +884,8 @@ export const enum_payload_jobs_task_slug = db_schema.enum(
     "url-fetch",
     "schedule-manager",
     "cleanup-stuck-scheduled-ingests",
+    "reconcile-ingest-runs",
+    "ingest-recovery",
     "cleanup-stuck-scrapers",
     "quota-reset",
     "rate-limit-cleanup",
@@ -2378,6 +2400,13 @@ export const ingest_jobs = db_schema.table(
         onDelete: "set null",
       }),
     sheetIndex: numeric("sheet_index", { mode: "number" }),
+    run: integer("run_id").references((): AnyPgColumn => ingest_runs.id, {
+      onDelete: "set null",
+    }),
+    generation: numeric("generation", { mode: "number" }).default(0),
+    recoveryAttempts: numeric("recovery_attempts", { mode: "number" }).default(
+      0,
+    ),
     stage: enum_ingest_jobs_stage("stage")
       .notNull()
       .default("analyze-duplicates"),
@@ -2468,6 +2497,7 @@ export const ingest_jobs = db_schema.table(
   (columns) => [
     index("ingest_jobs_ingest_file_idx").on(columns.ingestFile),
     index("ingest_jobs_dataset_idx").on(columns.dataset),
+    index("ingest_jobs_run_idx").on(columns.run),
     index("ingest_jobs_schema_validation_schema_validation_approved_idx").on(
       columns.schemaValidation_approvedBy,
     ),
@@ -2519,6 +2549,15 @@ export const _ingest_jobs_v = db_schema.table(
         onDelete: "set null",
       }),
     version_sheetIndex: numeric("version_sheet_index", { mode: "number" }),
+    version_run: integer("version_run_id").references((): AnyPgColumn => ingest_runs.id, {
+      onDelete: "set null",
+    }),
+    version_generation: numeric("version_generation", {
+      mode: "number",
+    }).default(0),
+    version_recoveryAttempts: numeric("version_recovery_attempts", {
+      mode: "number",
+    }).default(0),
     version_stage: enum__ingest_jobs_v_version_stage("version_stage")
       .notNull()
       .default("analyze-duplicates"),
@@ -2632,6 +2671,7 @@ export const _ingest_jobs_v = db_schema.table(
     index("_ingest_jobs_v_version_version_dataset_idx").on(
       columns.version_dataset,
     ),
+    index("_ingest_jobs_v_version_version_run_idx").on(columns.version_run),
     index("_ingest_jobs_v_version_schema_validation_version_schema__idx").on(
       columns.version_schemaValidation_approvedBy,
     ),
@@ -2649,6 +2689,134 @@ export const _ingest_jobs_v = db_schema.table(
     ),
     index("_ingest_jobs_v_created_at_idx").on(columns.createdAt),
     index("_ingest_jobs_v_updated_at_idx").on(columns.updatedAt),
+  ],
+);
+
+export const ingest_runs = db_schema.table(
+  "ingest_runs",
+  {
+    id: serial("id").primaryKey(),
+    source: enum_ingest_runs_source("source").notNull(),
+    ingestFile: integer("ingest_file_id").references((): AnyPgColumn => ingest_files.id, {
+      onDelete: "set null",
+    }),
+    scheduledIngest: integer("scheduled_ingest_id").references((): AnyPgColumn => scheduled_ingests.id,
+      {
+        onDelete: "set null",
+      },
+    ),
+    scraperRun: integer("scraper_run_id").references((): AnyPgColumn => scraper_runs.id, {
+      onDelete: "set null",
+    }),
+    expectedSheets: numeric("expected_sheets", { mode: "number" }).notNull(),
+    dispatchedAt: timestamp("dispatched_at", {
+      mode: "string",
+      withTimezone: true,
+      precision: 3,
+    }),
+    outcome: enum_ingest_runs_outcome("outcome").notNull().default("pending"),
+    accountedAt: timestamp("accounted_at", {
+      mode: "string",
+      withTimezone: true,
+      precision: 3,
+    }),
+    countedAt: timestamp("counted_at", {
+      mode: "string",
+      withTimezone: true,
+      precision: 3,
+    }),
+    updatedAt: timestamp("updated_at", {
+      mode: "string",
+      withTimezone: true,
+      precision: 3,
+    })
+      .defaultNow()
+      .notNull(),
+    createdAt: timestamp("created_at", {
+      mode: "string",
+      withTimezone: true,
+      precision: 3,
+    })
+      .defaultNow()
+      .notNull(),
+  },
+  (columns) => [
+    uniqueIndex("ingest_runs_ingest_file_idx").on(columns.ingestFile),
+    index("ingest_runs_scheduled_ingest_idx").on(columns.scheduledIngest),
+    index("ingest_runs_scraper_run_idx").on(columns.scraperRun),
+    index("ingest_runs_outcome_idx").on(columns.outcome),
+    index("ingest_runs_updated_at_idx").on(columns.updatedAt),
+    index("ingest_runs_created_at_idx").on(columns.createdAt),
+  ],
+);
+
+export const ingest_recovery_runs = db_schema.table(
+  "ingest_recovery_runs",
+  {
+    id: serial("id").primaryKey(),
+    mode: enum_ingest_recovery_runs_mode("mode").notNull(),
+    found: numeric("found", { mode: "number" }).notNull(),
+    applied: numeric("applied", { mode: "number" }).notNull(),
+    skipped: numeric("skipped", { mode: "number" }).notNull(),
+    findings: jsonb("findings").notNull(),
+    updatedAt: timestamp("updated_at", {
+      mode: "string",
+      withTimezone: true,
+      precision: 3,
+    })
+      .defaultNow()
+      .notNull(),
+    createdAt: timestamp("created_at", {
+      mode: "string",
+      withTimezone: true,
+      precision: 3,
+    })
+      .defaultNow()
+      .notNull(),
+  },
+  (columns) => [
+    index("ingest_recovery_runs_updated_at_idx").on(columns.updatedAt),
+    index("ingest_recovery_runs_created_at_idx").on(columns.createdAt),
+  ],
+);
+
+export const quota_reservations = db_schema.table(
+  "quota_reservations",
+  {
+    id: serial("id").primaryKey(),
+    ingestJob: integer("ingest_job_id").references((): AnyPgColumn => ingest_jobs.id, {
+      onDelete: "set null",
+    }),
+    generation: numeric("generation", { mode: "number" }).notNull(),
+    user: integer("user_id").references((): AnyPgColumn => users.id, {
+      onDelete: "set null",
+    }),
+    amount: numeric("amount", { mode: "number" }).notNull(),
+    settled: boolean("settled").notNull().default(false),
+    updatedAt: timestamp("updated_at", {
+      mode: "string",
+      withTimezone: true,
+      precision: 3,
+    })
+      .defaultNow()
+      .notNull(),
+    createdAt: timestamp("created_at", {
+      mode: "string",
+      withTimezone: true,
+      precision: 3,
+    })
+      .defaultNow()
+      .notNull(),
+  },
+  (columns) => [
+    index("quota_reservations_ingest_job_idx").on(columns.ingestJob),
+    index("quota_reservations_user_idx").on(columns.user),
+    index("quota_reservations_updated_at_idx").on(columns.updatedAt),
+    index("quota_reservations_created_at_idx").on(columns.createdAt),
+    uniqueIndex("ingestJob_generation_idx").on(
+      columns.ingestJob,
+      columns.generation,
+    ),
   ],
 );
 
@@ -3541,6 +3709,7 @@ export const scraper_runs = db_schema.table(
     stdout: varchar("stdout"),
     stderr: varchar("stderr"),
     error: varchar("error"),
+    importOutcome: enum_scraper_runs_import_outcome("import_outcome"),
     outputRows: numeric("output_rows", { mode: "number" }),
     outputBytes: numeric("output_bytes", { mode: "number" }),
     resultFile: integer("result_file_id").references((): AnyPgColumn => ingest_files.id, {
@@ -7699,6 +7868,9 @@ export const payload_locked_documents_rels = db_schema.table(
     "audit-logID": integer("audit_log_id"),
     "ingest-filesID": integer("ingest_files_id"),
     "ingest-jobsID": integer("ingest_jobs_id"),
+    "ingest-runsID": integer("ingest_runs_id"),
+    "ingest-recovery-runsID": integer("ingest_recovery_runs_id"),
+    "quota-reservationsID": integer("quota_reservations_id"),
     "scheduled-ingestsID": integer("scheduled_ingests_id"),
     "scraper-reposID": integer("scraper_repos_id"),
     scrapersID: integer("scrapers_id"),
@@ -7740,6 +7912,15 @@ export const payload_locked_documents_rels = db_schema.table(
     ),
     index("payload_locked_documents_rels_ingest_jobs_id_idx").on(
       columns["ingest-jobsID"],
+    ),
+    index("payload_locked_documents_rels_ingest_runs_id_idx").on(
+      columns["ingest-runsID"],
+    ),
+    index("payload_locked_documents_rels_ingest_recovery_runs_id_idx").on(
+      columns["ingest-recovery-runsID"],
+    ),
+    index("payload_locked_documents_rels_quota_reservations_id_idx").on(
+      columns["quota-reservationsID"],
     ),
     index("payload_locked_documents_rels_scheduled_ingests_id_idx").on(
       columns["scheduled-ingestsID"],
@@ -7814,6 +7995,21 @@ export const payload_locked_documents_rels = db_schema.table(
       columns: [columns["ingest-jobsID"]],
       foreignColumns: [ingest_jobs.id],
       name: "payload_locked_documents_rels_ingest_jobs_fk",
+    }).onDelete("cascade"),
+    foreignKey({
+      columns: [columns["ingest-runsID"]],
+      foreignColumns: [ingest_runs.id],
+      name: "payload_locked_documents_rels_ingest_runs_fk",
+    }).onDelete("cascade"),
+    foreignKey({
+      columns: [columns["ingest-recovery-runsID"]],
+      foreignColumns: [ingest_recovery_runs.id],
+      name: "payload_locked_documents_rels_ingest_recovery_runs_fk",
+    }).onDelete("cascade"),
+    foreignKey({
+      columns: [columns["quota-reservationsID"]],
+      foreignColumns: [quota_reservations.id],
+      name: "payload_locked_documents_rels_quota_reservations_fk",
     }).onDelete("cascade"),
     foreignKey({
       columns: [columns["scheduled-ingestsID"]],
@@ -9162,6 +9358,11 @@ export const relations_ingest_jobs = relations(
       references: [datasets.id],
       relationName: "dataset",
     }),
+    run: one(ingest_runs, {
+      fields: [ingest_jobs.run],
+      references: [ingest_runs.id],
+      relationName: "run",
+    }),
     schemaValidation_approvedBy: one(users, {
       fields: [ingest_jobs.schemaValidation_approvedBy],
       references: [users.id],
@@ -9205,6 +9406,11 @@ export const relations__ingest_jobs_v = relations(
       references: [datasets.id],
       relationName: "version_dataset",
     }),
+    version_run: one(ingest_runs, {
+      fields: [_ingest_jobs_v.version_run],
+      references: [ingest_runs.id],
+      relationName: "version_run",
+    }),
     version_schemaValidation_approvedBy: one(users, {
       fields: [_ingest_jobs_v.version_schemaValidation_approvedBy],
       references: [users.id],
@@ -9217,6 +9423,42 @@ export const relations__ingest_jobs_v = relations(
     }),
     version_errors: many(_ingest_jobs_v_version_errors, {
       relationName: "version_errors",
+    }),
+  }),
+);
+export const relations_ingest_runs = relations(ingest_runs, ({ one }) => ({
+  ingestFile: one(ingest_files, {
+    fields: [ingest_runs.ingestFile],
+    references: [ingest_files.id],
+    relationName: "ingestFile",
+  }),
+  scheduledIngest: one(scheduled_ingests, {
+    fields: [ingest_runs.scheduledIngest],
+    references: [scheduled_ingests.id],
+    relationName: "scheduledIngest",
+  }),
+  scraperRun: one(scraper_runs, {
+    fields: [ingest_runs.scraperRun],
+    references: [scraper_runs.id],
+    relationName: "scraperRun",
+  }),
+}));
+export const relations_ingest_recovery_runs = relations(
+  ingest_recovery_runs,
+  () => ({}),
+);
+export const relations_quota_reservations = relations(
+  quota_reservations,
+  ({ one }) => ({
+    ingestJob: one(ingest_jobs, {
+      fields: [quota_reservations.ingestJob],
+      references: [ingest_jobs.id],
+      relationName: "ingestJob",
+    }),
+    user: one(users, {
+      fields: [quota_reservations.user],
+      references: [users.id],
+      relationName: "user",
     }),
   }),
 );
@@ -10685,6 +10927,21 @@ export const relations_payload_locked_documents_rels = relations(
       references: [ingest_jobs.id],
       relationName: "ingest-jobs",
     }),
+    "ingest-runsID": one(ingest_runs, {
+      fields: [payload_locked_documents_rels["ingest-runsID"]],
+      references: [ingest_runs.id],
+      relationName: "ingest-runs",
+    }),
+    "ingest-recovery-runsID": one(ingest_recovery_runs, {
+      fields: [payload_locked_documents_rels["ingest-recovery-runsID"]],
+      references: [ingest_recovery_runs.id],
+      relationName: "ingest-recovery-runs",
+    }),
+    "quota-reservationsID": one(quota_reservations, {
+      fields: [payload_locked_documents_rels["quota-reservationsID"]],
+      references: [quota_reservations.id],
+      relationName: "quota-reservations",
+    }),
     "scheduled-ingestsID": one(scheduled_ingests, {
       fields: [payload_locked_documents_rels["scheduled-ingestsID"]],
       references: [scheduled_ingests.id],
@@ -11110,6 +11367,9 @@ type DatabaseSchema = {
   enum__ingest_files_v_version_status: typeof enum__ingest_files_v_version_status;
   enum_ingest_jobs_stage: typeof enum_ingest_jobs_stage;
   enum__ingest_jobs_v_version_stage: typeof enum__ingest_jobs_v_version_stage;
+  enum_ingest_runs_source: typeof enum_ingest_runs_source;
+  enum_ingest_runs_outcome: typeof enum_ingest_runs_outcome;
+  enum_ingest_recovery_runs_mode: typeof enum_ingest_recovery_runs_mode;
   enum_scheduled_ingests_execution_history_status: typeof enum_scheduled_ingests_execution_history_status;
   trig_by: typeof trig_by;
   enum_scheduled_ingests_schedule_type: typeof enum_scheduled_ingests_schedule_type;
@@ -11135,6 +11395,7 @@ type DatabaseSchema = {
   enum_scrapers_last_run_status: typeof enum_scrapers_last_run_status;
   enum_scraper_runs_status: typeof enum_scraper_runs_status;
   enum_scraper_runs_triggered_by: typeof enum_scraper_runs_triggered_by;
+  enum_scraper_runs_import_outcome: typeof enum_scraper_runs_import_outcome;
   enum_events_coordinate_source_type: typeof enum_events_coordinate_source_type;
   enum_events_coordinate_source_validation_status: typeof enum_events_coordinate_source_validation_status;
   enum_events_geocoding_info_geocoding_status: typeof enum_events_geocoding_info_geocoding_status;
@@ -11282,6 +11543,9 @@ type DatabaseSchema = {
   ingest_jobs: typeof ingest_jobs;
   _ingest_jobs_v_version_errors: typeof _ingest_jobs_v_version_errors;
   _ingest_jobs_v: typeof _ingest_jobs_v;
+  ingest_runs: typeof ingest_runs;
+  ingest_recovery_runs: typeof ingest_recovery_runs;
+  quota_reservations: typeof quota_reservations;
   scheduled_ingests_multi_sheet_config_sheets: typeof scheduled_ingests_multi_sheet_config_sheets;
   scheduled_ingests_execution_history: typeof scheduled_ingests_execution_history;
   scheduled_ingests: typeof scheduled_ingests;
@@ -11454,6 +11718,9 @@ type DatabaseSchema = {
   relations_ingest_jobs: typeof relations_ingest_jobs;
   relations__ingest_jobs_v_version_errors: typeof relations__ingest_jobs_v_version_errors;
   relations__ingest_jobs_v: typeof relations__ingest_jobs_v;
+  relations_ingest_runs: typeof relations_ingest_runs;
+  relations_ingest_recovery_runs: typeof relations_ingest_recovery_runs;
+  relations_quota_reservations: typeof relations_quota_reservations;
   relations_scheduled_ingests_multi_sheet_config_sheets: typeof relations_scheduled_ingests_multi_sheet_config_sheets;
   relations_scheduled_ingests_execution_history: typeof relations_scheduled_ingests_execution_history;
   relations_scheduled_ingests: typeof relations_scheduled_ingests;

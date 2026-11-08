@@ -31,13 +31,16 @@ export const REVIEW_REASONS = {
  */
 export const PER_SHEET_REVIEW_CHECKS_KEY = "perSheet";
 
+/** Pipeline stage an `ingest-process` child starts from. */
+export type ResumePoint = "analyze-duplicates" | "detect-schema" | "create-schema-version" | "create-events";
+
 /** Resume point constants for the ingest-process workflow. */
-const RESUME_DETECT_SCHEMA = "detect-schema";
-const RESUME_CREATE_EVENTS = "create-events";
-const RESUME_CREATE_SCHEMA_VERSION = "create-schema-version";
+const RESUME_DETECT_SCHEMA: ResumePoint = "detect-schema";
+const RESUME_CREATE_EVENTS: ResumePoint = "create-events";
+const RESUME_CREATE_SCHEMA_VERSION: ResumePoint = "create-schema-version";
 
 /** Maps review reason → resume point for the ingest-process workflow. */
-export const REVIEW_RESUME_POINTS: Record<string, string> = {
+export const REVIEW_RESUME_POINTS: Record<string, ResumePoint> = {
   [REVIEW_REASONS.SCHEMA_DRIFT]: RESUME_CREATE_SCHEMA_VERSION,
   [REVIEW_REASONS.QUOTA_EXCEEDED]: RESUME_DETECT_SCHEMA,
   [REVIEW_REASONS.HIGH_DUPLICATE_RATE]: RESUME_DETECT_SCHEMA,
@@ -59,7 +62,26 @@ export const REVIEW_RESUME_POINTS: Record<string, string> = {
 };
 
 /** Get the resume point for the ingest-process workflow given a review reason. */
-export const getResumePointForReason = (reason: string | null | undefined): string => {
+export const getResumePointForReason = (reason: string | null | undefined): ResumePoint => {
   if (!reason) return RESUME_CREATE_SCHEMA_VERSION; // default (backward compat with schema-drift)
   return REVIEW_RESUME_POINTS[reason] ?? RESUME_CREATE_SCHEMA_VERSION;
+};
+
+/**
+ * The resume point that reruns a sheet from the given stage. Stages before
+ * detect-schema resume from analyze-duplicates, which rebuilds the duplicate and
+ * quota review state before the later stages run.
+ */
+export const getResumePointForStage = (stage: string): ResumePoint => {
+  switch (stage) {
+    case "analyze-duplicates":
+      return "analyze-duplicates";
+    case "create-events":
+      return RESUME_CREATE_EVENTS;
+    case "geocode-batch":
+    case "create-schema-version":
+      return RESUME_CREATE_SCHEMA_VERSION;
+    default:
+      return RESUME_DETECT_SCHEMA;
+  }
 };

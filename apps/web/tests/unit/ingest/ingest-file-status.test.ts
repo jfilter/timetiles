@@ -1,27 +1,23 @@
 /**
- * Unit tests for ingest-file workflow completion reconciliation.
+ * Unit tests for deriving the IngestFile status from its ingest jobs.
  *
  * @module
  */
 import { describe, expect, it, vi } from "vitest";
 
-import { updateIngestFileStatus, updateIngestFileStatusForJob } from "@/lib/jobs/workflows/completion";
+import { updateIngestFileStatusForJob } from "@/lib/ingest/ingest-file-status";
 
-describe("workflow completion helpers", () => {
+describe("updateIngestFileStatusForJob", () => {
   it("marks ingest files as completed and stores processed counts for terminal jobs", async () => {
     const payload = {
-      findByID: vi
-        .fn()
-        .mockResolvedValueOnce({ id: "job-1", ingestFile: "file-1" })
-        .mockResolvedValueOnce({ id: "job-1", ingestFile: "file-1" }),
+      findByID: vi.fn().mockResolvedValue({ id: "job-1", ingestFile: "file-1" }),
       find: vi.fn().mockResolvedValue({ docs: [{ stage: "completed" }, { stage: "failed" }] }),
       update: vi.fn().mockResolvedValue({}),
     };
 
-    await updateIngestFileStatus(payload as never, [{ index: 0, ingestJobId: "job-1", name: "Sheet 1", rowCount: 2 }]);
     await updateIngestFileStatusForJob(payload as never, "job-1");
 
-    expect(payload.update).toHaveBeenCalledTimes(2);
+    expect(payload.update).toHaveBeenCalledTimes(1);
     for (const call of payload.update.mock.calls) {
       expect(call[0]).toEqual(
         expect.objectContaining({
@@ -40,13 +36,14 @@ describe("workflow completion helpers", () => {
       update: vi.fn().mockResolvedValue({}),
     };
 
-    await updateIngestFileStatus(payload as never, [{ index: 0, ingestJobId: "job-1", name: "Sheet 1", rowCount: 2 }]);
+    await updateIngestFileStatusForJob(payload as never, "job-1");
 
     expect(payload.update).toHaveBeenCalledWith({
       collection: "ingest-files",
       id: "file-1",
       data: { status: "processing", datasetsProcessed: 2 },
       context: { skipIngestFileHooks: true },
+      req: undefined,
     });
   });
 
@@ -57,7 +54,7 @@ describe("workflow completion helpers", () => {
       update: vi.fn().mockResolvedValue({}),
     };
 
-    await updateIngestFileStatus(payload as never, [{ index: 0, ingestJobId: "job-1", name: "Sheet 1", rowCount: 2 }]);
+    await updateIngestFileStatusForJob(payload as never, "job-1");
 
     expect(payload.update).not.toHaveBeenCalled();
   });

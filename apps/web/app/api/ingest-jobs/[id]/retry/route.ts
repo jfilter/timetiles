@@ -17,6 +17,7 @@ import { apiRoute, safeFindByID, ValidationError } from "@/lib/api";
 import { PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
 import { getTransactionAwareDrizzle } from "@/lib/database/drizzle-transaction";
 import { prepareIngestFileRecovery } from "@/lib/ingest/ingest-file-status";
+import { queueIngestProcess } from "@/lib/ingest/ingest-runs";
 import { logger } from "@/lib/logger";
 import { NumericIdParamSchema } from "@/lib/schemas/common";
 import { requireRelationId } from "@/lib/utils/relation-id";
@@ -51,11 +52,7 @@ export const POST = apiRoute({
       if (claimed.length === 0) {
         throw new ValidationError("Ingest job is not in failed state (already being retried).");
       }
-      await payload.jobs.queue({
-        workflow: "ingest-process",
-        input: { ingestJobId: String(ingestJob.id), resumeFrom: "analyze-duplicates" },
-        req,
-      });
+      await queueIngestProcess(req, ingestJob.id, "analyze-duplicates");
       await commitTransaction(req);
     } catch (error) {
       await killTransaction(req);

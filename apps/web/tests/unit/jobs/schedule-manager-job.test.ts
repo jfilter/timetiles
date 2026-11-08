@@ -5,6 +5,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { hasScheduledRunAwaitingReview } from "@/lib/ingest/ingest-runs";
 import { getNextFrequencyExecution } from "@/lib/ingest/schedule-utils";
 import { generateIngestName } from "@/lib/ingest/trigger-service";
 import { reconcileFailedScheduledIngests } from "@/lib/jobs/handlers/schedule-manager/reconcile-failed-ingests";
@@ -14,6 +15,8 @@ import { scheduleManagerJob } from "@/lib/jobs/handlers/schedule-manager-job";
 vi.mock("@/lib/jobs/handlers/schedule-manager/reconcile-failed-ingests", () => ({
   reconcileFailedScheduledIngests: vi.fn().mockResolvedValue(0),
 }));
+
+vi.mock("@/lib/ingest/ingest-runs", () => ({ hasScheduledRunAwaitingReview: vi.fn() }));
 
 vi.mock("@/lib/logger", () => ({
   logger: { info: vi.fn(), debug: vi.fn(), warn: vi.fn(), error: vi.fn() },
@@ -28,6 +31,7 @@ vi.mock("@/lib/services/feature-flag-service", () => ({
 describe("scheduleManagerJob", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(hasScheduledRunAwaitingReview).mockResolvedValue(false);
     vi.useFakeTimers();
   });
 
@@ -116,6 +120,35 @@ describe("scheduleManagerJob", () => {
         scrapersTriggered: 0,
         scraperErrors: 0,
       });
+    });
+
+    it("does not trigger a due schedule while an earlier run awaits review", async () => {
+      const { mockPayload, mockJob, mockReq } = createMockContext();
+      vi.setSystemTime(new Date("2024-01-15T10:30:00Z"));
+      mockPayload.find.mockResolvedValue({
+        docs: [
+          {
+            id: 5,
+            name: "Halted feed",
+            enabled: true,
+            sourceUrl: "https://api1.example.com/data",
+            scheduleType: "frequency",
+            frequency: "hourly",
+            lastStatus: "paused",
+            lastRun: new Date("2024-01-15T09:00:00Z").toISOString(),
+            catalog: "catalog-1",
+            createdBy: "user-1",
+          },
+        ],
+        totalDocs: 1,
+      });
+      vi.mocked(hasScheduledRunAwaitingReview).mockResolvedValueOnce(true);
+
+      const result = await scheduleManagerJob.handler({ job: mockJob, req: mockReq });
+
+      expect(hasScheduledRunAwaitingReview).toHaveBeenCalledWith(mockPayload, 5);
+      expect(mockPayload.jobs.queue).not.toHaveBeenCalled();
+      expect(result.output.triggered).toBe(0);
     });
 
     it("should trigger imports that are due based on frequency", async () => {

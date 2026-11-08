@@ -14,7 +14,7 @@ The TimeTiles data ingestion pipeline consists of seven task handlers, sequenced
 | 6. Geocode Batch         | `geocode-batch`         | Add location data                              | Unique locations |
 | 7. Create Events         | `create-events`         | Generate final records                         | 1,000            |
 
-Tasks 2-7 run per sheet within the workflow. If `validate-schema` detects schema drift requiring human review, it returns `{ needsReview: true }` and the sheet is paused. After the user approves, the `ingest-process` workflow resumes from task 5 (Create Schema Version).
+Tasks 2-7 run per sheet, each sheet in its own `ingest-process` job that `dispatch-ingest-run` queues after dataset detection. If `validate-schema` detects schema drift requiring human review, it returns `{ needsReview: true }` and the sheet is paused. After the user approves, the `ingest-process` workflow resumes from task 5 (Create Schema Version).
 
 ## Stage 1: Dataset Detection
 
@@ -360,7 +360,7 @@ Task returns success. The workflow proceeds to Create Schema Version to persist 
 
 **Requires Human Review (Schema Drift)**:
 
-Task returns `{ needsReview: true }`. The ingestion job is set to `NEEDS_REVIEW`. The sheet is skipped in the current workflow. After the user reviews and approves, the `ingest-process` workflow resumes from Create Schema Version.
+Task returns `{ needsReview: true }`. The ingestion job is set to `NEEDS_REVIEW` and its `ingest-process` job ends. After the user reviews and approves, the `ingest-process` workflow resumes from Create Schema Version.
 
 ### Output
 
@@ -391,10 +391,10 @@ When `validate-schema` detects schema drift requiring approval, the ingestion jo
 **Review flow**:
 
 1. `validate-schema` returns `{ needsReview: true }` with schema comparison details
-2. Ingestion job set to `NEEDS_REVIEW`; sheet skipped in the workflow's processing loop
+2. Ingestion job set to `NEEDS_REVIEW`; the sheet's `ingest-process` job ends
 3. User reviews in admin interface, sees breaking changes, new fields, and suggested renames
 4. User approves -- `ingest-jobs` afterChange hook queues `ingest-process` workflow
-5. `ingest-process` runs Create Schema Version, Geocode Batch, and Create Events for that job
+5. `ingest-process` runs Create Schema Version, Geocode Batch, and Create Events for that job under a new generation
 
 ---
 
@@ -727,7 +727,7 @@ When all batches complete, the system:
 
 ### Completion
 
-This is the final task. The ingestion job transitions to "completed" status. The workflow marks the sheet as done and moves to the next sheet (if any remain).
+This is the final task. The ingestion job transitions to "completed" status. The sheet's job ends, and the file's ingest run settles once every sheet is completed, failed or awaiting review.
 
 ---
 
@@ -736,14 +736,15 @@ This is the final task. The ingestion job transitions to "completed" status. The
 Task sequencing is defined by the workflow handlers in `lib/jobs/workflows/`. There is no separate state machine or transition graph -- the workflow handler is a linear function that calls tasks in order:
 
 ```
-dataset-detection → for each sheet:
+source workflow: dataset-detection → dispatch-ingest-run
+ingest-process (one job per sheet):
   analyze-duplicates → detect-schema → validate-schema →
   create-schema-version → geocode-batch → create-events
 ```
 
-If a task returns `{ needsReview: true }`, the sheet is skipped. If a task throws, per-sheet try/catch marks the sheet as FAILED and continues to the next sheet.
+If a task returns `{ needsReview: true }`, the sheet pauses and its job ends. If a task throws, Payload retries it; the final failure marks only that sheet as FAILED, and the other sheets' jobs are unaffected.
 
-The `ingest-process` workflow (for post-review resumption) runs a shorter sequence: `create-schema-version → geocode-batch → create-events`.
+After a review, retry, reset or [recovery](/development/architecture/background-jobs#ingest-recovery), `ingest-process` is queued again from a resume point (`analyze-duplicates`, `detect-schema`, `create-schema-version` or `create-events`) under a new generation.
 
 ## Summary
 

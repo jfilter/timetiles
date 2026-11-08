@@ -231,6 +231,15 @@ account:
   deletionGracePeriodDays: 30
 ```
 
+### Ingest
+
+A running import task renews its lease every minute. A task silent for longer than `leaseMinutes` counts as abandoned: the hourly recovery check reports it, and `timetiles ingest recover --apply` requeues or fails it. Shorter leases notice a crash sooner; the minimum is 5.
+
+```yaml
+ingest:
+  leaseMinutes: 15
+```
+
 ## Admin Dashboard Settings
 
 These are configured at runtime through the admin UI — no restart needed.

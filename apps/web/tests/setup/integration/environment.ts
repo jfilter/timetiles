@@ -136,6 +136,8 @@ export const IMPORT_PIPELINE_COLLECTIONS_TO_RESET = [
   "events",
   "ingest-files",
   "ingest-jobs",
+  "ingest-runs",
+  "quota-reservations",
   "datasets",
   "dataset-schemas",
   "payload-jobs",

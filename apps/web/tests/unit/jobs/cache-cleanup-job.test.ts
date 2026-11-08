@@ -46,8 +46,8 @@ describe("cacheCleanupJob", () => {
     const command: string[] = compose.services["worker-ingest"].command;
 
     expect(cacheCleanupJob.schedule).toEqual([{ cron: "0 */6 * * *", queue: "ingest" }]);
-    expect(command[command.indexOf("--queue") + 1]).toBe("ingest");
-    expect(command).toContain("--handle-schedules");
+    // The worker script queues the due schedules of the queue it runs.
+    expect(command[command.indexOf("scripts/jobs-worker.ts") + 1]).toBe("ingest");
   });
 
   it("should clean cache and return success output", async () => {

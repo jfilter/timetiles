@@ -6,16 +6,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type * as LoggerModule from "@/lib/logger";
 
 // Mocked before import so job-completion.ts picks up the mock.
-const mocks = vi.hoisted(() => ({
-  checkAndIncrementUsage: vi.fn(),
-  decrementUsage: vi.fn().mockResolvedValue(undefined),
-}));
+const mocks = vi.hoisted(() => ({ settleEventQuota: vi.fn().mockResolvedValue(undefined) }));
 
-vi.mock("@/lib/services/quota-service", () => ({
-  createQuotaService: vi.fn(() => ({
-    checkAndIncrementUsage: mocks.checkAndIncrementUsage,
-    decrementUsage: mocks.decrementUsage,
-  })),
+vi.mock("@/lib/ingest/event-quota-ledger", () => ({
+  releaseEventQuota: vi.fn(),
+  reserveEventQuota: vi.fn(),
+  settleEventQuota: mocks.settleEventQuota,
 }));
 
 vi.mock("@/lib/ingest/types/geocoding", () => ({ getIngestGeocodingResults: vi.fn(() => ({})) }));
@@ -27,18 +23,17 @@ vi.mock("@/lib/logger", async () => {
 
 import { markJobCompleted } from "@/lib/jobs/handlers/create-events-batch/job-completion";
 
-describe("markJobCompleted quota reconciliation", () => {
+describe("markJobCompleted quota settlement", () => {
   let mockPayload: any;
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.decrementUsage.mockResolvedValue(undefined);
 
     mockPayload = {
       findByID: vi.fn(({ collection }: { collection: string }) => {
         if (collection === "ingest-jobs") {
           return Promise.resolve({
-            id: "import-123",
+            id: 123,
             ingestFile: "file-789",
             duplicates: { internal: [], external: [], summary: {} },
             errors: [],
@@ -54,41 +49,26 @@ describe("markJobCompleted quota reconciliation", () => {
     };
   });
 
-  it("does not throw when a post-import top-up crosses the quota limit, and calls it non-throwing", async () => {
-    // A user with 3 events of remaining budget imports 505 events reserved at
-    // 500 — the +5 top-up crosses the limit. checkAndIncrementUsage must be
-    // called with throwOnExceeded=false so this can't reject and roll back
-    // the 505 already-committed events.
-    mocks.checkAndIncrementUsage.mockImplementation(
-      (_user: unknown, _key: string, _amount: number, _req: unknown, throwOnExceeded?: boolean) => {
-        if (throwOnExceeded !== false) {
-          throw new Error("QUOTA_EXCEEDED: TOTAL_EVENTS");
-        }
-        return Promise.resolve(false);
-      }
-    );
+  it("settles the generation's charge to the events this job newly created", async () => {
+    await expect(markJobCompleted(mockPayload, 123, 4, 0)).resolves.toBe(505);
 
-    await expect(markJobCompleted(mockPayload, "import-123", 500, 0)).resolves.toBe(505);
-
-    expect(mocks.checkAndIncrementUsage).toHaveBeenCalledWith(
-      expect.objectContaining({ id: "user-1" }),
-      "TOTAL_EVENTS",
-      5,
-      undefined,
-      false
-    );
+    expect(mocks.settleEventQuota).toHaveBeenCalledWith(mockPayload, {
+      ingestJobId: 123,
+      generation: 4,
+      user: expect.objectContaining({ id: "user-1" }),
+      actual: 505,
+    });
   });
 
   it.each([
     ["skip", 3],
     ["update", 1],
   ])("records only the rows the %s strategy skipped as duplicatesSkipped", async (strategy, expected) => {
-    mocks.checkAndIncrementUsage.mockResolvedValue(true);
     mockPayload.findByID.mockImplementation(({ collection }: { collection: string }) =>
       Promise.resolve(
         collection === "ingest-jobs"
           ? {
-              id: "import-123",
+              id: 123,
               configSnapshot: { idStrategy: { duplicateStrategy: strategy } },
               duplicates: { summary: { internalDuplicates: 1, externalDuplicates: 2 } },
               errors: [],
@@ -97,7 +77,7 @@ describe("markJobCompleted quota reconciliation", () => {
       )
     );
 
-    await markJobCompleted(mockPayload, "import-123", 0, strategy === "update" ? 2 : 0);
+    await markJobCompleted(mockPayload, 123, 0, strategy === "update" ? 2 : 0);
 
     expect(mockPayload.update).toHaveBeenCalledWith(
       expect.objectContaining({ data: { results: expect.objectContaining({ duplicatesSkipped: expected }) } })

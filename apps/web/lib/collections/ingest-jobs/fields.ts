@@ -28,6 +28,25 @@ export const ingestJobFields: Field[] = [
     type: "number",
     admin: { description: "Sheet index for Excel files (0-based)", condition: (data) => data.sheetIndex !== undefined },
   },
+  {
+    name: "run",
+    type: "relationship",
+    relationTo: "ingest-runs",
+    index: true,
+    admin: { readOnly: true, description: "Source run that dispatched this sheet" },
+  },
+  {
+    name: "generation",
+    type: "number",
+    defaultValue: 0,
+    admin: { readOnly: true, description: "Bumped on every dispatch; a child job of an older generation stops" },
+  },
+  {
+    name: "recoveryAttempts",
+    type: "number",
+    defaultValue: 0,
+    admin: { readOnly: true, description: "Times ingest recovery requeued this sheet after its worker died" },
+  },
 
   // Processing Stage
   {

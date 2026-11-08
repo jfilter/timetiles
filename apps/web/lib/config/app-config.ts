@@ -172,6 +172,11 @@ const yamlConfigSchema = z
       .strict()
       .optional(),
     account: z.object({ deletionGracePeriodDays: z.number().int().positive().optional() }).strict().optional(),
+    // At least five heartbeat intervals, so one slow write cannot expire a live job.
+    ingest: z
+      .object({ leaseMinutes: z.number().int().min(5).optional() })
+      .strict()
+      .optional(),
   })
   .strict();
 
@@ -512,6 +517,8 @@ const DEFAULT_CACHE = {
 
 const DEFAULT_ACCOUNT = { deletionGracePeriodDays: 30 };
 
+const DEFAULT_INGEST = { leaseMinutes: 15 };
+
 const DEFAULT_REVIEW_THRESHOLDS = {
   highDuplicateRate: 0.8,
   geocodingPartialFailureRate: 0.5,
@@ -543,6 +550,11 @@ export interface AccountConfig {
   deletionGracePeriodDays: number;
 }
 
+export interface IngestConfig {
+  /** A running ingest job without a heartbeat for this long counts as abandoned. */
+  leaseMinutes: number;
+}
+
 export interface AppConfig {
   rateLimits: Record<RateLimitName, RateLimitConfig>;
   quotas: Record<number, UserQuotasConfig>;
@@ -550,6 +562,7 @@ export interface AppConfig {
   batchSizes: BatchSizesConfig;
   cache: CacheConfig;
   account: AccountConfig;
+  ingest: IngestConfig;
   reviewThresholds: ReviewThresholdsConfig;
 }
 
@@ -720,10 +733,12 @@ const buildConfig = (yamlConfig: Record<string, unknown>): AppConfig => {
     ? { ...DEFAULT_ACCOUNT, ...(yamlConfig.account as Partial<AccountConfig>) }
     : { ...DEFAULT_ACCOUNT };
 
+  const ingest = { ...DEFAULT_INGEST, ...(yamlConfig.ingest as Partial<IngestConfig> | undefined) };
+
   // Review thresholds: YAML > default
   const reviewThresholds = buildReviewThresholds(yamlConfig);
 
-  return { rateLimits: rateLimits, quotas, trustLevelRateLimits, batchSizes, cache, account, reviewThresholds };
+  return { rateLimits: rateLimits, quotas, trustLevelRateLimits, batchSizes, cache, account, ingest, reviewThresholds };
 };
 
 let _config: AppConfig | null = null;

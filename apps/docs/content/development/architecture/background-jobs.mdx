@@ -7,7 +7,7 @@ TimeTiles uses [Payload CMS's built-in job queue and workflow system](https://pa
 - **Auto-deletion**: Completed jobs are automatically deleted (`deleteJobOnComplete: true`)
 - **Workflow-based orchestration**: The ingestion pipeline uses 4 Payload Workflows, queued by collection hooks and trigger services
 - **3-queue architecture**: `ingest` (user-facing workflows), `default` (trigger jobs), `maintenance` (scheduled system jobs)
-- **Production**: One Docker worker container per queue runs Payload's `jobs:run` command; see the worker settings below
+- **Production**: One Docker worker container per queue runs `scripts/jobs-worker.ts`; see the worker settings below
 - **Development**: Payload's `autoRun` schedules and processes all queues within the Next.js process after Payload initializes; no polling process or seeded admin login is required
 
 Native job execution, scheduling, queueing and cancellation are admin-only through `jobs.access`.
@@ -19,45 +19,53 @@ by admins. It holds scheduling state; Payload's scheduler maintains it through i
 ### Production Workers
 
 `deployment/docker-compose.prod.yml` is the source of truth for worker commands. Each worker
-consumes exactly one queue:
+runs `scripts/jobs-worker.ts` through the Payload CLI and consumes exactly one queue:
 
-| Queue         | Polling cron (`--cron`)             | Batch limit (`--limit`) | `--handle-schedules` |
-| ------------- | ----------------------------------- | ----------------------- | -------------------- |
-| `ingest`      | `*/10 * * * * *` (every 10 seconds) | `10`                    | Yes                  |
-| `default`     | `*/1 * * * *` (every minute)        | `20`                    | Yes                  |
-| `maintenance` | `*/1 * * * *` (every minute)        | `20`                    | Yes                  |
+| Queue         | Poll interval | Batch limit | Stop grace period |
+| ------------- | ------------- | ----------- | ----------------- |
+| `ingest`      | 10 seconds    | `10`        | 5 minutes         |
+| `default`     | 60 seconds    | `20`        | 1 minute          |
+| `maintenance` | 60 seconds    | `20`        | 1 minute          |
 
-`--cron` needs a quoted cron expression. Polling consumes queued work; `--handle-schedules`
-also queues due tasks from their native Payload `schedule` definitions. Scheduling is filtered
-by `--queue`, so every worker whose queue has scheduled tasks needs the flag. Enabling it only on `default`
-does not schedule maintenance tasks. The `ingest` queue receives workflows from application triggers and
+Every pass first queues the due tasks of the worker's queue from their native Payload `schedule`
+definitions, then runs up to the batch limit. Scheduling is filtered by queue, so each worker
+schedules only its own tasks. The `ingest` queue receives workflows from application triggers and
 schedules `cache-cleanup`, which runs in the worker that owns the URL fetch cache.
 
-For example, the equivalent default-queue worker command from the repository root is:
+On `SIGTERM` the worker claims no new jobs and lets the batch in flight finish. A container that
+stops before its stop grace period runs out leaves no half-done work behind; a killed worker leaves
+jobs for [ingest recovery](#ingest-recovery).
+
+For example, the default-queue worker from `apps/web`:
 
 ```bash
-pnpm --filter web payload jobs:run --cron '*/1 * * * *' --queue default --limit 20 --handle-schedules
+pnpm payload run scripts/jobs-worker.ts default 20 60
 ```
+
+Arguments are positional: `<queue|all> [limit=10] [intervalSeconds=10]`. `all` serves every
+queue, as the all-in-one image and `make jobs` do.
 
 ## Ingest Workflows
 
-The ingestion pipeline is orchestrated by 4 Payload Workflows. Each workflow sequences multiple task handlers into a linear pipeline. See [Data Ingestion Pipeline](/development/architecture/data-processing-pipeline) for detailed stage documentation.
+The ingestion pipeline is orchestrated by 4 Payload Workflows. The three source workflows detect the sheets of a file and hand them to the `dispatch-ingest-run` task, which creates the file's ingest run and queues one `ingest-process` job per sheet ([ADR 0043](https://github.com/jfilter/timetiles/blob/main/docs/adr/0043-per-sheet-ingest-jobs.md)). See [Data Ingestion Pipeline](/development/architecture/data-processing-pipeline) for detailed stage documentation.
 
-| Workflow           | Trigger                                                                                    | Pipeline                                                                                                           |
-| ------------------ | ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------ |
-| `manual-ingest`    | `ingest-files` afterChange hook                                                            | dataset-detection, then per-sheet: analyze, detect-schema, validate, create-schema-version, geocode, create-events |
-| `scheduled-ingest` | Shared trigger service: scheduler, webhook, manual run, wizard, or data-package activation | url-fetch, dataset-detection, then per-sheet pipeline                                                              |
-| `scraper-ingest`   | Scheduler, webhook, or manual run                                                          | scraper-execution, dataset-detection, then per-sheet pipeline                                                      |
-| `ingest-process`   | Review approval hook or retry/reset routes                                                 | Resume from the selected stage                                                                                     |
+| Workflow           | Trigger                                                                                    | Pipeline                                                                                               |
+| ------------------ | ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------ |
+| `manual-ingest`    | `ingest-files` afterChange hook                                                            | dataset-detection, dispatch                                                                            |
+| `scheduled-ingest` | Shared trigger service: scheduler, webhook, manual run, wizard, or data-package activation | url-fetch, dataset-detection, dispatch                                                                 |
+| `scraper-ingest`   | Scheduler, webhook, or manual run                                                          | scraper-execution, dataset-detection, dispatch                                                         |
+| `ingest-process`   | Dispatch, review approval, retry/reset routes, or ingest recovery                          | analyze, detect-schema, validate, create-schema-version, geocode, create-events, from the resume point |
 
-All ingest workflows run on the `ingest` queue with per-resource concurrency keys (e.g., `ingest:manual:{id}`, `ingest:scheduled:{id}`).
+All ingest workflows run on the `ingest` queue with per-resource concurrency keys (`ingest:manual:{id}`, `ingest:scheduled:{id}`, `ingest:scraper:{id}`, `ingest:process:{ingestJobId}`).
+
+Each queueing of `ingest-process` bumps the sheet's `generation` and passes it in the job input. A job whose generation is outdated, or whose sheet already completed, returns before its first task, and a task's late writes land only while its generation is current.
 
 ### Error Model
 
-- **Throw** for transient failures -- Payload retries the task
-- **Return `{ needsReview: true }`** for human review -- pipeline pauses for that sheet
-- **Return data** for success -- pipeline continues to next task
-- Multi-sheet files use `Promise.allSettled` with per-sheet try/catch; individual sheet failures do not block other sheets
+- **Throw** for transient failures -- Payload retries the task; the final failure marks the sheet `failed`
+- **Return `{ needsReview: true }`** for human review -- the sheet pauses in `needs-review`
+- **Return data** for success -- the workflow continues to the next task
+- Each sheet runs in its own job, so a failed sheet does not block the others; the run finishes once every sheet is terminal, and a run with a failed sheet counts as failed
 
 For `scheduled-ingest`, Payload owns the retry decision. The workflow propagates failures without
 incrementing the schedule's failure counter. On its next pass, `schedule-manager` reconciles the
@@ -72,6 +80,31 @@ Stuck-run cleanup cancels old queued jobs through `payload.jobs.cancel()`, with 
 `processing: false` filter applied at cancellation time. Payload preserves completed and already
 failed jobs; cancelled jobs have `error.cancelled: true` and no completion timestamp. They are
 removed by the existing seven-day failed-job retention, not the three-day completed-job retention.
+
+## Ingest Recovery
+
+A worker that dies mid-job leaves its Payload job `processing`, and the job's concurrency key keeps
+new jobs for the same sheet from starting. While an ingest-queue workflow runs, its worker touches
+the job's `updatedAt` every minute (`lib/jobs/utils/job-heartbeat.ts`), also while a task waits on
+a throttled provider. A `processing` job silent for longer than `ingest.leaseMinutes` (default 15,
+see [configuration](/self-hosting/configuration#ingest)) belongs to a dead worker.
+
+The hourly `ingest-recovery` task on the `maintenance` queue only reports. It logs a warning and
+writes a row to `ingest-recovery-runs` when it finds something; changes happen only through
+`timetiles ingest recover --apply`. Without `--apply` the command prints the same report. It
+distinguishes three kinds:
+
+| Kind        | Finding                                                                                    | Action with `--apply`                    |
+| ----------- | ------------------------------------------------------------------------------------------ | ---------------------------------------- |
+| `abandoned` | A stale `ingest-process` job whose sheet is in a processing stage at the job's generation  | Close the job, requeue or fail the sheet |
+| `orphaned`  | A sheet in a processing stage, untouched for longer than the lease, with no unfinished job | Requeue or fail the sheet                |
+| `obsolete`  | Any other stale ingest-queue job, such as one of a superseded generation                   | Close the job                            |
+
+A requeue resumes from the sheet's stage and counts in `recoveryAttempts`; once that count reaches
+the stage task's retries, the sheet fails instead. Approval, retry and reset start a fresh count. A sheet that died in `create-events` first has
+its events of the dead attempt deleted and its event quota reservation released, under the
+dataset lease; when the lease is busy, the sheet is skipped and the next run tries again.
+Deleting an import is refused while one of its jobs holds a live lease.
 
 ## Task Definitions and Scheduling
 

@@ -7,7 +7,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
 
-const mocks = vi.hoisted(() => ({ safeFindByID: vi.fn() }));
+const mocks = vi.hoisted(() => ({ safeFindByID: vi.fn(), queueIngestProcess: vi.fn() }));
+
+vi.mock("@/lib/ingest/ingest-runs", () => ({ queueIngestProcess: mocks.queueIngestProcess }));
 
 vi.mock("payload", () => ({
   createLocalReq: vi.fn(({ user }, payload) => ({ payload, user, context: {} })),
@@ -47,16 +49,12 @@ const { POST: resetPost } = await import("@/app/api/ingest-jobs/[id]/reset/route
 const { commitTransaction, killTransaction } = await import("payload");
 
 describe("ingest-job recovery routes", () => {
-  let payload: {
-    jobs: { queue: ReturnType<typeof vi.fn> };
-    update: ReturnType<typeof vi.fn>;
-    db: { drizzle: ReturnType<typeof makeDrizzleUpdateMock> };
-  };
+  let payload: { update: ReturnType<typeof vi.fn>; db: { drizzle: ReturnType<typeof makeDrizzleUpdateMock> } };
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.queueIngestProcess.mockResolvedValue(1);
     payload = {
-      jobs: { queue: vi.fn().mockResolvedValue({ id: "wf-1" }) },
       update: vi.fn().mockResolvedValue({}),
       // The retry route claims the job via a raw drizzle UPDATE ... RETURNING;
       // one matching row means the claim succeeded.
@@ -69,12 +67,12 @@ describe("ingest-job recovery routes", () => {
 
     await retryPost({ payload, user: { id: 99 }, params: { id: "17" } } as never, {} as never);
 
-    expect(payload.jobs.queue).toHaveBeenCalledWith({
-      workflow: "ingest-process",
-      input: { ingestJobId: "17", resumeFrom: "analyze-duplicates" },
-      req: expect.objectContaining({ payload }),
-    });
-    expect(commitTransaction).toHaveBeenCalledWith(payload.jobs.queue.mock.calls[0]?.[0].req);
+    expect(mocks.queueIngestProcess).toHaveBeenCalledWith(
+      expect.objectContaining({ payload }),
+      17,
+      "analyze-duplicates"
+    );
+    expect(commitTransaction).toHaveBeenCalledWith(mocks.queueIngestProcess.mock.calls[0]?.[0]);
   });
 
   it("admin reset maps analyze-duplicates back to a real full restart", async () => {
@@ -96,11 +94,11 @@ describe("ingest-job recovery routes", () => {
       data: { stage: PROCESSING_STAGE.ANALYZE_DUPLICATES, errorLog: null },
       req: expect.objectContaining({ payload }),
     });
-    expect(payload.jobs.queue).toHaveBeenCalledWith({
-      workflow: "ingest-process",
-      input: { ingestJobId: "42", resumeFrom: "analyze-duplicates" },
-      req: payload.update.mock.calls[1]?.[0].req,
-    });
+    expect(mocks.queueIngestProcess).toHaveBeenCalledWith(
+      payload.update.mock.calls[1]?.[0].req,
+      42,
+      "analyze-duplicates"
+    );
     expect(commitTransaction).toHaveBeenCalled();
     expect(killTransaction).not.toHaveBeenCalled();
   });
@@ -108,7 +106,7 @@ describe("ingest-job recovery routes", () => {
   it.each(["reset", "retry"])("rolls back the complete %s when queueing fails", async (operation) => {
     mocks.safeFindByID.mockResolvedValue({ id: 42, stage: PROCESSING_STAGE.FAILED, ingestFile: 1 });
     const error = new Error("Queue unavailable");
-    payload.jobs.queue.mockRejectedValue(error);
+    mocks.queueIngestProcess.mockRejectedValue(error);
     await expect(
       (operation === "reset" ? resetPost : retryPost)(
         {
@@ -120,7 +118,7 @@ describe("ingest-job recovery routes", () => {
         {} as never
       )
     ).rejects.toBe(error);
-    expect(killTransaction).toHaveBeenCalledWith(payload.jobs.queue.mock.calls[0]?.[0].req);
+    expect(killTransaction).toHaveBeenCalledWith(mocks.queueIngestProcess.mock.calls[0]?.[0]);
     expect(commitTransaction).not.toHaveBeenCalled();
     expect(payload.update).toHaveBeenCalledTimes(operation === "reset" ? 2 : 1);
   });

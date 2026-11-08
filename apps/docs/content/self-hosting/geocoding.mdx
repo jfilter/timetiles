@@ -139,7 +139,7 @@ The location cache (`/dashboard/collections/location-cache`) stores geocoded res
 - Addresses are normalized before lookup (lowercased, whitespace collapsed, special characters stripped)
 - Cache hits increment a counter and update the "last used" timestamp
 - TTL is measured from creation, not the last cache hit; frequent use does not extend it
-- When caching is enabled, expired entries are removed on lookup and by the `cache-cleanup` job every six hours. The ingest worker must run with `--handle-schedules`, as configured in the production Compose stack
+- When caching is enabled, expired entries are removed on lookup and by the `cache-cleanup` job every six hours. The ingest worker queues it, as configured in the production Compose stack
 - Admins can manually delete cache entries to force re-geocoding
 
 ## Adding a Provider

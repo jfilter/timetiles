@@ -173,7 +173,7 @@ status:
 # Run background job worker (alternative to autoRun for testing worker isolation)
 jobs: ensure-infra
 	@echo "🔄 Starting job worker..."
-	cd apps/web && pnpm payload jobs:run --cron "* * * * *" --all-queues --handle-schedules
+	cd apps/web && pnpm payload run scripts/jobs-worker.ts all 10 10
 
 # Start development server (requires infrastructure)
 # Only starts the web app; use `make timescrape-dev` or `pnpm dev` for all packages

@@ -24,7 +24,7 @@ import type { CollectionConfig } from "payload";
 import { createCommonConfig, INGEST_JOB_VERSIONS_PER_DOC } from "../shared-fields";
 import { ingestJobsAccess } from "./access-control";
 import { ingestJobFields } from "./fields";
-import { afterChangeHooks, beforeChangeHooks, ingestJobAfterDeleteHook } from "./hooks";
+import { afterChangeHooks, beforeChangeHooks, ingestJobAfterDeleteHook, ingestJobBeforeDeleteHook } from "./hooks";
 
 const IngestJobs: CollectionConfig = {
   slug: "ingest-jobs",
@@ -37,7 +37,12 @@ const IngestJobs: CollectionConfig = {
   },
   access: ingestJobsAccess,
   fields: ingestJobFields,
-  hooks: { beforeChange: beforeChangeHooks, afterChange: afterChangeHooks, afterDelete: [ingestJobAfterDeleteHook] },
+  hooks: {
+    beforeChange: beforeChangeHooks,
+    afterChange: afterChangeHooks,
+    beforeDelete: [ingestJobBeforeDeleteHook],
+    afterDelete: [ingestJobAfterDeleteHook],
+  },
 };
 
 export default IngestJobs;

@@ -117,6 +117,8 @@ curl https://your-domain.com/api/health
 
 Database migrations run automatically on container startup — no manual intervention needed.
 
+A restart lets the ingest worker finish its running imports for up to five minutes before it is stopped. An import cut off after that is reported by the recovery check below.
+
 ## Monitoring
 
 ### Health Checks
@@ -173,6 +175,17 @@ For Compose deployments, set `INGEST_FILE_RETENTION_HOURS` and `INGEST_FILE_ORPH
 
 Do not clear the upload directory as if it were a cache: active or paused imports may still need its contents. Check the maintenance worker's logs for cleanup failures before manually removing files.
 
+### Interrupted Imports
+
+An import whose worker was killed stays in progress until someone resolves it. The hourly `ingest-recovery` job looks for such work, logs a warning in the maintenance worker and records each finding in **System → Ingest Recovery Runs**. It changes nothing on its own:
+
+```bash
+timetiles ingest recover          # same report on the command line
+timetiles ingest recover --apply  # requeue or fail the affected sheets
+```
+
+A requeued sheet resumes where it stopped. A sheet that keeps losing its worker fails after as many attempts as its stage allows and can then be retried through `POST /api/ingest-jobs/{id}/retry`. `ingest.leaseMinutes` in [`timetiles.yml`](/self-hosting/configuration#ingest) sets how long a silent import counts as running.
+
 ## Database Maintenance
 
 Run weekly for optimal performance:
@@ -221,7 +234,7 @@ Returns `200` with `{"status":"ok","database":"connected"}` when the system is h
 | Problem         | Diagnosis                       | Solution                                                                                                                              |
 | --------------- | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
 | App won't start | `timetiles logs --web`          | Check DATABASE_URL and PAYLOAD_SECRET in .env.production                                                                              |
-| Imports stuck   | Check `/dashboard/payload-jobs` | Workers may be down — `timetiles restart worker-ingest`                                                                               |
+| Imports stuck   | `timetiles ingest recover`      | Workers may be down — `timetiles restart worker-ingest`, then [resolve interrupted imports](#interrupted-imports)                     |
 | High memory     | `docker stats` and service logs | Identify the affected service and workload before restarting it; do not blindly increase the JavaScript heap limit                    |
 | SSL expired     | certbot logs (see above)        | DNS must resolve to your server. Force renewal (see above)                                                                            |
 | Disk full       | `df -h` and `docker system df`  | Review unused Docker data and backup retention before removing anything; use `timetiles backup prune` for configured backup retention |

@@ -13,7 +13,9 @@ import path from "node:path";
 import type { Payload, PayloadRequest } from "payload";
 
 import { COLLECTION_NAMES } from "@/lib/constants/ingest-constants";
+import { settleDeletedJobsQuota } from "@/lib/ingest/event-quota-ledger";
 import { getSidecarPath } from "@/lib/ingest/file-readers";
+import { assertNoLiveIngestTask } from "@/lib/ingest/ingest-lease";
 import { getIngestFilePath } from "@/lib/ingest/upload-path";
 import { findUserDocs } from "@/lib/utils/user-data";
 
@@ -61,6 +63,13 @@ export const deleteUserUploadRows = async (
       where: { "version.ingestFile": { equals: file.id } },
       req,
     });
+    // The adapter delete skips collection hooks, so guard and settle the jobs here.
+    await assertNoLiveIngestTask(
+      payload,
+      jobs.docs.map((job) => job.id),
+      req
+    );
+    await settleDeletedJobsQuota(payload, jobs.docs, req);
     await payload.db.deleteMany({
       collection: COLLECTION_NAMES.INGEST_JOBS,
       where: { ingestFile: { equals: file.id } },
@@ -116,6 +125,8 @@ export const deleteDatasetJobRows = async (
   // Versions from before a job was moved to this dataset point elsewhere but still belong to it.
   const jobIds = jobs.docs.map((job) => job.id);
   await payload.db.deleteVersions({ collection: COLLECTION_NAMES.INGEST_JOBS, where: { parent: { in: jobIds } }, req });
+  await assertNoLiveIngestTask(payload, jobIds, req);
+  await settleDeletedJobsQuota(payload, jobs.docs, req);
   await payload.db.deleteMany({ collection: COLLECTION_NAMES.INGEST_JOBS, where: { id: { in: jobIds } }, req });
 
   const fileIds = [

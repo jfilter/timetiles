@@ -185,4 +185,54 @@ describe("create-events-batch onFail isolation", () => {
     expect(mockPayload.update).not.toHaveBeenCalled();
     expect(mockPayload.db.drizzle.select).not.toHaveBeenCalled();
   });
+
+  describe("superseded task generation", () => {
+    const jobAt = (generation: number) =>
+      mockPayload.findByID.mockResolvedValue({
+        id: "import-onfail-1",
+        generation,
+        stage: "create-events",
+        createdAt: "2026-01-01T00:00:00.000Z",
+        dataset: 1,
+      });
+
+    it("neither rolls back nor fails a newer generation", async () => {
+      jobAt(2);
+      mockPayload.db.drizzle = createDrizzleMock({ selectResult: [{ id: 1 }] });
+
+      await createEventsBatchJob.onFail(buildArgs({ input: { ingestJobId: "import-onfail-1", generation: 1 } }));
+
+      expect(mockPayload.db.drizzle.select).not.toHaveBeenCalled();
+      expect(mockPayload.update).not.toHaveBeenCalled();
+    });
+
+    it("leaves newer work alone when the generation moved while the rollback waited for the lease", async () => {
+      jobAt(2);
+      const atOne = { id: "import-onfail-1", generation: 1, createdAt: "2026-01-01T00:00:00.000Z", dataset: 1 };
+      // Current at the first check and when the rollback loads the job; bumped once the lease is held.
+      mockPayload.findByID.mockResolvedValueOnce(atOne).mockResolvedValueOnce(atOne);
+      mockPayload.db.drizzle = createDrizzleMock({ selectResult: [{ id: 1 }] });
+
+      await createEventsBatchJob.onFail(buildArgs({ input: { ingestJobId: "import-onfail-1", generation: 1 } }));
+
+      // The generation-checked FAILED write is covered by tests/integration/jobs/task-generation-writes.
+      expect(mockPayload.db.drizzle.select).not.toHaveBeenCalled();
+    });
+
+    it("skips create-events without touching events", async () => {
+      jobAt(2);
+      mockPayload.db.drizzle = createDrizzleMock({ selectResult: [{ id: 1 }] });
+      const context = {
+        req: { payload: mockPayload },
+        job: { id: "job-1" },
+        input: { ingestJobId: "import-onfail-1", generation: 1 },
+      };
+
+      const result = await createEventsBatchJob.handler(context as never);
+
+      expect(result.output).toMatchObject({ eventCount: 0, reason: "superseded" });
+      expect(mockPayload.db.drizzle.select).not.toHaveBeenCalled();
+      expect(mockPayload.update).not.toHaveBeenCalled();
+    });
+  });
 });

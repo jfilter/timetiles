@@ -12,6 +12,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { scheduleManagerJob } from "@/lib/jobs/handlers/schedule-manager-job";
 
+// No run of these schedules awaits review.
+vi.mock("@/lib/ingest/ingest-runs", () => ({ hasScheduledRunAwaitingReview: vi.fn().mockResolvedValue(false) }));
+
 vi.mock("@/lib/logger", () => ({
   logger: { info: vi.fn(), debug: vi.fn(), warn: vi.fn(), error: vi.fn() },
   createLogger: vi.fn(() => ({ info: vi.fn(), debug: vi.fn(), warn: vi.fn(), error: vi.fn() })),

@@ -56,6 +56,9 @@ export const JOB_TYPES = {
 export const COLLECTION_NAMES = {
   INGEST_FILES: "ingest-files",
   INGEST_JOBS: "ingest-jobs",
+  INGEST_RUNS: "ingest-runs",
+  INGEST_RECOVERY_RUNS: "ingest-recovery-runs",
+  QUOTA_RESERVATIONS: "quota-reservations",
   EVENTS: "events",
   CATALOGS: "catalogs",
   DATASETS: "datasets",
@@ -65,6 +68,13 @@ export const COLLECTION_NAMES = {
   USERS: "users",
   PAYLOAD_MIGRATIONS: "payload-migrations",
 } as const;
+
+export const INGEST_RUN_SOURCES = ["manual", "scheduled", "scraper"] as const;
+export type IngestRunSource = (typeof INGEST_RUN_SOURCES)[number];
+
+/** `pending` until every sheet is completed, failed or awaiting review. */
+export const INGEST_RUN_OUTCOMES = ["pending", "awaiting_review", "completed", "failed"] as const;
+export type IngestRunOutcome = (typeof INGEST_RUN_OUTCOMES)[number];
 
 const appBatchSizes = getAppConfig().batchSizes;
 

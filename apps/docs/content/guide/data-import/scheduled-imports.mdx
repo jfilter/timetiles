@@ -14,7 +14,9 @@ Fetch data from a URL automatically on a recurring schedule — hourly, daily, w
 
 A background job checks for due schedules every minute. When a schedule fires, it fetches the URL and runs the full import pipeline — schema detection, deduplication, geocoding, event creation.
 
-If the source schema has changed between runs, you may be asked to approve the new mapping before processing continues.
+If the source schema has changed between runs, you may be asked to approve the new mapping before processing continues. While a run waits for your review, the schedule does not fire again, so reviews cannot pile up. Approving or discarding the review releases it.
+
+Each sheet of a file is imported on its own. If one sheet fails while others succeed, the run counts as failed, and the successful sheets keep their events.
 
 If a schedule has invalid timing settings or keeps failing until it exhausts its retry budget, TimeTiles disables it, records the error, and emails the owner. Fix the schedule and re-enable it to resume automatic runs.
 

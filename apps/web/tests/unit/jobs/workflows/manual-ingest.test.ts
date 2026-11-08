@@ -9,15 +9,6 @@ import { manualIngestWorkflow } from "@/lib/jobs/workflows/manual-ingest";
 // Extract handler with correct type (WorkflowConfig.handler is a union with string)
 const handler = manualIngestWorkflow.handler as WorkflowHandler<"manual-ingest">;
 
-// Mock processSheets so we can verify it's called without running the real pipeline
-vi.mock("@/lib/jobs/workflows/process-sheets", () => ({ processSheets: vi.fn().mockResolvedValue(undefined) }));
-
-// Mock completion helpers (tested separately)
-vi.mock("@/lib/jobs/workflows/completion", () => ({ updateIngestFileStatus: vi.fn().mockResolvedValue(undefined) }));
-
-// Import the mock after vi.mock so we can inspect calls
-import { processSheets } from "@/lib/jobs/workflows/process-sheets";
-
 /** Creates a mock tasks object with all task handlers as vi.fn(). */
 const createMockTasks = () => ({
   // Payload's tasks[] returns the output directly (not wrapped in { output })
@@ -25,10 +16,11 @@ const createMockTasks = () => ({
     sheetsDetected: 2,
     ingestJobsCreated: 2,
     sheets: [
-      { index: 0, ingestJobId: "ij-1", name: "Sheet1", rowCount: 50 },
-      { index: 1, ingestJobId: "ij-2", name: "Sheet2", rowCount: 30 },
+      { index: 0, ingestJobId: 11, name: "Sheet1", rowCount: 50 },
+      { index: 1, ingestJobId: 12, name: "Sheet2", rowCount: 30 },
     ],
   }),
+  "dispatch-ingest-run": vi.fn().mockResolvedValue({ runId: 5, dispatched: true }),
   "analyze-duplicates": vi.fn(),
   "detect-schema": vi.fn(),
   "validate-schema": vi.fn(),
@@ -46,28 +38,23 @@ describe("manualIngestWorkflow", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     tasks = createMockTasks();
-    mockJob = { id: "wf-1", input: { ingestFileId: "file-abc" } };
+    mockJob = { id: "wf-1", input: { ingestFileId: "42" } };
   });
 
-  // ── 1. Happy path — detection returns sheets, processSheets called ────
+  // ── 1. Happy path — detection returns sheets, the run is dispatched ────
 
-  it("should run detection then process sheets on happy path", async () => {
+  it("should run detection then dispatch one run for all sheets", async () => {
     await handler({ job: mockJob, tasks: tasks as any, inlineTask: vi.fn() as any, req: {} as any });
 
     // dataset-detection called with correct input
     expect(tasks["dataset-detection"]).toHaveBeenCalledOnce();
-    expect(tasks["dataset-detection"]).toHaveBeenCalledWith("detect-sheets", { input: { ingestFileId: "file-abc" } });
+    expect(tasks["dataset-detection"]).toHaveBeenCalledWith("detect-sheets", { input: { ingestFileId: "42" } });
 
-    // processSheets called with tasks and sheets from detection output
-    expect(processSheets).toHaveBeenCalledOnce();
-    expect(processSheets).toHaveBeenCalledWith(
-      tasks,
-      [
-        { index: 0, ingestJobId: "ij-1", name: "Sheet1", rowCount: 50 },
-        { index: 1, ingestJobId: "ij-2", name: "Sheet2", rowCount: 30 },
-      ],
-      expect.anything()
-    );
+    expect(tasks["dispatch-ingest-run"]).toHaveBeenCalledExactlyOnceWith("dispatch-sheets", {
+      input: { ingestFileId: 42, source: "manual", ingestJobIds: [11, 12] },
+    });
+    // The source workflow only dispatches; per-sheet tasks run in ingest-process children.
+    expect(tasks["analyze-duplicates"]).not.toHaveBeenCalled();
   });
 
   // ── 2. Detection fails — no further tasks ────────────────────────────
@@ -80,7 +67,7 @@ describe("manualIngestWorkflow", () => {
     ).rejects.toThrow("corrupt file");
 
     expect(tasks["dataset-detection"]).toHaveBeenCalledOnce();
-    expect(processSheets).not.toHaveBeenCalled();
+    expect(tasks["dispatch-ingest-run"]).not.toHaveBeenCalled();
   });
 
   // ── 3. Detection returns empty sheets array — no further tasks ────────
@@ -91,7 +78,7 @@ describe("manualIngestWorkflow", () => {
     await handler({ job: mockJob, tasks: tasks as any, inlineTask: vi.fn() as any, req: {} as any });
 
     expect(tasks["dataset-detection"]).toHaveBeenCalledOnce();
-    expect(processSheets).not.toHaveBeenCalled();
+    expect(tasks["dispatch-ingest-run"]).not.toHaveBeenCalled();
   });
 
   // ── 4. Detection returns no sheets property — no further tasks ────────
@@ -102,7 +89,7 @@ describe("manualIngestWorkflow", () => {
     await handler({ job: mockJob, tasks: tasks as any, inlineTask: vi.fn() as any, req: {} as any });
 
     expect(tasks["dataset-detection"]).toHaveBeenCalledOnce();
-    expect(processSheets).not.toHaveBeenCalled();
+    expect(tasks["dispatch-ingest-run"]).not.toHaveBeenCalled();
   });
 
   // ── 5. Verify concurrency key format ──────────────────────────────────

@@ -6,7 +6,7 @@ asIndexPage: true
 
 > **Terminology**: The ingestion pipeline is called "Import" in the UI and `ingest-*` in the codebase.
 
-The TimeTiles data ingestion pipeline uses Payload CMS Workflows to transform uploaded files into structured events. Four workflows orchestrate task handlers into linear pipelines. Collection hooks, trigger services, scheduled handlers, and retry/reset endpoints queue workflows for their respective entry points.
+The TimeTiles data ingestion pipeline uses Payload CMS Workflows to transform uploaded files into structured events. Three source workflows detect the sheets of a file and dispatch one `ingest-process` job per sheet. Collection hooks, trigger services, scheduled handlers, and retry/reset endpoints queue workflows for their respective entry points.
 
 ## Quick Links
 
@@ -17,13 +17,13 @@ The TimeTiles data ingestion pipeline uses Payload CMS Workflows to transform up
 
 ## Pipeline Overview
 
-The pipeline uses 4 Payload Workflows, one per import type plus a post-review workflow:
+The pipeline uses 4 Payload Workflows: one per source type, plus `ingest-process`, which runs the tasks of one sheet:
 
 ```mermaid
 graph TD
     A[File Upload] --> B[manual-ingest workflow]
     B --> C[Dataset Detection]
-    C --> D[Per-Sheet Pipeline]
+    C --> D[Ingest run: one ingest-process job per sheet]
     D --> E[Analyze Duplicates]
     E --> F[Detect Schema]
     F --> G[Validate Schema]
@@ -31,7 +31,7 @@ graph TD
     H -->|Yes| I[NEEDS_REVIEW - sheet paused]
     H -->|No| J[Create Schema Version]
     I --> K[User Approves]
-    K --> L[ingest-process workflow]
+    K --> L[new ingest-process job]
     L --> J
     J --> M[Geocode Batch]
     M --> N[Create Events]
@@ -40,16 +40,16 @@ graph TD
 
 ## Four Workflows
 
-| Workflow           | Trigger                                       | Purpose                              |
-| ------------------ | --------------------------------------------- | ------------------------------------ |
-| `manual-ingest`    | File upload (`ingest-files` afterChange hook) | Full pipeline for user uploads       |
-| `scheduled-ingest` | `lib/ingest/trigger-service.ts`               | URL fetch + full pipeline            |
-| `scraper-ingest`   | `schedule-manager` job                        | Scraper execution + full pipeline    |
-| `ingest-process`   | Review approval hook or retry/reset endpoint  | Resume or retry a sheet's processing |
+| Workflow           | Trigger                                       | Purpose                               |
+| ------------------ | --------------------------------------------- | ------------------------------------- |
+| `manual-ingest`    | File upload (`ingest-files` afterChange hook) | Dataset detection, then dispatch      |
+| `scheduled-ingest` | `lib/ingest/trigger-service.ts`               | URL fetch, detection, then dispatch   |
+| `scraper-ingest`   | `schedule-manager` job                        | Scraper run, detection, then dispatch |
+| `ingest-process`   | Dispatch, review approval, retry or reset     | Process, resume or retry one sheet    |
 
 ## Per-Sheet Task Pipeline
 
-Each sheet within a workflow runs through these tasks sequentially:
+Each `ingest-process` job runs these tasks of its sheet sequentially:
 
 1. **Analyze Duplicates** - Identify internal and external duplicates before processing
 2. **Detect Schema** - Build progressive schema from non-duplicate data
@@ -58,7 +58,7 @@ Each sheet within a workflow runs through these tasks sequentially:
 5. **Geocode Batch** - Enrich data with geographic coordinates
 6. **Create Events** - Generate final event records with all enrichments
 
-Multi-sheet Excel files process all sheets within a single workflow instance. If one sheet fails or needs review, the remaining sheets continue processing.
+Every sheet runs as its own job with its own retries and `onFail`. If one sheet fails or needs review, the other sheets continue. The ingest run of the file collects the sheet outcomes and settles the file status and the source bookkeeping once (see [Architecture](/development/architecture/data-processing-pipeline/architecture#ingest-runs)).
 
 ## Key Features
 
@@ -70,7 +70,7 @@ Multi-sheet Excel files process all sheets within a single workflow instance. If
 
 **Schema Versioning**: Complete version history of all schema changes with audit trail.
 
-**Multi-Sheet Support**: Excel files with multiple sheets are processed within a single workflow, with per-sheet failure isolation.
+**Multi-Sheet Support**: Every sheet of an Excel file runs as its own `ingest-process` job, so a failing sheet cannot block or retry the others.
 
 ## Core Principles
 

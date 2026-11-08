@@ -12,6 +12,7 @@ import type { Payload } from "payload";
 
 import { COLLECTION_NAMES } from "@/lib/constants/ingest-constants";
 import { normalizeIngestErrorMessage } from "@/lib/ingest/error-message";
+import { releaseEventQuota, reserveEventQuota, settleEventQuota } from "@/lib/ingest/event-quota-ledger";
 import {
   getDuplicateSummary,
   getNewEventCountForQuota,
@@ -52,52 +53,16 @@ const getEventQuotaOwner = async (
   return { user, userId };
 };
 
-const reconcileReservedEventQuota = async (
-  payload: Payload,
-  ingestJobId: string | number,
-  reservedEvents: number,
-  actualEventsCreated: number
-): Promise<void> => {
-  const owner = await getEventQuotaOwner(payload, ingestJobId);
-  if (!owner) return;
-
-  const quotaService = createQuotaService(payload);
-  const adjustment = actualEventsCreated - reservedEvents;
-
-  if (adjustment > 0) {
-    // Non-throwing: the import already committed, so a top-up crossing the limit
-    // must not roll back committed events. Usage is allowed to exceed the cap here.
-    await quotaService.checkAndIncrementUsage(owner.user, "TOTAL_EVENTS", adjustment, undefined, false);
-  } else if (adjustment < 0) {
-    await quotaService.decrementUsage(owner.userId, "TOTAL_EVENTS", Math.abs(adjustment));
-  }
-
-  createJobLogger(String(ingestJobId), "create-events-batch").info("Event creation tracked for quota", {
-    userId: owner.userId,
-    eventsCreated: actualEventsCreated,
-    reservedEvents,
-    ingestJobId,
-  });
-};
-
-export const releaseReservedEventQuota = async (
-  payload: Payload,
-  ingestJobId: string | number,
-  reservedEvents: number
-): Promise<void> => {
-  if (reservedEvents <= 0) return;
-
-  const owner = await getEventQuotaOwner(payload, ingestJobId);
-  if (!owner) return;
-
-  const quotaService = createQuotaService(payload);
-  await quotaService.decrementUsage(owner.userId, "TOTAL_EVENTS", reservedEvents);
+/** Release the job's event charges once its events were rolled back. */
+export const releaseReservedEventQuota = async (payload: Payload, ingestJobId: string | number): Promise<void> => {
+  const released = await releaseEventQuota(payload, Number(ingestJobId));
+  if (released > 0) logger.info({ ingestJobId, released }, "Released event quota of a rolled-back import");
 };
 
 export const markJobCompleted = async (
   payload: Payload,
   ingestJobId: string | number,
-  reservedEventQuota = 0,
+  generation: number,
   eventsUpdated = 0
 ): Promise<number> => {
   // Re-query job for current state (errors may have accumulated across batches)
@@ -136,7 +101,20 @@ export const markJobCompleted = async (
     },
   });
 
-  await reconcileReservedEventQuota(payload, ingestJobId, reservedEventQuota, newEventsCreated);
+  const owner = await getEventQuotaOwner(payload, ingestJobId);
+  if (owner) {
+    await settleEventQuota(payload, {
+      ingestJobId: Number(ingestJobId),
+      generation,
+      user: owner.user,
+      actual: newEventsCreated,
+    });
+    createJobLogger(String(ingestJobId), "create-events-batch").info("Event creation tracked for quota", {
+      userId: owner.userId,
+      eventsCreated: newEventsCreated,
+      generation,
+    });
+  }
   return newEventsCreated;
 };
 
@@ -192,10 +170,8 @@ export const checkEventQuotaBeforeProcessing = async (
     return 0;
   }
 
-  // Quota phase 2 of 3: re-check per-import quota and atomically reserve
-  // TOTAL_EVENTS before the raw Drizzle bulk insert bypasses Payload hooks.
-  // See also: phase 1 (gate) in workflows/review-checks.ts, phase 3
-  // reconciliation in markJobCompleted.
+  // Quota phase 2 of 3: re-check per-import quota and reserve TOTAL_EVENTS in the
+  // ledger before the raw bulk insert; phase 3 settles it in markJobCompleted.
   const quotaService = createQuotaService(payload);
 
   // Per-import gate counts every row that will be written, including in-place
@@ -214,10 +190,13 @@ export const checkEventQuotaBeforeProcessing = async (
   // TOTAL_EVENTS is a lifetime count of events that EXIST — reserve only for
   // newly-created events, never in-place updates. Reserving `uniqueRows` here
   // would over-charge "update"-strategy re-imports that re-process the same rows.
-  const newEvents = getNewEventCountForQuota(job);
-  if (newEvents <= 0) return 0;
-
-  await quotaService.checkAndIncrementUsage(user, "TOTAL_EVENTS", newEvents);
+  const newEvents = Math.max(0, getNewEventCountForQuota(job));
+  await reserveEventQuota(payload, {
+    ingestJobId: Number(job.id),
+    generation: Number(job.generation ?? 0),
+    user,
+    amount: newEvents,
+  });
   return newEvents;
 };
 

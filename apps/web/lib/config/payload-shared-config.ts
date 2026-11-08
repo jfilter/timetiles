@@ -18,10 +18,13 @@ import Events from "@/lib/collections/events";
 import { GeocodingProviders } from "@/lib/collections/geocoding-providers";
 import IngestFiles from "@/lib/collections/ingest-files";
 import IngestJobs from "@/lib/collections/ingest-jobs/";
+import IngestRecoveryRuns from "@/lib/collections/ingest-recovery-runs";
+import IngestRuns from "@/lib/collections/ingest-runs";
 import { LayoutTemplates } from "@/lib/collections/layout-templates";
 import LocationCache from "@/lib/collections/location-cache";
 import Media from "@/lib/collections/media";
 import { Pages } from "@/lib/collections/pages";
+import QuotaReservations from "@/lib/collections/quota-reservations";
 import ScheduledIngests from "@/lib/collections/scheduled-ingests/index";
 import ScraperRepos from "@/lib/collections/scraper-repos";
 import ScraperRuns from "@/lib/collections/scraper-runs";
@@ -47,6 +50,9 @@ export const COLLECTIONS = {
   "audit-log": AuditLog,
   "ingest-files": IngestFiles,
   "ingest-jobs": IngestJobs,
+  "ingest-runs": IngestRuns,
+  "ingest-recovery-runs": IngestRecoveryRuns,
+  "quota-reservations": QuotaReservations,
   "scheduled-ingests": ScheduledIngests,
   "scraper-repos": ScraperRepos,
   scrapers: Scrapers,

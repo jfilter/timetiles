@@ -1,6 +1,6 @@
 /**
- * Project Payload's final job failures onto scheduled-ingest lifecycle state.
- * Retry decisions belong to Payload, not to the workflow's catch block.
+ * Project a scheduled-ingest job's final failure before dispatch onto the schedule's
+ * lifecycle state. Retry decisions belong to Payload; dispatched runs settle via reconcileRun.
  *
  * @module
  * @category Jobs
@@ -30,6 +30,13 @@ const recordLockedFailure = async (payload: Payload, id: number, req: ReconcileR
 
   const current = await asSystem(payload).findByID({ collection: "scheduled-ingests", id, depth: 0, req });
   if (current.lastStatus !== "running" || !current.lastRun) return false;
+  // Once this run dispatched its sheets, reconcileRun owns the bookkeeping.
+  const dispatched = await asSystem(payload).count({
+    collection: "ingest-runs",
+    where: { scheduledIngest: { equals: current.id }, dispatchedAt: { greater_than_equal: current.lastRun } },
+    req,
+  });
+  if (dispatched.totalDocs > 0) return false;
 
   const jobs = await asSystem(payload).find({
     collection: "payload-jobs",
@@ -55,7 +62,7 @@ const recordLockedFailure = async (payload: Payload, id: number, req: ReconcileR
     error && typeof error === "object" && "message" in error && typeof error.message === "string"
       ? error.message
       : "Scheduled ingest workflow failed";
-  await updateScheduledIngestFailure(payload, current, new Error(message), req);
+  await updateScheduledIngestFailure(payload, current, new Error(message), { req });
   return true;
 };
 

@@ -13,13 +13,16 @@ import { createSchemaVersionJob } from "./handlers/create-schema-version-job";
 import { dataExportCleanupJob } from "./handlers/data-export-cleanup-job";
 import { dataExportJob } from "./handlers/data-export-job";
 import { datasetDetectionJob } from "./handlers/dataset-detection-job";
+import { dispatchIngestRunJob } from "./handlers/dispatch-ingest-run-job";
 import { executeAccountDeletionJob } from "./handlers/execute-account-deletion-job";
 import { geocodeBatchJob } from "./handlers/geocode-batch-job";
 import { ingestFilesCleanupJob } from "./handlers/ingest-files-cleanup-job";
+import { ingestRecoveryJob } from "./handlers/ingest-recovery-job";
 import { jobCleanupJob } from "./handlers/job-cleanup-job";
 import { previewCleanupJob } from "./handlers/preview-cleanup-job";
 import { quotaResetJobConfig } from "./handlers/quota-reset-job";
 import { rateLimitCleanupJob } from "./handlers/rate-limit-cleanup-job";
+import { reconcileIngestRunsJob } from "./handlers/reconcile-ingest-runs-job";
 import { scheduleManagerJob } from "./handlers/schedule-manager-job";
 import { schemaDetectionJob } from "./handlers/schema-detection-job";
 import { schemaMaintenanceJob } from "./handlers/schema-maintenance-job";
@@ -38,6 +41,7 @@ import { validateSchemaJob } from "./handlers/validate-schema-job";
  */
 export const ALL_JOBS = [
   datasetDetectionJob,
+  dispatchIngestRunJob,
   schemaDetectionJob,
   analyzeDuplicatesJob,
   validateSchemaJob,
@@ -47,6 +51,8 @@ export const ALL_JOBS = [
   urlFetchJob,
   scheduleManagerJob,
   cleanupStuckScheduledIngestsJob,
+  reconcileIngestRunsJob,
+  ingestRecoveryJob,
   cleanupStuckScrapersJob,
   quotaResetJobConfig,
   rateLimitCleanupJob,

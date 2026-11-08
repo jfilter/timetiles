@@ -15,6 +15,7 @@ const mocks = vi.hoisted(() => ({
   requireRelationId: vi.fn((v: any) => (typeof v === "object" && v !== null ? v?.id : v)),
   getResumePointForReason: vi.fn(() => "create-schema-version"),
   updateIngestFileStatusForJob: vi.fn(),
+  queueIngestProcess: vi.fn(),
 }));
 
 vi.mock("@/lib/ingest/file-readers", () => ({ cleanupSidecarFiles: mocks.cleanupSidecarFiles }));
@@ -22,6 +23,8 @@ vi.mock("@/lib/ingest/file-readers", () => ({ cleanupSidecarFiles: mocks.cleanup
 vi.mock("@/lib/ingest/ingest-file-status", () => ({
   updateIngestFileStatusForJob: mocks.updateIngestFileStatusForJob,
 }));
+
+vi.mock("@/lib/ingest/ingest-runs", () => ({ queueIngestProcess: mocks.queueIngestProcess }));
 
 vi.mock("@/lib/ingest/upload-path", () => ({ getIngestFilePath: mocks.getIngestFilePath }));
 
@@ -367,7 +370,6 @@ describe("afterChangeHooks", () => {
       const mockFindByID = vi.fn(({ collection }: { collection: string }) =>
         Promise.resolve(collection === "users" ? owner : { id: 10, user: 7, processingOptions: {} })
       );
-      const mockQueue = vi.fn().mockResolvedValue({});
       const doc = {
         id: 1,
         stage: "needs-review",
@@ -379,38 +381,33 @@ describe("afterChangeHooks", () => {
       const previousDoc = { id: 1, stage: "needs-review", schemaValidation: { approved: false } };
       const req = {
         user: { id: 2, role: "admin" },
-        payload: { findByID: mockFindByID, update: vi.fn().mockResolvedValue({}), jobs: { queue: mockQueue } },
+        payload: { findByID: mockFindByID, update: vi.fn().mockResolvedValue({}) },
       };
       const run = () =>
         hook({ doc, previousDoc, req, operation: "update", collection: {} as never, context: {} as never } as any);
-      return { owner, mockQueue, run };
+      return { owner, run };
     };
 
     it("should reject admin approval while the owner's limit still blocks the import", async () => {
       const checkQuota = vi.fn().mockResolvedValue({ allowed: false, current: 0, limit: 100 });
-      const { owner, mockQueue, run } = setupAdminApproval(checkQuota);
+      const { owner, run } = setupAdminApproval(checkQuota);
 
       await expect(run()).rejects.toThrow(
         "Raise the user's event limit before approving this import. This import would create 500 events, exceeding your limit of 100 events per import."
       );
       expect(checkQuota).toHaveBeenCalledWith(owner, "EVENTS_PER_IMPORT", 500);
-      expect(mockQueue).not.toHaveBeenCalled();
+      expect(mocks.queueIngestProcess).not.toHaveBeenCalled();
     });
 
     it("should queue the workflow once the owner's limit allows the import", async () => {
       const checkQuota = vi.fn().mockResolvedValue({ allowed: true, current: 0, limit: 1000 });
-      const { owner, mockQueue, run } = setupAdminApproval(checkQuota);
+      const { owner, run } = setupAdminApproval(checkQuota);
 
       await run();
 
       expect(checkQuota).toHaveBeenCalledWith(owner, "EVENTS_PER_IMPORT", 500);
       expect(checkQuota).toHaveBeenCalledWith(owner, "TOTAL_EVENTS", 500);
-      expect(mockQueue).toHaveBeenCalledWith(
-        expect.objectContaining({
-          workflow: "ingest-process",
-          input: { ingestJobId: "1", resumeFrom: "create-schema-version" },
-        })
-      );
+      expect(mocks.queueIngestProcess).toHaveBeenCalledWith(expect.anything(), 1, "create-schema-version");
     });
   });
 
@@ -424,7 +421,7 @@ describe("afterChangeHooks", () => {
         schemaValidation: { approved: true },
       };
       const previousDoc = { id: 1, stage: "needs-review", schemaValidation: { approved: false } };
-      const req = { user: { id: 2, role: "user" }, payload: { update: mockUpdate, jobs: { queue: vi.fn() } } };
+      const req = { user: { id: 2, role: "user" }, payload: { update: mockUpdate } };
 
       const result = await hook({
         doc,
@@ -436,7 +433,7 @@ describe("afterChangeHooks", () => {
       } as any);
 
       expect(mockUpdate).toHaveBeenCalledWith({ collection: "ingest-jobs", id: 1, data: { stage: "completed" }, req });
-      expect(req.payload.jobs.queue).not.toHaveBeenCalled();
+      expect(mocks.queueIngestProcess).not.toHaveBeenCalled();
       // No workflow runs on this path, so the hook itself must derive the
       // ingest-file status (in the same transaction) — otherwise the file
       // stays "processing" forever.
@@ -454,12 +451,12 @@ describe("afterChangeHooks", () => {
         schemaValidation: { approved: true },
       };
       const previousDoc = { id: 1, stage: "needs-review", schemaValidation: { approved: false } };
-      const req = { user: { id: 2, role: "admin" }, payload: { jobs: { queue: vi.fn() } } };
+      const req = { user: { id: 2, role: "admin" }, payload: {} };
 
       await expect(
         hook({ doc, previousDoc, req, operation: "update", collection: {} as never, context: {} as never } as any)
       ).rejects.toThrow("cannot be resumed");
-      expect(req.payload.jobs.queue).not.toHaveBeenCalled();
+      expect(mocks.queueIngestProcess).not.toHaveBeenCalled();
     });
   });
 
@@ -468,7 +465,6 @@ describe("afterChangeHooks", () => {
       mocks.getResumePointForReason.mockReturnValue("detect-schema");
       const mockFindByID = vi.fn().mockResolvedValue({ processingOptions: { existing: true } });
       const mockUpdate = vi.fn().mockResolvedValue({});
-      const mockQueue = vi.fn().mockResolvedValue({});
       const doc = {
         id: 1,
         stage: "needs-review",
@@ -477,10 +473,7 @@ describe("afterChangeHooks", () => {
         schemaValidation: { approved: true },
       };
       const previousDoc = { id: 1, stage: "needs-review", schemaValidation: { approved: false } };
-      const req = {
-        user: { id: 2, role: "user" },
-        payload: { findByID: mockFindByID, update: mockUpdate, jobs: { queue: mockQueue } },
-      };
+      const req = { user: { id: 2, role: "user" }, payload: { findByID: mockFindByID, update: mockUpdate } };
 
       await hook({ doc, previousDoc, req, operation: "update", collection: {} as never, context: {} as never } as any);
 
@@ -500,11 +493,7 @@ describe("afterChangeHooks", () => {
         })
       );
       // Should queue ingest-process workflow in the same transaction (req passed)
-      expect(mockQueue).toHaveBeenCalledWith({
-        workflow: "ingest-process",
-        input: { ingestJobId: "1", resumeFrom: "detect-schema" },
-        req,
-      });
+      expect(mocks.queueIngestProcess).toHaveBeenCalledWith(req, 1, "detect-schema");
     });
   });
 
@@ -513,7 +502,6 @@ describe("afterChangeHooks", () => {
       mocks.getResumePointForReason.mockReturnValue("create-schema-version");
       const mockFindByID = vi.fn();
       const mockUpdate = vi.fn().mockResolvedValue({});
-      const mockQueue = vi.fn().mockResolvedValue({});
       const doc = {
         id: 1,
         stage: "needs-review",
@@ -522,27 +510,19 @@ describe("afterChangeHooks", () => {
         schemaValidation: { approved: true },
       };
       const previousDoc = { id: 1, stage: "needs-review", schemaValidation: { approved: false } };
-      const req = {
-        user: { id: 2, role: "admin" },
-        payload: { findByID: mockFindByID, update: mockUpdate, jobs: { queue: mockQueue } },
-      };
+      const req = { user: { id: 2, role: "admin" }, payload: { findByID: mockFindByID, update: mockUpdate } };
 
       await hook({ doc, previousDoc, req, operation: "update", collection: {} as never, context: {} as never } as any);
 
       // findByID should not be called because the skip flag lookup returns undefined early
       expect(mockFindByID).not.toHaveBeenCalled();
       // Should still queue the workflow in the same transaction (req passed)
-      expect(mockQueue).toHaveBeenCalledWith({
-        workflow: "ingest-process",
-        input: { ingestJobId: "1", resumeFrom: "create-schema-version" },
-        req,
-      });
+      expect(mocks.queueIngestProcess).toHaveBeenCalledWith(req, 1, "create-schema-version");
     });
 
     it("should skip setting skip flag when doc has no reviewReason", async () => {
       mocks.getResumePointForReason.mockReturnValue("create-schema-version");
       const mockFindByID = vi.fn();
-      const mockQueue = vi.fn().mockResolvedValue({});
       const doc = {
         id: 1,
         stage: "needs-review",
@@ -551,15 +531,12 @@ describe("afterChangeHooks", () => {
         schemaValidation: { approved: true },
       };
       const previousDoc = { id: 1, stage: "needs-review", schemaValidation: { approved: false } };
-      const req = {
-        user: { id: 2, role: "user" },
-        payload: { findByID: mockFindByID, update: vi.fn(), jobs: { queue: mockQueue } },
-      };
+      const req = { user: { id: 2, role: "user" }, payload: { findByID: mockFindByID, update: vi.fn() } };
 
       await hook({ doc, previousDoc, req, operation: "update", collection: {} as never, context: {} as never } as any);
 
       expect(mockFindByID).not.toHaveBeenCalled();
-      expect(mockQueue).toHaveBeenCalled();
+      expect(mocks.queueIngestProcess).toHaveBeenCalled();
     });
 
     it("should skip setting skip flag when ingestFile is missing", async () => {
@@ -567,7 +544,6 @@ describe("afterChangeHooks", () => {
       mocks.extractRelationId.mockReturnValue(null);
       const mockFindByID = vi.fn();
       const mockUpdate = vi.fn();
-      const mockQueue = vi.fn().mockResolvedValue({});
       const doc = {
         id: 1,
         stage: "needs-review",
@@ -576,10 +552,7 @@ describe("afterChangeHooks", () => {
         schemaValidation: { approved: true },
       };
       const previousDoc = { id: 1, stage: "needs-review", schemaValidation: { approved: false } };
-      const req = {
-        user: { id: 2, role: "user" },
-        payload: { findByID: mockFindByID, update: mockUpdate, jobs: { queue: mockQueue } },
-      };
+      const req = { user: { id: 2, role: "user" }, payload: { findByID: mockFindByID, update: mockUpdate } };
 
       await hook({ doc, previousDoc, req, operation: "update", collection: {} as never, context: {} as never } as any);
 
@@ -587,7 +560,7 @@ describe("afterChangeHooks", () => {
       expect(mockFindByID).not.toHaveBeenCalled();
       expect(mockUpdate).not.toHaveBeenCalled();
       // Should still queue the workflow
-      expect(mockQueue).toHaveBeenCalled();
+      expect(mocks.queueIngestProcess).toHaveBeenCalled();
     });
   });
 
@@ -662,7 +635,7 @@ describe("afterChangeHooks", () => {
       mocks.createQuotaService.mockReturnValue({ checkAndIncrementUsage: mockCheckAndIncrementUsage });
       const mockFindByID = vi.fn().mockResolvedValue({ user: { id: 42 } });
       const doc = { id: 1, ingestFile: { id: 10 } };
-      const req = { user: { id: 42, role: "user" }, payload: { findByID: mockFindByID, jobs: { queue: vi.fn() } } };
+      const req = { user: { id: 42, role: "user" }, payload: { findByID: mockFindByID } };
 
       await hook({
         doc,
@@ -682,7 +655,7 @@ describe("afterChangeHooks", () => {
       mocks.createQuotaService.mockReturnValue({ checkAndIncrementUsage: mockCheckAndIncrementUsage });
       const mockFindByID = vi.fn().mockResolvedValue({ user: null });
       const doc = { id: 1, ingestFile: { id: 10 } };
-      const req = { user: { id: 42, role: "user" }, payload: { findByID: mockFindByID, jobs: { queue: vi.fn() } } };
+      const req = { user: { id: 42, role: "user" }, payload: { findByID: mockFindByID } };
 
       await hook({
         doc,
@@ -702,7 +675,7 @@ describe("afterChangeHooks", () => {
       mocks.createQuotaService.mockReturnValue({ checkAndIncrementUsage: mockCheckAndIncrementUsage });
       const mockFindByID = vi.fn().mockResolvedValue({ user: { id: 42 } });
       const doc = { id: 1, ingestFile: { id: 10 } };
-      const req = { user: { id: 42, role: "user" }, payload: { findByID: mockFindByID, jobs: { queue: vi.fn() } } };
+      const req = { user: { id: 42, role: "user" }, payload: { findByID: mockFindByID } };
 
       await expect(
         hook({

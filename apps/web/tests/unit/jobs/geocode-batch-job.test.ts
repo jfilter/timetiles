@@ -844,6 +844,10 @@ describe("GeocodeBatchJob Handler", () => {
   describe("onFail Callback", () => {
     // onFail only acts once Payload has used up the task's retries.
     const finalAttempt = { totalTried: geocodeBatchJob.retries };
+    // No message recorded by the workflow yet: onFail falls back to job.error.
+    beforeEach(() => {
+      mockPayload.findByID.mockResolvedValue({ errorLog: null });
+    });
 
     it.each([null, { totalTried: 1 }, { totalTried: geocodeBatchJob.retries - 1 }])(
       "leaves the job alone while Payload still retries (taskStatus %o)",

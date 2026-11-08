@@ -2,8 +2,8 @@
  * Manual ingest workflow — full pipeline for user-uploaded files.
  *
  * Triggered when a user uploads a CSV/Excel file via the ingest wizard.
- * Runs dataset-detection first (identifies sheets, creates IngestJobs),
- * then processes all sheets in parallel through the 6-task pipeline.
+ * Runs dataset-detection (identifies sheets, creates IngestJobs), then
+ * dispatches one `ingest-process` job per sheet.
  *
  * @module
  * @category Jobs
@@ -13,8 +13,7 @@ import type { WorkflowConfig } from "payload";
 import { logger } from "@/lib/logger";
 
 import type { DatasetDetectionOutput } from "../types/task-outputs";
-import { updateIngestFileStatus } from "./completion";
-import { processSheets } from "./process-sheets";
+import { dispatchSheets } from "./dispatch";
 
 export const manualIngestWorkflow: WorkflowConfig<"manual-ingest"> = {
   slug: "manual-ingest",
@@ -22,7 +21,7 @@ export const manualIngestWorkflow: WorkflowConfig<"manual-ingest"> = {
   queue: "ingest",
   inputSchema: [{ name: "ingestFileId", type: "text", required: true }],
   concurrency: ({ input }) => `ingest:manual:${input.ingestFileId}`,
-  handler: async ({ job, tasks, req }) => {
+  handler: async ({ job, tasks }) => {
     const { ingestFileId } = job.input;
     const workflowStart = Date.now();
     logger.info("[manual-ingest] started", { ingestFileId, jobId: job.id });
@@ -42,12 +41,7 @@ export const manualIngestWorkflow: WorkflowConfig<"manual-ingest"> = {
       return;
     }
 
-    const processStart = Date.now();
-    await processSheets(tasks, detection.sheets, req);
-    logger.info("[manual-ingest] processSheets done", { ingestFileId, durationMs: Date.now() - processStart });
-
-    await updateIngestFileStatus(req.payload, detection.sheets);
-
-    logger.info("[manual-ingest] completed", { ingestFileId, totalDurationMs: Date.now() - workflowStart });
+    await dispatchSheets(tasks, detection.sheets, { ingestFileId: Number(ingestFileId), source: "manual" });
+    logger.info("[manual-ingest] dispatched", { ingestFileId, totalDurationMs: Date.now() - workflowStart });
   },
 };

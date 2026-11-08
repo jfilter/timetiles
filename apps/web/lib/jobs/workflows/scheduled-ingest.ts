@@ -2,112 +2,25 @@
  * Scheduled ingest workflow — automated URL fetch + full pipeline.
  *
  * Triggered by the schedule-manager job or webhooks. Fetches data from
- * a URL, runs dataset-detection, then processes all sheets in parallel.
+ * a URL, runs dataset-detection, then dispatches one `ingest-process` job per
+ * sheet. Runs that import nothing are accounted here; every other run is
+ * accounted once by `reconcileRun` after its sheets settle.
  *
  * @module
  * @category Jobs
  */
 import type { Payload, WorkflowConfig } from "payload";
 
-import { COLLECTION_NAMES, PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
 import { logError, logger } from "@/lib/logger";
-import { asSystem } from "@/lib/services/system-payload";
 import { sleep } from "@/lib/utils/sleep";
 import type { ScheduledIngest } from "@/payload-types";
 
 import {
   loadScheduledIngestForLifecycle,
-  updateScheduledIngestPaused,
   updateScheduledIngestSuccess,
 } from "../handlers/url-fetch-job/scheduled-ingest-utils";
 import type { DatasetDetectionOutput, UrlFetchOutput } from "../types/task-outputs";
-import { updateIngestFileStatus } from "./completion";
-import { processSheets } from "./process-sheets";
-
-const getReviewReason = (reviewJob: { reviewReason?: unknown }): string =>
-  typeof reviewJob.reviewReason === "string" && reviewJob.reviewReason.length > 0
-    ? reviewJob.reviewReason
-    : "manual review required";
-
-const getFailedJobError = (failedJob: { errorLog?: unknown; errors?: unknown }): string | null => {
-  const errorLog = failedJob.errorLog;
-  if (
-    errorLog &&
-    typeof errorLog === "object" &&
-    "lastError" in errorLog &&
-    typeof errorLog.lastError === "string" &&
-    errorLog.lastError.length > 0
-  ) {
-    return errorLog.lastError;
-  }
-
-  const errors = Array.isArray(failedJob.errors) ? failedJob.errors : [];
-  const firstError = errors[0];
-  if (firstError && typeof firstError === "object" && "error" in firstError && typeof firstError.error === "string") {
-    return firstError.error;
-  }
-
-  return null;
-};
-
-/**
- * A run that stopped because a human has to approve something.
- *
- * NOT a failure: the fetch and downstream jobs worked, the pipeline is simply waiting.
- * Counting it as one would climb `currentRetries` (a paused run never reaches the reset in
- * `updateScheduledIngestSuccess`) and auto-disable a feed that needs review each day.
- */
-class ScheduledIngestPausedError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "ScheduledIngestPausedError";
-  }
-}
-
-const buildScheduledIngestFailure = async (
-  payload: Pick<Payload, "findByID" | "find">,
-  ingestFileId: string | number
-): Promise<Error | null> => {
-  // `payload` is narrowed to Pick<...> for test ergonomics, but asSystem()
-  // treats the full shape as Payload — the cast is safe because only find /
-  // findByID are touched below.
-  const sys = asSystem(payload as Payload);
-  const ingestFile = await sys.findByID({ collection: COLLECTION_NAMES.INGEST_FILES, id: String(ingestFileId) });
-
-  if (!ingestFile) {
-    return new Error(`Ingest file ${String(ingestFileId)} not found after scheduled ingest run.`);
-  }
-
-  if (ingestFile.status === "completed") {
-    return null;
-  }
-
-  const ingestJobs = await sys.find({
-    collection: COLLECTION_NAMES.INGEST_JOBS,
-    where: { ingestFile: { equals: ingestFileId } },
-    pagination: false,
-  });
-
-  const reviewJob = ingestJobs.docs.find(
-    (doc: { stage?: string | null }) => doc.stage === PROCESSING_STAGE.NEEDS_REVIEW
-  );
-  if (reviewJob) {
-    return new ScheduledIngestPausedError(`Scheduled ingest paused for review: ${getReviewReason(reviewJob)}`);
-  }
-
-  const failedJob = ingestJobs.docs.find((doc: { stage?: string | null }) => doc.stage === PROCESSING_STAGE.FAILED);
-  if (failedJob) {
-    return new Error(getFailedJobError(failedJob) ?? "Scheduled ingest failed during downstream processing.");
-  }
-
-  if (typeof ingestFile.errorLog === "string" && ingestFile.errorLog.length > 0) {
-    return new Error(ingestFile.errorLog);
-  }
-
-  return new Error(
-    `Scheduled ingest finished without a terminal success state (ingest file status: ${String(ingestFile.status ?? "unknown")}).`
-  );
-};
+import { dispatchSheets } from "./dispatch";
 
 /** Attempts for a non-failure lifecycle write (see reconcileLifecycle). */
 const LIFECYCLE_RECONCILE_ATTEMPTS = 5;
@@ -238,42 +151,11 @@ export const scheduledIngestWorkflow: WorkflowConfig<"scheduled-ingest"> = {
       throw new Error("Scheduled ingest detected no sheets to process.");
     }
 
-    await processSheets(tasks, detection.sheets, req);
-    await updateIngestFileStatus(req.payload, detection.sheets);
-
-    const terminalFailure = await buildScheduledIngestFailure(req.payload, ingestFileId);
-
-    // A review pause resolves the run instead of failing it. `lastStatus` must not be
-    // left at "running", and `currentRetries` must not climb — the pending review is
-    // surfaced through the ingest job's NEEDS_REVIEW stage, which is the right channel.
-    if (terminalFailure instanceof ScheduledIngestPausedError) {
-      await reconcileLifecycle(
-        scheduledIngestId,
-        { scheduledIngestId, ingestFileId, outcome: "paused" },
-        (paused) =>
-          updateScheduledIngestPaused(
-            req.payload,
-            paused,
-            ingestFileId,
-            Date.now() - workflowStart,
-            terminalFailure.message
-          ),
-        req.payload
-      );
-      logger.info("scheduled-ingest: paused for review", {
-        scheduledIngestId,
-        ingestFileId,
-        reason: terminalFailure.message,
-      });
-      return;
-    }
-
-    if (terminalFailure) {
-      throw terminalFailure;
-    }
-
-    await recordRunSuccess(req.payload, scheduledIngestId, ingestFileId, workflowStart);
-
-    logger.info("scheduled-ingest workflow completed", { scheduledIngestId, ingestFileId });
+    await dispatchSheets(tasks, detection.sheets, {
+      ingestFileId: Number(ingestFileId),
+      source: "scheduled",
+      scheduledIngestId,
+    });
+    logger.info("scheduled-ingest: sheets dispatched", { scheduledIngestId, ingestFileId });
   },
 };

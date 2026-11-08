@@ -24,8 +24,17 @@ const mocks = vi.hoisted(() => {
     completeStage: vi.fn(),
     bulkInsertEvents: vi.fn(),
     extractDenormalizedAccessFields: vi.fn(),
+    reserveEventQuota: vi.fn(),
+    settleEventQuota: vi.fn(),
+    releaseEventQuota: vi.fn(),
   };
 });
+
+vi.mock("@/lib/ingest/event-quota-ledger", () => ({
+  reserveEventQuota: mocks.reserveEventQuota,
+  settleEventQuota: mocks.settleEventQuota,
+  releaseEventQuota: mocks.releaseEventQuota,
+}));
 
 vi.mock("@/lib/ingest/file-readers", () => ({
   streamBatchesFromFile: mocks.streamBatchesFromFile,
@@ -700,16 +709,9 @@ describe("CreateEventsBatchJob Handler", () => {
       // totalRows=1000, uniqueRows=50 (950 internal duplicates)
       // Quota limit is 100 — uniqueRows (50) is within limit
       const mockCheckQuota = vi.fn().mockResolvedValue({ allowed: true, current: 0, limit: 100, remaining: 50 });
-      const mockCheckAndIncrementUsage = vi.fn().mockResolvedValue(true);
-      const mockDecrementUsage = vi.fn().mockResolvedValue(undefined);
-
       // Must mock quota-service BEFORE handler reads it; use dynamic import override
       const { createQuotaService } = await import("@/lib/services/quota-service");
-      vi.mocked(createQuotaService).mockReturnValue({
-        checkQuota: mockCheckQuota,
-        checkAndIncrementUsage: mockCheckAndIncrementUsage,
-        decrementUsage: mockDecrementUsage,
-      } as any);
+      vi.mocked(createQuotaService).mockReturnValue({ checkQuota: mockCheckQuota } as any);
 
       const mockIngestJob: any = createMockIngestJob({
         progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
@@ -753,12 +755,16 @@ describe("CreateEventsBatchJob Handler", () => {
         expect.any(String), // "EVENTS_PER_IMPORT"
         50
       );
-      expect(mockCheckAndIncrementUsage).toHaveBeenCalledWith(
-        expect.objectContaining({ id: "user-1" }),
-        "TOTAL_EVENTS",
-        50
+      expect(mocks.reserveEventQuota).toHaveBeenCalledWith(mockPayload, {
+        ingestJobId: Number(mockIngestJob.id),
+        generation: 0,
+        user: expect.objectContaining({ id: "user-1" }),
+        amount: 50,
+      });
+      expect(mocks.settleEventQuota).toHaveBeenCalledWith(
+        mockPayload,
+        expect.objectContaining({ generation: 0, actual: 2 })
       );
-      expect(mockDecrementUsage).toHaveBeenCalledWith("user-1", "TOTAL_EVENTS", 48);
     });
   });
 
@@ -1237,6 +1243,49 @@ describe("CreateEventsBatchJob Handler", () => {
       // Returns the stored results idempotently, and did NOT re-process the file.
       expect(result).toEqual({ output: { needsReview: false, eventCount: 5, duplicatesSkipped: 1 } });
       expect(mocks.streamBatchesFromFile).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("Quota rollback", () => {
+    const failDuringInsert = () => {
+      const duplicates = { internal: [], external: [], summary: { uniqueRows: 2 } };
+      const job = createMockIngestJob({ overrides: { id: 123, createdAt: "2026-01-01T00:00:00.000Z", duplicates } });
+      const file = { ...createMockIngestFile(), user: { id: "user-1", role: "user" } };
+      mockPayload.findByID.mockImplementation(({ collection }: { collection: string }) => {
+        if (collection === "ingest-jobs") return Promise.resolve(job);
+        if (collection === "datasets") return Promise.resolve({ id: "dataset-456" });
+        return Promise.resolve(file);
+      });
+      mockPayload.update.mockResolvedValue(job);
+      mockPayload.find.mockResolvedValue({ docs: [] });
+      mocks.streamBatchesFromFile.mockReturnValueOnce({
+        [Symbol.asyncIterator]: () => ({ next: () => Promise.reject(new Error("connection lost")) }),
+      });
+      mockContext = createMockContext(mockPayload, { ingestJobId: 123 });
+    };
+
+    it("releases the event quota once the failed attempt is rolled back", async () => {
+      failDuringInsert();
+
+      await expect(createEventsBatchJob.handler(mockContext)).rejects.toThrow("connection lost");
+
+      // The prior attempt's events are gone before this attempt reserves.
+      expect(drizzleMock.transaction.mock.invocationCallOrder[0]).toBeLessThan(
+        mocks.reserveEventQuota.mock.invocationCallOrder[0]!
+      );
+      expect(mocks.releaseEventQuota).toHaveBeenCalledWith(mockPayload, 123);
+    });
+
+    it("keeps the charge when the rollback fails, because the events are still there", async () => {
+      failDuringInsert();
+      drizzleMock.transaction
+        .mockImplementationOnce((cb: (tx: unknown) => unknown) => cb(drizzleMock))
+        .mockRejectedValueOnce(new Error("rollback failed"));
+
+      await expect(createEventsBatchJob.handler(mockContext)).rejects.toThrow("connection lost");
+
+      expect(drizzleMock.transaction).toHaveBeenCalledTimes(2);
+      expect(mocks.releaseEventQuota).not.toHaveBeenCalled();
     });
   });
 });

@@ -163,7 +163,7 @@ export const checkQuotaForSheet = async (
   if (!user) return { allowed: true };
 
   // Quota phase 1 of 3: approximate gate before user sees the review screen.
-  // See also: phase 2 (re-check) and phase 3 (increment) in create-events-batch/job-completion.ts.
+  // See also: phase 2 (reserve) and phase 3 (settle) in create-events-batch/job-completion.ts.
   return checkImportQuota(payload, user, uniqueRows, newEventCount);
 };
 

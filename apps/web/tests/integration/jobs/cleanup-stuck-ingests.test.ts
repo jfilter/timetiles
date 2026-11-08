@@ -101,6 +101,26 @@ describe("Cleanup Stuck Imports Job Integration", () => {
       expect(updated.executionHistory).toHaveLength(1);
     });
 
+    it("leaves a failure after dispatch to the run reconciliation", async () => {
+      const schedule = await createRunningSchedule();
+      await payload.create({
+        collection: "ingest-runs",
+        data: {
+          source: "scheduled",
+          scheduledIngest: schedule.id,
+          expectedSheets: 1,
+          outcome: "pending",
+          dispatchedAt: new Date().toISOString(),
+        },
+      });
+      await createJob(schedule.id);
+
+      expect(await reconcileFailedScheduledIngests(payload)).toBe(0);
+      const unchanged = await payload.findByID({ collection: "scheduled-ingests", id: schedule.id });
+      expect(unchanged.lastStatus).toBe("running");
+      expect(unchanged.currentRetries).toBe(0);
+    });
+
     it("ignores failed jobs from an earlier run", async () => {
       const schedule = await createRunningSchedule();
       await createJob(schedule.id, { createdAt: new Date(Date.now() - 120_000).toISOString() });

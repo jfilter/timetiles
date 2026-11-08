@@ -719,6 +719,10 @@ describe("AnalyzeDuplicatesJob Handler", () => {
   describe("onFail Callback", () => {
     // onFail only acts once Payload has used up the task's retries.
     const finalAttempt = { totalTried: analyzeDuplicatesJob.retries };
+    // No message recorded by the workflow yet: onFail falls back to job.error.
+    beforeEach(() => {
+      mockPayload.findByID.mockResolvedValue({ errorLog: null });
+    });
 
     it("should mark ingest job as failed when ingestJobId is a string", async () => {
       const mockArgs = {
@@ -736,6 +740,24 @@ describe("AnalyzeDuplicatesJob Handler", () => {
         collection: "ingest-jobs",
         id: "import-999",
         data: { stage: "failed", errorLog: { lastError: "Some task failure", context: "analyze-duplicates" } },
+      });
+    });
+
+    it("keeps the message the workflow recorded for the failed attempt", async () => {
+      mockPayload.findByID.mockResolvedValue({ errorLog: { lastError: "Duplicate scan timed out" } });
+      mockPayload.update.mockResolvedValueOnce({});
+
+      await analyzeDuplicatesJob.onFail({
+        input: { ingestJobId: 7 },
+        req: { payload: mockPayload },
+        taskStatus: finalAttempt,
+        job: { error: undefined },
+      } as any);
+
+      expect(mockPayload.update).toHaveBeenCalledWith({
+        collection: "ingest-jobs",
+        id: 7,
+        data: { stage: "failed", errorLog: { lastError: "Duplicate scan timed out", context: "analyze-duplicates" } },
       });
     });
 

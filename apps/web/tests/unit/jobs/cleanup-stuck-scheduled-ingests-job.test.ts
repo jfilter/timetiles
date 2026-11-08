@@ -5,13 +5,15 @@
 import type { BasePayload } from "payload";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockLoggerInfo, mockLoggerWarn, mockLoggerError, mockLoggerDebug, mockLogError } = vi.hoisted(() => ({
-  mockLoggerInfo: vi.fn(),
-  mockLoggerWarn: vi.fn(),
-  mockLoggerError: vi.fn(),
-  mockLoggerDebug: vi.fn(),
-  mockLogError: vi.fn(),
-}));
+const { mockLoggerInfo, mockLoggerWarn, mockLoggerError, mockLoggerDebug, mockLogError, mockHasUnsettledRun } =
+  vi.hoisted(() => ({
+    mockHasUnsettledRun: vi.fn(),
+    mockLoggerInfo: vi.fn(),
+    mockLoggerWarn: vi.fn(),
+    mockLoggerError: vi.fn(),
+    mockLoggerDebug: vi.fn(),
+    mockLogError: vi.fn(),
+  }));
 
 vi.mock("@/lib/logger", () => ({
   logger: {
@@ -27,6 +29,8 @@ vi.mock("@/lib/logger", () => ({
   createLogger: vi.fn(() => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() })),
   createJobLogger: vi.fn(() => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() })),
 }));
+
+vi.mock("@/lib/ingest/ingest-runs", () => ({ hasUnsettledScheduledRun: mockHasUnsettledRun }));
 
 import { cleanupStuckScheduledIngestsJob } from "@/lib/jobs/handlers/cleanup-stuck-scheduled-ingests-job";
 
@@ -46,6 +50,7 @@ describe("Cleanup Stuck scheduled ingests Job", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockHasUnsettledRun.mockResolvedValue(false);
 
     mockPayload = { find: vi.fn(), update: vi.fn(), jobs: { cancel: vi.fn().mockResolvedValue(undefined) } };
 
@@ -95,6 +100,26 @@ describe("Cleanup Stuck scheduled ingests Job", () => {
       });
 
       expect(result.output).toEqual({ success: true, totalRunning: 1, stuckCount: 1, resetCount: 1, dryRun: false });
+    });
+
+    it("leaves a schedule alone while its dispatched ingest run is unsettled", async () => {
+      const stuckImport = {
+        id: 7,
+        name: "Long import",
+        lastStatus: "running",
+        lastRun: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(),
+        executionHistory: [],
+        statistics: {},
+      };
+      mockPayload.find.mockResolvedValueOnce({ docs: [stuckImport], totalDocs: 1 }).mockResolvedValue(NO_ACTIVE_JOBS);
+      mockHasUnsettledRun.mockResolvedValueOnce(true);
+
+      const result = await cleanupStuckScheduledIngestsJob.handler({ job: mockJob, req: mockReq });
+
+      expect(mockHasUnsettledRun).toHaveBeenCalledWith(mockPayload, 7);
+      expect(mockPayload.update).not.toHaveBeenCalled();
+      expect(mockPayload.jobs.cancel).not.toHaveBeenCalled();
+      expect(result.output).toEqual(expect.objectContaining({ stuckCount: 0, resetCount: 0 }));
     });
 
     it("should not find imports running for less than 4 hours", async () => {

@@ -95,6 +95,8 @@ export interface UrlFetchOutput {
 
 /** Output from `scraper-execution` task. */
 export interface ScraperExecutionOutput {
+  /** The scraper-runs row of this execution. */
+  runId?: number;
   ingestFileId?: number | string;
   hasOutput?: boolean;
   reason?: string;

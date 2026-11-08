@@ -122,3 +122,13 @@
 
 # account:
 #   deletionGracePeriodDays: 30
+
+# ---------------------------------------------------------------------------
+# Ingest
+# ---------------------------------------------------------------------------
+# A running import task renews its lease every minute. A task silent for
+# longer than leaseMinutes counts as abandoned (see `timetiles ingest recover`).
+# Minimum 5.
+
+# ingest:
+#   leaseMinutes: 15

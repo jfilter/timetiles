@@ -220,8 +220,8 @@ chmod +x /app/start-nextjs.sh
 chown nextjs:nodejs /app/start-nextjs.sh
 
 # Same wrapper approach for the job worker, which needs the identical
-# environment. --all-queues rather than a queue list: Payload matches --queue
-# with `equals`, so a comma-separated value matches nothing and the jobs sit
+# environment. `all` rather than a queue list: Payload matches a queue with
+# `equals`, so a comma-separated value matches nothing and the jobs sit
 # untouched without raising anything.
 cat > /app/start-worker.sh << 'WRAPPER'
 #!/bin/bash
@@ -247,7 +247,7 @@ unset RUN_AUTO_ACTIVATIONS
 # Next.js owns migrations; the worker never applies them.
 export RUN_MIGRATIONS=false
 cd /app/apps/web && exec node ../../node_modules/.pnpm/node_modules/payload/bin.js \
-  jobs:run --cron '*/10 * * * * *' --all-queues --limit 10 --handle-schedules
+  run scripts/jobs-worker.ts all 10 10
 WRAPPER
 chmod +x /app/start-worker.sh
 chown nextjs:nodejs /app/start-worker.sh

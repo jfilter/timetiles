@@ -405,6 +405,10 @@ describe("CreateSchemaVersionJob Handler", () => {
   describe("onFail Callback", () => {
     // onFail only acts once Payload has used up the task's retries.
     const finalAttempt = { totalTried: createSchemaVersionJob.retries };
+    // No message recorded by the workflow yet: onFail falls back to job.error.
+    beforeEach(() => {
+      mockPayload.findByID.mockResolvedValue({ errorLog: null });
+    });
 
     it("should mark ingest job as failed with string error", async () => {
       const mockArgs = {

@@ -1,8 +1,10 @@
 /**
- * Post-review ingest processing workflow.
+ * Per-sheet ingest processing workflow.
  *
- * Queued after a user resolves a NEEDS_REVIEW state on an IngestJob.
- * Supports resuming from different points depending on the review reason:
+ * Queued once per sheet by the run dispatch, and again after a review is resolved
+ * or a job is retried. Each queueing bumps the IngestJob's generation; a child whose
+ * generation is outdated, or whose job already completed, returns before its first
+ * task. Supports resuming from different points:
  * - `analyze-duplicates`: re-runs analyze → detect-schema → validate → create-version → geocode → create-events
  * - `detect-schema`: re-runs detect-schema → validate → create-version → geocode → create-events
  * - `create-schema-version` (default): create-version → geocode → create-events
@@ -10,13 +12,14 @@
  *
  * Tasks throw on error — since there's no Promise.allSettled here,
  * errors propagate to Payload, which retries the task and calls onFail on the
- * last attempt; onFail then marks the job FAILED and derives the file status.
+ * last attempt; onFail then marks the job FAILED and reconciles its run.
  *
  * @module
  * @category Jobs
  */
-import type { WorkflowConfig } from "payload";
+import type { Payload, WorkflowConfig } from "payload";
 
+import { COLLECTION_NAMES, PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
 import { logger } from "@/lib/logger";
 
 import type {
@@ -26,27 +29,41 @@ import type {
   GeocodeBatchOutput,
   ValidateSchemaOutput,
 } from "../types/task-outputs";
-import { updateIngestFileStatusForJob } from "./completion";
+import { reconcileAfterJobTransition } from "../utils/reconcile-run";
+import { recordTaskError } from "../utils/resource-loading";
+
+/** A redelivered or superseded child must not run tasks against a newer generation. */
+const isStale = async (payload: Payload, ingestJobId: string, generation: number): Promise<boolean> => {
+  const job = await payload.findByID({ collection: COLLECTION_NAMES.INGEST_JOBS, id: ingestJobId, depth: 0 });
+  return Number(job.generation) !== generation || job.stage === PROCESSING_STAGE.COMPLETED;
+};
 
 export const ingestProcessWorkflow: WorkflowConfig<"ingest-process"> = {
   slug: "ingest-process",
-  label: "Ingest Process (Post-Review)",
+  label: "Ingest Process",
   queue: "ingest",
   inputSchema: [
     { name: "ingestJobId", type: "text", required: true },
     { name: "resumeFrom", type: "text" },
+    // Absent on children queued before generations existed; those match generation 0.
+    { name: "generation", type: "number" },
   ],
   concurrency: ({ input }) => `ingest:process:${input.ingestJobId}`,
   handler: async ({ job, tasks, req }) => {
     const id = job.input.ingestJobId;
     const resumeFrom = job.input.resumeFrom ?? "create-schema-version";
-    logger.info("ingest-process workflow started (post-review)", { ingestJobId: id, resumeFrom });
+    const generation = job.input.generation ?? 0;
+    if (await isStale(req.payload, id, generation)) {
+      logger.info("ingest-process: stale child, nothing to do", { ingestJobId: id, generation });
+      return;
+    }
+    logger.info("ingest-process workflow started", { ingestJobId: id, resumeFrom, generation });
 
     try {
       // Tasks throw on error → Payload retries, then onFail marks IngestJob FAILED
       if (resumeFrom === "analyze-duplicates") {
         const analyze = (await tasks["analyze-duplicates"]("analyze", {
-          input: { ingestJobId: id },
+          input: { ingestJobId: id, generation },
         })) as AnalyzeDuplicatesOutput;
         if (analyze.failed) {
           // Hard limit (e.g. unique-row cap): the handler already marked the job
@@ -61,13 +78,15 @@ export const ingestProcessWorkflow: WorkflowConfig<"ingest-process"> = {
       }
 
       if (resumeFrom === "analyze-duplicates" || resumeFrom === "detect-schema") {
-        const detect = (await tasks["detect-schema"]("detect", { input: { ingestJobId: id } })) as DetectSchemaOutput;
+        const detect = (await tasks["detect-schema"]("detect", {
+          input: { ingestJobId: id, generation },
+        })) as DetectSchemaOutput;
         if (detect.needsReview) {
           logger.info("ingest-process: detect-schema requires review", { ingestJobId: id });
           return;
         }
         const validate = (await tasks["validate-schema"]("validate", {
-          input: { ingestJobId: id },
+          input: { ingestJobId: id, generation },
         })) as ValidateSchemaOutput;
         if (validate.failed) {
           logger.info("ingest-process: failed during validate-schema", {
@@ -83,15 +102,15 @@ export const ingestProcessWorkflow: WorkflowConfig<"ingest-process"> = {
       }
 
       if (resumeFrom !== "create-events") {
-        const version = (await tasks["create-schema-version"]("create-version", { input: { ingestJobId: id } })) as {
-          needsReview?: boolean;
-        };
+        const version = (await tasks["create-schema-version"]("create-version", {
+          input: { ingestJobId: id, generation },
+        })) as { needsReview?: boolean };
         if (version.needsReview) {
           logger.info("ingest-process: schema still awaits approval", { ingestJobId: id });
           return;
         }
         const geocode = (await tasks["geocode-batch"]("geocode", {
-          input: { ingestJobId: id, batchNumber: 0 },
+          input: { ingestJobId: id, generation, batchNumber: 0 },
         })) as GeocodeBatchOutput;
 
         if (geocode.needsReview) {
@@ -101,7 +120,7 @@ export const ingestProcessWorkflow: WorkflowConfig<"ingest-process"> = {
       }
 
       const events = (await tasks["create-events"]("create-events", {
-        input: { ingestJobId: id },
+        input: { ingestJobId: id, generation },
       })) as CreateEventsOutput;
       if (events.needsReview) {
         logger.info("ingest-process: create-events requires review", { ingestJobId: id });
@@ -109,9 +128,12 @@ export const ingestProcessWorkflow: WorkflowConfig<"ingest-process"> = {
       }
 
       logger.info("ingest-process workflow completed", { ingestJobId: id });
+    } catch (error) {
+      await recordTaskError(req.payload, id, error, generation);
+      throw error;
     } finally {
       // Covers completion and review pauses; a final task failure is handled by onFail, which runs later.
-      await updateIngestFileStatusForJob(req.payload, id);
+      await reconcileAfterJobTransition(req.payload, id);
     }
   },
 };

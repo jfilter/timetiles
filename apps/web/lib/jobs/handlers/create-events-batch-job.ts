@@ -32,9 +32,12 @@ import type { JobHandlerContext, TaskCallbackArgs } from "../utils/job-context";
 import {
   cleanupSidecarsForJob,
   createStandardOnFail,
+  extractTaskGeneration,
+  isSupersededGeneration,
   loadIngestJob,
   loadJobResources,
   setJobStage,
+  writeAtGeneration,
 } from "../utils/resource-loading";
 import { parseReviewChecksConfig, setNeedsReview, shouldReviewHighRowErrors } from "../workflows/review-checks";
 import { EventSnapshotStore } from "./create-events-batch/event-snapshots";
@@ -103,32 +106,6 @@ const reviewHighRowErrors = async ({
   }
 
   return errorCheck.needsReview;
-};
-
-const releaseEventQuotaOnFailure = async ({
-  payload,
-  ingestJobId,
-  reservedEventQuota,
-  trackedEventQuota,
-  eventQuotaFinalized,
-}: {
-  payload: Payload;
-  ingestJobId: string | number;
-  reservedEventQuota: number;
-  trackedEventQuota: number;
-  eventQuotaFinalized: boolean;
-}): Promise<void> => {
-  // trackedEventQuota is -1 until markJobCompleted reconciles the reservation to the actual
-  // count. Once reconciled (>= 0), release exactly that — 0 when a completed job created no
-  // new events — not the original reservation again.
-  const quotaToRelease = trackedEventQuota >= 0 ? trackedEventQuota : reservedEventQuota;
-  if (quotaToRelease <= 0 || eventQuotaFinalized) return;
-
-  try {
-    await releaseReservedEventQuota(payload, ingestJobId, quotaToRelease);
-  } catch (compensationError) {
-    logError(compensationError, "Failed to release reserved event quota", { ingestJobId, quotaToRelease });
-  }
 };
 
 /**
@@ -230,7 +207,11 @@ const streamAndProcessBatches = async (params: {
  * variant is for `onFail`, which runs as a separate invocation with no lease of its
  * own. Best-effort: logs and returns if the job can't be loaded.
  */
-const cleanupPriorAttemptUnderLease = async (payload: Payload, ingestJobId: string | number): Promise<void> => {
+const cleanupPriorAttemptUnderLease = async (
+  payload: Payload,
+  ingestJobId: string | number,
+  generation: number | undefined
+): Promise<void> => {
   const log = createJobLogger(String(ingestJobId), "create-events-batch-onFail");
   let job: IngestJob;
   try {
@@ -242,7 +223,10 @@ const cleanupPriorAttemptUnderLease = async (payload: Payload, ingestJobId: stri
 
   const lease = await acquireDatasetImportLease(payload, Number(requireRelationId(job.dataset)), log);
   try {
+    // Recovery bumps the generation under this lease; a newer generation's events stay.
+    if (await isSupersededGeneration(payload, ingestJobId, generation)) return;
     await cleanupPriorAttempt(payload, ingestJobId, log);
+    await releaseReservedEventQuota(payload, ingestJobId);
   } finally {
     await lease.release();
   }
@@ -284,10 +268,10 @@ export const createEventsBatchJob = {
   ],
   onFail: createStandardOnFail("create-events-batch", {
     retries: RETRIES,
-    beforeFail: async (payload, ingestJobId) => {
+    beforeFail: async (payload, ingestJobId, generation) => {
       // Backstop rollback (the handler's catch is primary), run under the dataset
       // lease so restoring update snapshots can't race a concurrent import.
-      await cleanupPriorAttemptUnderLease(payload, ingestJobId);
+      await cleanupPriorAttemptUnderLease(payload, ingestJobId, generation);
     },
   }),
   // Belt-and-suspenders: the handler writes COMPLETED itself (inside its retryable body).
@@ -297,11 +281,17 @@ export const createEventsBatchJob = {
     const ingestJobId = (args.input as Record<string, unknown> | undefined)?.ingestJobId;
     if (typeof ingestJobId !== "string" && typeof ingestJobId !== "number") return;
     try {
-      // Don't override NEEDS_REVIEW with COMPLETED — the review check already set the stage
-      const job = await args.req.payload.findByID({ collection: COLLECTION_NAMES.INGEST_JOBS, id: ingestJobId });
-      if (job?.stage === PROCESSING_STAGE.NEEDS_REVIEW) return;
-
-      await setJobStage(args.req.payload, ingestJobId, PROCESSING_STAGE.COMPLETED);
+      await writeAtGeneration(args.req.payload, ingestJobId, extractTaskGeneration(args), async (req) => {
+        // Don't override NEEDS_REVIEW with COMPLETED — the review check already set the stage
+        const job = await args.req.payload.findByID({ collection: COLLECTION_NAMES.INGEST_JOBS, id: ingestJobId, req });
+        if (job?.stage === PROCESSING_STAGE.NEEDS_REVIEW) return;
+        await args.req.payload.update({
+          collection: COLLECTION_NAMES.INGEST_JOBS,
+          id: ingestJobId,
+          data: { stage: PROCESSING_STAGE.COMPLETED },
+          req,
+        });
+      });
     } catch (error) {
       logError(error, "Failed to update job stage in onSuccess", { ingestJobId });
     }
@@ -316,12 +306,6 @@ export const createEventsBatchJob = {
     logger.info("Starting event creation", { ingestJobId });
     const startTime = Date.now();
 
-    let reservedEventQuota = 0;
-    // -1 until markJobCompleted reconciles the reservation; distinguishes "not yet
-    // completed" (release the full reservation on failure) from "completed with 0
-    // new events" (already reconciled — release 0, not the reservation again).
-    let trackedEventQuota = -1;
-    let eventQuotaFinalized = false;
     let datasetLease: DatasetImportLease | undefined;
     // True once we hold the dataset lease. Gates the catch's rollback: restoring
     // without the lease would race a concurrent import, so if acquisition itself
@@ -350,6 +334,10 @@ export const createEventsBatchJob = {
         logger.info("Import already completed; skipping redelivered re-run", { ingestJobId });
         return { output: alreadyDone };
       }
+      if (await isSupersededGeneration(payload, ingestJobId, input.generation)) {
+        logger.info("Task generation was superseded; skipping", { ingestJobId, generation: input.generation });
+        return { output: { needsReview: false, eventCount: 0, duplicatesSkipped: 0, reason: "superseded" } };
+      }
 
       // Set stage for UI progress tracking (workflow controls sequencing)
       await setJobStage(payload, ingestJobId, PROCESSING_STAGE.CREATE_EVENTS);
@@ -369,7 +357,7 @@ export const createEventsBatchJob = {
       const progressJob = await loadIngestJob(payload, ingestJobId);
 
       // Check EVENTS_PER_IMPORT quota before processing
-      reservedEventQuota = await checkEventQuotaBeforeProcessing(payload, ingestFile, job);
+      await checkEventQuotaBeforeProcessing(payload, ingestFile, job);
 
       // Under the "update" strategy, existing events are overwritten in place.
       // Snapshot their originals so a permanent failure can be rolled back
@@ -402,7 +390,7 @@ export const createEventsBatchJob = {
       await ProgressTrackingService.completeStage(payload, ingestJobId, PROCESSING_STAGE.CREATE_EVENTS);
 
       // Mark job completed: saves results and reconciles the reservation to the actual count.
-      trackedEventQuota = await markJobCompleted(payload, ingestJobId, reservedEventQuota, totalEventsUpdated);
+      await markJobCompleted(payload, ingestJobId, Number(job.generation ?? 0), totalEventsUpdated);
 
       // Review check: high row error rate — pause after completion so results are saved.
       // Zod-validated; malformed config falls back to defaults (rowErrorThreshold, etc.).
@@ -426,7 +414,6 @@ export const createEventsBatchJob = {
       await snapshotStore?.discard();
 
       cleanupSidecarFiles(filePath, sheetIndex);
-      eventQuotaFinalized = true;
 
       logPerformance("Event creation", Date.now() - startTime, {
         ingestJobId,
@@ -448,21 +435,17 @@ export const createEventsBatchJob = {
       // Only when the lease is held (or skip strategy): restoring snapshots without
       // it would race a concurrent import; on an acquisition failure nothing was
       // mutated under serialization, so there is nothing to roll back here.
+      // The quota is released only together with a successful rollback; otherwise
+      // the ledger keeps the charge for the events still present.
       if (leaseHeld) {
         try {
           await cleanupPriorAttempt(payload, ingestJobId, logger);
+          await releaseReservedEventQuota(payload, ingestJobId);
         } catch (cleanupError) {
           logError(cleanupError, "Rollback after event-creation failure did not fully complete", { ingestJobId });
         }
       }
 
-      await releaseEventQuotaOnFailure({
-        payload,
-        ingestJobId,
-        reservedEventQuota,
-        trackedEventQuota,
-        eventQuotaFinalized,
-      });
       await cleanupSidecarsForJob(payload, ingestJobId);
 
       // Re-throw — Payload retries up to `retries` count, then onFail is a backstop.

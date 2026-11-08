@@ -71,7 +71,7 @@ RUN export PAYLOAD_SECRET=dummy_secret_for_build_only EMAIL_DISABLED=true \
 RUN CI=true pnpm prune --prod --ignore-scripts
 
 # Stage 5: Production runner
-# Uses full build (not standalone) so both `next start` and `payload jobs:run` work
+# Uses full build (not standalone) so both `next start` and the `payload run` workers work
 # from the same image. Standalone output can't run the Payload CLI because it bundles
 # the config into webpack chunks — the CLI needs the raw TypeScript source + node_modules.
 FROM node:24-alpine AS runner

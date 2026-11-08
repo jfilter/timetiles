@@ -184,6 +184,7 @@ print_usage() {
     echo "  restore   - Restore from backup"
     echo "  status    - Check service status"
     echo "  create-admin <email> - Create an admin user (needed once after install)"
+    echo "  ingest recover [--apply] - Report ingest work whose worker died; resolve it with --apply"
     echo "  ssl       - Initialize Let's Encrypt SSL certificate"
     echo "  update    - Pull latest code and redeploy"
     echo "  check     - Verify all deployment aspects are properly configured"
@@ -1609,6 +1610,26 @@ exec node /app/node_modules/.pnpm/node_modules/payload/bin.js run scripts/create
             echo -e "${RED}Failed to create admin user.${NC}"
             exit 1
         fi
+        ;;
+
+    ingest)
+        # Recovery is report-only unless --apply is given; the report and the
+        # applied changes are both recorded in the ingest-recovery-runs history.
+        check_env
+        if [[ "${2:-}" != "recover" ]]; then
+            echo -e "${RED}Usage: $0 ingest recover [--apply]${NC}"
+            exit 1
+        fi
+        RECOVER_CMD=(node /app/node_modules/.pnpm/node_modules/payload/bin.js run scripts/recover-ingests.ts)
+        case "${3:-}" in
+            "") ;;
+            --apply) RECOVER_CMD+=(apply) ;;
+            *)
+                echo -e "${RED}Usage: $0 ingest recover [--apply]${NC}"
+                exit 1
+                ;;
+        esac
+        $DC_CMD --env-file "$ENV_FILE" exec -T web "${RECOVER_CMD[@]}"
         ;;
 
     version|--version|-v)

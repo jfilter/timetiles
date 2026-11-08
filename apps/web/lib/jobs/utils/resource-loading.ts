@@ -9,19 +9,23 @@
  * @module
  * @category Jobs/Utils
  */
-import type { Payload } from "payload";
+import { eq } from "@payloadcms/db-postgres/drizzle";
+import type { Payload, PayloadRequest } from "payload";
+import { commitTransaction, createLocalReq, initTransaction, killTransaction } from "payload";
 
 import { COLLECTION_NAMES, PROCESSING_STAGE, type ProcessingStage } from "@/lib/constants/ingest-constants";
+import { getTransactionAwareDrizzle } from "@/lib/database/drizzle-transaction";
 import { cleanupSidecarFiles } from "@/lib/ingest/file-readers";
 import { readDuplicateStrategy } from "@/lib/ingest/import-quota";
-import { updateIngestFileStatusForJob } from "@/lib/ingest/ingest-file-status";
 import { getIngestFilePath } from "@/lib/ingest/upload-path";
-import { logError } from "@/lib/logger";
+import { logError, logger } from "@/lib/logger";
 import { isRecord } from "@/lib/utils/is-record";
+import { ingest_jobs } from "@/payload-generated-schema";
 import type { Dataset, IngestFile, IngestJob } from "@/payload-types";
 
 import type { ConfigSnapshot } from "../handlers/dataset-detection/catalog-dataset-helpers";
 import { isFinalAttempt, type TaskCallbackArgs } from "./job-context";
+import { reconcileAfterJobTransition } from "./reconcile-run";
 
 /**
  * Read a job config snapshot from JSON storage.
@@ -178,6 +182,57 @@ export const extractIngestJobId = (args: TaskCallbackArgs): string | number | nu
   return ingestJobId;
 };
 
+/** The IngestJob generation a task was started for, or undefined when its input has none. */
+export const extractTaskGeneration = (args: Pick<TaskCallbackArgs, "input">): number | undefined => {
+  const generation = (args.input as Record<string, unknown> | undefined)?.generation;
+  return typeof generation === "number" ? generation : undefined;
+};
+
+/** True when the IngestJob moved past the generation a task was started for. */
+export const isSupersededGeneration = async (
+  payload: Payload,
+  ingestJobId: string | number,
+  generation: number | undefined
+): Promise<boolean> => {
+  if (generation === undefined) return false;
+  const job = await payload.findByID({ collection: COLLECTION_NAMES.INGEST_JOBS, id: ingestJobId, depth: 0 });
+  return Number(job.generation ?? 0) !== generation;
+};
+
+/**
+ * Run a task's late write with the IngestJob row locked, only while the job is still at
+ * the task's generation. Approval, retry and reset lock the same row. Returns whether it ran.
+ */
+export const writeAtGeneration = async (
+  payload: Payload,
+  ingestJobId: string | number,
+  generation: number | undefined,
+  write: (req?: PayloadRequest) => Promise<void>
+): Promise<boolean> => {
+  // A task queued without a generation has nothing to compare against.
+  if (generation === undefined) {
+    await write();
+    return true;
+  }
+  const req = await createLocalReq({}, payload);
+  if (!(await initTransaction(req))) throw new Error("A generation-checked write requires a database transaction");
+  try {
+    const db = await getTransactionAwareDrizzle(payload, req);
+    const [row] = (await db
+      .select({ generation: ingest_jobs.generation })
+      .from(ingest_jobs)
+      .where(eq(ingest_jobs.id, Number(ingestJobId)))
+      .for("update")) as Array<{ generation: number | string | null }>;
+    const current = row !== undefined && Number(row.generation ?? 0) === generation;
+    if (current) await write(req);
+    await commitTransaction(req);
+    return current;
+  } catch (error) {
+    await killTransaction(req);
+    throw error;
+  }
+};
+
 /**
  * Extract an error message from a job error value.
  *
@@ -202,16 +257,25 @@ const extractErrorMessage = (error: unknown): string => {
  */
 export const createStandardOnFail = (
   context: string,
-  options: { retries: number; beforeFail?: (payload: Payload, ingestJobId: string | number) => Promise<void> }
+  options: {
+    retries: number;
+    beforeFail?: (payload: Payload, ingestJobId: string | number, generation: number | undefined) => Promise<void>;
+  }
 ): ((args: TaskCallbackArgs) => Promise<void>) => {
   return async (args: TaskCallbackArgs) => {
     if (!isFinalAttempt(args, options.retries)) return;
     const ingestJobId = extractIngestJobId(args);
     if (ingestJobId == null) return;
+    const generation = extractTaskGeneration(args);
+    // A superseded task must neither roll back nor fail the newer generation's work.
+    if (await isSupersededGeneration(args.req.payload, ingestJobId, generation)) {
+      logger.info({ context, ingestJobId }, "onFail of a superseded task generation, nothing to do");
+      return;
+    }
 
     if (options.beforeFail) {
       try {
-        await options.beforeFail(args.req.payload, ingestJobId);
+        await options.beforeFail(args.req.payload, ingestJobId, generation);
       } catch (error) {
         // Best-effort pre-fail cleanup — don't mask the status update, but log for visibility
         logError(error, "beforeFail cleanup failed in onFail", { context, ingestJobId });
@@ -219,19 +283,57 @@ export const createStandardOnFail = (
     }
 
     try {
-      await args.req.payload.update({
-        collection: COLLECTION_NAMES.INGEST_JOBS,
-        id: ingestJobId,
-        data: { stage: PROCESSING_STAGE.FAILED, errorLog: { lastError: extractErrorMessage(args.job.error), context } },
+      // Payload calls onFail before it stores the error; recordTaskError has persisted the message.
+      // The rollback may have waited for the dataset lease while the generation moved on.
+      const failed = await writeAtGeneration(args.req.payload, ingestJobId, generation, async (req) => {
+        const current = await args.req.payload.findByID({
+          collection: COLLECTION_NAMES.INGEST_JOBS,
+          id: ingestJobId,
+          depth: 0,
+          req,
+        });
+        const recorded = isRecord(current.errorLog) ? current.errorLog.lastError : undefined;
+        const lastError = typeof recorded === "string" ? recorded : extractErrorMessage(args.job.error);
+        await args.req.payload.update({
+          collection: COLLECTION_NAMES.INGEST_JOBS,
+          id: ingestJobId,
+          data: { stage: PROCESSING_STAGE.FAILED, errorLog: { lastError, context } },
+          req,
+        });
       });
+      if (!failed) return;
     } catch (error) {
       // Best-effort — don't throw in onFail, but log so silent failures are observable
       logError(error, "Failed to mark ingest job as failed in onFail", { context, ingestJobId });
       return;
     }
-    // Payload calls onFail after the workflow's own status update has run, so derive the file status here.
-    await updateIngestFileStatusForJob(args.req.payload, ingestJobId);
+    // Payload calls onFail after the workflow's own finally has run, so settle the run here.
+    await reconcileAfterJobTransition(args.req.payload, ingestJobId);
   };
+};
+
+/**
+ * Store a failed task attempt's message on its IngestJob without changing the stage,
+ * so the final onFail can report it. Never throws.
+ */
+export const recordTaskError = async (
+  payload: Payload,
+  ingestJobId: string | number,
+  error: unknown,
+  generation?: number
+): Promise<void> => {
+  try {
+    await writeAtGeneration(payload, ingestJobId, generation, async (req) => {
+      await payload.update({
+        collection: COLLECTION_NAMES.INGEST_JOBS,
+        id: ingestJobId,
+        data: { errorLog: { lastError: extractErrorMessage(error) } },
+        req,
+      });
+    });
+  } catch (updateError) {
+    logError(updateError, "Failed to record task error on ingest job", { ingestJobId });
+  }
 };
 
 /**

@@ -168,16 +168,12 @@ Event 3,2024-01-03,Hamburg Germany
 
     expect(ingestJob.stage).toBe("failed");
     expect(ingestJob.errorLog).toBeDefined();
-    // Context is "pipeline" when error is caught by processSheets, or "geocode-batch" when caught by handler
-    expect(ingestJob.errorLog.context).toMatch(/pipeline|geocode-batch/);
+    expect(ingestJob.errorLog.context).toBe("geocode-batch");
     expect(ingestJob.errorLog.lastError).toMatch(/Geocoding|geocoding/i);
 
-    // Verify the import file status (may be "failed" or still "processing" depending on error type)
+    // onFail settles the run, which fails the file.
     const updatedIngestFile = await payload.findByID({ collection: "ingest-files", id: ingestFile.id });
-
-    // Import file status should indicate failure eventually
-    // Note: The exact status depends on whether all-geocoding-failed path or general error path was taken
-    expect(["failed", "processing"]).toContain(updatedIngestFile.status);
+    expect(updatedIngestFile.status).toBe("failed");
 
     // Verify no events were created (since geocoding failed)
     const events = await payload.find({ collection: "events", where: { ingestJob: { equals: ingestJob.id } } });
@@ -241,5 +237,49 @@ Event 3,2024-01-03,Hamburg Germany
     // Events should be created for all 3 rows
     const events = await payload.find({ collection: "events", where: { ingestJob: { equals: ingestJob.id } } });
     expect(events.docs.length).toBeGreaterThanOrEqual(3);
+  });
+  it("settles the run as completed when a geocoding attempt fails once and the retry succeeds", async () => {
+    const partialSuccess = createPartialSuccessBatchGeocode();
+    const batchGeocode = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("Geocoding provider timed out"))
+      .mockImplementation(partialSuccess);
+    vi.spyOn(geocodingModule, "createGeocodingService").mockReturnValue({
+      isEnabled: () => Promise.resolve(true),
+      lookupSignature: () => Promise.resolve("test-providers"),
+      batchGeocode,
+    } as unknown as geocodingModule.GeocodingService);
+
+    await withDataset(testEnv, testCatalogId, {
+      name: "geocode-transient-test.csv",
+      language: "eng",
+      schemaConfig: { locked: false, autoGrow: true, autoApproveNonBreaking: true },
+    });
+    const { ingestFile } = await withIngestFile(
+      testEnv,
+      Number.parseInt(testCatalogId, 10),
+      "name,date,location\nEvent 1,2024-01-01,Berlin Germany\nEvent 2,2024-01-02,Hamburg Germany\n",
+      {
+        filename: "geocode-transient-test.csv",
+        mimeType: "text/csv",
+        user: testUserId,
+        additionalData: { originalName: "geocode-transient-test.csv" },
+        triggerWorkflow: true,
+      }
+    );
+
+    const { ingestJob } = await runJobsUntilIngestJobStage(
+      payload,
+      ingestFile.id,
+      (job) => job.stage === "failed" || job.stage === "completed",
+      { maxIterations: 50 }
+    );
+
+    expect(batchGeocode.mock.calls.length).toBeGreaterThan(1);
+    expect(ingestJob?.stage).toBe("completed");
+    const runs = await payload.find({ collection: "ingest-runs", where: { ingestFile: { equals: ingestFile.id } } });
+    expect(runs.docs[0]?.outcome).toBe("completed");
+    const updatedIngestFile = await payload.findByID({ collection: "ingest-files", id: ingestFile.id });
+    expect(updatedIngestFile.status).toBe("completed");
   });
 });

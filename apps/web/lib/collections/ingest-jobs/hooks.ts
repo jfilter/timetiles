@@ -8,6 +8,7 @@ import {
   type CollectionAfterChangeHook,
   type CollectionAfterDeleteHook,
   type CollectionBeforeChangeHook,
+  type CollectionBeforeDeleteHook,
   type PayloadRequest,
 } from "payload";
 
@@ -16,9 +17,12 @@ import { isPrivileged } from "@/lib/collections/shared-fields";
 import { validateRelationOwnership } from "@/lib/collections/shared-hooks";
 import { COLLECTION_NAMES, PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
 import { getResumePointForReason, PER_SHEET_REVIEW_CHECKS_KEY, REVIEW_REASONS } from "@/lib/constants/review-reasons";
+import { settleDeletedJobsQuota } from "@/lib/ingest/event-quota-ledger";
 import { cleanupSidecarFiles } from "@/lib/ingest/file-readers";
 import { checkJobQuota, quotaApprovalBlockedMessage } from "@/lib/ingest/import-quota";
 import { updateIngestFileStatusForJob } from "@/lib/ingest/ingest-file-status";
+import { assertNoLiveIngestTask } from "@/lib/ingest/ingest-lease";
+import { queueIngestProcess } from "@/lib/ingest/ingest-runs";
 import { getIngestFilePath } from "@/lib/ingest/upload-path";
 import { logger } from "@/lib/logger";
 import { AUDIT_ACTIONS, auditLog } from "@/lib/services/audit-log-service";
@@ -346,21 +350,21 @@ export const afterChangeHooks: CollectionAfterChangeHook[] = [
       // For reasons that would loop on re-run, set skip flag so the check doesn't fire again
       await setApprovalSkipFlag(req, doc);
 
-      const resumeFrom = getResumePointForReason(doc.reviewReason);
-      const input = { ingestJobId: String(doc.id), resumeFrom };
-      // Pass `req` so the queue insert joins the approval transaction. Without
-      // it, the resume workflow is committed in a separate transaction and the
-      // poller can start it before this update (stage/approved metadata) commits
-      // — the worker would read the pre-approval state (approved=false), skip
-      // create-schema-version, yet still geocode and create events; a parent
-      // rollback would also strand an orphaned job. In-transaction, the resume
-      // becomes visible only once the approval commits.
-      await req.payload.jobs.queue({ workflow: "ingest-process", input, req });
+      // Queued inside the approval transaction: the worker must not start before the
+      // approval commits, and a rollback must not leave an orphaned resumption.
+      await queueIngestProcess(req, doc.id, getResumePointForReason(doc.reviewReason));
     }
 
     return doc;
   },
 ];
+
+/** Settle the job's event quota charge while its events can still be counted. */
+export const ingestJobBeforeDeleteHook: CollectionBeforeDeleteHook = async ({ id, req }) => {
+  await assertNoLiveIngestTask(req.payload, [id], req);
+  const job = await req.payload.findByID({ collection: COLLECTION_NAMES.INGEST_JOBS, id, depth: 0, req });
+  await settleDeletedJobsQuota(req.payload, [job], req);
+};
 
 export const ingestJobAfterDeleteHook: CollectionAfterDeleteHook = ({ doc }) => {
   if (!doc?.ingestFile) return;

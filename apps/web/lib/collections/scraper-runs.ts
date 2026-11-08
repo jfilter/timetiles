@@ -10,6 +10,8 @@
  */
 import type { CollectionConfig, Where } from "payload";
 
+import { INGEST_RUN_OUTCOMES } from "@/lib/constants/ingest-constants";
+
 import { isEditorOrAdmin, isPrivileged } from "./shared-fields";
 
 const ScraperRuns: CollectionConfig = {
@@ -76,6 +78,12 @@ const ScraperRuns: CollectionConfig = {
     { name: "stdout", type: "textarea", admin: { description: "Standard output from the scraper process" } },
     { name: "stderr", type: "textarea", admin: { description: "Standard error from the scraper process" } },
     { name: "error", type: "text", admin: { description: "Error message if the run failed" } },
+    {
+      name: "importOutcome",
+      type: "select",
+      options: INGEST_RUN_OUTCOMES.map((value) => ({ label: value, value })),
+      admin: { description: "Outcome of importing the result file; the scrape status stays separate" },
+    },
     // Output metrics
     { name: "outputRows", type: "number", admin: { description: "Number of CSV rows produced" } },
     { name: "outputBytes", type: "number", admin: { description: "Size of the output CSV in bytes" } },

@@ -492,12 +492,9 @@ export const urlFetchJob = {
         // is in fact a PayloadRequest — carrying transactionID and context that
         // the audit/update paths need. Cast through unknown to let Payload pick
         // up the transaction if one is active.
-        await updateScheduledIngestFailure(
-          payload,
-          scheduledIngest,
-          errorObj,
-          context.req as unknown as { transactionID?: number | string; context?: Record<string, unknown> }
-        );
+        await updateScheduledIngestFailure(payload, scheduledIngest, errorObj, {
+          req: context.req as unknown as { transactionID?: number | string; context?: Record<string, unknown> },
+        });
       }
 
       // Throw — Payload marks workflow as failed

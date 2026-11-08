@@ -215,19 +215,20 @@ services:
     read_only: true
     tmpfs:
       - /tmp
-    command: [
+    # The worker script handles schedules of its own queue (cache cleanup lives
+    # here, next to the ingest cache) and, on SIGTERM, finishes the running jobs
+    # before it exits. The grace period bounds that wait; recovery covers the rest.
+    command:
+      [
         "node",
         "/app/node_modules/.pnpm/node_modules/payload/bin.js",
-        "jobs:run",
-        "--cron",
-        "*/10 * * * * *",
-        "--queue",
+        "run",
+        "scripts/jobs-worker.ts",
         "ingest",
-        "--limit",
         "10",
-        # Schedule cache cleanup in the process that owns the ingest cache.
-        "--handle-schedules",
+        "10",
       ]
+    stop_grace_period: 5m
     environment:
       DATABASE_URL: postgresql://${DB_USER:-timetiles_user}:${DB_PASSWORD}@postgres:5432/${DB_NAME:-timetiles}
       PAYLOAD_SECRET: ${PAYLOAD_SECRET}
@@ -277,7 +278,7 @@ services:
     networks:
       - timetiles-network
     # Image carries an HTTP-based HEALTHCHECK (Dockerfile.prod) that targets
-    # the Next.js server. Workers run `payload jobs:run` instead, so they
+    # the Next.js server. Workers run `scripts/jobs-worker.ts` instead, so they
     # never bind a port — the inherited check would always fail. Disable.
     healthcheck:
       disable: true
@@ -300,20 +301,19 @@ services:
     read_only: true
     tmpfs:
       - /tmp
-    command: [
+    # One queue per worker: Payload matches the queue with `equals`, so a
+    # "default,maintenance" value would match no job at all.
+    command:
+      [
         "node",
         "/app/node_modules/.pnpm/node_modules/payload/bin.js",
-        "jobs:run",
-        "--cron",
-        "*/1 * * * *",
-        # One queue per worker. --queue takes exactly one value: Payload matches
-        # it with `equals`, so "default,maintenance" would match no job at all.
-        "--queue",
+        "run",
+        "scripts/jobs-worker.ts",
         "default",
-        "--limit",
         "20",
-        "--handle-schedules",
+        "60",
       ]
+    stop_grace_period: 1m
     environment:
       DATABASE_URL: postgresql://${DB_USER:-timetiles_user}:${DB_PASSWORD}@postgres:5432/${DB_NAME:-timetiles}
       PAYLOAD_SECRET: ${PAYLOAD_SECRET}
@@ -370,9 +370,9 @@ services:
 
   # Maintenance worker — cleanup and retention jobs
   #
-  # Separate from worker-general because --queue takes exactly one value:
+  # Separate from worker-general because a worker runs exactly one queue:
   # Payload matches it with `equals`, so "default,maintenance" would match
-  # no job at all. --all-queues would cover them, but
+  # no job at all. `all` would cover them, but
   # it would also let this worker race worker-ingest for ingest jobs, and
   # Payload's concurrency-key guard reads before it locks -- two workers
   # polling the same instant can admit two different jobs sharing one key,
@@ -394,26 +394,21 @@ services:
     read_only: true
     tmpfs:
       - /tmp
-    command: [
+    # Each worker schedules only its OWN queue: handleSchedules skips any
+    # schedule whose queue differs (handleSchedules/index.js:36), so separate
+    # schedulers never double-queue, and one on `default` would leave the
+    # maintenance schedules unqueued.
+    command:
+      [
         "node",
         "/app/node_modules/.pnpm/node_modules/payload/bin.js",
-        "jobs:run",
-        "--cron",
-        "*/1 * * * *",
-        # One queue per worker. --queue takes exactly one value: Payload matches
-        # it with `equals`, so "default,maintenance" would match no job at all.
-        "--queue",
+        "run",
+        "scripts/jobs-worker.ts",
         "maintenance",
-        "--limit",
         "20",
-        # Each worker schedules only its OWN queue: handleSchedules skips any
-        # schedule whose queue differs from --queue (handleSchedules/index.js:36).
-        # A single scheduler on `default` would leave the maintenance
-        # schedules unqueued.
-        # Separate schedulers are safe because the filter makes their work
-        # disjoint; they would only double-queue if they shared a queue.
-        "--handle-schedules",
+        "60",
       ]
+    stop_grace_period: 1m
     environment:
       DATABASE_URL: postgresql://${DB_USER:-timetiles_user}:${DB_PASSWORD}@postgres:5432/${DB_NAME:-timetiles}
       PAYLOAD_SECRET: ${PAYLOAD_SECRET}

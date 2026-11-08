@@ -126,7 +126,7 @@ describe("TOTAL_EVENTS quota — update strategy", () => {
     await insertEventsForJob(datasetId, job.id, 3);
 
     // Reconciliation with eventsUpdated=3 → 3 written − 3 updated = 0 new.
-    const reconciledNewEvents = await markJobCompleted(payload, job.id, reserved, 3);
+    const reconciledNewEvents = await markJobCompleted(payload, job.id, job.generation ?? 0, 3);
     expect(reconciledNewEvents).toBe(0);
 
     const afterReconcile = await quotaService.getCurrentUsage(user.id);
@@ -150,7 +150,7 @@ describe("TOTAL_EVENTS quota — update strategy", () => {
     // 5 events written for this job (2 created + 3 updated).
     await insertEventsForJob(datasetId, job.id, 5);
 
-    const reconciledNewEvents = await markJobCompleted(payload, job.id, reserved, 3);
+    const reconciledNewEvents = await markJobCompleted(payload, job.id, job.generation ?? 0, 3);
     expect(reconciledNewEvents).toBe(2);
 
     const afterReconcile = await quotaService.getCurrentUsage(user.id);

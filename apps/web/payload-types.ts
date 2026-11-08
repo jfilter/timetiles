@@ -74,6 +74,9 @@ export interface Config {
     'audit-log': AuditLog;
     'ingest-files': IngestFile;
     'ingest-jobs': IngestJob;
+    'ingest-runs': IngestRun;
+    'ingest-recovery-runs': IngestRecoveryRun;
+    'quota-reservations': QuotaReservation;
     'scheduled-ingests': ScheduledIngest;
     'scraper-repos': ScraperRepo;
     scrapers: Scraper;
@@ -105,6 +108,9 @@ export interface Config {
     'audit-log': AuditLogSelect<false> | AuditLogSelect<true>;
     'ingest-files': IngestFilesSelect<false> | IngestFilesSelect<true>;
     'ingest-jobs': IngestJobsSelect<false> | IngestJobsSelect<true>;
+    'ingest-runs': IngestRunsSelect<false> | IngestRunsSelect<true>;
+    'ingest-recovery-runs': IngestRecoveryRunsSelect<false> | IngestRecoveryRunsSelect<true>;
+    'quota-reservations': QuotaReservationsSelect<false> | QuotaReservationsSelect<true>;
     'scheduled-ingests': ScheduledIngestsSelect<false> | ScheduledIngestsSelect<true>;
     'scraper-repos': ScraperReposSelect<false> | ScraperReposSelect<true>;
     scrapers: ScrapersSelect<false> | ScrapersSelect<true>;
@@ -153,6 +159,7 @@ export interface Config {
   jobs: {
     tasks: {
       'dataset-detection': TaskDatasetDetection;
+      'dispatch-ingest-run': TaskDispatchIngestRun;
       'detect-schema': TaskDetectSchema;
       'analyze-duplicates': TaskAnalyzeDuplicates;
       'validate-schema': TaskValidateSchema;
@@ -162,6 +169,8 @@ export interface Config {
       'url-fetch': TaskUrlFetch;
       'schedule-manager': TaskScheduleManager;
       'cleanup-stuck-scheduled-ingests': TaskCleanupStuckScheduledIngests;
+      'reconcile-ingest-runs': TaskReconcileIngestRuns;
+      'ingest-recovery': TaskIngestRecovery;
       'cleanup-stuck-scrapers': TaskCleanupStuckScrapers;
       'quota-reset': TaskQuotaReset;
       'rate-limit-cleanup': TaskRateLimitCleanup;
@@ -937,6 +946,18 @@ export interface IngestJob {
    * Sheet index for Excel files (0-based)
    */
   sheetIndex?: number | null;
+  /**
+   * Source run that dispatched this sheet
+   */
+  run?: (number | null) | IngestRun;
+  /**
+   * Bumped on every dispatch; a child job of an older generation stops
+   */
+  generation?: number | null;
+  /**
+   * Times ingest recovery requeued this sheet after its worker died
+   */
+  recoveryAttempts?: number | null;
   /**
    * Current processing stage
    */
@@ -1792,117 +1813,79 @@ export interface ScheduledIngest {
   _status?: ('draft' | 'published') | null;
 }
 /**
- * Audit trail of sensitive account actions; read-only to API and admin clients
+ * Source runs and their derived outcome
  *
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "audit-log".
+ * via the `definition` "ingest-runs".
  */
-export interface AuditLog {
+export interface IngestRun {
   id: number;
+  source: 'manual' | 'scheduled' | 'scraper';
+  ingestFile?: (number | null) | IngestFile;
+  scheduledIngest?: (number | null) | ScheduledIngest;
+  scraperRun?: (number | null) | ScraperRun;
+  expectedSheets: number;
   /**
-   * The type of action (e.g. account.email_changed, account.deletion_executed)
+   * Set once every sheet job is queued
    */
-  action: string;
+  dispatchedAt?: string | null;
+  outcome: 'pending' | 'awaiting_review' | 'completed' | 'failed';
   /**
-   * The ID of the user this action pertains to
+   * Set once the source bookkeeping has run
    */
-  userId: number;
+  accountedAt?: string | null;
   /**
-   * SHA-256 hash of the user's email at the time of the action
+   * Set once a completed or failed outcome entered the source statistics
    */
-  userEmailHash: string;
-  /**
-   * Admin who initiated the action (null for self-initiated actions)
-   */
-  performedBy?: (number | null) | User;
-  /**
-   * When the action occurred
-   */
-  timestamp: string;
-  /**
-   * Raw client IP address (cleared after 30 days by background job)
-   */
-  ipAddress?: string | null;
-  /**
-   * SHA-256 hash of the client IP address (permanent, for long-term correlation)
-   */
-  ipAddressHash?: string | null;
-  /**
-   * Action-specific structured data
-   */
-  details?:
-    | {
-        [k: string]: unknown;
-      }
-    | unknown[]
-    | string
-    | number
-    | boolean
-    | null;
+  countedAt?: string | null;
   updatedAt: string;
   createdAt: string;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "scraper-repos".
+ * via the `definition` "scraper-runs".
  */
-export interface ScraperRepo {
+export interface ScraperRun {
   id: number;
-  name: string;
-  description?: {
-    root: {
-      type: string;
-      children: {
-        type: any;
-        version: number;
-        [k: string]: unknown;
-      }[];
-      direction: ('ltr' | 'rtl') | null;
-      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
-      indent: number;
-      version: number;
-    };
-    [k: string]: unknown;
-  } | null;
+  scraper: number | Scraper;
   /**
-   * URL-friendly identifier (auto-generated from name if not provided)
+   * Denormalized from scraper.repo.createdBy for access control
    */
-  slug?: string | null;
+  scraperOwner?: number | null;
+  status: 'queued' | 'running' | 'success' | 'failed' | 'timeout';
+  triggeredBy?: ('schedule' | 'manual' | 'webhook') | null;
+  startedAt?: string | null;
+  finishedAt?: string | null;
+  durationMs?: number | null;
+  exitCode?: number | null;
   /**
-   * User who created this scraper repo
+   * Standard output from the scraper process
    */
-  createdBy?: (number | null) | User;
-  sourceType: 'git' | 'upload';
+  stdout?: string | null;
   /**
-   * Git repository URL (e.g., https://github.com/user/repo.git)
+   * Standard error from the scraper process
    */
-  gitUrl?: string | null;
+  stderr?: string | null;
   /**
-   * Branch to clone (default: main)
+   * Error message if the run failed
    */
-  gitBranch?: string | null;
+  error?: string | null;
   /**
-   * Inline scraper code as {"filename": "content"} map
+   * Outcome of importing the result file; the scrape status stays separate
    */
-  code?:
-    | {
-        [k: string]: unknown;
-      }
-    | unknown[]
-    | string
-    | number
-    | boolean
-    | null;
+  importOutcome?: ('pending' | 'awaiting_review' | 'completed' | 'failed') | null;
   /**
-   * Catalog for scraped data
+   * Number of CSV rows produced
    */
-  catalog?: (number | null) | Catalog;
+  outputRows?: number | null;
   /**
-   * Last manifest sync time
+   * Size of the output CSV in bytes
    */
-  lastSyncAt?: string | null;
-  lastSyncStatus?: ('success' | 'failed') | null;
-  lastSyncError?: string | null;
+  outputBytes?: number | null;
+  /**
+   * Ingest file created from scraper output (when autoImport is enabled)
+   */
+  resultFile?: (number | null) | IngestFile;
   updatedAt: string;
   createdAt: string;
 }
@@ -2036,45 +2019,152 @@ export interface Scraper {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "scraper-runs".
+ * via the `definition` "scraper-repos".
  */
-export interface ScraperRun {
+export interface ScraperRepo {
   id: number;
-  scraper: number | Scraper;
+  name: string;
+  description?: {
+    root: {
+      type: string;
+      children: {
+        type: any;
+        version: number;
+        [k: string]: unknown;
+      }[];
+      direction: ('ltr' | 'rtl') | null;
+      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      indent: number;
+      version: number;
+    };
+    [k: string]: unknown;
+  } | null;
   /**
-   * Denormalized from scraper.repo.createdBy for access control
+   * URL-friendly identifier (auto-generated from name if not provided)
    */
-  scraperOwner?: number | null;
-  status: 'queued' | 'running' | 'success' | 'failed' | 'timeout';
-  triggeredBy?: ('schedule' | 'manual' | 'webhook') | null;
-  startedAt?: string | null;
-  finishedAt?: string | null;
-  durationMs?: number | null;
-  exitCode?: number | null;
+  slug?: string | null;
   /**
-   * Standard output from the scraper process
+   * User who created this scraper repo
    */
-  stdout?: string | null;
+  createdBy?: (number | null) | User;
+  sourceType: 'git' | 'upload';
   /**
-   * Standard error from the scraper process
+   * Git repository URL (e.g., https://github.com/user/repo.git)
    */
-  stderr?: string | null;
+  gitUrl?: string | null;
   /**
-   * Error message if the run failed
+   * Branch to clone (default: main)
    */
-  error?: string | null;
+  gitBranch?: string | null;
   /**
-   * Number of CSV rows produced
+   * Inline scraper code as {"filename": "content"} map
    */
-  outputRows?: number | null;
+  code?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
   /**
-   * Size of the output CSV in bytes
+   * Catalog for scraped data
    */
-  outputBytes?: number | null;
+  catalog?: (number | null) | Catalog;
   /**
-   * Ingest file created from scraper output (when autoImport is enabled)
+   * Last manifest sync time
    */
-  resultFile?: (number | null) | IngestFile;
+  lastSyncAt?: string | null;
+  lastSyncStatus?: ('success' | 'failed') | null;
+  lastSyncError?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Audit trail of sensitive account actions; read-only to API and admin clients
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "audit-log".
+ */
+export interface AuditLog {
+  id: number;
+  /**
+   * The type of action (e.g. account.email_changed, account.deletion_executed)
+   */
+  action: string;
+  /**
+   * The ID of the user this action pertains to
+   */
+  userId: number;
+  /**
+   * SHA-256 hash of the user's email at the time of the action
+   */
+  userEmailHash: string;
+  /**
+   * Admin who initiated the action (null for self-initiated actions)
+   */
+  performedBy?: (number | null) | User;
+  /**
+   * When the action occurred
+   */
+  timestamp: string;
+  /**
+   * Raw client IP address (cleared after 30 days by background job)
+   */
+  ipAddress?: string | null;
+  /**
+   * SHA-256 hash of the client IP address (permanent, for long-term correlation)
+   */
+  ipAddressHash?: string | null;
+  /**
+   * Action-specific structured data
+   */
+  details?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "ingest-recovery-runs".
+ */
+export interface IngestRecoveryRun {
+  id: number;
+  mode: 'report' | 'apply';
+  found: number;
+  applied: number;
+  skipped: number;
+  findings:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "quota-reservations".
+ */
+export interface QuotaReservation {
+  id: number;
+  ingestJob?: (number | null) | IngestJob;
+  generation: number;
+  user?: (number | null) | User;
+  amount: number;
+  settled: boolean;
   updatedAt: string;
   createdAt: string;
 }
@@ -3826,6 +3916,7 @@ export interface PayloadJob {
         taskSlug:
           | 'inline'
           | 'dataset-detection'
+          | 'dispatch-ingest-run'
           | 'detect-schema'
           | 'analyze-duplicates'
           | 'validate-schema'
@@ -3835,6 +3926,8 @@ export interface PayloadJob {
           | 'url-fetch'
           | 'schedule-manager'
           | 'cleanup-stuck-scheduled-ingests'
+          | 'reconcile-ingest-runs'
+          | 'ingest-recovery'
           | 'cleanup-stuck-scrapers'
           | 'quota-reset'
           | 'rate-limit-cleanup'
@@ -3887,6 +3980,7 @@ export interface PayloadJob {
     | (
         | 'inline'
         | 'dataset-detection'
+        | 'dispatch-ingest-run'
         | 'detect-schema'
         | 'analyze-duplicates'
         | 'validate-schema'
@@ -3896,6 +3990,8 @@ export interface PayloadJob {
         | 'url-fetch'
         | 'schedule-manager'
         | 'cleanup-stuck-scheduled-ingests'
+        | 'reconcile-ingest-runs'
+        | 'ingest-recovery'
         | 'cleanup-stuck-scrapers'
         | 'quota-reset'
         | 'rate-limit-cleanup'
@@ -3966,6 +4062,18 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'ingest-jobs';
         value: number | IngestJob;
+      } | null)
+    | ({
+        relationTo: 'ingest-runs';
+        value: number | IngestRun;
+      } | null)
+    | ({
+        relationTo: 'ingest-recovery-runs';
+        value: number | IngestRecoveryRun;
+      } | null)
+    | ({
+        relationTo: 'quota-reservations';
+        value: number | QuotaReservation;
       } | null)
     | ({
         relationTo: 'scheduled-ingests';
@@ -4353,6 +4461,9 @@ export interface IngestJobsSelect<T extends boolean = true> {
   ingestFile?: T;
   dataset?: T;
   sheetIndex?: T;
+  run?: T;
+  generation?: T;
+  recoveryAttempts?: T;
   stage?: T;
   progress?:
     | T
@@ -4410,6 +4521,49 @@ export interface IngestJobsSelect<T extends boolean = true> {
   updatedAt?: T;
   createdAt?: T;
   deletedAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "ingest-runs_select".
+ */
+export interface IngestRunsSelect<T extends boolean = true> {
+  source?: T;
+  ingestFile?: T;
+  scheduledIngest?: T;
+  scraperRun?: T;
+  expectedSheets?: T;
+  dispatchedAt?: T;
+  outcome?: T;
+  accountedAt?: T;
+  countedAt?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "ingest-recovery-runs_select".
+ */
+export interface IngestRecoveryRunsSelect<T extends boolean = true> {
+  mode?: T;
+  found?: T;
+  applied?: T;
+  skipped?: T;
+  findings?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "quota-reservations_select".
+ */
+export interface QuotaReservationsSelect<T extends boolean = true> {
+  ingestJob?: T;
+  generation?: T;
+  user?: T;
+  amount?: T;
+  settled?: T;
+  updatedAt?: T;
+  createdAt?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -4648,6 +4802,7 @@ export interface ScraperRunsSelect<T extends boolean = true> {
   stdout?: T;
   stderr?: T;
   error?: T;
+  importOutcome?: T;
   outputRows?: T;
   outputBytes?: T;
   resultFile?: T;
@@ -5943,6 +6098,31 @@ export interface TaskDatasetDetection {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "TaskDispatch-ingest-run".
+ */
+export interface TaskDispatchIngestRun {
+  input: {
+    ingestFileId: number;
+    ingestJobIds:
+      | {
+          [k: string]: unknown;
+        }
+      | unknown[]
+      | string
+      | number
+      | boolean
+      | null;
+    source: string;
+    scheduledIngestId?: number | null;
+    scraperRunId?: number | null;
+  };
+  output: {
+    runId?: number | null;
+    dispatched?: boolean | null;
+  };
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "TaskDetect-schema".
  */
 export interface TaskDetectSchema {
@@ -6049,6 +6229,22 @@ export interface TaskScheduleManager {
  * via the `definition` "TaskCleanup-stuck-scheduled-ingests".
  */
 export interface TaskCleanupStuckScheduledIngests {
+  input?: unknown;
+  output?: unknown;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "TaskReconcile-ingest-runs".
+ */
+export interface TaskReconcileIngestRuns {
+  input?: unknown;
+  output?: unknown;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "TaskIngest-recovery".
+ */
+export interface TaskIngestRecovery {
   input?: unknown;
   output?: unknown;
 }
@@ -6222,6 +6418,7 @@ export interface WorkflowIngestProcess {
   input: {
     ingestJobId: string;
     resumeFrom?: string | null;
+    generation?: number | null;
   };
 }
 /**

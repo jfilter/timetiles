@@ -16,8 +16,10 @@ import { z } from "zod";
 
 import { apiRoute, safeFindByID, ValidationError } from "@/lib/api";
 import { PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
+import { getResumePointForStage } from "@/lib/constants/review-reasons";
 import { getTransactionAwareDrizzle } from "@/lib/database/drizzle-transaction";
 import { prepareIngestFileRecovery } from "@/lib/ingest/ingest-file-status";
+import { queueIngestProcess } from "@/lib/ingest/ingest-runs";
 import { logger } from "@/lib/logger";
 import { NumericIdParamSchema } from "@/lib/schemas/common";
 import { requireRelationId } from "@/lib/utils/relation-id";
@@ -34,26 +36,6 @@ const VALID_RESET_STAGES = [
   PROCESSING_STAGE.GEOCODE_BATCH,
   PROCESSING_STAGE.CREATE_EVENTS,
 ] as const;
-
-/**
- * Maps a recovery stage to the appropriate resumeFrom value for the
- * ingest-process workflow. Stages before detect-schema (like analyze-duplicates)
- * now resume from analyze-duplicates so the pipeline can rebuild duplicate and
- * quota review state before downstream stages run.
- */
-const stageToResumeFrom = (stage: string): string => {
-  switch (stage) {
-    case PROCESSING_STAGE.ANALYZE_DUPLICATES:
-      return "analyze-duplicates";
-    case PROCESSING_STAGE.CREATE_EVENTS:
-      return "create-events";
-    case PROCESSING_STAGE.GEOCODE_BATCH:
-    case PROCESSING_STAGE.CREATE_SCHEMA_VERSION:
-      return "create-schema-version";
-    default:
-      return "detect-schema";
-  }
-};
 
 export const POST = apiRoute({
   auth: "admin",
@@ -78,7 +60,7 @@ export const POST = apiRoute({
       updateData.errorLog = null;
     }
 
-    const resumeFrom = stageToResumeFrom(targetStage);
+    const resumeFrom = getResumePointForStage(targetStage);
     const req = await createLocalReq({ user }, payload);
     if (!(await initTransaction(req))) throw new Error("Ingest recovery requires a database transaction");
     try {
@@ -94,11 +76,7 @@ export const POST = apiRoute({
         throw new ValidationError("Ingest job is no longer in FAILED state.");
       }
       await payload.update({ collection: "ingest-jobs", id: ingestJob.id, data: updateData, req });
-      await payload.jobs.queue({
-        workflow: "ingest-process",
-        input: { ingestJobId: String(ingestJob.id), resumeFrom },
-        req,
-      });
+      await queueIngestProcess(req, ingestJob.id, resumeFrom);
       await commitTransaction(req);
     } catch (error) {
       // Restore the whole update, including the error log, if queueing fails.
