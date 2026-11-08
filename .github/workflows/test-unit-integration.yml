@@ -36,6 +36,8 @@ jobs:
       PGPASSWORD: timetiles_password
       NEXT_PUBLIC_PAYLOAD_URL: http://localhost:3000
       NODE_OPTIONS: "--max-old-space-size=8192"
+      # One fork per runner core; each integration fork needs about 1 GB of the 16 GB.
+      TEST_WORKERS: 4
 
     steps:
       - uses: actions/checkout@v7
