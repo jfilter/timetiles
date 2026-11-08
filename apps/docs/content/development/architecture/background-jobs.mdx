@@ -84,7 +84,7 @@ removed by the existing seven-day failed-job retention, not the three-day comple
 ## Ingest Recovery
 
 A worker that dies mid-job leaves its Payload job `processing`, and the job's concurrency key keeps
-new jobs for the same sheet from starting. While an ingest-queue workflow runs, its worker touches
+new jobs for the same sheet or schedule from starting. While a workflow or task runs, its worker touches
 the job's `updatedAt` every minute (`lib/jobs/utils/job-heartbeat.ts`), also while a task waits on
 a throttled provider. A `processing` job silent for longer than `ingest.leaseMinutes` (default 15,
 see [configuration](/self-hosting/configuration#ingest)) belongs to a dead worker.
@@ -98,7 +98,7 @@ distinguishes three kinds:
 | ----------- | ------------------------------------------------------------------------------------------ | ---------------------------------------- |
 | `abandoned` | A stale `ingest-process` job whose sheet is in a processing stage at the job's generation  | Close the job, requeue or fail the sheet |
 | `orphaned`  | A sheet in a processing stage, untouched for longer than the lease, with no unfinished job | Requeue or fail the sheet                |
-| `obsolete`  | Any other stale ingest-queue job, such as one of a superseded generation                   | Close the job                            |
+| `obsolete`  | A stale job of a superseded generation, or a scheduled task of any queue                   | Close the job                            |
 
 A requeue resumes from the sheet's stage and counts in `recoveryAttempts`; once that count reaches
 the stage task's retries, the sheet fails instead. Approval, retry and reset start a fresh count. A sheet that died in `create-events` first has

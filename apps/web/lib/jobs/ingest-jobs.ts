@@ -31,6 +31,7 @@ import { scraperRepoSyncJob } from "./handlers/scraper-repo-sync-job";
 import { sendEmailJob } from "./handlers/send-email-job";
 import { urlFetchJob } from "./handlers/url-fetch-job";
 import { validateSchemaJob } from "./handlers/validate-schema-job";
+import { withJobHeartbeat } from "./utils/job-heartbeat";
 
 /**
  * Every job handler, in registration order.
@@ -68,4 +69,4 @@ export const ALL_JOBS = [
   scraperExecutionJob,
   scraperRepoSyncJob,
   jobCleanupJob,
-];
+].map((job) => withJobHeartbeat(job));

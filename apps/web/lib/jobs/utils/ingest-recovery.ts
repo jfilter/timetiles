@@ -7,15 +7,16 @@
  *   used up, failed.
  * - `orphaned`: a sheet in a processing stage that no unfinished child serves
  *   and that has not changed within the lease. It is requeued or failed.
- * - `obsolete`: any other running ingest workflow without heartbeat. Only the
- *   Payload job is closed, which frees its concurrency key.
+ * - `obsolete`: any other running ingest workflow, or a scheduled task of any
+ *   queue, without heartbeat. Only the Payload job is closed, which frees its
+ *   concurrency key and lets its schedule queue the next run.
  *
  * `applyIngestRecovery` rechecks every finding under row locks before it acts.
  *
  * @module
  * @category Jobs
  */
-import { and, eq, inArray, isNotNull, lt, sql } from "@payloadcms/db-postgres/drizzle";
+import { and, eq, inArray, isNotNull, isNull, lt, sql } from "@payloadcms/db-postgres/drizzle";
 import type { Payload, PayloadRequest } from "payload";
 import { commitTransaction, createLocalReq, initTransaction, killTransaction } from "payload";
 
@@ -165,6 +166,31 @@ const findStaleWorkflows = async (payload: Payload, cutoff: string): Promise<Rec
   return findings;
 };
 
+/** Scheduled tasks only: their schedule queues the next run, so closing one loses no work. */
+const findStaleScheduledTasks = async (payload: Payload, cutoff: string): Promise<RecoveryFinding[]> => {
+  const jobs: Array<Pick<typeof payload_jobs.$inferSelect, "id" | "taskSlug" | "updatedAt">> = await payload.db.drizzle
+    .select({ id: payload_jobs.id, taskSlug: payload_jobs.taskSlug, updatedAt: payload_jobs.updatedAt })
+    .from(payload_jobs)
+    .where(
+      and(
+        eq(payload_jobs.processing, true),
+        isNull(payload_jobs.workflowSlug),
+        sql`${payload_jobs.meta} ->> 'scheduled' = 'true'`,
+        lt(payload_jobs.updatedAt, cutoff)
+      )
+    );
+  return jobs.map((job) => ({
+    kind: "obsolete",
+    action: "close",
+    payloadJobId: job.id,
+    workflow: job.taskSlug,
+    ingestJobId: null,
+    stage: null,
+    generation: null,
+    lastSeenAt: job.updatedAt,
+  }));
+};
+
 const findOrphanedSheets = async (payload: Payload, cutoff: string): Promise<RecoveryFinding[]> => {
   const sheets: IngestJobRow[] = await payload.db.drizzle
     .select(sheetColumns)
@@ -184,7 +210,11 @@ const findOrphanedSheets = async (payload: Payload, cutoff: string): Promise<Rec
 /** Everything recovery would do now. Reads only. */
 export const findIngestRecoveries = async (payload: Payload, now: Date = new Date()): Promise<RecoveryFinding[]> => {
   const cutoff = new Date(now.getTime() - getIngestLeaseMs()).toISOString();
-  return [...(await findStaleWorkflows(payload, cutoff)), ...(await findOrphanedSheets(payload, cutoff))];
+  return [
+    ...(await findStaleWorkflows(payload, cutoff)),
+    ...(await findStaleScheduledTasks(payload, cutoff)),
+    ...(await findOrphanedSheets(payload, cutoff)),
+  ];
 };
 
 type Db = Awaited<ReturnType<typeof getTransactionAwareDrizzle>>;

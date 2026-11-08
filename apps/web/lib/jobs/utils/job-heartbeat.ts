@@ -1,7 +1,7 @@
 /**
- * Heartbeat of running ingest workflows (ADR 0043).
+ * Heartbeat of running jobs (ADR 0043).
  *
- * While a workflow of the `ingest` queue runs, its worker touches the Payload
+ * While a workflow or standalone task runs, its worker touches the Payload
  * job's `updatedAt` every minute. A `processing` job whose `updatedAt` is older
  * than the lease therefore belongs to a dead worker; ingest recovery reports it.
  * The timer also covers stretches without progress writes, such as a geocoding
@@ -48,21 +48,21 @@ interface HeartbeatArgs {
   req: { payload: Payload };
 }
 
-/** Wrap a workflow so its job beats for as long as the handler runs. */
+/** Wrap a workflow or task so its job beats for as long as the handler runs. */
 export const withJobHeartbeat = <W extends { handler: unknown }>(
-  workflow: W,
+  definition: W,
   intervalMs: number = HEARTBEAT_INTERVAL_MS
 ): W => {
-  const handler = workflow.handler;
-  if (typeof handler !== "function") return workflow;
+  const handler = definition.handler;
+  if (typeof handler !== "function") return definition;
   const run = handler as (args: HeartbeatArgs) => Promise<unknown>;
-  const beating = async (args: HeartbeatArgs): Promise<void> => {
+  const beating = async (args: HeartbeatArgs): Promise<unknown> => {
     const stop = startJobHeartbeat(args.req.payload, args.job.id, intervalMs);
     try {
-      await run(args);
+      return await run(args);
     } finally {
       stop();
     }
   };
-  return { ...workflow, handler: beating };
+  return { ...definition, handler: beating };
 };

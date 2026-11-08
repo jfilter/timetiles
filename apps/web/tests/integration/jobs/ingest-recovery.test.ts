@@ -425,4 +425,46 @@ describe("ingest recovery", () => {
     await new Promise((resolve) => setTimeout(resolve, 150));
     expect(await touchedAt()).toBe(afterRun);
   });
+
+  const queueTask = async (updatedAt: string, scheduled = true) => {
+    const job = await payload.jobs.queue({
+      task: "schedule-manager",
+      input: {},
+      queue: "default",
+      meta: { scheduled },
+    });
+    await crash(Number(job.id), updatedAt);
+    return Number(job.id);
+  };
+  const taskFinding = async (payloadJobId: number) =>
+    (await findIngestRecoveries(payload)).find((finding) => finding.payloadJobId === payloadJobId);
+
+  it("closes a scheduled task of any queue whose worker died", async () => {
+    const payloadJobId = await queueTask(hourAgo());
+    const finding = await taskFinding(payloadJobId);
+    expect(finding).toMatchObject({ kind: "obsolete", action: "close", workflow: "schedule-manager" });
+
+    expect(await applyIngestRecovery(payload, finding!)).toMatchObject({ outcome: "closed" });
+    expect(await jobState(payloadJobId)).toEqual({ processing: false, hasError: true });
+  });
+
+  it("leaves a one-off task to its owner", async () => {
+    const payloadJobId = await queueTask(hourAgo(), false);
+    expect(await taskFinding(payloadJobId)).toBeUndefined();
+    await payload.db.drizzle.update(payload_jobs).set({ processing: false }).where(eq(payload_jobs.id, payloadJobId));
+  });
+
+  it("leaves a scheduled task with a live heartbeat alone", async () => {
+    const payloadJobId = await queueTask(new Date().toISOString());
+    expect(await taskFinding(payloadJobId)).toBeUndefined();
+    await payload.db.drizzle.update(payload_jobs).set({ processing: false }).where(eq(payload_jobs.id, payloadJobId));
+  });
+
+  it("passes a task's output through the heartbeat", async () => {
+    const output = { output: { queued: 1 } };
+    const task = withJobHeartbeat({
+      handler: async (_args: { job: { id: number }; req: { payload: typeof payload } }) => Promise.resolve(output),
+    });
+    await expect(task.handler({ job: { id: 0 }, req: { payload } })).resolves.toBe(output);
+  });
 });
