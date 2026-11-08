@@ -60,8 +60,9 @@ RUN pnpm exec turbo run build --filter=web^...
 WORKDIR /app/apps/web
 # Use experimental build mode to avoid DB connection during build
 # This compiles the code without static generation
-# Payload needs a secret to compile; set per command so no layer or image config keeps it.
-RUN export PAYLOAD_SECRET=dummy_secret_for_build_only \
+# Loading the Payload config needs a secret and a mail setting; set both per command so no
+# layer or image config keeps them. The runtime environment decides about mail.
+RUN export PAYLOAD_SECRET=dummy_secret_for_build_only EMAIL_DISABLED=true \
  && pnpm exec payload generate:importmap && pnpm exec next build --experimental-build-mode compile
 
 # Remove dev dependencies (oxlint, vitest, storybook, etc.) to reduce image size
