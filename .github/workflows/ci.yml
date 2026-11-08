@@ -7,6 +7,7 @@ on:
     branches: [main]
   workflow_dispatch:
 
+# The four jobs run in parallel: each installs and builds what it needs itself.
 jobs:
   build:
     name: Build & Quality Checks
@@ -18,11 +19,9 @@ jobs:
 
   test-unit-integration:
     name: Unit & Integration Tests
-    needs: [build, check-payload-types]
     uses: ./.github/workflows/test-unit-integration.yml
     secrets: inherit
 
   test-e2e:
     name: E2E Tests
-    needs: [build, check-payload-types]
     uses: ./.github/workflows/test-e2e.yml

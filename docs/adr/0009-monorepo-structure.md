@@ -141,12 +141,12 @@ ci.yml (push to main, PRs)
 ├── check-payload-types.yml
 │   └── Verify Payload CMS generated types are in sync
 │
-├── test-unit-integration.yml  (needs: build, check-payload-types)
+├── test-unit-integration.yml  (parallel to build)
 │   ├── PostgreSQL + PostGIS service container
 │   ├── Run tests with coverage (Vitest)
 │   └── SonarCloud scan
 │
-└── test-e2e.yml  (needs: build, check-payload-types)
+└── test-e2e.yml  (parallel to build)
     ├── PostgreSQL + PostGIS service container
     ├── Playwright tests (parallel workers; global setup builds the app)
     └── Upload failure artifacts (traces, screenshots)
