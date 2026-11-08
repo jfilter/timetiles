@@ -67,6 +67,7 @@ export const ChangePasswordForm = () => {
             <Input
               id="current-password"
               type="password"
+              autoComplete="current-password"
               {...currentPasswordInput}
               placeholder={t("currentPasswordPlaceholder")}
               disabled={isPending}
@@ -78,6 +79,7 @@ export const ChangePasswordForm = () => {
             <Input
               id="new-password"
               type="password"
+              autoComplete="new-password"
               {...newPasswordInput}
               placeholder={t("newPasswordPlaceholder")}
               disabled={isPending}
@@ -90,6 +92,7 @@ export const ChangePasswordForm = () => {
             <Input
               id="confirm-password"
               type="password"
+              autoComplete="new-password"
               {...confirmPasswordInput}
               placeholder={t("confirmPasswordPlaceholder")}
               disabled={isPending}

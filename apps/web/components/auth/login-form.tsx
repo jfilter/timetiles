@@ -53,17 +53,19 @@ export const LoginForm = ({ onSuccess, onError, className }: Readonly<LoginFormP
     <form onSubmit={handleSubmit} className={cn("space-y-4", className)}>
       <AuthFormField
         id="login-email"
+        name="email"
         label={t("emailLabel")}
         type="email"
         {...emailInput}
         placeholder={t("emailPlaceholder")}
         disabled={isPending}
         required
-        autoComplete="email"
+        autoComplete="username"
       />
 
       <AuthFormField
         id="login-password"
+        name="password"
         label={t("passwordLabel")}
         type="password"
         {...passwordInput}

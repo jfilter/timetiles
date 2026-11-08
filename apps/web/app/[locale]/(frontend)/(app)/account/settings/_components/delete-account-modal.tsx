@@ -235,6 +235,7 @@ const DeleteAccountFlow = ({ onClose }: { onClose: () => void }) => {
             <Input
               id="password"
               type="password"
+              autoComplete="current-password"
               value={password}
               onChange={handlePasswordChange}
               placeholder={t("enterPassword")}

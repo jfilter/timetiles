@@ -74,6 +74,7 @@ export const ChangeEmailForm = ({ currentEmail, onSuccess }: ChangeEmailFormProp
             <Input
               id="new-email"
               type="email"
+              autoComplete="email"
               {...newEmailInput}
               placeholder={t("newEmailPlaceholder")}
               disabled={isPending}
@@ -85,6 +86,7 @@ export const ChangeEmailForm = ({ currentEmail, onSuccess }: ChangeEmailFormProp
             <Input
               id="email-password"
               type="password"
+              autoComplete="current-password"
               {...passwordInput}
               placeholder={t("emailPasswordPlaceholder")}
               disabled={isPending}

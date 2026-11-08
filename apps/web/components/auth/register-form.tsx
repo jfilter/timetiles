@@ -120,17 +120,19 @@ export const RegisterForm = ({ onSuccess, onError, className }: Readonly<Registe
     <form onSubmit={handleSubmit} className={cn("space-y-4", className)}>
       <AuthFormField
         id="register-email"
+        name="email"
         label={t("emailLabel")}
         type="email"
         {...emailInput}
         placeholder={t("registerEmailPlaceholder")}
         disabled={isPending}
         required
-        autoComplete="email"
+        autoComplete="username"
       />
 
       <AuthFormField
         id="register-password"
+        name="password"
         label={t("passwordLabel")}
         type="password"
         {...passwordInput}
