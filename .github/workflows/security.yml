@@ -119,7 +119,6 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
 
-      # --- Scan 1: Dockerfile.prod ---
       - name: Build Docker image (prod)
         run: |
           docker build -f deployment/Dockerfile.prod -t ${{ env.DOCKER_IMAGE }} .
@@ -179,17 +178,40 @@ jobs:
             echo "**Image Size:** $IMAGE_SIZE" >> "$GITHUB_STEP_SUMMARY"
           fi
 
-      # --- Scan 2: Dockerfile.allinone ---
-      # Also scan the all-in-one image which has a different base (ubuntu) and attack surface
-      - name: Build Docker image (allinone)
-        id: build_allinone
+      - name: Upload Docker scan reports
+        uses: actions/upload-artifact@v7
         if: always()
+        with:
+          name: docker-scan-reports
+          path: |
+            trivy-docker-results.sarif
+            trivy-docker-report.json
+          retention-days: 30
+
+  # The all-in-one image has a different base (ubuntu) and attack surface; its own
+  # job builds it in parallel to the prod image.
+  docker-scan-allinone:
+    name: Scan Docker Image (allinone)
+    runs-on: ubuntu-latest
+    if: ${{ github.event.inputs.scan_type == 'all' || github.event.inputs.scan_type == 'docker' || github.event.inputs.scan_type == '' }}
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/setup
+        with:
+          install: "false"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Build Docker image (allinone)
         run: |
           docker build -f deployment/Dockerfile.allinone -t timetiles:allinone .
           docker images timetiles:allinone
 
       - name: Trivy scan (allinone image)
-        if: ${{ always() && steps.build_allinone.outcome == 'success' }}
         uses: ./.github/actions/trivy-scan
         with:
           image-ref: "timetiles:allinone"
@@ -233,10 +255,8 @@ jobs:
         uses: actions/upload-artifact@v7
         if: always()
         with:
-          name: docker-scan-reports
+          name: docker-scan-allinone-reports
           path: |
-            trivy-docker-results.sarif
-            trivy-docker-report.json
             trivy-docker-allinone-results.sarif
             trivy-docker-allinone-report.json
           retention-days: 30
@@ -389,7 +409,7 @@ jobs:
     name: Comment on PR
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request' && always()
-    needs: [dependency-scan, docker-scan, config-scan, filesystem-scan]
+    needs: [dependency-scan, docker-scan, docker-scan-allinone, config-scan, filesystem-scan]
     continue-on-error: ${{ github.actor == 'dependabot[bot]' }}
 
     steps:
@@ -525,7 +545,7 @@ jobs:
     name: Security Summary
     runs-on: ubuntu-latest
     if: always()
-    needs: [dependency-scan, docker-scan, config-scan, filesystem-scan]
+    needs: [dependency-scan, docker-scan, docker-scan-allinone, config-scan, filesystem-scan]
 
     steps:
       - name: Create final summary
