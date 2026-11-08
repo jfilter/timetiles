@@ -211,8 +211,11 @@ For demos or small deployments. Does **not** include the scraper runner (require
 docker run -d -p 80:80 -p 443:443 \
   -e POSTGRES_PASSWORD=your-password \
   -e PAYLOAD_SECRET=your-secret \
+  -e EMAIL_DISABLED=true \
   -v timetiles-data:/data \
   ghcr.io/jfilter/timetiles:latest-allinone
 ```
+
+The app refuses to start without mail settings. `EMAIL_DISABLED=true` runs without outgoing mail; for mail, set `EMAIL_SMTP_HOST` and `EMAIL_FROM` instead.
 
 See `allinone/` for details.

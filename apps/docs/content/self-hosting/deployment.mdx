@@ -115,8 +115,11 @@ docker run -d --name timetiles \
   -v timetiles-data:/data \
   -e PAYLOAD_SECRET=$(openssl rand -base64 32) \
   -e DB_PASSWORD=$(openssl rand -hex 24) \
+  -e EMAIL_DISABLED=true \
   ghcr.io/jfilter/timetiles:latest-allinone
 ```
+
+The app refuses to start without mail settings. `EMAIL_DISABLED=true` runs without outgoing mail, so signup, password reset and email change are unavailable; to send mail, set `EMAIL_SMTP_HOST` and `EMAIL_FROM` instead.
 
 <Callout type="warning">
   `DB_PASSWORD` must not contain `@ : / % +` or other URI-special characters. The container builds its

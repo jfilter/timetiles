@@ -366,6 +366,7 @@ jobs:
           docker run -d --name allinone-test -p 8080:80 \
             -e POSTGRES_PASSWORD="${DB_PASSWORD}" \
             -e PAYLOAD_SECRET="${PAYLOAD_SECRET}" \
+            -e EMAIL_DISABLED=true \
             "${IMAGE}:${VERSION}-allinone"
 
           echo "==> Checking all-in-one health (includes DB init)..."
