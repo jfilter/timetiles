@@ -8,6 +8,12 @@ See the [release process](/development/contributing/release-process) for how new
 
 Changes landed on `main` since the last tagged release.
 
+## [0.1.0-alpha.26] - 2026-11-08
+
+### Fixed
+
+- Background jobs: every task reports a heartbeat, and `timetiles ingest recover --apply` closes a scheduled task whose worker died, so its schedule resumes
+
 ## [0.1.0-alpha.25] - 2026-11-08
 
 ### Added
