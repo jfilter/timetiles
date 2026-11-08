@@ -86,6 +86,8 @@ export interface ProviderConfig {
   /** Extra parameters passed as object to geocode() instead of a plain string.
    *  Used for providers where constructor options don't propagate (e.g., LocationIQ viewbox). */
   geocodeParams?: Record<string, string | number>;
+  /** Changes whenever the provider record is edited, so stored lookups of an older configuration are not reused. */
+  revision: string;
 }
 
 /** Default rate limit for Nominatim public instance (1 request/second per OSM policy) */

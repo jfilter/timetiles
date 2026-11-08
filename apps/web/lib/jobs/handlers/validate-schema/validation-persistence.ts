@@ -54,8 +54,8 @@ export const handleSchemaModeFailure = async (
 
   await ProgressTrackingService.completeStage(payload, ingestJobId, PROCESSING_STAGE.VALIDATE_SCHEMA);
 
-  // Strict-mode violation is a permanent failure -- throw so processSheets skips this sheet
-  throw new Error(schemaModeResult.failureReason ?? "Schema validation failed in strict mode");
+  // A strict-mode rejection is final; returning it keeps a retry from repeating it.
+  return { output: { failed: true, failureReason: schemaModeResult.failureReason ?? "Schema validation failed" } };
 };
 
 // Apply validation result -- updates the job with validation data

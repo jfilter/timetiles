@@ -137,13 +137,15 @@ export const validateSchemaJob = {
           schemaMode: processingOptions.schemaMode,
           reason: schemaModeResult.failureReason,
         });
-        return await handleSchemaModeFailure(payload, jobIdTyped, ingestJobId, schemaModeResult, {
+        const failure = await handleSchemaModeFailure(payload, jobIdTyped, ingestJobId, schemaModeResult, {
           detectedSchema,
           breakingChanges,
           newFields,
           transformSuggestions,
           isBreaking: comparison.isBreaking,
         });
+        await cleanupSidecarsForJob(payload, jobIdTyped);
+        return failure;
       }
 
       const requiresApproval = determineRequiresApproval(

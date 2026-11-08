@@ -154,6 +154,7 @@ export class ProviderManager {
       rateLimit: doc.rateLimit ?? defaultRateLimit,
       group: doc.group ?? undefined,
       geocodeParams,
+      revision: `${doc.id}:${doc.updatedAt}`,
     };
   }
 

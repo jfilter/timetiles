@@ -18,6 +18,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 
 import { resetEnv } from "@/lib/config/env";
 import { EventSnapshotStore } from "@/lib/jobs/handlers/create-events-batch/event-snapshots";
+import { cleanupPriorAttempt } from "@/lib/jobs/handlers/create-events-batch/job-completion";
 import type { ProcessBatchContext } from "@/lib/jobs/handlers/create-events-batch/process-batch";
 import { processEventBatch } from "@/lib/jobs/handlers/create-events-batch/process-batch";
 import { createLogger } from "@/lib/logger";
@@ -137,6 +138,31 @@ describe("update-strategy snapshot rollback", () => {
     expect(restored).toBe(1);
     expect(await titleOf(event.id)).toBe("Original Title");
     await expect(fsPromises.access(sidecar)).rejects.toThrow();
+  });
+
+  it("stops the attempt and keeps fresh inserts when a snapshot cannot be restored", async () => {
+    const job = await buildUpdateJob("unrestorable-id", (await seedEvent("unrestorable-id", "Original")).id);
+    const fresh = await payload.create({
+      collection: "events",
+      data: {
+        dataset: dataset.id,
+        ingestJob: job.id,
+        transformedData: { title: "Fresh" },
+        uniqueId: "fresh-insert",
+        eventTimestamp: "2026-01-01T00:00:00.000Z",
+      },
+      overrideAccess: true,
+    });
+    const sidecar = path.join(tmpDir, "ingest-snapshots", `job-${job.id}.jsonl`);
+    await fsPromises.mkdir(path.dirname(sidecar), { recursive: true });
+    await fsPromises.writeFile(sidecar, "not json\n");
+
+    await expect(cleanupPriorAttempt(payload, job.id, createLogger("snapshot-rollback-test"))).rejects.toThrow(
+      "could not be restored"
+    );
+
+    await expect(fsPromises.access(sidecar)).resolves.toBeUndefined();
+    expect(await titleOf(fresh.id)).toBe("Fresh");
   });
 
   it("does NOT clobber an event a concurrent import re-claimed (ownership-guarded restore)", async () => {

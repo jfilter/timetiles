@@ -6,6 +6,8 @@
  *
  * @module
  */
+import { createHash } from "node:crypto";
+
 import type { Payload } from "payload";
 
 import { createLogger } from "@/lib/logger";
@@ -66,6 +68,19 @@ export class GeocodingService {
   async batchGeocode(addresses: string[], batchSize: number = 10, bias?: GeocodingBias): Promise<BatchGeocodingResult> {
     await this.initialize();
     return this.geocodingOperations!.batchGeocode(addresses, batchSize, bias);
+  }
+
+  /** Identifies what a lookup depends on besides the address: the enabled providers and the bias. */
+  async lookupSignature(bias?: GeocodingBias): Promise<string> {
+    await this.initialize();
+    const providers = this.providerManager!.getEnabledProviders().map(({ priority, revision }) => ({
+      priority,
+      revision,
+    }));
+    return createHash("sha256")
+      .update(JSON.stringify({ providers, bias: bias ?? null }))
+      .digest("hex")
+      .slice(0, 16);
   }
 
   /**

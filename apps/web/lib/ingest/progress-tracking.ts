@@ -246,14 +246,21 @@ const startStage = async (
     (stageData) => {
       const batchSize = getBatchSizeForStage(stage);
       const estimatedBatches = calculateEstimatedBatches(rowsTotal, batchSize);
+      // A restarted stage counts from zero, so a retry does not inherit the last attempt's progress.
       return {
         ...stageData,
         status: "in_progress",
         startedAt: new Date(),
+        completedAt: null,
+        rowsProcessed: 0,
         rowsTotal,
+        batchesProcessed: 0,
         batchesTotal: estimatedBatches,
+        currentBatchRows: 0,
         currentBatchTotal: batchSize ?? rowsTotal,
-      } as StageProgress;
+        rowsPerSecond: null,
+        estimatedSecondsRemaining: null,
+      };
     },
     { extraData: { stage } }
   );

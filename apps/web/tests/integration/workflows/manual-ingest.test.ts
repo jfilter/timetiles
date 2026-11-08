@@ -137,6 +137,7 @@ describe("Manual Ingest Workflow (Integration)", () => {
 
     vi.spyOn(geocodingModule, "createGeocodingService").mockReturnValue({
       isEnabled: () => Promise.resolve(true),
+      lookupSignature: () => Promise.resolve("test-providers"),
       geocode: vi.fn().mockResolvedValue(mockGeocodingResult),
       batchGeocode: vi.fn().mockImplementation((addresses: string[]) => {
         const results = new Map();

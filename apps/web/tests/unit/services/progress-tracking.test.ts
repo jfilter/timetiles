@@ -107,6 +107,41 @@ describe("ProgressTrackingService", () => {
       expect(typeof stage.startedAt).toBe("string");
     });
 
+    it("resets the counters of an earlier attempt when the stage restarts", async () => {
+      const mockJob = {
+        progress: {
+          stages: {
+            [PROCESSING_STAGE.DETECT_SCHEMA]: {
+              status: "in_progress",
+              startedAt: "2026-01-01T00:00:00.000Z",
+              completedAt: null,
+              rowsProcessed: 500,
+              rowsTotal: 800,
+              batchesProcessed: 5,
+              batchesTotal: 8,
+              currentBatchRows: 40,
+              currentBatchTotal: 100,
+              rowsPerSecond: 12,
+              estimatedSecondsRemaining: 25,
+            },
+          },
+        },
+      } as unknown as IngestJob;
+      mockPayload.findByID.mockResolvedValue(mockJob);
+
+      await ProgressTrackingService.startStage(mockPayload, 123, PROCESSING_STAGE.DETECT_SCHEMA, 800);
+
+      const stage = mockPayload.update.mock.calls[0][0].data.progress.stages[PROCESSING_STAGE.DETECT_SCHEMA];
+      expect(stage).toMatchObject({
+        status: "in_progress",
+        rowsProcessed: 0,
+        batchesProcessed: 0,
+        currentBatchRows: 0,
+        rowsPerSecond: null,
+        estimatedSecondsRemaining: null,
+      });
+    });
+
     it("rejects partially numeric job ids before loading the job", async () => {
       await expect(
         ProgressTrackingService.startStage(mockPayload, "123abc", PROCESSING_STAGE.DETECT_SCHEMA, 800)

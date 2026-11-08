@@ -32,7 +32,10 @@ describe("create-schema-version with parallel sheets", () => {
   beforeAll(async () => {
     testEnv = await createIntegrationTestEnvironment({ resetDatabase: false });
     const { users } = await withUsers(testEnv, {
-      uploader: { role: "user", customQuotas: { maxIngestJobsPerDay: SHEETS * ROUNDS, maxFileUploadsPerDay: ROUNDS } },
+      uploader: {
+        role: "user",
+        customQuotas: { maxIngestJobsPerDay: SHEETS * (ROUNDS + 1), maxFileUploadsPerDay: ROUNDS + 1 },
+      },
     });
     userId = users.uploader.id;
     const { catalog } = await withCatalog(testEnv, { user: users.uploader });
@@ -95,4 +98,48 @@ describe("create-schema-version with parallel sheets", () => {
       }
     }
   }, 300000);
+
+  it("links sheets with the same schema on one dataset to a single new version", async () => {
+    const { payload } = testEnv;
+    const { ingestFile } = await withIngestFile(testEnv, catalogId, "title,date\nEvent,2024-01-01", {
+      status: "completed",
+      user: userId,
+    });
+    const { dataset } = await withDataset(testEnv, catalogId, {
+      name: "Shared Dataset",
+      slug: `shared-schema-${crypto.randomUUID().slice(0, 8)}`,
+    });
+    const jobs = await Promise.all(
+      Array.from({ length: SHEETS }, (_, sheetIndex) =>
+        payload.create({
+          collection: "ingest-jobs",
+          data: {
+            ingestFile: ingestFile.id,
+            dataset: dataset.id,
+            sheetIndex,
+            stage: PROCESSING_STAGE.CREATE_SCHEMA_VERSION,
+            schema: { type: "object", properties: { title: { type: "string" } } },
+          },
+          overrideAccess: true,
+        })
+      )
+    );
+
+    const req = await createLocalReq({}, payload);
+    const results = await Promise.allSettled(
+      jobs.map((job) => createSchemaVersionJob.handler({ input: { ingestJobId: job.id }, req }))
+    );
+    expect(results.flatMap((r) => (r.status === "rejected" ? [String(r.reason)] : []))).toEqual([]);
+
+    const versions = await payload.find({
+      collection: "dataset-schemas",
+      where: { dataset: { equals: dataset.id } },
+      overrideAccess: true,
+    });
+    expect(versions.totalDocs).toBe(1);
+    for (const job of jobs) {
+      const stored = await payload.findByID({ collection: "ingest-jobs", id: job.id, depth: 0, overrideAccess: true });
+      expect(stored.datasetSchemaVersion).toEqual(versions.docs[0]?.id);
+    }
+  }, 120000);
 });

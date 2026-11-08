@@ -188,6 +188,18 @@ describe("processSheets", () => {
     expect(tasks["create-events"]).not.toHaveBeenCalled();
   });
 
+  it("stops without marking the sheet when validate-schema returns a final failure", async () => {
+    tasks["validate-schema"].mockResolvedValueOnce({ failed: true, failureReason: "Schema mismatch in strict mode" });
+
+    await processSheets(tasks as any, [makeSheet(0, "j0")], mockReq);
+
+    expect(tasks["validate-schema"]).toHaveBeenCalledOnce();
+    expect(tasks["create-schema-version"]).not.toHaveBeenCalled();
+    expect(tasks["geocode-batch"]).not.toHaveBeenCalled();
+    expect(tasks["create-events"]).not.toHaveBeenCalled();
+    expect(mocks.failIngestJob).not.toHaveBeenCalled();
+  });
+
   // ── 7. Create-schema-version fails — remaining skipped ────────────────
 
   it("should skip geocode and create-events when create-schema-version fails", async () => {

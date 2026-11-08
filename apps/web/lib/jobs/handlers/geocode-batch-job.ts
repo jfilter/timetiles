@@ -23,7 +23,7 @@ import { interpretRows, planFromOps, readInterpretationPlan } from "@/lib/ingest
 import { planToFieldMappings } from "@/lib/ingest/plan-builder";
 import { ProgressTrackingService } from "@/lib/ingest/progress-tracking";
 import type { IngestGeocodingResultsMap } from "@/lib/ingest/types/geocoding";
-import { getIngestGeocodingCandidate } from "@/lib/ingest/types/geocoding";
+import { getIngestGeocodingCandidate, getIngestGeocodingResults } from "@/lib/ingest/types/geocoding";
 import type { DatasetInterpretationPlan } from "@/lib/ingest/types/interpretation";
 import { getIngestFilePath } from "@/lib/ingest/upload-path";
 import { createJobLogger, logError, logPerformance } from "@/lib/logger";
@@ -170,8 +170,20 @@ const PROGRESS_CHUNK_SIZE = 50;
 /** Concurrency level passed to batchGeocode (processes this many addresses in parallel). */
 const BATCH_CONCURRENCY = 10;
 
+/** Results of an earlier attempt for these locations, looked up with the same providers and bias. */
+const reusableResults = (job: IngestJob, locations: Set<string>, lookupKey: string): IngestGeocodingResultsMap => {
+  const reusable: IngestGeocodingResultsMap = {};
+  for (const [location, result] of Object.entries(getIngestGeocodingResults(job))) {
+    if (result.lookupKey === lookupKey && locations.has(location)) reusable[location] = result;
+  }
+  return reusable;
+};
+
 /**
  * Geocode unique locations in parallel using batchGeocode with progress tracking.
+ *
+ * Successful lookups are persisted after every chunk, so a retry reuses them
+ * instead of repeating paid requests.
  */
 const geocodeUniqueLocations = async (
   geocodingService: GeocodingService,
@@ -186,13 +198,15 @@ const geocodeUniqueLocations = async (
   failureCount: number;
   failures: GeocodingFailure[];
 }> => {
-  const results: IngestGeocodingResultsMap = {};
+  const lookupKey = await geocodingService.lookupSignature(bias);
+  const results = reusableResults(job, locations, lookupKey);
   const failures: GeocodingFailure[] = [];
-  let successCount = 0;
+  let successCount = Object.keys(results).length;
   let failureCount = 0;
-  let processed = 0;
+  let processed = successCount;
 
-  const allLocations = Array.from(locations);
+  const allLocations = Array.from(locations).filter((location) => !(location in results));
+  if (successCount > 0) logger.info("Reusing geocoding results of an earlier attempt", { reused: successCount });
 
   // Split into chunks for progress tracking granularity
   for (let i = 0; i < allLocations.length; i += PROGRESS_CHUNK_SIZE) {
@@ -219,12 +233,14 @@ const geocodeUniqueLocations = async (
           coordinates: { lat: resultOrError.latitude, lng: resultOrError.longitude },
           confidence: resultOrError.confidence ?? 0,
           formattedAddress: resultOrError.normalizedAddress,
+          lookupKey,
         };
         successCount++;
       }
     }
 
     processed += chunk.length;
+    await payload.update({ collection: COLLECTION_NAMES.INGEST_JOBS, id: job.id, data: { geocodingResults: results } });
 
     // Note: uses updateStageProgress (not updateAndCompleteBatch) because geocoding
     // tracks unique locations rather than file-row batches — there is no batch number.
@@ -297,6 +313,14 @@ const resolveCoordinateFields = (
   return { latitudeField, longitudeField };
 };
 
+/** Skip the stage and drop results an earlier attempt persisted, so create-events cannot attach them. */
+const skipGeocoding = async (payload: Payload, job: IngestJob): Promise<void> => {
+  if (Object.keys(getIngestGeocodingResults(job)).length > 0) {
+    await payload.update({ collection: COLLECTION_NAMES.INGEST_JOBS, id: job.id, data: { geocodingResults: {} } });
+  }
+  await ProgressTrackingService.skipStage(payload, job.id, PROCESSING_STAGE.GEOCODE_BATCH);
+};
+
 const prepareGeocodingLocations = async (
   payload: Payload,
   ingestJobId: string | number,
@@ -319,7 +343,7 @@ const prepareGeocodingLocations = async (
   // Skip if neither location field nor location name field detected
   if (!geocodingCandidate?.locationField && !geocodingCandidate?.locationNameField) {
     logger.info("No location field detected, moving to event creation");
-    await ProgressTrackingService.skipStage(payload, ingestJobId, PROCESSING_STAGE.GEOCODE_BATCH);
+    await skipGeocoding(payload, job);
     return { skipped: true };
   }
 
@@ -363,7 +387,7 @@ const prepareGeocodingLocations = async (
         ? "All rows have valid source coordinates, skipping geocoding"
         : "No locations to geocode, skipping";
     logger.info(reason, { totalRows, skippedWithCoords });
-    await ProgressTrackingService.skipStage(payload, ingestJobId, PROCESSING_STAGE.GEOCODE_BATCH);
+    await skipGeocoding(payload, job);
     return { skipped: true, skippedWithCoords };
   }
 
@@ -378,7 +402,7 @@ const prepareGeocodingLocations = async (
       totalRows,
       uniqueLocations: uniqueLocations.size,
     });
-    await ProgressTrackingService.skipStage(payload, ingestJobId, PROCESSING_STAGE.GEOCODE_BATCH);
+    await skipGeocoding(payload, job);
     return { skipped: true, skippedWithCoords };
   }
 

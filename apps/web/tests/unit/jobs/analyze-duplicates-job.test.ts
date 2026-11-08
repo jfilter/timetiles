@@ -256,6 +256,42 @@ describe("AnalyzeDuplicatesJob Handler", () => {
       expect(drizzleMock.select).toHaveBeenCalledTimes(1);
     });
 
+    it("records a review-config error once when the analysis reruns", async () => {
+      const review = await import("@/lib/jobs/workflows/review-checks");
+      vi.mocked(review.parseReviewChecksConfig).mockReturnValueOnce({ config: undefined, error: "Bad reviewChecks" });
+      const mockIngestJob = createMockIngestJob({
+        progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
+        overrides: {
+          errors: [
+            { row: 4, error: "row problem" },
+            { row: -1, error: "Bad reviewChecks" },
+          ],
+        },
+      });
+      const mockDataset = {
+        id: "dataset-456",
+        deduplicationConfig: { enabled: true },
+        idStrategy: { type: "external", externalIdPath: "id" },
+      };
+      mockPayload.findByID
+        .mockResolvedValueOnce(mockIngestJob)
+        .mockResolvedValueOnce(mockDataset)
+        .mockResolvedValueOnce(createMockIngestFile())
+        .mockResolvedValue(mockIngestJob);
+      mocks.streamBatchesFromFile.mockReturnValueOnce(mockAsyncGenerator([[{ id: "1" }]]));
+      mocks.generateUniqueId.mockReturnValueOnce("dataset-456:ext:1");
+      drizzleMock._enqueue([]);
+      mockPayload.update.mockResolvedValue({});
+
+      await analyzeDuplicatesJob.handler(mockContext);
+
+      const errorWrites = mockPayload.update.mock.calls.filter(([args]: any[]) => args.data?.errors);
+      expect(errorWrites.at(-1)?.[0].data.errors).toEqual([
+        { row: 4, error: "row problem" },
+        { row: -1, error: "Bad reviewChecks" },
+      ]);
+    });
+
     it("should apply the full transform chain for content-hash ids so normalized rows hash identically", async () => {
       // Regression: content-hash ids must be generated from the fully transformed row
       // (dataset interpretationPlan ops), so rows that only collapse after lowercase/trim are duplicates.

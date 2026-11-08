@@ -61,7 +61,15 @@ const createProvider = (
   rateLimit: number,
   geocoder?: ReturnType<typeof createMockGeocoder>
 ): ProviderConfig => {
-  return { name, type: "nominatim", geocoder: geocoder ?? createMockGeocoder(), priority: 1, enabled: true, rateLimit };
+  return {
+    name,
+    type: "nominatim",
+    geocoder: geocoder ?? createMockGeocoder(),
+    priority: 1,
+    enabled: true,
+    rateLimit,
+    revision: `${name}:1`,
+  };
 };
 
 const createMockProviderManager = (providers: ProviderConfig[]) => ({

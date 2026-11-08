@@ -60,6 +60,7 @@ vi.mock("@/lib/services/geocoding/geocoding-service", () => ({
   createGeocodingService: () => ({
     geocode: mocks.geocode,
     isEnabled: () => Promise.resolve(true),
+    lookupSignature: () => Promise.resolve("test-providers"),
     /**
      * Delegates to the mocked geocode function, mirroring the real
      * GeocodingOperations.batchGeocode behavior. Declared in vi.hoisted so it
@@ -190,17 +191,69 @@ describe("GeocodeBatchJob Handler", () => {
               coordinates: { lat: 40.7128, lng: -74.006 },
               confidence: 0.9,
               formattedAddress: "123 Main St, New York, NY",
+              lookupKey: "test-providers",
             },
             "456 oak ave": {
               coordinates: { lat: 34.0522, lng: -118.2437 },
               confidence: 0.8,
               formattedAddress: "456 Oak Ave, Los Angeles, CA",
+              lookupKey: "test-providers",
             },
           },
         },
       });
 
       expect(result.output).toEqual({ geocoded: 2, failed: 0, skipped: 0, uniqueLocations: 2 });
+    });
+
+    it("reuses results of an earlier attempt with the same lookup key and geocodes only the rest", async () => {
+      const reused = { coordinates: { lat: 1, lng: 2 }, confidence: 0.9, lookupKey: "test-providers" };
+      const mockIngestJob = createMockIngestJob({
+        id: 123,
+        dataset: 456,
+        ingestFile: 789,
+        sheetIndex: 0,
+        overrides: {
+          interpretationPlan: {
+            ops: [],
+            columns: [],
+            roles: { location: "address" },
+            ambiguityResolution: "best-effort",
+          },
+          geocodingResults: {
+            "123 main st": reused,
+            "456 oak ave": { coordinates: { lat: 3, lng: 4 }, confidence: 0.9, lookupKey: "other-providers" },
+            "gone street": { coordinates: { lat: 5, lng: 6 }, confidence: 0.9, lookupKey: "test-providers" },
+          },
+        },
+      });
+      mockStreamBatches([
+        { id: "1", address: "123 Main St" },
+        { id: "2", address: "456 Oak Ave" },
+      ]);
+      mockPayload.findByID.mockResolvedValue(mockIngestJob);
+      mocks.geocode.mockResolvedValueOnce({ latitude: 7, longitude: 8, confidence: 0.8 });
+
+      const result = await geocodeBatchJob.handler(mockContext);
+
+      expect(mocks.geocode).toHaveBeenCalledTimes(1);
+      expect(mocks.geocode).toHaveBeenCalledWith("456 oak ave");
+      expect(result.output).toEqual({ geocoded: 2, failed: 0, skipped: 0, uniqueLocations: 2 });
+      expect(mockPayload.update).toHaveBeenLastCalledWith({
+        collection: "ingest-jobs",
+        id: 123,
+        data: {
+          geocodingResults: {
+            "123 main st": reused,
+            "456 oak ave": {
+              coordinates: { lat: 7, lng: 8 },
+              confidence: 0.8,
+              formattedAddress: undefined,
+              lookupKey: "test-providers",
+            },
+          },
+        },
+      });
     });
 
     it("should forward the file's geocodingBias to batchGeocode", async () => {
@@ -429,6 +482,26 @@ describe("GeocodeBatchJob Handler", () => {
       });
 
       expect(result.output).toEqual({ skipped: true });
+    });
+
+    it("drops results of an earlier attempt when the stage is skipped", async () => {
+      const mockIngestJob = createMockIngestJob({
+        id: 123,
+        overrides: {
+          interpretationPlan: { ops: [], columns: [], roles: {}, ambiguityResolution: "best-effort" },
+          geocodingResults: { "123 main st": { coordinates: { lat: 1, lng: 2 }, confidence: 0.9, lookupKey: "old" } },
+        },
+      });
+      mockPayload.findByID.mockResolvedValue(mockIngestJob);
+
+      const result = await geocodeBatchJob.handler(mockContext);
+
+      expect(result.output).toEqual({ skipped: true });
+      expect(mockPayload.update).toHaveBeenCalledWith({
+        collection: "ingest-jobs",
+        id: 123,
+        data: { geocodingResults: {} },
+      });
     });
 
     it("should handle empty file gracefully", async () => {

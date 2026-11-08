@@ -30,6 +30,8 @@ export interface IngestGeocodingResult {
   confidence: number;
   /** Formatted/normalized address */
   formattedAddress?: string;
+  /** Provider and bias signature of the lookup; a retry reuses only results with the current one. */
+  lookupKey?: string;
 }
 
 /** Map of location string to a persisted ingest geocoding result. */

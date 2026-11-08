@@ -237,15 +237,10 @@ export const cleanupPriorAttempt = async (
   // and their originals lost. No-op when no snapshot sidecar exists.
   const { failures: restoreFailures } = await EventSnapshotStore.restoreAndClear(payload, ingestJobId, log);
 
-  // If any restore failed, the sidecar is kept and some updated event still
-  // carries `ingestJob = thisJob` with `created_at >= job.createdAt` — i.e. it
-  // looks EXACTLY like a fresh insert to the delete filter below. Deleting now
-  // could destroy a concurrently-created foreign event we failed to revert, so
-  // skip the delete entirely and let the next attempt / onFail retry the restore
-  // first. (An orphaned fresh insert is recoverable; deleting real data is not.)
+  // A kept sidecar means an updated event still looks like a fresh insert to the delete
+  // below, and a new write would build on it. Throw so the retry restores first.
   if (restoreFailures > 0) {
-    log.warn("Skipping prior-attempt insert cleanup until all snapshots restore", { ingestJobId, restoreFailures });
-    return;
+    throw new Error(`${restoreFailures} event snapshot(s) could not be restored; the import stops until they are`);
   }
 
   // Only delete events this job CREATED in a prior attempt, never pre-existing events it

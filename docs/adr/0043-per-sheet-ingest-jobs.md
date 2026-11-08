@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted (2026-11-07). Plan only; nothing below is implemented yet.
+Accepted (2026-11-07). Step 1 of the implementation order is implemented; steps 2–6 are pending.
 
 ## Context
 
@@ -81,15 +81,15 @@ A `quota-reservations` table records each `TOTAL_EVENTS` reservation keyed by `(
 
 ### Idempotency fixes
 
-| Gap                                  | Fix                                                                                                   |
-| ------------------------------------ | ----------------------------------------------------------------------------------------------------- |
-| Strict validation marks then throws  | Return a terminal business outcome (`failed` with reason) instead of throwing                         |
-| Insert sub-batch errors → row errors | Classify: connection, serialization and timeout errors throw for a retry; data errors stay row errors |
-| Geocoding replay                     | Persist each successful lookup per run, keyed by address, bias and provider config; a retry reuses it |
-| Snapshot restore continues on error  | A failed restore throws and blocks writes to the dataset until the restore succeeds                   |
-| Schema version race                  | Compare, create and link under the dataset advisory lock from ADR 0041                                |
-| Progress counters carry over         | `startStage` resets attempt-local counters per generation; the UI shows "retrying (attempt n of m)"   |
-| Duplicate diagnostics on rerun       | analyze-duplicates replaces its configuration-error entries instead of appending                      |
+| Gap                                  | Fix                                                                                                                                                                                          |
+| ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Strict validation marks then throws  | Return a terminal business outcome (`failed` with reason) instead of throwing                                                                                                                |
+| Insert sub-batch errors → row errors | Classify: connection, serialization and timeout errors throw for a retry; data errors stay row errors                                                                                        |
+| Geocoding replay                     | Checkpoint successful lookups after every chunk, keyed by address, bias and provider revision; a retry reuses them. A crash replays at most the unchecked chunk and retries failed addresses |
+| Snapshot restore continues on error  | A failed restore throws before the attempt writes; the retry restores first                                                                                                                  |
+| Schema version race                  | Compare, create and link in one transaction under the per-dataset schema version lock                                                                                                        |
+| Progress counters carry over         | `startStage` resets attempt-local counters per generation; the UI shows "retrying (attempt n of m)"                                                                                          |
+| Duplicate diagnostics on rerun       | analyze-duplicates replaces its configuration-error entries instead of appending                                                                                                             |
 
 ### Concurrency
 

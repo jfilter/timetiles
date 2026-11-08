@@ -165,6 +165,20 @@ describe("ingestProcessWorkflow", () => {
     expect(tasks["create-events"]).not.toHaveBeenCalled();
   });
 
+  it('resumeFrom: "detect-schema" stops when validate-schema returns a final failure', async () => {
+    tasks["detect-schema"].mockResolvedValueOnce({});
+    tasks["validate-schema"].mockResolvedValueOnce({ failed: true, failureReason: "Schema mismatch in strict mode" });
+
+    mockJob.input = { ingestJobId: "123", resumeFrom: "detect-schema" };
+
+    await handler({ job: mockJob, tasks: tasks as any, inlineTask: vi.fn() as any, req: {} as any });
+
+    expect(tasks["validate-schema"]).toHaveBeenCalledOnce();
+    expect(tasks["create-schema-version"]).not.toHaveBeenCalled();
+    expect(tasks["geocode-batch"]).not.toHaveBeenCalled();
+    expect(tasks["create-events"]).not.toHaveBeenCalled();
+  });
+
   // ── 9. resumeFrom: "create-events" skips to last task only ──────────
 
   it('resumeFrom: "create-events" skips to last task only', async () => {

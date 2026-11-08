@@ -7,7 +7,7 @@
  * @module
  */
 import { eq, sql } from "@payloadcms/db-postgres/drizzle";
-import type { Payload } from "payload";
+import { commitTransaction, initTransaction, killTransaction, type Payload, type PayloadRequest } from "payload";
 
 import { COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
 import { getUniqueRowsForQuota } from "@/lib/ingest/import-quota";
@@ -20,6 +20,7 @@ import { compareSchemas } from "@/lib/services/schema-builder/schema-comparison"
 import { getFieldStats } from "@/lib/types/schema-detection";
 import { isRecord } from "@/lib/utils/is-record";
 import { datasets } from "@/payload-generated-schema";
+import type { IngestJob } from "@/payload-types";
 
 import type { CreateSchemaVersionJobInput } from "../types/job-inputs";
 import { buildFieldTypes } from "../utils/event-creation-helpers";
@@ -54,7 +55,8 @@ const asSchemaObject = (raw: unknown): Record<string, unknown> => (isRecord(raw)
 const findReusableSchemaVersion = async (
   payload: Payload,
   datasetId: number | string,
-  jobSchema: unknown
+  jobSchema: unknown,
+  req: PayloadRequest
 ): Promise<{ id: number; versionNumber: number } | null> => {
   const latest = await payload.find({
     collection: COLLECTION_NAMES.DATASET_SCHEMAS,
@@ -62,6 +64,7 @@ const findReusableSchemaVersion = async (
     sort: "-versionNumber",
     limit: 1,
     overrideAccess: true,
+    req,
   });
 
   const latestVersion = latest.docs[0];
@@ -79,6 +82,61 @@ const getApprovedById = (approvedBy: unknown): number | null => {
     return approvedBy;
   }
   return null;
+};
+
+/**
+ * Reuse or create the schema version and link the job to it in one transaction under
+ * the per-dataset schema lock, so two sheets with the same schema cannot both create one.
+ */
+const resolveSchemaVersion = async (
+  payload: Payload,
+  job: IngestJob,
+  datasetId: number,
+  logger: ReturnType<typeof createJobLogger>
+): Promise<{ id: number; versionNumber: number }> => {
+  const req = { payload, transactionID: undefined, context: {} } as unknown as PayloadRequest;
+  const ownsTransaction = await initTransaction(req);
+  try {
+    await SchemaVersioningService.lockDataset(payload, datasetId, req);
+
+    // Reuse the latest version when the schema is unchanged, so a stable feed does not
+    // append an identical dataset-schemas row on every run.
+    let schemaVersion = await findReusableSchemaVersion(payload, datasetId, job.schema, req);
+    if (schemaVersion) {
+      logger.info("Schema unchanged — linking existing schema version", {
+        ingestJobId: job.id,
+        schemaVersionId: schemaVersion.id,
+        versionNumber: schemaVersion.versionNumber,
+      });
+    } else {
+      const isAutoApproved = !job.schemaValidation?.requiresApproval;
+      const approvedById = isAutoApproved ? null : getApprovedById(job.schemaValidation?.approvedBy);
+      logger.info("Creating schema version", { ingestJobId: job.id, datasetId, isAutoApproved, approvedById });
+
+      schemaVersion = await SchemaVersioningService.createSchemaVersion(payload, {
+        dataset: datasetId,
+        schema: job.schema,
+        fieldMetadata: getFieldStats(job) || {},
+        fieldMappings: planToSchemaFieldMappings(readInterpretationPlan(job)),
+        autoApproved: isAutoApproved,
+        approvedBy: approvedById,
+        ingestSources: [],
+        req,
+      });
+    }
+
+    await payload.update({
+      collection: COLLECTION_NAMES.INGEST_JOBS,
+      id: job.id,
+      data: { datasetSchemaVersion: schemaVersion.id },
+      req,
+    });
+    if (ownsTransaction) await commitTransaction(req);
+    return schemaVersion;
+  } catch (error) {
+    if (ownsTransaction) await killTransaction(req);
+    throw error;
+  }
 };
 
 const RETRIES = 1;
@@ -133,44 +191,8 @@ export const createSchemaVersionJob = {
       const dataset = await loadDataset(payload, job.dataset);
       const fieldStats = getFieldStats(job);
 
-      // Reuse the latest version when the schema is unchanged — otherwise
-      // every successful import of a stable feed (e.g. an hourly scheduled
-      // URL) appends an identical dataset-schemas row, growing version
-      // history unboundedly and making it useless.
-      const existingVersion = await findReusableSchemaVersion(payload, dataset.id, job.schema);
-      let schemaVersion: { id: number; versionNumber: number };
-      if (existingVersion) {
-        logger.info("Schema unchanged — linking existing schema version", {
-          ingestJobId,
-          schemaVersionId: existingVersion.id,
-          versionNumber: existingVersion.versionNumber,
-        });
-        schemaVersion = existingVersion;
-      } else {
-        // Determine if this is auto-approved or manual-approved
-        const isAutoApproved = !job.schemaValidation?.requiresApproval;
-        const approvedById = isAutoApproved ? null : getApprovedById(job.schemaValidation?.approvedBy);
-
-        logger.info("Creating schema version", { ingestJobId, datasetId: dataset.id, isAutoApproved, approvedById });
-
-        schemaVersion = await SchemaVersioningService.createSchemaVersion(payload, {
-          dataset: dataset.id,
-          schema: job.schema,
-          fieldMetadata: fieldStats || {},
-          fieldMappings: planToSchemaFieldMappings(readInterpretationPlan(job)),
-          autoApproved: isAutoApproved,
-          approvedBy: approvedById,
-          ingestSources: [],
-          // No workflow req: parallel sheets share it, and with it Payload's transaction slot.
-        });
-      }
-
-      // Update job with schema version
-      await payload.update({
-        collection: COLLECTION_NAMES.INGEST_JOBS,
-        id: ingestJobId,
-        data: { datasetSchemaVersion: schemaVersion.id },
-      });
+      // Own transaction, not the workflow req: parallel sheets share that one's transaction slot.
+      const schemaVersion = await resolveSchemaVersion(payload, job, dataset.id, logger);
 
       logger.info("Schema version resolved", { ingestJobId, schemaVersionId: schemaVersion.id });
 

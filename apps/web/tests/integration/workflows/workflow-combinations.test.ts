@@ -101,6 +101,7 @@ const mockGeocodingSuccess = () => {
 
   vi.spyOn(geocodingModule, "createGeocodingService").mockReturnValue({
     isEnabled: () => Promise.resolve(true),
+    lookupSignature: () => Promise.resolve("test-providers"),
     geocode: vi.fn().mockResolvedValue(mockResult),
     batchGeocode: vi.fn().mockImplementation((addresses: string[]) => {
       const results = new Map();
@@ -347,6 +348,7 @@ describe("Workflow Combinations (Integration)", () => {
     // Every geocode-batch attempt of the post-review workflow fails.
     vi.spyOn(geocodingModule, "createGeocodingService").mockReturnValue({
       isEnabled: () => Promise.resolve(true),
+      lookupSignature: () => Promise.resolve("test-providers"),
       geocode: vi.fn().mockRejectedValue(new Error("Geocoding service unavailable")),
       batchGeocode: vi.fn().mockRejectedValue(new Error("Geocoding service unavailable")),
       testConfiguration: vi.fn().mockResolvedValue({}),
@@ -520,6 +522,7 @@ describe("Workflow Combinations (Integration)", () => {
     // Override the mock to fail all geocoding
     vi.spyOn(geocodingModule, "createGeocodingService").mockReturnValue({
       isEnabled: () => Promise.resolve(true),
+      lookupSignature: () => Promise.resolve("test-providers"),
       geocode: vi.fn().mockRejectedValue(new Error("Geocoding service unavailable")),
       batchGeocode: vi.fn().mockRejectedValue(new Error("Geocoding service unavailable")),
       testConfiguration: vi.fn().mockResolvedValue({}),

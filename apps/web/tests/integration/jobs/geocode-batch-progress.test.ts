@@ -59,6 +59,7 @@ describe("Geocode Batch Job - Progress Reporting", () => {
   beforeEach(async () => {
     vi.spyOn(geocodingModule, "createGeocodingService").mockReturnValue({
       isEnabled: () => Promise.resolve(true),
+      lookupSignature: () => Promise.resolve("test-providers"),
       batchGeocode: createAllSuccessBatchGeocode(),
     } as unknown as geocodingModule.GeocodingService);
 

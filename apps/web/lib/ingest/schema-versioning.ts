@@ -246,4 +246,9 @@ const linkImportToSchemaVersion = async (
  * Consolidated schema versioning service to prevent duplicate creation
  * and ensure consistent version numbering across auto and manual approval flows.
  */
-export const SchemaVersioningService = { getNextSchemaVersion, createSchemaVersion, linkImportToSchemaVersion };
+export const SchemaVersioningService = {
+  lockDataset: acquireDatasetLock,
+  getNextSchemaVersion,
+  createSchemaVersion,
+  linkImportToSchemaVersion,
+};

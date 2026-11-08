@@ -101,6 +101,7 @@ describe("Geocode Batch Job - Failure Handling", () => {
     // that vi.spyOn on the class export cannot intercept.
     vi.spyOn(geocodingModule, "createGeocodingService").mockReturnValue({
       isEnabled: () => Promise.resolve(true),
+      lookupSignature: () => Promise.resolve("test-providers"),
       batchGeocode: createAllFailBatchGeocode(),
     } as unknown as geocodingModule.GeocodingService);
 
@@ -188,6 +189,7 @@ Event 3,2024-01-03,Hamburg Germany
     // Override beforeEach all-reject mock with partial success
     vi.spyOn(geocodingModule, "createGeocodingService").mockReturnValue({
       isEnabled: () => Promise.resolve(true),
+      lookupSignature: () => Promise.resolve("test-providers"),
       batchGeocode: createPartialSuccessBatchGeocode(),
     } as unknown as geocodingModule.GeocodingService);
 

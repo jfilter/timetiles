@@ -61,6 +61,7 @@ describe("Tag Field Detection", () => {
   beforeEach(async () => {
     vi.spyOn(geocodingModule, "createGeocodingService").mockReturnValue({
       isEnabled: () => Promise.resolve(true),
+      lookupSignature: () => Promise.resolve("test-providers"),
       batchGeocode: createSuccessBatchGeocode(),
     } as unknown as geocodingModule.GeocodingService);
 

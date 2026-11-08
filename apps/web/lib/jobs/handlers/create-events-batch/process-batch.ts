@@ -11,6 +11,7 @@ import { and, eq, inArray } from "@payloadcms/db-postgres/drizzle";
 import { commitTransaction, initTransaction, killTransaction, type Payload, type PayloadRequest } from "payload";
 
 import { getTransactionAwareDrizzle } from "@/lib/database/drizzle-transaction";
+import { isTransientDatabaseError } from "@/lib/database/transient-error";
 import { normalizeIngestErrorMessage } from "@/lib/ingest/error-message";
 import { readDuplicateStrategy } from "@/lib/ingest/import-quota";
 import { interpretRow, planFromOps, readInterpretationPlan } from "@/lib/ingest/interpret";
@@ -270,6 +271,9 @@ const bulkInsertNewEvents = async (
       eventData: eventsToInsert[index]!,
     }));
     if (failures.length === 0) return { created, errors: [], conflicts };
+    // A transient failure aborts the attempt; its rollback and the task retry redo the batch.
+    const transient = failures.find(({ error }) => isTransientDatabaseError(error));
+    if (transient) throw transient.error;
 
     log.error({ count: failures.length, err: failures[0]?.error }, "Bulk insert failed for some rows");
     // Only rows in failed sub-batches are errors; committed sub-batches stay in
@@ -282,6 +286,7 @@ const bulkInsertNewEvents = async (
     }));
     return { created, errors, conflicts };
   } catch (error) {
+    if (isTransientDatabaseError(error)) throw error;
     // Defensive: sub-batch failures come back via `failures`, but an unexpected
     // throw around the loop should still mark every row failed rather than
     // silently dropping the batch.
@@ -339,6 +344,7 @@ const reconcileInsertConflicts = async (
       );
       if (result.updated) updated++;
     } catch (error) {
+      if (isTransientDatabaseError(error)) throw error;
       errors.push({
         row: rowNumber,
         error: normalizeIngestErrorMessage(error, "Conflict reconciliation update failed"),
@@ -346,6 +352,24 @@ const reconcileInsertConflicts = async (
     }
   }
   return { updated, errors };
+};
+
+/**
+ * Turn a failed row into a per-row error so one bad row doesn't poison the batch.
+ * Transient database errors are rethrown: the attempt rolls back and the task retries.
+ */
+const toRowError = (
+  error: unknown,
+  rowNumber: number,
+  log: ReturnType<typeof createJobLogger>
+): { row: number; error: string } => {
+  if (isTransientDatabaseError(error)) throw error;
+  if (error instanceof EventPayloadTooLargeError) {
+    log.warn({ rowNumber, bytes: error.bytes, limit: error.limit }, "Row exceeds per-event payload cap; skipping");
+  } else {
+    log.warn({ rowNumber, err: error }, "Failed to process event");
+  }
+  return { row: rowNumber, error: normalizeIngestErrorMessage(error) };
 };
 
 export const processEventBatch = async (
@@ -409,15 +433,7 @@ export const processEventBatch = async (
       eventsToInsert.push(eventData);
       insertRowNumbers.push(rowNumber);
     } catch (error) {
-      // Oversize rows are surfaced per-row (batch continues). Other failures
-      // also become per-row entries so a single bad row doesn't poison the
-      // rest of the batch.
-      if (error instanceof EventPayloadTooLargeError) {
-        log.warn({ rowNumber, bytes: error.bytes, limit: error.limit }, "Row exceeds per-event payload cap; skipping");
-      } else {
-        log.warn({ rowNumber, err: error }, "Failed to process event");
-      }
-      errors.push({ row: rowNumber, error: normalizeIngestErrorMessage(error) });
+      errors.push(toRowError(error, rowNumber, log));
     }
   }
 

@@ -79,6 +79,7 @@ describe("Geocode Fallback to Location Name", () => {
   beforeEach(async () => {
     vi.spyOn(geocodingModule, "createGeocodingService").mockReturnValue({
       isEnabled: () => Promise.resolve(true),
+      lookupSignature: () => Promise.resolve("test-providers"),
       batchGeocode: createVenueGeocodeBatchGeocode(),
     } as unknown as geocodingModule.GeocodingService);
 

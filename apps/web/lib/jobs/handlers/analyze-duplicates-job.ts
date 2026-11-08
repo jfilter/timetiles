@@ -293,18 +293,18 @@ const updateJobWithDuplicates = async (
 };
 
 /**
- * Append a single config-error row to `job.errors` using `row: -1` as the
- * sentinel for "not tied to a specific row". Best-effort — a failure to persist
- * the note should not block the analysis pipeline.
+ * Record a config-error row in `job.errors` using `row: -1` as the sentinel for
+ * "not tied to a specific row", once per message so a rerun does not repeat it.
+ * Best-effort — a failure to persist the note should not block the analysis pipeline.
  */
 const recordConfigError = async (payload: Payload, ingestJobId: string | number, message: string): Promise<void> => {
   try {
     const job = await payload.findByID({ collection: COLLECTION_NAMES.INGEST_JOBS, id: ingestJobId });
-    const existingErrors = job?.errors ?? [];
+    const otherErrors = (job?.errors ?? []).filter((entry) => entry.row !== -1 || entry.error !== message);
     await payload.update({
       collection: COLLECTION_NAMES.INGEST_JOBS,
       id: ingestJobId,
-      data: { errors: [...existingErrors, { row: -1, error: message }] },
+      data: { errors: [...otherErrors, { row: -1, error: message }] },
     });
   } catch (error) {
     logError(error, "Failed to record config error on ingest job", { ingestJobId });

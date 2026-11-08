@@ -21,6 +21,7 @@ import { createMockDataset, createMockIngestJob } from "@/tests/setup/factories"
 const mocks = vi.hoisted(() => {
   return {
     createSchemaVersion: vi.fn(),
+    lockDataset: vi.fn().mockResolvedValue(undefined),
     getFieldStats: vi.fn(),
     startStage: vi.fn().mockResolvedValue(undefined),
     completeStage: vi.fn().mockResolvedValue(undefined),
@@ -29,7 +30,7 @@ const mocks = vi.hoisted(() => {
 });
 
 vi.mock("@/lib/ingest/schema-versioning", () => ({
-  SchemaVersioningService: { createSchemaVersion: mocks.createSchemaVersion },
+  SchemaVersioningService: { createSchemaVersion: mocks.createSchemaVersion, lockDataset: mocks.lockDataset },
 }));
 
 vi.mock("@/lib/types/schema-detection", () => ({ getFieldStats: mocks.getFieldStats }));
@@ -153,6 +154,7 @@ describe("CreateSchemaVersionJob Handler", () => {
         autoApproved: false,
         approvedBy: 789,
         ingestSources: [],
+        req: expect.anything(),
       });
 
       // Stage tracking update at start + schema version update (no stage transition)
@@ -165,6 +167,7 @@ describe("CreateSchemaVersionJob Handler", () => {
         collection: "ingest-jobs",
         id: "import-123",
         data: { datasetSchemaVersion: "schema-version-101" },
+        req: expect.anything(),
       });
 
       // fieldMetadata + fieldTypes are merged onto the dataset atomically via a
@@ -199,12 +202,18 @@ describe("CreateSchemaVersionJob Handler", () => {
       const result = await createSchemaVersionJob.handler(mockContext);
 
       expect(result).toEqual({ output: { versionNumber: 3, schemaVersionId: 55 } });
+      // The reuse decision runs under the dataset's schema lock, in the same transaction.
+      expect(mocks.lockDataset).toHaveBeenCalledWith(mockPayload, mockDataset.id, expect.anything());
+      expect(mockPayload.find).toHaveBeenCalledWith(
+        expect.objectContaining({ req: mocks.lockDataset.mock.calls[0]![2] })
+      );
       // No new version row — the job links to the existing one instead
       expect(mocks.createSchemaVersion).not.toHaveBeenCalled();
       expect(mockPayload.update).toHaveBeenCalledWith({
         collection: "ingest-jobs",
         id: "import-123",
         data: { datasetSchemaVersion: 55 },
+        req: expect.anything(),
       });
       expect(mocks.completeStage).toHaveBeenCalled();
     });
@@ -330,6 +339,7 @@ describe("CreateSchemaVersionJob Handler", () => {
         autoApproved: false,
         approvedBy: "user-789", // Should extract ID from object
         ingestSources: [],
+        req: expect.anything(),
       });
     });
   });

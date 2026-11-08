@@ -87,6 +87,7 @@ describe("Geocoding Cache Integration", () => {
         priority: 1,
         enabled: true,
         rateLimit: 50,
+        revision: "Google Maps Test Provider:1",
       },
       {
         name: "Nominatim",
@@ -95,6 +96,7 @@ describe("Geocoding Cache Integration", () => {
         priority: 10,
         enabled: true,
         rateLimit: 1,
+        revision: "Nominatim:1",
       },
     ];
     vi.spyOn(ProviderManager.prototype, "loadProviders").mockImplementation(function (this: any) {
@@ -152,6 +154,7 @@ describe("Geocoding Cache Integration", () => {
         priority: 1,
         enabled: true,
         rateLimit: 50,
+        revision: "Google Maps Test Provider:1",
       },
       {
         name: "Nominatim",
@@ -160,6 +163,7 @@ describe("Geocoding Cache Integration", () => {
         priority: 10,
         enabled: true,
         rateLimit: 1,
+        revision: "Nominatim:1",
       },
     ];
     vi.spyOn(ProviderManager.prototype, "loadProviders").mockImplementation(function (this: any) {

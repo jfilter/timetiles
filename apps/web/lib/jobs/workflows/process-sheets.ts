@@ -101,6 +101,10 @@ const processOneSheet = async (tasks: RunTaskFunctions, sheet: SheetInfo): Promi
 
   // Step 3: Validate schema
   const validate = await runStep<ValidateSchemaOutput>("validate-schema", "validate-schema", { ingestJobId: id });
+  if (validate.failed) {
+    logger.info(`[sheet-${s}] failed during validate-schema`, { ...sheetCtx, reason: validate.failureReason });
+    return;
+  }
   if (validate.needsReview) {
     logger.info(`[sheet-${s}] needs review after validate-schema`, {
       ...sheetCtx,

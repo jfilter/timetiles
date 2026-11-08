@@ -616,7 +616,7 @@ describe("ValidateSchemaJob Handler", () => {
       return { mockIngestJob, mockDataset, mockIngestFile };
     };
 
-    it("should throw for strict mode when schema has changes", async () => {
+    it("returns a final failure for strict mode when schema has changes", async () => {
       const currentSchema = { type: "object", properties: { id: { type: "string" } }, required: ["id"] };
       const detectedSchema = {
         type: "object",
@@ -626,10 +626,11 @@ describe("ValidateSchemaJob Handler", () => {
 
       setupSchemaModeTest({ schemaMode: "strict", detectedSchema, currentSchema });
 
-      // Strict-mode violation throws (Payload retries → onFail marks FAILED)
-      await expect(validateSchemaJob.handler(mockContext)).rejects.toThrow("Schema mismatch in strict mode");
+      const result = await validateSchemaJob.handler(mockContext);
+      expect(result).toEqual({
+        output: { failed: true, failureReason: expect.stringContaining("Schema mismatch in strict mode") },
+      });
 
-      // Verify job was updated to FAILED stage (handler marks it before throwing)
       expect(mockPayload.update).toHaveBeenCalledWith(
         expect.objectContaining({
           collection: "ingest-jobs",
@@ -639,15 +640,16 @@ describe("ValidateSchemaJob Handler", () => {
       );
     });
 
-    it("should throw for additive mode when schema has breaking changes", async () => {
+    it("returns a final failure for additive mode when schema has breaking changes", async () => {
       const currentSchema = { type: "object", properties: { id: { type: "string" } }, required: ["id"] };
       const detectedSchema = { type: "object", properties: { id: { type: "number" } }, required: ["id"] };
 
       setupSchemaModeTest({ schemaMode: "additive", detectedSchema, currentSchema });
 
-      await expect(validateSchemaJob.handler(mockContext)).rejects.toThrow(
-        "Breaking schema changes not allowed in additive mode"
-      );
+      const result = await validateSchemaJob.handler(mockContext);
+      expect(result).toEqual({
+        output: { failed: true, failureReason: "Breaking schema changes not allowed in additive mode" },
+      });
 
       expect(mockPayload.update).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -681,13 +683,16 @@ describe("ValidateSchemaJob Handler", () => {
       );
     });
 
-    it("should throw for flexible mode when schema has breaking changes", async () => {
+    it("returns a final failure for flexible mode when schema has breaking changes", async () => {
       const currentSchema = { type: "object", properties: { id: { type: "string" } }, required: ["id"] };
       const detectedSchema = { type: "object", properties: { id: { type: "number" } }, required: ["id"] };
 
       setupSchemaModeTest({ schemaMode: "flexible", detectedSchema, currentSchema });
 
-      await expect(validateSchemaJob.handler(mockContext)).rejects.toThrow("Breaking schema changes detected");
+      const result = await validateSchemaJob.handler(mockContext);
+      expect(result).toEqual({
+        output: { failed: true, failureReason: expect.stringContaining("Breaking schema changes detected") },
+      });
     });
 
     it("should auto-approve non-breaking changes in flexible mode", async () => {

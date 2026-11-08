@@ -582,6 +582,46 @@ describe("GeocodingService", () => {
     });
   });
 
+  describe("lookupSignature", () => {
+    const createNominatim = (name: string, priority: number) =>
+      payload.create({
+        collection: "geocoding-providers",
+        data: {
+          name,
+          type: "nominatim",
+          enabled: true,
+          priority,
+          rateLimit: 1,
+          config: { nominatim: { baseUrl: "https://nominatim.openstreetmap.org", userAgent: "TimeTiles-Test/1.0" } },
+        },
+      });
+
+    it("is stable for the same providers and bias and changes with either", async () => {
+      await createNominatim("Nominatim (Signature)", 1);
+      const bias = { countryCodes: ["de"] };
+
+      const first = await createGeocodingService(payload).lookupSignature(bias);
+      expect(await createGeocodingService(payload).lookupSignature(bias)).toBe(first);
+      expect(await createGeocodingService(payload).lookupSignature()).not.toBe(first);
+
+      await createNominatim("Nominatim (Second)", 2);
+      expect(await createGeocodingService(payload).lookupSignature(bias)).not.toBe(first);
+    });
+
+    it("changes when a provider's configuration is edited", async () => {
+      const provider = await createNominatim("Nominatim (Edited)", 1);
+      const before = await createGeocodingService(payload).lookupSignature();
+
+      await payload.update({
+        collection: "geocoding-providers",
+        id: provider.id,
+        data: { config: { nominatim: { baseUrl: "https://nominatim.example.org", userAgent: "TimeTiles-Test/1.0" } } },
+      });
+
+      expect(await createGeocodingService(payload).lookupSignature()).not.toBe(before);
+    });
+  });
+
   describe("confidence calculation", () => {
     it("should calculate higher confidence for Google results with place ID", async () => {
       const uniqueAddress = `123 Main St, San Francisco, CA ${testCounter}`;
