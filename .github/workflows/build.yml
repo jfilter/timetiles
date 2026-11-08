@@ -33,7 +33,7 @@ jobs:
 
       - name: Type check (tsgo)
         timeout-minutes: 5
-        run: pnpm typecheck || (cat apps/web/.typecheck-results/$(ls -t apps/web/.typecheck-results/ 2>/dev/null | head -1) 2>/dev/null; exit 1)
+        run: pnpm typecheck || (cat apps/web/.typecheck-results/* 2>/dev/null; exit 1)
 
       # The spec is committed AND publicly served, so it can drift from the
       # routes without anything noticing.

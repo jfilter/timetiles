@@ -109,9 +109,10 @@ jobs:
 
       - name: Pull image by digest and tag locally
         run: |
-          DIGEST=$(ls /tmp/digests | head -1)
-          docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@sha256:${DIGEST}
-          docker tag ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@sha256:${DIGEST} timetiles-test:ci
+          digests=(/tmp/digests/*)
+          REF="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@sha256:${digests[0]##*/}"
+          docker pull "$REF"
+          docker tag "$REF" timetiles-test:ci
 
       - name: Install bats
         run: sudo apt-get update && sudo apt-get install -y bats
@@ -247,9 +248,11 @@ jobs:
       - name: Generate ephemeral test secrets
         id: secrets
         run: |
-          echo "payload_secret=$(openssl rand -base64 32 | tr -d '/+=')" >> "$GITHUB_OUTPUT"
-          echo "db_password=$(openssl rand -base64 32 | tr -d '/+=')" >> "$GITHUB_OUTPUT"
-          echo "scraper_key=$(openssl rand -hex 20)" >> "$GITHUB_OUTPUT"
+          {
+            echo "payload_secret=$(openssl rand -base64 32 | tr -d '/+=')"
+            echo "db_password=$(openssl rand -base64 32 | tr -d '/+=')"
+            echo "scraper_key=$(openssl rand -hex 20)"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Smoke test main image
         env:
@@ -341,7 +344,7 @@ jobs:
           # The image only ships the runner the host extracts; without the host's
           # podman /health must answer 503 and name the missing runtime.
           echo "==> Checking scraper health reports the missing runtime..."
-          for attempt in {1..15}; do
+          for _ in {1..15}; do
             CODE=$(curl -s -o /tmp/scraper-health.json -w '%{http_code}' --max-time 5 http://localhost:4000/health || true)
             [[ "$CODE" != "000" ]] && break
             sleep 2

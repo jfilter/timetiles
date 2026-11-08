@@ -83,16 +83,16 @@ jobs:
       - name: Create multi-arch manifest
         working-directory: /tmp/digests
         run: |
-          COUNT=$(ls | wc -l)
-          if [ "$COUNT" -ne 2 ]; then
-            echo "ERROR: Expected 2 platform digests, got $COUNT"
+          shopt -s nullglob
+          digests=(*)
+          if [ "${#digests[@]}" -ne 2 ]; then
+            echo "ERROR: Expected 2 platform digests, got ${#digests[@]}"
             ls -la
             exit 1
           fi
 
-          DIGESTS=$(printf '${{ inputs.image-name }}@sha256:%s ' *)
-          TAG_ARGS=$(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON")
-          docker buildx imagetools create $TAG_ARGS $DIGESTS
+          mapfile -t TAG_ARGS < <(jq -r '.tags[] | "-t", .' <<< "$DOCKER_METADATA_OUTPUT_JSON")
+          docker buildx imagetools create "${TAG_ARGS[@]}" "${digests[@]/#/${{ inputs.image-name }}@sha256:}"
 
       - name: Inspect manifest
         run: |
