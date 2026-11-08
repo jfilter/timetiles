@@ -8,6 +8,31 @@ See the [release process](/development/contributing/release-process) for how new
 
 Changes landed on `main` since the last tagged release.
 
+## [0.1.0-alpha.25] - 2026-11-08
+
+### Added
+
+- Ingest: each sheet runs as its own job within a recorded run, the event quota is charged through a ledger, so retries and crashes cannot charge twice, and `timetiles ingest recover` reports work whose worker died and resolves it with `--apply`
+- Layout templates: site default and per-page header and footer frames
+
+### Changed
+
+- Production refuses to start without `EMAIL_SMTP_HOST` unless `EMAIL_DISABLED=true` is set; SMTP requires TLS by default
+- Workers run `scripts/jobs-worker.ts` and finish the batch in flight on shutdown
+- Login, registration and account forms carry the autocomplete attributes password managers rely on
+
+### Fixed
+
+- Ingest: every pipeline stage is safe to retry; geocoding keeps its results between attempts
+- Import wizard: a stale edit session no longer takes over a new import, and the next sheet's review starts with a fresh decision
+- Account deletion removes trashed rows too and deletes upload files only after the transaction commits
+- All-in-One: the documented `docker run` command sets the required mail option
+
+### Security
+
+- TimeScrape: git clones connect only to the addresses the SSRF guard vetted and cap the transferred bytes
+- Only editors and admins can write media; REST requests check their ingest targets
+
 ## [0.1.0-alpha.24] - 2026-11-07
 
 ### Changed
