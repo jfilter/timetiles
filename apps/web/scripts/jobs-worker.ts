@@ -2,9 +2,9 @@
  * Job worker for one queue, or for all queues with `all`.
  *
  * Usage: `payload run scripts/jobs-worker.ts <queue|all> [limit=10] [intervalSeconds=10]`.
- * Each pass queues due schedules of its queues and runs up to `limit` jobs. On
- * SIGTERM or SIGINT the worker claims no new jobs, waits for the running ones,
- * and exits, so a container stop within its grace period interrupts no task.
+ * Each pass queues due schedules of its queues and tops up to `limit` running
+ * jobs. On SIGTERM or SIGINT the worker claims no new jobs, waits for the running
+ * ones, and exits, so a container stop within its grace period interrupts no task.
  *
  * @module
  * @category Scripts
@@ -45,7 +45,7 @@ const payload = await getPayload({ config });
 const scope: QueueScope = queueArg === "all" ? { allQueues: true } : { queue: queueArg };
 logger.info({ queue: queueArg, limit, intervalSeconds }, "Job worker started");
 
-await runWorkerLoop(() => runQueuePass(payload.jobs, { ...scope, limit }, shutdown.signal), {
+await runWorkerLoop((slots) => runQueuePass(payload, { ...scope, limit }, shutdown.signal, slots), {
   intervalMs: intervalSeconds * 1000,
   signal: shutdown.signal,
 });

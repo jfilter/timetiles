@@ -21,18 +21,20 @@ by admins. It holds scheduling state; Payload's scheduler maintains it through i
 `deployment/docker-compose.prod.yml` is the source of truth for worker commands. Each worker
 runs `scripts/jobs-worker.ts` through the Payload CLI and consumes exactly one queue:
 
-| Queue         | Poll interval | Batch limit | Stop grace period |
-| ------------- | ------------- | ----------- | ----------------- |
-| `ingest`      | 10 seconds    | `10`        | 5 minutes         |
-| `default`     | 60 seconds    | `20`        | 1 minute          |
-| `maintenance` | 60 seconds    | `20`        | 1 minute          |
+| Queue         | Poll interval | Job limit | Stop grace period |
+| ------------- | ------------- | --------- | ----------------- |
+| `ingest`      | 10 seconds    | `10`      | 5 minutes         |
+| `default`     | 60 seconds    | `20`      | 1 minute          |
+| `maintenance` | 60 seconds    | `20`      | 1 minute          |
 
 Every pass first queues the due tasks of the worker's queue from their native Payload `schedule`
-definitions, then runs up to the batch limit. Scheduling is filtered by queue, so each worker
+definitions, then starts jobs until the queue has as many running as its job limit. A long job
+holds one slot and does not delay the jobs behind it. Run one worker per queue: claims are serialized
+within a worker, so concurrency keys are only reliable there. Scheduling is filtered by queue, so each worker
 schedules only its own tasks. The `ingest` queue receives workflows from application triggers and
 schedules `cache-cleanup`, which runs in the worker that owns the URL fetch cache.
 
-On `SIGTERM` the worker claims no new jobs and lets the batch in flight finish. A container that
+On `SIGTERM` the worker claims no new jobs and lets the running ones finish. A container that
 stops before its stop grace period runs out leaves no half-done work behind; a killed worker leaves
 jobs for [ingest recovery](#ingest-recovery).
 
