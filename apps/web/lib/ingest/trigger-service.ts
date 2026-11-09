@@ -21,7 +21,7 @@ import {
 import { getTransactionAwareDrizzle } from "@/lib/database/drizzle-transaction";
 import { logError, logger } from "@/lib/logger";
 import { extractRelationId } from "@/lib/utils/relation-id";
-import { scheduled_ingests } from "@/payload-generated-schema";
+import { _scheduled_ingests_v, scheduled_ingests } from "@/payload-generated-schema";
 import type { ScheduledIngest } from "@/payload-types";
 
 /**
@@ -110,11 +110,12 @@ const triggerScheduledIngest = async (
   // Uses a single UPDATE with a WHERE guard — PostgreSQL row-level locking
   // ensures only one concurrent caller succeeds even under `read committed`.
   const db = await getTransactionAwareDrizzle(payload, options.req);
+  const lastRun = currentTime.toISOString();
   const claimResult = await db
     .update(scheduled_ingests)
     .set({
       lastStatus: "running",
-      lastRun: currentTime.toISOString(),
+      lastRun,
       ...(shouldResetRetries ? { currentRetries: 0 } : {}),
       ...(options.nextRun != null ? { nextRun: options.nextRun } : {}),
     })
@@ -131,6 +132,17 @@ const triggerScheduledIngest = async (
   if (claimResult.length === 0) {
     throw new ScheduledIngestBusyError(scheduledIngest.id);
   }
+
+  // Payload merges partial updates onto the latest version row, so a claim missing there is undone.
+  await db
+    .update(_scheduled_ingests_v)
+    .set({
+      version_lastStatus: "running",
+      version_lastRun: lastRun,
+      ...(shouldResetRetries ? { version_currentRetries: 0 } : {}),
+      ...(options.nextRun != null ? { version_nextRun: options.nextRun } : {}),
+    })
+    .where(and(eq(_scheduled_ingests_v.parent, scheduledIngest.id), eq(_scheduled_ingests_v.latest, true)));
 
   // Queue scheduled-ingest workflow
   const urlFetchJob = await payload.jobs.queue({

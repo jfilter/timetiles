@@ -6,6 +6,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { claimAndQueueScheduledIngest, ScheduledIngestBusyError } from "@/lib/ingest/trigger-service";
+import { updateScheduledIngestSuccess } from "@/lib/jobs/handlers/url-fetch-job/scheduled-ingest-utils";
 import { extractRelationId } from "@/lib/utils/relation-id";
 import type { Catalog, ScheduledIngest, User } from "@/payload-types";
 
@@ -62,6 +63,22 @@ describe("Schedule Manager Concurrency Updates", () => {
       }
     );
     testImport = scheduledIngest;
+  });
+
+  it("keeps the claimed nextRun when the finished run records its outcome", async () => {
+    const claimedNextRun = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+
+    await claimAndQueueScheduledIngest(payload, testImport, new Date(), {
+      triggeredBy: "schedule",
+      nextRun: claimedNextRun,
+      onQueueFailure: "record-failure",
+    });
+    const claimed: ScheduledIngest = await payload.findByID({ collection: "scheduled-ingests", id: testImport.id });
+    await updateScheduledIngestSuccess(payload, claimed, undefined, 1000);
+
+    const finished: ScheduledIngest = await payload.findByID({ collection: "scheduled-ingests", id: testImport.id });
+    expect(finished.lastStatus).toBe("success");
+    expect(new Date(finished.nextRun ?? 0).toISOString()).toBe(claimedNextRun);
   });
 
   it("does not queue a scheduled run after the persisted schedule was disabled", async () => {

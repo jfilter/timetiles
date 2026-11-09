@@ -94,7 +94,12 @@ describe("POST /api/webhooks/trigger/[token]", () => {
     const response = await POST(createRequest() as never, createContext("test-token-abc"));
 
     expect(response.status).toBe(500);
-    expect(mockDrizzleUpdate).toHaveBeenCalledOnce();
+    // Only the claim itself writes; undoing it is left to the killed transaction.
+    const writes = mockDrizzleUpdate.mock.results.map((result) => result.value.set.mock.calls[0][0]);
+    expect(writes).toEqual([
+      expect.objectContaining({ lastStatus: "running" }),
+      expect.objectContaining({ version_lastStatus: "running" }),
+    ]);
     expect(mockPayload.update).not.toHaveBeenCalled();
     expect(killTransaction).toHaveBeenCalledWith({ payload: mockPayload });
     expect(commitTransaction).not.toHaveBeenCalled();
