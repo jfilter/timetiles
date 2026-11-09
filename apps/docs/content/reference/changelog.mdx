@@ -8,6 +8,13 @@ See the [release process](/development/contributing/release-process) for how new
 
 Changes landed on `main` since the last tagged release.
 
+## [0.1.0-alpha.28] - 2026-11-09
+
+### Fixed
+
+- Job workers: a long job holds one slot instead of blocking its whole queue until it ends
+- Scraper setup: bootstrap step 13 installs the runner of the release in `.env.production`, not an older one from the bootstrap config
+
 ## [0.1.0-alpha.27] - 2026-11-09
 
 ### Fixed
