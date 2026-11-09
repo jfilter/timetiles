@@ -45,6 +45,13 @@ SCRAPER_RUNS_MOUNT_UNIT="tmp-timescrape-runs.mount"
 # raise it with SCRAPER_MAX_CONCURRENT or the size limits. Unwritten space costs no memory.
 SCRAPER_RUNS_TMPFS_SIZE="1G"
 
+# The release in the env file is the one `timetiles update` deploys; bootstrap config only seeds a host.
+release_version() {
+    local version
+    version="$(env_get "$1/.env.production" TIMETILES_VERSION 2>/dev/null)" || version=""
+    printf '%s' "${version:-${TIMETILES_VERSION:-latest}}"
+}
+
 run_step() {
     if [[ "${SKIP_SCRAPER:-true}" == "true" ]]; then
         print_skip "Scraper setup skipped (SKIP_SCRAPER=true)"
@@ -53,7 +60,8 @@ run_step() {
 
     local install_dir="${INSTALL_DIR:-/opt/timetiles}"
     local user="${APP_USER:-timetiles}"
-    local version="${TIMETILES_VERSION:-latest}"
+    local version
+    version="$(release_version "$install_dir")"
 
     install_nodejs
     install_podman
