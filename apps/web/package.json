@@ -61,7 +61,7 @@
     "babel-plugin-react-compiler": "^1.0.0",
     "chardet": "^2.2.0",
     "cheerio": "^1.2.0",
-    "croner": "10.0.1",
+    "croner": "11.0.0",
     "expr-eval-fork": "^3.0.3",
     "franc": "catalog:",
     "graphql": "^16.14.2",
