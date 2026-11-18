@@ -468,7 +468,7 @@ services:
 
   # Nginx reverse proxy with SSL support
   nginx:
-    image: nginx:${NGINX_VERSION:-1.27-alpine}
+    image: nginx:${NGINX_VERSION:-1.30.7-alpine}
     container_name: ${COMPOSE_PROJECT_NAME:-timetiles}-nginx
     restart: unless-stopped
     security_opt:
